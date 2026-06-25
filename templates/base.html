@@ -317,6 +317,16 @@
       </li>
       <li class="nav-item">
         <a href="{% url 'portals:employee' %}" class="nav-link">
+          <i class="fas fa-user-tie nav-icon"></i>
+          <span class="nav-label">Employee Portal</span>
+        </a>
+      </li>
+
+      <li class="nav-section-title">Administration</li>
+      <li class="nav-item nav-has-children {% block nav_company %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-building nav-icon"></i>
+          <span class="nav-label">Company Setup</span>
           <i class="fas fa-chevron-right nav-arrow"></i>
         </a>
         <ul class="nav-children">
