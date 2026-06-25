@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Training: {{ program.name }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">{{ program.name }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>Trainer:</strong> {{ program.trainer_name }}</p>
+<p><strong>Dates:</strong> {{ program.start_date }} to {{ program.end_date }}</p>
+<p><strong>Location:</strong> {{ program.location }}</p>
+<p><strong>Cost:</strong> {{ program.cost }}</p>
+<p>{{ program.description|linebreaks }}</p>
+</div>
+<div class="card shadow-sm border-0"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="text-primary mb-0 fw-bold">Attendees</h5></div>
+<ul class="list-group list-group-flush">
+{% for att in program.attendees.all %}<li class="list-group-item">{{ att.full_name }}</li>{% empty %}<li class="list-group-item">No attendees enrolled.</li>{% endfor %}
+</ul></div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'portals/portal_base.html' %}
+{% block title %}Support Tickets{% endblock %}
+{% block nav_tickets %}active{% endblock %}
+{% block page_title %}Support Tickets{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">My Tickets</span>
+        <a href="{% url 'portals:customer_ticket_create' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> New Ticket
+        </a>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticket #</th>
+                    <th>Subject</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td><strong style="color:var(--primary);">{{ ticket.number }}</strong></td>
+                    <td>{{ ticket.title }}</td>
+                    <td>
+                        {% if ticket.priority == 'critical' %}<span class="badge badge-red">Critical</span>
+                        {% elif ticket.priority == 'high' %}<span class="badge badge-yellow">High</span>
+                        {% elif ticket.priority == 'medium' %}<span class="badge badge-blue">Medium</span>
+                        {% else %}<span class="badge badge-gray">Low</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if ticket.status == 'open' %}<span class="badge badge-indigo">Open</span>
+                        {% elif ticket.status == 'in_progress' %}<span class="badge badge-blue">In Progress</span>
+                        {% elif ticket.status == 'resolved' %}<span class="badge badge-green">Resolved</span>
+                        {% elif ticket.status == 'closed' %}<span class="badge badge-gray">Closed</span>
+                        {% else %}<span class="badge badge-yellow">{{ ticket.status|title }}</span>{% endif %}
+                    </td>
+                    <td>{{ ticket.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <a href="{% url 'portals:customer_ticket_detail' ticket.pk %}" class="btn btn-outline btn-sm">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400);">
+                        <i class="fas fa-headset" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
+                        No tickets yet. You're all set! 🎉
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ title|default:"Item List" }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">
+    <h1>{{ title|default:"Items" }}</h1>
+    <p>{{ object_list.count|default:page_obj.paginator.count|default:"0" }} records</p>
+  </div>
+  {% if create_url %}
+  <div class="d-flex gap-2">
+    <a href="{{ create_url }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>Add New
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Search & Filters -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-12 col-md-9">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="q" class="form-control" style="padding-left:36px"
+            placeholder="Search..." value="{{ request.GET.q|default:'' }}">
+        </div>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-search me-1"></i>Search
+        </button>
+        {% if reset_url %}
+        <a href="{{ reset_url }}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- List Card -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            {% block table_header %}
+            <th>ID / Reference</th>
+            <th>Details</th>
+            <th>Status</th>
+            <th>Actions
+            {% endblock %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% block table_rows %}
+          {% for obj in object_list %}
+          <tr>
+            <td>
+              <span class="fw-bold">{{ obj.number|default:obj.id|truncatechars:8 }}</span>
+            </td>
+            <td>
+              <div>{{ obj.name|default:obj.title|default:obj|truncatechars:50 }}</div>
+              {% if obj.created_at %}
+              <div class="text-muted small">Created: {{ obj.created_at|naturaltime }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if obj.status %}
+              <span class="badge badge-{{ obj.status }}">{{ obj.get_status_display|default:obj.status }}</span>
+              {% else %}
+              <span class="badge bg-secondary">Active
+              {% endif %}</span>
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                {% if detail_url_name %}
+                <a href="{% url detail_url_name obj.pk %}" class="btn btn-outline-primary btn-xs">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% endif %}
+                {% if edit_url_name %}
+                <a href="{% url edit_url_name obj.pk %}" class="btn btn-outline-secondary btn-xs">
+                  <i class="fas fa-edit"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center py-5">
+              <i class="fas fa-folder-open fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No records found.</span>
+            </td>
+          </tr>
+          {% endfor %}
+          {% endblock %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated and page_obj %}
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <div class="text-muted small">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} items
+  </div>
+  <nav>
+    <ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
+{% endblock %}

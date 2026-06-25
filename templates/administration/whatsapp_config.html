@@ -1,0 +1,46 @@
+{% extends "administration/base_admin.html" %}
+{% block title %}WhatsApp Configuration{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-0"><i class="fab fa-whatsapp me-2 text-primary"></i>WhatsApp Configuration</h1>
+    <p class="text-muted mb-0">Manage whatsapp configuration for your organization</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Add WhatsApp Config</h6></div>
+      <div class="card-body px-4">
+        <form method="post">{% csrf_token %}
+          <div class="mb-3"><label class="form-label fw-medium">Name</label><input type="text" name="name" class="form-control" value="Default WhatsApp"></div>
+          <div class="mb-3"><label class="form-label fw-medium">Provider</label>
+            <select name="provider" class="form-select">{% for v,l in providers %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+          </div>
+          <div class="mb-3"><label class="form-label fw-medium">Phone Number ID</label><input type="text" name="phone_number_id" class="form-control"></div>
+          <div class="mb-3"><label class="form-label fw-medium">WABA ID</label><input type="text" name="waba_id" class="form-control"></div>
+          <div class="mb-3"><label class="form-label fw-medium">Access Token</label><textarea name="access_token" class="form-control" rows="3"></textarea></div>
+          <button class="btn btn-success w-100"><i class="fab fa-whatsapp me-2"></i>Save Configuration</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-7">
+    {% for cfg in configs %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="fw-bold mb-1">{{ cfg.name }}</h6>
+          <p class="text-muted small mb-0"><span class="badge bg-success me-2">{{ cfg.get_provider_display }}</span>WABA: {{ cfg.waba_id|default:"N/A" }}</p>
+        </div>
+        <span class="badge {% if cfg.is_active %}bg-success{% else %}bg-secondary{% endif %}">{% if cfg.is_active %}Active{% else %}Inactive{% endif %}</span>
+      </div>
+    </div>
+    {% empty %}
+    <div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5"><i class="fab fa-whatsapp fa-3x mb-3 opacity-25" style="color:#25d366"></i><p>No WhatsApp configurations yet.</p></div></div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

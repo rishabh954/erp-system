@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="{{ user_theme|default:'light' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}EnterpriseERP{% endblock %} | {% if current_company %}{{ current_company.name }}{% else %}ERP System{% endif %}</title>
+
+  <!-- Favicons -->
+  {% if current_company and current_company.favicon %}
+  <link rel="icon" href="{{ current_company.favicon.url }}">
+  {% else %}
+  <link rel="icon" href="{% load static %}{% static 'images/favicon.ico' %}">
+  {% endif %}
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome 6 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- DataTables -->
+  <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+  {% load static %}
+  <link href="{% static 'css/erp-main.css' %}" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+
+  {% if current_company %}
+  <style>
+    :root {
+      --brand-primary: {{ current_company.primary_color|default:'#4361ee' }};
+      --brand-secondary: {{ current_company.secondary_color|default:'#3f37c9' }};
+    }
+  </style>
+  {% endif %}
+</head>
+<body class="{% block body_class %}app-body{% endblock %}">
+
+{% block full_page %}
+
+{% if request.user.is_authenticated %}
+<!-- â”€â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    {% if current_company and current_company.logo %}
+    <img src="{{ current_company.logo.url }}" alt="{{ current_company.name }}" class="company-logo">
+    {% else %}
+    <div class="brand-logo">
+      <i class="fas fa-cubes"></i>
+      <span class="brand-name">EnterpriseERP
+    </div>
+    {% endif %}
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+  </div>
+
+  <div class="sidebar-search">
+    <div class="search-input-wrap">
+      <i class="fas fa-search search-icon"></i>
+      <input type="text" class="sidebar-search-input" placeholder="Search modules..." id="moduleSearch">
+    </div>
+  </div>
+
+  <nav class="sidebar-nav" id="sidebarNav">
+    <ul class="nav-list">
+
+      <li class="nav-item {% block nav_dashboard %}{% endblock %}">
+        <a href="{% url 'dashboard:index' %}" class="nav-link">
+          <i class="fas fa-tachometer-alt nav-icon"></i>
+          <span class="nav-label">Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-section-title">Business</li>
+
+      <li class="nav-item nav-has-children {% block nav_crm %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-users nav-icon"></i>
+          <span class="nav-label">CRM</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'crm:dashboard' %}" class="nav-link nav-child"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+          <li><a href="{% url 'crm:leads' %}" class="nav-link nav-child"><i class="fas fa-filter"></i> Leads</a></li>
+          <li><a href="{% url 'crm:pipeline' %}" class="nav-link nav-child"><i class="fas fa-stream"></i> Pipeline</a></li>
+          <li><a href="{% url 'crm:opportunities' %}" class="nav-link nav-child"><i class="fas fa-bullseye"></i> Opportunities</a></li>
+          <li><a href="{% url 'crm:customers' %}" class="nav-link nav-child"><i class="fas fa-user-tie"></i> Customers</a></li>
+          <li><a href="{% url 'crm:campaigns' %}" class="nav-link nav-child"><i class="fas fa-bullhorn"></i> Campaigns</a></li>
+          <li><a href="{% url 'crm:interactions' %}" class="nav-link nav-child"><i class="fas fa-comments"></i> Interactions</a></li>
+          <li><a href="{% url 'crm:contracts' %}" class="nav-link nav-child"><i class="fas fa-file-signature"></i> Contracts</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-has-children {% block nav_sales %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-shopping-cart nav-icon"></i>
+          <span class="nav-label">Sales</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'sales:dashboard' %}" class="nav-link nav-child"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+          <li><a href="{% url 'sales:quotations' %}" class="nav-link nav-child"><i class="fas fa-file-invoice"></i> Quotations</a></li>
+          <li><a href="{% url 'sales:orders' %}" class="nav-link nav-child"><i class="fas fa-clipboard-list"></i> Orders</a></li>
+          <li><a href="{% url 'sales:invoices' %}" class="nav-link nav-child"><i class="fas fa-file-invoice-dollar"></i> Invoices</a></li>
+          <li><a href="{% url 'sales:payments' %}" class="nav-link nav-child"><i class="fas fa-credit-card"></i> Payments</a></li>
+          <li><a href="{% url 'pos:index' %}" class="nav-link nav-child"><i class="fas fa-cash-register"></i> Point of Sale</a></li>
+          <li><a href="{% url 'sales:subscriptions' %}" class="nav-link nav-child"><i class="fas fa-sync-alt"></i> Subscriptions</a></li>
+          <li><a href="{% url 'sales:commissions' %}" class="nav-link nav-child"><i class="fas fa-percentage"></i> Commissions</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-has-children {% block nav_purchase %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-truck nav-icon"></i>
+          <span class="nav-label">Purchase</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'purchase:dashboard' %}" class="nav-link nav-child"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+          <li><a href="{% url 'purchase:vendors' %}" class="nav-link nav-child"><i class="fas fa-building"></i> Vendors</a></li>
+          <li><a href="{% url 'purchase:requests' %}" class="nav-link nav-child"><i class="fas fa-clipboard"></i> Requests</a></li>
+          <li><a href="{% url 'purchase:rfqs' %}" class="nav-link nav-child"><i class="fas fa-file-contract"></i> RFQs</a></li>
+          <li><a href="{% url 'purchase:orders' %}" class="nav-link nav-child"><i class="fas fa-shopping-bag"></i> Purchase Orders</a></li>
+          <li><a href="{% url 'purchase:receipts' %}" class="nav-link nav-child"><i class="fas fa-box-open"></i> Receipts (GRN)</a></li>
+          <li><a href="{% url 'purchase:bills' %}" class="nav-link nav-child"><i class="fas fa-file-invoice-dollar"></i> Bills</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-section-title">Operations</li>
+
+      <li class="nav-item nav-has-children {% block nav_inventory %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-boxes nav-icon"></i>
+          <span class="nav-label">Inventory</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'inventory:products' %}" class="nav-link nav-child"><i class="fas fa-box"></i> Products</a></li>
+          <li><a href="{% url 'inventory:categories' %}" class="nav-link nav-child"><i class="fas fa-tags"></i> Product Categories</a></li>
+          <li><a href="{% url 'inventory:warehouses' %}" class="nav-link nav-child"><i class="fas fa-warehouse"></i> Warehouses</a></li>
+          
+          <li class="nav-child-header text-uppercase">WMS Operations</li>
+          <li><a href="{% url 'inventory:picklists' %}" class="nav-link nav-child"><i class="fas fa-clipboard-list"></i> Pick Lists</a></li>
+          <li><a href="{% url 'inventory:shipments' %}" class="nav-link nav-child"><i class="fas fa-shipping-fast"></i> Shipments</a></li>
+          <li><a href="{% url 'inventory:lots' %}" class="nav-link nav-child"><i class="fas fa-barcode"></i> Lot / Batch Tracking</a></li>
+          <li><a href="{% url 'inventory:serials' %}" class="nav-link nav-child"><i class="fas fa-qrcode"></i> Serial Numbers</a></li>
+          <li><a href="{% url 'inventory:deliveries' %}" class="nav-link nav-child"><i class="fas fa-truck"></i> Delivery Orders</a></li>
+          <li><a href="{% url 'inventory:landed_costs' %}" class="nav-link nav-child"><i class="fas fa-money-bill-wave"></i> Landed Costs</a></li>
+          
+          <li class="nav-child-header text-uppercase">Stock</li>
+          <li><a href="{% url 'inventory:movements' %}" class="nav-link nav-child"><i class="fas fa-exchange-alt"></i> Stock Movements</a></li>
+          <li><a href="{% url 'inventory:transfers' %}" class="nav-link nav-child"><i class="fas fa-truck-moving"></i> Transfers</a></li>
+          <li><a href="{% url 'inventory:reports' %}" class="nav-link nav-child"><i class="fas fa-chart-bar"></i> Reports</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-has-children {% block nav_projects %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-project-diagram nav-icon"></i>
+          <span class="nav-label">Projects</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'projects:list' %}" class="nav-link nav-child"><i class="fas fa-folder"></i> All Projects</a></li>
+          <li><a href="{% url 'projects:my_tasks' %}" class="nav-link nav-child"><i class="fas fa-tasks"></i> My Tasks</a></li>
+          {% with kanban_proj=request.user.projects.first|default:request.user.managed_projects.first %}
+          {% if kanban_proj %}
+            <li><a href="{% url 'projects:kanban' kanban_proj.pk %}" class="nav-link nav-child"><i class="fas fa-columns"></i> Kanban Board</a></li>
+          {% else %}
+            <li><a href="{% url 'projects:list' %}?open_kanban=1" class="nav-link nav-child"><i class="fas fa-columns"></i> Kanban Board</a></li>
+          {% endif %}
+          {% endwith %}
+        </ul>
+      </li>
+
+      <li class="nav-item nav-has-children {% block nav_manufacturing %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-industry nav-icon"></i>
+          <span class="nav-label">Manufacturing</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'manufacturing:orders' %}" class="nav-link nav-child"><i class="fas fa-industry"></i> Orders</a></li>
+          <li><a href="{% url 'manufacturing:boms' %}" class="nav-link nav-child"><i class="fas fa-clipboard-list"></i> Bill of Materials</a></li>
+          <li><a href="{% url 'manufacturing:routings' %}" class="nav-link nav-child"><i class="fas fa-route"></i> Routings</a></li>
+          <li><a href="{% url 'manufacturing:work_centers' %}" class="nav-link nav-child"><i class="fas fa-hammer"></i> Work Centers</a></li>
+          <li><a href="{% url 'manufacturing:work_orders' %}" class="nav-link nav-child"><i class="fas fa-tasks"></i> Work Orders</a></li>
+          <li><a href="{% url 'manufacturing:scrap_orders' %}" class="nav-link nav-child"><i class="fas fa-recycle"></i> Scrap Orders</a></li>
+          <li><a href="{% url 'manufacturing:downtime_logs' %}" class="nav-link nav-child"><i class="fas fa-stopwatch"></i> Downtime</a></li>
+          <li><a href="{% url 'manufacturing:quality_checks' %}" class="nav-link nav-child"><i class="fas fa-check-circle"></i> Quality Control</a></li>
+          <li><a href="{% url 'manufacturing:production_costings' %}" class="nav-link nav-child"><i class="fas fa-file-invoice-dollar"></i> Costing</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-section-title">Finance</li>
+
+      <li class="nav-item nav-has-children {% block nav_accounting %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-calculator nav-icon"></i>
+          <span class="nav-label">Accounting</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'accounting:dashboard' %}" class="nav-link nav-child"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+          <li><a href="{% url 'accounting:chart_of_accounts' %}" class="nav-link nav-child"><i class="fas fa-sitemap"></i> Chart of Accounts</a></li>
+          <li><a href="{% url 'accounting:journals' %}" class="nav-link nav-child"><i class="fas fa-book"></i> Journals</a></li>
+          <li><a href="{% url 'accounting:bank_accounts' %}" class="nav-link nav-child"><i class="fas fa-university"></i> Bank Accounts</a></li>
+          <li><a href="{% url 'accounting:bank_statement_list' %}" class="nav-link nav-child"><i class="fas fa-file-invoice"></i> Bank Statements</a></li>
+          <li><a href="{% url 'accounting:bank_reconciliation' %}" class="nav-link nav-child"><i class="fas fa-check-double"></i> Bank Reconciliation</a></li>
+          <li><a href="{% url 'accounting:cost_centers' %}" class="nav-link nav-child"><i class="fas fa-building"></i> Cost Centers</a></li>
+          <li><a href="{% url 'accounting:budgets' %}" class="nav-link nav-child"><i class="fas fa-bullseye"></i> Budgets</a></li>
+          <li><a href="{% url 'accounting:issue_credit_note' %}" class="nav-link nav-child"><i class="fas fa-file-invoice"></i> Issue Credit Note</a></li>
+          <li><a href="{% url 'accounting:reports' %}" class="nav-link nav-child"><i class="fas fa-chart-line"></i> Reports</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-section-title">HR & People</li>
+
+      <li class="nav-item nav-has-children {% block nav_hrms %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-user-friends nav-icon"></i>
+          <span class="nav-label">HRMS</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'hrms:employees' %}" class="nav-link nav-child"><i class="fas fa-id-badge"></i> Employees</a></li>
+          <li><a href="{% url 'hrms:attendance' %}" class="nav-link nav-child"><i class="fas fa-calendar-check"></i> Attendance</a></li>
+          <li><a href="{% url 'hrms:leaves' %}" class="nav-link nav-child"><i class="fas fa-umbrella-beach"></i> Leave Management</a></li>
+          <li><a href="{% url 'hrms:payroll' %}" class="nav-link nav-child"><i class="fas fa-money-bill-wave"></i> Payroll</a></li>
+          <li><a href="{% url 'hrms:job_postings' %}" class="nav-link nav-child"><i class="fas fa-briefcase"></i> Recruitment</a></li>
+          <li><a href="{% url 'hrms:appraisals' %}" class="nav-link nav-child"><i class="fas fa-star"></i> Appraisals</a></li>
+          <li><a href="{% url 'hrms:training_programs' %}" class="nav-link nav-child"><i class="fas fa-chalkboard-teacher"></i> Training</a></li>
+          <li><a href="{% url 'hrms:expense_claims' %}" class="nav-link nav-child"><i class="fas fa-receipt"></i> Expenses</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-section-title">Insights</li>
+
+      <li class="nav-item nav-has-children {% block nav_analytics %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-chart-pie nav-icon"></i>
+          <span class="nav-label">BI & Analytics</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'analytics:dashboard' %}" class="nav-link nav-child"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+          <li><a href="{% url 'analytics:builder' %}" class="nav-link nav-child"><i class="fas fa-tools"></i> Report Builder</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-section-title">Support</li>
+
+      <li class="nav-item {% block nav_helpdesk %}{% endblock %}">
+        <a href="{% url 'helpdesk:tickets' %}" class="nav-link">
+          <i class="fas fa-headset nav-icon"></i>
+          <span class="nav-label">Help Desk</span>
+        </a>
+      </li>
+
+      <li class="nav-item {% block nav_documents %}{% endblock %}">
+        <a href="{% url 'documents:list' %}" class="nav-link">
+          <i class="fas fa-folder-open nav-icon"></i>
+          <span class="nav-label">Documents</span>
+        </a>
+      </li>
+
+      <li class="nav-item {% block nav_assets %}{% endblock %}">
+        <a href="{% url 'assets:list' %}" class="nav-link">
+          <i class="fas fa-laptop nav-icon"></i>
+          <span class="nav-label">Assets</span>
+        </a>
+      </li>
+      <li class="nav-item nav-has-children {% block nav_workflow %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-project-diagram nav-icon"></i>
+          <span class="nav-label">Workflow</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'workflow:pending_approvals' %}" class="nav-link nav-child"><i class="fas fa-clock"></i> Pending Approvals</a></li>
+          <li><a href="{% url 'workflow:history' %}" class="nav-link nav-child"><i class="fas fa-history"></i> Approval History</a></li>
+          <li><a href="{% url 'workflow:delegations' %}" class="nav-link nav-child"><i class="fas fa-user-friends"></i> Delegated Approvals</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item nav-has-children {% block nav_notifications %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-bell nav-icon"></i>
+          <span class="nav-label">Notifications</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'notifications:list' %}" class="nav-link nav-child"><i class="fas fa-list"></i> All Notifications</a></li>
+          <li><a href="{% url 'notifications:preferences' %}" class="nav-link nav-child"><i class="fas fa-sliders-h"></i> Preferences</a></li>
+          {% if request.user.role == 'super_admin' or request.user.role == 'company_admin' %}
+          <li><a href="{% url 'notifications:logs_email' %}" class="nav-link nav-child"><i class="fas fa-envelope"></i> Email Logs</a></li>
+          <li><a href="{% url 'notifications:logs_sms' %}" class="nav-link nav-child"><i class="fas fa-sms"></i> SMS Logs</a></li>
+          <li><a href="{% url 'notifications:logs_whatsapp' %}" class="nav-link nav-child"><i class="fab fa-whatsapp"></i> WhatsApp Logs</a></li>
+          {% endif %}
+        </ul>
+      </li>
+
+      <li class="nav-section-title">Portals</li>
+      <li class="nav-item">
+        <a href="{% url 'portals:customer' %}" class="nav-link">
+          <i class="fas fa-user-circle nav-icon"></i>
+          <span class="nav-label">Customer Portal</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'portals:vendor' %}" class="nav-link">
+          <i class="fas fa-truck-loading nav-icon"></i>
+          <span class="nav-label">Vendor Portal</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'portals:employee' %}" class="nav-link">
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'company:settings' %}" class="nav-link nav-child"><i class="fas fa-cog"></i> Settings</a></li>
+          <li><a href="{% url 'company:branches' %}" class="nav-link nav-child"><i class="fas fa-code-branch"></i> Branches</a></li>
+          <li><a href="{% url 'company:departments' %}" class="nav-link nav-child"><i class="fas fa-sitemap"></i> Departments</a></li>
+          <li><a href="{% url 'company:users' %}" class="nav-link nav-child"><i class="fas fa-users-cog"></i> Users & Roles</a></li>
+          <li><a href="{% url 'company:fiscal_years' %}" class="nav-link nav-child"><i class="fas fa-calendar-alt"></i> Fiscal Years</a></li>
+          <li><a href="{% url 'company:currencies' %}" class="nav-link nav-child"><i class="fas fa-dollar-sign"></i> Currencies</a></li>
+        </ul>
+      </li>
+
+    </ul>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      {% if request.user.avatar %}
+      <img src="{{ request.user.avatar.url }}" alt="{{ request.user.full_name }}" class="user-avatar-sm">
+      {% else %}
+      <div class="user-avatar-placeholder">{{ request.user.first_name|first }}{{ request.user.last_name|first }}</div>
+      {% endif %}
+      <div class="user-info">
+        <span class="user-name">{{ request.user.full_name }}</span>
+        <span class="user-role">{{ request.user.get_role_display }}</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- â”€â”€â”€ Main Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div class="main-wrapper" id="mainWrapper">
+
+  <!-- Top Navbar -->
+  <header class="top-navbar" id="topNavbar">
+    <div class="navbar-left">
+      <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle sidebar">
+        <i class="fas fa-bars"></i>
+      </button>
+      <nav aria-label="breadcrumb" class="navbar-breadcrumb">
+        <ol class="breadcrumb mb-0">
+          {% block breadcrumb %}
+          <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+          {% endblock %}
+        </ol>
+      </nav>
+    </div>
+
+    <div class="navbar-center">
+      <div class="global-search-wrap">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" class="global-search-input" placeholder="Search anything... (Ctrl+K)" id="globalSearch">
+        <div class="search-results-dropdown" id="searchResults"></div>
+      </div>
+    </div>
+
+    <div class="navbar-right">
+
+      <!-- Company switcher -->
+      {% if request.user.companies.count > 1 %}
+      <div class="dropdown navbar-item">
+        <button class="navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="fas fa-building"></i>
+          <span class="d-none d-md-inline">{{ current_company.name|truncatechars:20 }}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for uc in request.user.active_user_companies %}
+          <li>
+            <a class="dropdown-item {% if uc.company == current_company %}active{% endif %}"
+               href="{% url 'company:switch' uc.company.id %}">
+              {{ uc.company.name }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- Notifications -->
+      <div class="dropdown navbar-item">
+        <button class="navbar-btn notification-btn" data-bs-toggle="dropdown" id="notificationBtn">
+          <i class="fas fa-bell"></i>
+          {% if unread_notification_count > 0 %}
+          <span class="notification-badge">{{ unread_notification_count|default:'' }}</span>
+          {% endif %}
+        </button>
+        <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
+          <div class="notification-header">
+            <h6>Notifications</h6>
+            <a href="#" class="mark-all-read" id="markAllRead">Mark all read</a>
+          </div>
+          <div class="notification-list" id="notificationList">
+            <div class="notification-loading"><i class="fas fa-spinner fa-spin"></i></div>
+          </div>
+          <div class="notification-footer">
+            <a href="{% url 'notifications:list' %}">View all notifications</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Theme toggle -->
+      <button class="navbar-btn theme-toggle" id="themeToggle" title="Toggle theme">
+        <i class="fas fa-{% if user_theme == 'dark' %}sun{% else %}moon{% endif %}"></i>
+      </button>
+
+      <!-- User menu -->
+      <div class="dropdown navbar-item">
+        <button class="navbar-btn user-menu-btn dropdown-toggle" data-bs-toggle="dropdown">
+          {% if request.user.avatar %}
+          <img src="{{ request.user.avatar.url }}" alt="" class="user-avatar-xs">
+          {% else %}
+          <div class="user-initials-xs">{{ request.user.first_name|first }}{{ request.user.last_name|first }}</div>
+          {% endif %}
+          <span class="d-none d-md-inline user-name-nav">{{ request.user.first_name }}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end user-dropdown">
+          <li class="dropdown-user-info">
+            <div class="fw-semibold">{{ request.user.full_name }}</div>
+            <div class="text-muted small">{{ request.user.email }}</div>
+            <div class="badge bg-primary mt-1">{{ request.user.get_role_display }}</div>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'auth:profile' %}"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+          <li><a class="dropdown-item" href="{% url 'company:settings' %}"><i class="fas fa-cog me-2"></i>Settings</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'auth:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Page Content -->
+  <main class="page-content" id="pageContent">
+
+    <!-- Toast Messages -->
+    {% include 'partials/messages.html' %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+
+  <footer class="page-footer">
+    <span>&copy; {% now "Y" %} {% if current_company %}{{ current_company.name }}{% else %}EnterpriseERP{% endif %}. All rights reserved.</span>
+    <span class="ms-auto text-muted small">v2.0.0</span>
+  </footer>
+
+</div>
+<!-- End main-wrapper -->
+
+{% else %}
+<!-- Unauthenticated pages -->
+{% block auth_content %}{% endblock %}
+{% endif %}
+
+{% endblock full_page %}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% load static %}
+<script src="{% static 'js/erp-main.js' %}"></script>
+{% block extra_js %}{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function pollNotifications() {
+        fetch('/api/notifications/notifications/unread_count/')
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.querySelector('.notification-badge');
+                if (data.count > 0) {
+                    if (badge) {
+                        badge.textContent = data.count;
+                    } else {
+                        const btn = document.querySelector('.notification-btn');
+                        if (btn) {
+                            const newBadge = document.createElement('span');
+                            newBadge.className = 'notification-badge';
+                            newBadge.textContent = data.count;
+                            btn.appendChild(newBadge);
+                        }
+                    }
+                } else if (badge) {
+                    badge.remove();
+                }
+            })
+            .catch(err => console.error('Error fetching notifications:', err));
+    }
+    // Poll every 30 seconds
+    setInterval(pollNotifications, 30000);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Inventory Transfers{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Stock Transfers</h1>
+    <p class="text-muted mb-0">Manage and track physical stock transfers between warehouses</p>
+  </div>
+  <div>
+    <a href="{% url 'inventory:transfer_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>New Transfer
+    </a>
+  </div>
+</div>
+
+<!-- Transfers Dashboard Indicators -->
+<div class="row g-3 mb-4">
+  <!-- Total Transfers Card -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-value">{{ transfers|length }}</div>
+      <div class="stat-card-label">Total Transfers</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-exchange-alt"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">In company catalog</div>
+    </div>
+  </div>
+
+  <!-- Pending Approvals Card -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-value">
+        <span id="stat-pending-count">0</span>
+      </div>
+      <div class="stat-card-label">Pending Approval</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">Requires manager approval</div>
+    </div>
+  </div>
+
+  <!-- In Transit Card -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-value">
+        <span id="stat-transit-count">0</span>
+      </div>
+      <div class="stat-card-label">In Transit</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-shipping-fast"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">Currently on the road</div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card glass-card mb-4 border-0">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <!-- From Warehouse Filter -->
+      <div class="col-12 col-md-3">
+        <select name="from_warehouse" class="form-select">
+          <option value="">From: All Warehouses</option>
+          {% for wh in warehouses %}
+          <option value="{{ wh.id }}" {% if request.GET.from_warehouse == wh.id|stringformat:'s' %}selected{% endif %}>{{ wh.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- To Warehouse Filter -->
+      <div class="col-12 col-md-3">
+        <select name="to_warehouse" class="form-select">
+          <option value="">To: All Warehouses</option>
+          {% for wh in warehouses %}
+          <option value="{{ wh.id }}" {% if request.GET.to_warehouse == wh.id|stringformat:'s' %}selected{% endif %}>{{ wh.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="col-12 col-md-3">
+        <select name="status" class="form-select">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Actions -->
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        {% if request.GET.from_warehouse or request.GET.to_warehouse or request.GET.status %}
+        <a href="{% url 'inventory:transfers' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Transfers Table -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Transfer No.</th>
+            <th>Source Warehouse</th>
+            <th>Destination Warehouse</th>
+            <th class="text-center">Items</th>
+            <th class="text-center">Status</th>
+            <th>Expected Arrival</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tr in transfers %}
+          <tr class="transfer-row" data-status="{{ tr.status }}">
+            <td class="small fw-semibold text-dark">{{ tr.transfer_date }}</td>
+            <td>
+              <span class="fw-bold text-primary">{{ tr.number|default:tr.id|truncatechars:8 }}</span>
+            </td>
+            <td>
+              <span class="fw-semibold">{{ tr.from_warehouse.name }}</span>
+              <div class="small text-muted" style="font-size: 11px;">Code: {{ tr.from_warehouse.code }}</div>
+            </td>
+            <td>
+              <span class="fw-semibold">{{ tr.to_warehouse.name }}</span>
+              <div class="small text-muted" style="font-size: 11px;">Code: {{ tr.to_warehouse.code }}</div>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-light text-dark border">{{ tr.lines.count }}</span>
+            </td>
+            <td class="text-center">
+              {% if tr.status == 'draft' %}
+                <span class="badge bg-secondary-subtle text-muted border border-secondary-subtle fw-semibold rounded-pill px-2 py-1">Draft
+              {% elif tr.status == 'requested' %}</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle fw-semibold rounded-pill px-2 py-1">Requested
+              {% elif tr.status == 'approved' %}</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle fw-semibold rounded-pill px-2 py-1">Approved
+              {% elif tr.status == 'in_transit' %}</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold rounded-pill px-2 py-1">In Transit
+              {% elif tr.status == 'received' %}</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold rounded-pill px-2 py-1">Received
+              {% else %}</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold rounded-pill px-2 py-1">Cancelled
+              {% endif %}</span>
+            </td>
+            <td class="small">{{ tr.expected_arrival|default:"-" }}</td>
+            <td class="text-center">
+              <a href="{% url 'inventory:transfer_detail' tr.id %}" class="btn btn-outline-primary btn-xs">
+                <i class="fas fa-eye me-1"></i>View
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5">
+              <i class="fas fa-exchange-alt fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No stock transfers found matching filters.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated and page_obj %}
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <div class="text-muted small">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} transfers
+  </div>
+  <nav>
+    <ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.from_warehouse %}&from_warehouse={{ request.GET.from_warehouse }}{% endif %}{% if request.GET.to_warehouse %}&to_warehouse={{ request.GET.to_warehouse }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Previous</a></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.from_warehouse %}&from_warehouse={{ request.GET.from_warehouse }}{% endif %}{% if request.GET.to_warehouse %}&to_warehouse={{ request.GET.to_warehouse }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Next</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Dynamically calculate status counters on load
+  const rows = document.querySelectorAll('.transfer-row');
+  let pendingCount = 0;
+  let transitCount = 0;
+
+  rows.forEach(row => {
+    const status = row.dataset.status;
+    if (status === 'requested') pendingCount++;
+    if (status === 'in_transit') transitCount++;
+  });
+
+  const pendingEl = document.getElementById('stat-pending-count');
+  const transitEl = document.getElementById('stat-transit-count');
+  if (pendingEl) pendingEl.textContent = pendingCount;
+  if (transitEl) transitEl.textContent = transitCount;
+});
+</script>
+{% endblock %}

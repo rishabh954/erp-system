@@ -1,0 +1,94 @@
+{% extends 'portals/portal_base.html' %}
+{% block title %}Ticket {{ ticket.number }}{% endblock %}
+{% block nav_tickets %}active{% endblock %}
+{% block page_title %}Ticket {{ ticket.number }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'portals:customer_tickets' %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back to Tickets</a>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <!-- Conversation -->
+    <div>
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+                <span class="card-title">{{ ticket.title }}</span>
+                {% if ticket.status == 'open' %}<span class="badge badge-indigo">Open</span>
+                {% elif ticket.status == 'in_progress' %}<span class="badge badge-blue">In Progress</span>
+                {% elif ticket.status == 'resolved' %}<span class="badge badge-green">Resolved</span>
+                {% else %}<span class="badge badge-gray">{{ ticket.status|title }}</span>{% endif %}
+            </div>
+            <div class="card-body">
+                <p style="color:var(--gray-600);font-size:0.88rem;line-height:1.6;">{{ ticket.description }}</p>
+            </div>
+        </div>
+
+        <!-- Replies -->
+        {% for reply in ticket.replies.all %}
+        {% if not reply.is_internal %}
+        <div style="margin-bottom:14px;display:flex;gap:10px;{% if reply.author == request.user %}flex-direction:row-reverse;{% endif %}">
+            <div class="user-avatar" style="width:34px;height:34px;font-size:0.75rem;flex-shrink:0;background:{% if reply.author == request.user %}#4f46e5{% else %}#10b981{% endif %};">
+                {{ reply.author.first_name|first|default:reply.author.username|first|upper }}
+            </div>
+            <div style="max-width:80%;">
+                <div style="font-size:0.72rem;color:var(--gray-400);margin-bottom:4px;{% if reply.author == request.user %}text-align:right;{% endif %}">
+                    {% if reply.author == request.user %}You{% else %}Support Agent{% endif %} · {{ reply.created_at|date:"d M Y H:i" }}
+                </div>
+                <div style="background:{% if reply.author == request.user %}var(--primary-light){% else %}var(--gray-100){% endif %};border-radius:10px;padding:12px 14px;font-size:0.85rem;line-height:1.5;color:var(--gray-800);">
+                    {{ reply.content }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% empty %}
+        <p style="color:var(--gray-400);font-size:0.85rem;text-align:center;padding:20px 0;">No replies yet. Our team will respond shortly.</p>
+        {% endfor %}
+
+        <!-- Reply Form -->
+        {% if ticket.status != 'closed' %}
+        <div class="card">
+            <div class="card-header"><span class="card-title">Add a Reply</span></div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reply">
+                    <div class="form-group">
+                        <textarea name="content" class="form-control" placeholder="Describe your issue or provide additional information..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Reply</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Details -->
+    <div class="card" style="height:fit-content;">
+        <div class="card-header"><span class="card-title">Details</span></div>
+        <div class="card-body">
+            <div style="margin-bottom:14px;">
+                <div style="font-size:0.72rem;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ticket Number</div>
+                <div style="font-weight:600;">{{ ticket.number }}</div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <div style="font-size:0.72rem;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Priority</div>
+                <div>
+                    {% if ticket.priority == 'critical' %}<span class="badge badge-red">Critical</span>
+                    {% elif ticket.priority == 'high' %}<span class="badge badge-yellow">High</span>
+                    {% elif ticket.priority == 'medium' %}<span class="badge badge-blue">Medium</span>
+                    {% else %}<span class="badge badge-gray">Low</span>{% endif %}
+                </div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <div style="font-size:0.72rem;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Category</div>
+                <div style="font-weight:500;">{{ ticket.category.name|default:"General" }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.72rem;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Opened</div>
+                <div style="font-weight:500;">{{ ticket.created_at|date:"d M Y" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

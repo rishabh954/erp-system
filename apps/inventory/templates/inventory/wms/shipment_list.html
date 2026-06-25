@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Shipments{% endblock %}
+{% block nav_inventory %}active{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Shipments</h1>
+    </div>
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Number</th>
+                            <th>Delivery Order</th>
+                            <th>Carrier</th>
+                            <th>Tracking Number</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ship in shipments %}
+                        <tr>
+                            <td>{{ ship.number }}</td>
+                            <td>{{ ship.delivery_order.number|default:"-" }}</td>
+                            <td>{{ ship.carrier }}</td>
+                            <td>{{ ship.tracking_number }}</td>
+                            <td><span class="badge bg-success">{{ ship.get_status_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">No shipments found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

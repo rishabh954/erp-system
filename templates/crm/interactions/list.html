@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Interactions Timeline{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Interactions Timeline</h1>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th>Subject</th>
+                        <th>Related Lead</th>
+                        <th>Date</th>
+                        <th>Agent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in interactions %}
+                    <tr>
+                        <td>
+                            {% if activity.activity_type == 'call' %}
+                            <i class="fas fa-phone text-success"></i> Call
+                            {% elif activity.activity_type == 'meeting' %}
+                            <i class="fas fa-handshake text-primary"></i> Meeting
+                            {% elif activity.activity_type == 'email' %}
+                            <i class="fas fa-envelope text-info"></i> Email
+                            {% else %}
+                            <i class="fas fa-sticky-note text-secondary"></i> Note
+                            {% endif %}
+                        </td>
+                        <td>{{ activity.subject }}</td>
+                        <td><a href="{% url 'crm:lead_detail' activity.lead.pk %}">{{ activity.lead.name }}</a></td>
+                        <td>{{ activity.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ activity.assigned_to.get_full_name|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4">No interactions logged yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

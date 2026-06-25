@@ -1,0 +1,18 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+    <h1 style="color: #dc3545;">Leave Request Declined</h1>
+    <p>Hi {{ employee_name }},</p>
+    <p>We are writing to inform you that your <strong>{{ leave_type }}</strong> leave request has been declined.</p>
+    
+    <table class="details-table" style="width: 100%; border-collapse: collapse; margin-bottom: 24px; background-color: #fff5f5;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #ffcccc;"><strong>Reason for Rejection:</strong></td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; padding-top: 0; color: #525f7f;">{{ rejection_reason|default:"No specific reason provided." }}</td>
+        </tr>
+    </table>
+    
+    <p>If you have any questions, please discuss them with your manager or the HR department.</p>
+{% endblock %}

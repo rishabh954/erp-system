@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}New Budget{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block content %}
+<style>
+    select.form-select {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+    }
+    select.form-select option {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+    }
+</style>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0 text-gray-800">Create Budget</h1>
+            <a href="{% url 'accounting:budgets' %}" class="btn btn-outline-primary shadow-sm"><i class="fas fa-arrow-left"></i> Cancel</a>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Budget Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required value="{{ form.name.value|default:'' }}" placeholder="e.g. Q3 2026 Marketing Budget">
+                        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Period Start <span class="text-danger">*</span></label>
+                            <input type="date" name="period_start" class="form-control" required value="{{ form.period_start.value|default:'' }}">
+                            {% if form.period_start.errors %}<div class="text-danger small">{{ form.period_start.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Period End <span class="text-danger">*</span></label>
+                            <input type="date" name="period_end" class="form-control" required value="{{ form.period_end.value|default:'' }}">
+                            {% if form.period_end.errors %}<div class="text-danger small">{{ form.period_end.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Cost Center <span class="text-danger">*</span></label>
+                            <select name="cost_center" class="form-select">
+                                <option value="">---------</option>
+                                {% for choice in form.cost_center.field.queryset %}
+                                <option value="{{ choice.pk }}" {% if form.cost_center.value|stringformat:"s" == choice.pk|stringformat:"s" %}selected{% endif %}>{{ choice.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Leave blank for a company-wide budget.</div>
+                            {% if form.cost_center.errors %}<div class="text-danger small">{{ form.cost_center.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select" required>
+                                {% for choice in form.status.field.choices %}
+                                <option value="{{ choice.0 }}" {% if form.status.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.status.errors %}<div class="text-danger small">{{ form.status.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Budget</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

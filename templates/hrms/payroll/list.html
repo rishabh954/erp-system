@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Payroll Runs — HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item active">Payroll Runs
+{% endblock %}
+
+{% block content %}</li>
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-file-invoice-dollar me-2 opacity-75"></i>Payroll Management
+    </h1>
+    <p class="text-muted mb-0">Generate, process, and track employee payroll cycles</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#newPayrollModal">
+      <i class="fas fa-plus me-2"></i>New Payroll Run
+    </button>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ PAYROLL GRID ═════════════════════════════════════ -->
+<div class="row g-4 mb-4">
+  {% for period in periods %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="payroll-card h-100 shadow-sm">
+      <div class="payroll-card-header">
+        <div>
+          <h5 class="fw-bold text-dark mb-1">{{ period.name }}</h5>
+          <div class="text-muted" style="font-size: 11px;">
+            {{ period.period_start|date:"d M Y" }} — {{ period.period_end|date:"d M Y" }}
+          </div>
+        </div>
+        <div>
+          {% if period.status == 'draft' %}
+            <span class="badge bg-secondary-subtle text-secondary border">Draft
+          {% elif period.status == 'processing' %}</span>
+            <span class="badge bg-warning-subtle text-warning border"><i class="fas fa-circle-notch fa-spin me-1"></i>Processing</span>
+          {% elif period.status == 'completed' %}
+            <span class="badge bg-info-subtle text-info border">Completed
+          {% elif period.status == 'approved' %}</span>
+            <span class="badge bg-primary-subtle text-primary border">Approved
+          {% elif period.status == 'paid' %}</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fas fa-check me-1"></i>Paid</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="payroll-card-body">
+        <div class="row g-0 text-center mb-3">
+          <div class="col-6 border-end">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Gross Total</div>
+            <div class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Net Total</div>
+            <div class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</div>
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+          <div class="text-muted" style="font-size: 11.5px;">
+            <i class="fas fa-users me-1"></i>{{ period.payslips.count }} Payslips
+          </div>
+          <a href="{% url 'hrms:payroll_detail' period.pk %}" class="btn btn-sm btn-light border fw-semibold text-primary px-3">
+            Manage <i class="fas fa-arrow-right ms-1" style="font-size: 10px;"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card glass-card border-0 text-center py-5">
+      <i class="fas fa-file-invoice-dollar fa-4x mb-3 text-muted opacity-25"></i>
+      <h5 class="fw-bold text-dark">No Payroll Runs</h5>
+      <p class="text-muted">Create your first payroll run to start processing employee salaries.</p>
+      <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#newPayrollModal">
+        <i class="fas fa-plus me-2"></i>New Payroll Run
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav>
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<!-- New Payroll Modal Placeholder (Would typically post to a create view) -->
+<div class="modal fade" id="newPayrollModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 16px; border: none;">
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2 text-primary"></i>Create Payroll Run</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-4">
+        <p class="text-muted mb-4">To create a new payroll period, this feature usually automatically generates draft payslips for active employees within the date range.</p>
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i><strong>Note:</strong> The creation endpoint is handled via a Django admin or a separate form not included in this view set. The existing periods will be displayed here.
+        </div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.payroll-card {
+  background: rgba(255,255,255,0.95);
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+}
+.payroll-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+}
+.payroll-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: linear-gradient(to right, #f8fafc, #ffffff);
+}
+.payroll-card-body {
+  padding: 20px 24px;
+}
+</style>
+{% endblock %}

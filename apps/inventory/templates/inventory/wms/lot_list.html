@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Lot / Batch Tracking{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Lot & Batch Tracking</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Lot Number</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Mfg Date</th>
+                            <th>Expiration Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lot in lots %}
+                        <tr>
+                            <td><strong>{{ lot.number }}</strong></td>
+                            <td>{{ lot.product.name }}</td>
+                            <td>
+                                {% if lot.status == 'active' %}<span class="badge bg-success">Active</span>
+                                {% elif lot.status == 'expired' %}<span class="badge bg-danger">Expired</span>
+                                {% else %}<span class="badge bg-secondary">{{ lot.status|title }}</span>{% endif %}
+                            </td>
+                            <td>{{ lot.manufacturing_date|default:'-' }}</td>
+                            <td>{{ lot.expiration_date|default:'-' }}</td>
+                            <td>
+                                <a href="{% url 'inventory:lot_detail' lot.pk %}" class="btn btn-sm btn-info text-white">View Traceability</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center">No lots found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

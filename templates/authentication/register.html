@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Register{% endblock %}
+{% block body_class %}{% endblock %}
+
+{% block full_page %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <i class="fas fa-user-plus"></i>
+      </div>
+      <h1 class="auth-title">Create an Account</h1>
+      <p class="auth-subtitle">Join the EnterpriseERP platform</p>
+    </div>
+
+    {% include 'partials/messages.html' %}
+
+    <form method="post" action="{% url 'auth:register' %}" data-loading>
+      {% csrf_token %}
+
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label class="form-label" for="id_first_name">First Name</label>
+          <input type="text" name="first_name" id="id_first_name"
+            class="form-control {% if form.first_name.errors %}is-invalid{% endif %}"
+            placeholder="Jane"
+            value="{{ form.first_name.value|default:'' }}"
+            required autofocus>
+          {% if form.first_name.errors %}<div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-6 mb-3">
+          <label class="form-label" for="id_last_name">Last Name</label>
+          <input type="text" name="last_name" id="id_last_name"
+            class="form-control {% if form.last_name.errors %}is-invalid{% endif %}"
+            placeholder="Doe"
+            value="{{ form.last_name.value|default:'' }}"
+            required>
+          {% if form.last_name.errors %}<div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="id_email">Email Address</label>
+        <div style="position:relative">
+          <i class="fas fa-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="email" name="email" id="id_email"
+            class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+            style="padding-left:36px"
+            placeholder="you@company.com"
+            value="{{ form.email.value|default:'' }}"
+            autocomplete="email"
+            required>
+        </div>
+        {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label mb-1" for="id_password1">Password</label>
+        <div style="position:relative">
+          <i class="fas fa-lock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="password" name="password1" id="id_password1"
+            class="form-control {% if form.password1.errors %}is-invalid{% endif %}"
+            style="padding-left:36px;padding-right:40px"
+            placeholder="••••••••"
+            autocomplete="new-password"
+            required>
+          <button type="button" class="password-toggle"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px"
+            onclick="togglePassword('id_password1', this)">
+            <i class="fas fa-eye" style="font-size:13px"></i>
+          </button>
+        </div>
+        {% if form.password1.errors %}<div class="invalid-feedback d-block">{{ form.password1.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label mb-1" for="id_password2">Confirm Password</label>
+        <div style="position:relative">
+          <i class="fas fa-lock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="password" name="password2" id="id_password2"
+            class="form-control {% if form.password2.errors %}is-invalid{% endif %}"
+            style="padding-left:36px;padding-right:40px"
+            placeholder="••••••••"
+            autocomplete="new-password"
+            required>
+          <button type="button" class="password-toggle"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px"
+            onclick="togglePassword('id_password2', this)">
+            <i class="fas fa-eye" style="font-size:13px"></i>
+          </button>
+        </div>
+        {% if form.password2.errors %}<div class="invalid-feedback d-block">{{ form.password2.errors.0 }}</div>{% endif %}
+        {% if form.non_field_errors %}<div class="text-danger mt-1" style="font-size:12.5px">{{ form.non_field_errors.0 }}</div>{% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 mb-3" data-loading-text="Creating account...">
+        <i class="fas fa-user-plus me-2"></i>Create Account
+      </button>
+
+    </form>
+
+    <div class="text-center mt-3">
+      <span class="text-muted" style="font-size:13px">Already have an account?</span>
+      <a href="{% url 'auth:login' %}" class="ms-1" style="font-size:13px;font-weight:600">Sign in</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword(fieldId, btn) {
+  const input = document.getElementById(fieldId);
+  const icon  = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.replace('fa-eye', 'fa-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.replace('fa-eye-slash', 'fa-eye');
+  }
+}
+</script>
+{% endblock %}

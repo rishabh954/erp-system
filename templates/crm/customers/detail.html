@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Customer - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">{{ customer.name }}</h1>
+      {% if customer.customer_code %}
+        <span class="badge bg-light text-dark border">{{ customer.customer_code }}</span>
+      {% endif %}
+    </div>
+    <p class="text-muted mb-0">
+      {% if customer.customer_type == 'business' %}
+        <i class="fas fa-building me-1"></i>Business Client
+      {% else %}
+        <i class="fas fa-user me-1"></i>Individual Client
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'crm:customers' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to Customers
+    </a>
+  </div>
+</div>
+
+<!-- Metrics Overview -->
+<div class="row g-3 mb-4">
+  <!-- Revenue Card -->
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3">
+        <div class="text-muted small text-uppercase fw-bold mb-1">Total Revenue</div>
+        <div class="h3 mb-0 text-success">{{ CURRENCY_SYMBOL }}{{ total_revenue|floatformat:2|intcomma }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outstanding Balance Card -->
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3">
+        <div class="text-muted small text-uppercase fw-bold mb-1">Outstanding Balance</div>
+        <div class="h3 mb-0 {% if outstanding > 0 %}text-danger{% else %}text-muted{% endif %}">{{ CURRENCY_SYMBOL }}{{ outstanding|floatformat:2|intcomma }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Limit Card -->
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3">
+        <div class="text-muted small text-uppercase fw-bold mb-1">Credit Limit</div>
+        <div class="h3 mb-0 text-primary">{{ CURRENCY_SYMBOL }}{{ customer.credit_limit|floatformat:2|intcomma }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Leads Count Card -->
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3">
+        <div class="text-muted small text-uppercase fw-bold mb-1">Linked Opportunities</div>
+        <div class="h3 mb-0 text-info">{{ leads.count|default:0 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: Profile Information -->
+  <div class="col-12 col-lg-4">
+    <div class="card shadow-sm border-0 mb-4 h-100">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-id-card me-2"></i>Profile & Contact</h5>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Email Address
+            {% if customer.email %}</span>
+              <a href="mailto:{{ customer.email }}" class="fw-semibold text-primary"><i class="fas fa-envelope me-1 small"></i>{{ customer.email }}</a>
+            {% else %}
+              <span class="text-muted small italic">-
+            {% endif %}</span>
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Phone Number
+            {% if customer.phone %}</span>
+              <a href="tel:{{ customer.phone }}" class="fw-semibold text-dark"><i class="fas fa-phone me-1 small"></i>{{ customer.phone }}</a>
+            {% else %}
+              <span class="text-muted small italic">-
+            {% endif %}</span>
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Tax ID / VAT Registration</span>
+            <span class="fw-semibold text-dark">{{ customer.tax_id|default:"-" }}</span>
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Payment Terms</span>
+            <span class="fw-semibold text-dark"><i class="fas fa-clock me-1 small text-muted"></i>Net {{ customer.payment_terms }} Days</span>
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Billing Address</span>
+            <span class="fw-semibold text-dark small"><i class="fas fa-map-marker-alt me-1 small text-muted"></i>{{ customer.full_address|default:"-" }}</span>
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-0">
+            <span class="text-muted small d-block">Billing Currency</span>
+            <span class="fw-semibold text-dark">{{ customer.currency|default:"USD" }}</span>
+          </li>
+        </ul>
+        {% if customer.notes %}
+        <div class="mt-3 border-top pt-3">
+          <span class="text-muted small d-block mb-1">Customer Remarks</span>
+          <p class="text-secondary small mb-0" style="white-space: pre-wrap">{{ customer.notes }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Transactions & History -->
+  <div class="col-12 col-lg-8">
+    <!-- Transactions Tabs -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <ul class="nav nav-tabs border-bottom-0" id="customerTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active fw-bold" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab"><i class="fas fa-file-invoice-dollar me-2"></i>Invoices</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab"><i class="fas fa-shopping-bag me-2"></i>Sales Orders</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads" type="button" role="tab"><i class="fas fa-user-tag me-2"></i>Opportunities</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-4 pt-2">
+        <div class="tab-content" id="customerTabsContent">
+          <!-- Invoices Tab -->
+          <div class="tab-pane fade show active" id="invoices" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr class="text-muted small">
+                    <th>Invoice Number</th>
+                    <th>Invoice Date</th>
+                    <th>Total</th>
+                    <th>Balance Due</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for inv in invoices %}
+                  <tr>
+                    <td>
+                      <span class="fw-bold text-primary">{{ inv.number|default:inv.id|truncatechars:8 }}</span>
+                    </td>
+                    <td class="small">{{ inv.invoice_date|date:"Y-m-d" }}</td>
+                    <td class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ inv.total|floatformat:2|intcomma }}</td>
+                    <td class="text-danger fw-semibold">{{ CURRENCY_SYMBOL }}{{ inv.balance_due|floatformat:2|intcomma }}</td>
+                    <td>
+                      <span class="badge {% if inv.status == 'paid' %}bg-success{% elif inv.status == 'partial' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ inv.get_status_display }}</span>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
+                      <p class="small mb-0">No invoices generated for this client yet.</p>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Orders Tab -->
+          <div class="tab-pane fade" id="orders" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr class="text-muted small">
+                    <th>Order Number</th>
+                    <th>Order Date</th>
+                    <th>Total Value</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ord in orders %}
+                  <tr>
+                    <td>
+                      <span class="fw-bold text-primary">{{ ord.number|default:ord.id|truncatechars:8 }}</span>
+                    </td>
+                    <td class="small">{{ ord.order_date|date:"Y-m-d" }}</td>
+                    <td class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ ord.total|floatformat:2|intcomma }}</td>
+                    <td>
+                      <span class="badge {% if ord.status == 'completed' %}bg-success{% elif ord.status == 'pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ ord.get_status_display }}</span>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
+                      <p class="small mb-0">No sales orders found for this client.</p>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Leads Tab -->
+          <div class="tab-pane fade" id="leads" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr class="text-muted small">
+                    <th>Opportunity Code</th>
+                    <th>Name</th>
+                    <th>Expected Value</th>
+                    <th>Probability</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ld in leads %}
+                  <tr>
+                    <td>
+                      <span class="fw-bold text-primary">{{ ld.number }}</span>
+                    </td>
+                    <td>
+                      <a href="{% url 'crm:lead_detail' ld.pk %}" class="fw-bold text-dark">{{ ld.name }}</a>
+                    </td>
+                    <td class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ ld.expected_revenue|floatformat:2|intcomma }}</td>
+                    <td>{{ ld.probability }}%</td>
+                    <td>
+                      <span class="badge {% if ld.status == 'won' %}bg-success{% elif ld.status == 'lost' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ld.get_status_display }}</span>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
+                      <p class="small mb-0">No lead opportunity records linked.</p>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

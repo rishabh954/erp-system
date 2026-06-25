@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Profit & Loss Report{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'accounting:reports' %}">Reports</a></li>
+<li class="breadcrumb-item active">Profit & Loss
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header">
+  <div class="page-header-title">
+    <h1>Profit & Loss Statement</h1>
+    <p>{{ from_date }} to {{ to_date }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm" onclick="window.print()">
+      <i class="fas fa-print me-1"></i>Print
+    </button>
+    <button class="btn btn-outline-primary btn-sm" onclick="exportReport()">
+      <i class="fas fa-download me-1"></i>Export PDF
+    </button>
+  </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">From Date</label>
+        <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label">To Date</label>
+        <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Generate</button>
+      </div>
+      <!-- Quick ranges -->
+      <div class="col-auto ms-auto d-flex gap-1">
+        {% with today=today|default:"" %}
+        <a href="?from_date={{ today }}&to_date={{ today }}" class="btn btn-outline-secondary btn-sm">Today</a>
+        {% endwith %}
+        <a href="?from_date={% now 'Y-m-01' %}&to_date={% now 'Y-m-d' %}" class="btn btn-outline-secondary btn-sm">MTD</a>
+        <a href="?from_date={% now 'Y-01-01' %}&to_date={% now 'Y-m-d' %}" class="btn btn-outline-secondary btn-sm">YTD</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-primary">
+      <div class="stat-card-icon"><i class="fas fa-arrow-up"></i></div>
+      <div class="stat-card-value">{{ revenue|floatformat:0|intcomma }}</div>
+      <div class="stat-card-label">Total Revenue</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#7b2d8b,#9b59b6);color:#fff">
+      <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
+      <div class="stat-card-value">{{ cogs|floatformat:0|intcomma }}</div>
+      <div class="stat-card-label">Cost of Goods Sold</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card {% if gross_profit >= 0 %}stat-card-success{% else %}stat-card-danger{% endif %}">
+      <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
+      <div class="stat-card-value">{{ gross_profit|floatformat:0|intcomma }}</div>
+      <div class="stat-card-label">Gross Profit ({{ gross_margin }}%)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card {% if net_profit >= 0 %}stat-card-success{% else %}stat-card-danger{% endif %}">
+      <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+      <div class="stat-card-value">{{ net_profit|floatformat:0|intcomma }}</div>
+      <div class="stat-card-label">Net Profit ({{ net_margin }}%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- P&L Statement -->
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-700">Profit & Loss Statement</h6>
+        <span class="text-muted small">{{ from_date }} — {{ to_date }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table mb-0" style="font-size:13.5px">
+
+          <!-- Revenue -->
+          <thead>
+            <tr style="background:rgba(45,198,83,0.08)">
+              <th colspan="2" class="py-3 ps-4" style="color:#1a7a32;font-size:12px;letter-spacing:.06em">REVENUE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc, bal in revenue_breakdown %}
+            <tr>
+              <td class="ps-5 text-muted">{{ acc.code }} — {{ acc.name }}</td>
+              <td class="text-end pe-4 fw-600">{{ bal|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="background:rgba(45,198,83,0.06)">
+              <td class="ps-4 fw-700">Total Revenue</td>
+              <td class="text-end pe-4 fw-700 text-success" style="font-size:15px">{{ revenue|floatformat:2|intcomma }}</td>
+            </tr>
+          </tbody>
+
+          <!-- COGS -->
+          {% if cogs_breakdown %}
+          <thead>
+            <tr style="background:rgba(155,89,182,0.08)">
+              <th colspan="2" class="py-3 ps-4" style="color:#7b2d8b;font-size:12px;letter-spacing:.06em">COST OF GOODS SOLD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc, bal in cogs_breakdown %}
+            <tr>
+              <td class="ps-5 text-muted">{{ acc.code }} — {{ acc.name }}</td>
+              <td class="text-end pe-4 fw-600">({{ bal|floatformat:2|intcomma }})</td>
+            </tr>
+            {% endfor %}
+            <tr style="background:rgba(155,89,182,0.06)">
+              <td class="ps-4 fw-700">Total COGS</td>
+              <td class="text-end pe-4 fw-700" style="color:#7b2d8b;font-size:15px">({{ cogs|floatformat:2|intcomma }})</td>
+            </tr>
+          </tbody>
+          {% endif %}
+
+          <!-- Gross Profit -->
+          <tbody>
+            <tr style="background:rgba(67,97,238,0.06);border-top:2px solid var(--brand-primary)">
+              <td class="ps-4 fw-800" style="font-size:15px">GROSS PROFIT</td>
+              <td class="text-end pe-4 fw-800 {% if gross_profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:16px">
+                {{ gross_profit|floatformat:2|intcomma }} <small class="text-muted">({{ gross_margin }}%)</small>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Operating Expenses -->
+          <thead>
+            <tr style="background:rgba(230,57,70,0.08)">
+              <th colspan="2" class="py-3 ps-4" style="color:#a4262e;font-size:12px;letter-spacing:.06em">OPERATING EXPENSES</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc, bal in expense_breakdown %}
+            <tr>
+              <td class="ps-5 text-muted">{{ acc.code }} — {{ acc.name }}</td>
+              <td class="text-end pe-4 fw-600">({{ bal|floatformat:2|intcomma }})</td>
+            </tr>
+            {% endfor %}
+            <tr style="background:rgba(230,57,70,0.06)">
+              <td class="ps-4 fw-700">Total Expenses</td>
+              <td class="text-end pe-4 fw-700 text-danger" style="font-size:15px">({{ expenses|floatformat:2|intcomma }})</td>
+            </tr>
+          </tbody>
+
+          <!-- Net Profit -->
+          <tbody>
+            <tr style="background:var(--bg-body);border-top:2px solid var(--border-color)">
+              <td class="ps-4 fw-800" style="font-size:16px">NET PROFIT / (LOSS)</td>
+              <td class="text-end pe-4 fw-800 {% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:18px">
+                {{ net_profit|floatformat:2|intcomma }} <small class="text-muted">({{ net_margin }}%)</small>
+              </td>
+            </tr>
+          </tbody>
+
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Chart -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0 fw-700">Breakdown</h6></div>
+      <div class="card-body">
+        <div style="height:220px">
+          <canvas id="plChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0 fw-700">Key Metrics</h6></div>
+      <div class="card-body">
+        <div class="row g-2" style="font-size:13px">
+          <div class="col-12 d-flex justify-content-between py-1" style="border-bottom:1px solid var(--border-color)">
+            <span class="text-muted">Gross Margin</span>
+            <span class="fw-700 {% if gross_margin >= 0 %}text-success{% else %}text-danger{% endif %}">{{ gross_margin }}%</span>
+          </div>
+          <div class="col-12 d-flex justify-content-between py-1" style="border-bottom:1px solid var(--border-color)">
+            <span class="text-muted">Net Margin</span>
+            <span class="fw-700 {% if net_margin >= 0 %}text-success{% else %}text-danger{% endif %}">{{ net_margin }}%</span>
+          </div>
+          <div class="col-12 d-flex justify-content-between py-1" style="border-bottom:1px solid var(--border-color)">
+            <span class="text-muted">Expense Ratio</span>
+            <span class="fw-700">{% if revenue %}{% widthratio expenses revenue 100 %}%{% else %}—{% endif %}</span>
+          </div>
+          <div class="col-12 d-flex justify-content-between py-1">
+            <span class="text-muted">COGS Ratio</span>
+            <span class="fw-700">{% if revenue %}{% widthratio cogs revenue 100 %}%{% else %}—{% endif %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  ERP.Charts.doughnut(
+    'plChart',
+    ['Revenue', 'COGS', 'Expenses', 'Net Profit'],
+    [{{ revenue }}, {{ cogs }}, {{ expenses }}, Math.max({{ net_profit }}, 0)],
+    ['#2dc653', '#9b59b6', '#e63946', '#4361ee'],
+  );
+});
+
+function exportReport() {
+  window.open(window.location.href + '&format=pdf', '_blank');
+}
+</script>
+{% endblock %}

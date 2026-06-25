@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Purchase Request - {{ pr.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">Purchase Request {{ pr.number }}</h1>
+      <span class="badge 
+        {% if pr.status == 'draft' %}bg-secondary
+        {% elif pr.status == 'submitted' %}bg-warning text-dark
+        {% elif pr.status == 'approved' %}bg-success
+        {% elif pr.status == 'rejected' %}bg-danger
+        {% elif pr.status == 'ordered' %}bg-primary
+        {% elif pr.status == 'cancelled' %}bg-danger
+        {% endif %}">
+        {{ pr.get_status_display }}
+      </span>
+      <span class="badge 
+        {% if pr.priority == 'low' %}bg-secondary
+        {% elif pr.priority == 'medium' %}bg-info
+        {% elif pr.priority == 'high' %}bg-warning text-dark
+        {% elif pr.priority == 'urgent' %}bg-danger
+        {% endif %}">
+        {{ pr.get_priority_display }} Priority
+      </span>
+    </div>
+    <p class="text-muted mb-0">Title: {{ pr.title }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'purchase:requests' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+
+    <!-- Action Forms for submit/approve/reject -->
+    {% if pr.status == 'draft' and pr.requested_by == request.user %}
+      <form method="post" action="{% url 'purchase:request_action' pr.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="submit">
+        <button type="submit" class="btn btn-warning btn-sm">
+          <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+        </button>
+      </form>
+    {% endif %}
+
+    {% if pr.status == 'submitted' and request.user.role in 'purchase_manager company_admin super_admin' %}
+      <form method="post" action="{% url 'purchase:request_action' pr.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn btn-success btn-sm">
+          <i class="fas fa-check me-1"></i>Approve
+        </button>
+      </form>
+      <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal">
+        <i class="fas fa-times me-1"></i>Reject
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: Items & Cost Breakdown -->
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <!-- Requisition Lines table -->
+        <h5 class="fw-bold text-dark mb-3"><i class="fas fa-list me-2"></i>Line Items</h5>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr class="small text-uppercase">
+                <th>Product</th>
+                <th>Description</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Estimated Unit Cost</th>
+                <th class="text-end">Estimated Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
+                <td class="small">{{ line.description }}</td>
+                <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
+                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.estimated_unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.estimated_total|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">No items requested.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total Breakdown -->
+        <div class="row justify-content-end mt-4">
+          <div class="col-12 col-md-6">
+            <ul class="list-group list-group-flush bg-transparent">
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+                <span class="fw-bold text-dark h5 mb-0">Total Estimated Cost</span>
+                <span class="h4 mb-0 fw-bold text-primary">{{ CURRENCY_SYMBOL }}{{ pr.estimated_cost|floatformat:2|intcomma }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Details & Log -->
+  <div class="col-12 col-lg-4">
+    <!-- General Request Metadata -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-info-circle me-2"></i>Requisition Info</h5>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Requested By</span>
+            <span class="fw-semibold small">{{ pr.requested_by.get_full_name|default:pr.requested_by.username }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Department</span>
+            <span class="fw-semibold small">{{ pr.department.name|default:"-" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Required By</span>
+            <span class="fw-semibold small"><i class="far fa-calendar-alt me-1 text-muted"></i>{{ pr.required_by|date:"Y-m-d"|default:"-" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+            <span class="text-muted small">Created At</span>
+            <span class="fw-semibold small">{{ pr.created_at|date:"Y-m-d H:i" }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Justification remarks -->
+    {% if pr.notes %}
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-sticky-note me-2"></i>Justification</h5>
+      </div>
+      <div class="card-body p-4">
+        <p class="small text-muted mb-0">{{ pr.notes }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Approval status history -->
+    {% if pr.status != 'draft' %}
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-history me-2"></i>Approval Details</h5>
+      </div>
+      <div class="card-body p-4">
+        {% if pr.status == 'submitted' %}
+          <div class="text-center py-2 text-warning">
+            <i class="fas fa-clock fa-2x mb-2"></i>
+            <p class="small mb-0">Requisition is currently pending manager approval.</p>
+          </div>
+        {% elif pr.status == 'approved' %}
+          <div class="alert alert-success border-0 bg-success-subtle d-flex align-items-start gap-2 mb-0">
+            <i class="fas fa-check-circle mt-1"></i>
+            <div>
+              <div class="fw-bold small text-success">Approved Requisition</div>
+              <div class="small text-muted" style="font-size:11px">By: {{ pr.approved_by.get_full_name|default:pr.approved_by.username }}</div>
+              <div class="small text-muted" style="font-size:11px">On: {{ pr.approved_at|date:"Y-m-d H:i" }}</div>
+            </div>
+          </div>
+        {% elif pr.status == 'rejected' %}
+          <div class="alert alert-danger border-0 bg-danger-subtle d-flex align-items-start gap-2 mb-0">
+            <i class="fas fa-times-circle mt-1"></i>
+            <div>
+              <div class="fw-bold small text-danger">Rejected Requisition
+              {% if pr.rejection_reason %}</div>
+                <div class="small text-muted mt-1" style="font-size:11px"><strong>Reason:</strong> {{ pr.rejection_reason }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Dialog: Reject Reason -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger fw-bold" id="rejectModalLabel"><i class="fas fa-times-circle me-2"></i>Reject Requisition</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'purchase:request_action' pr.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reject">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_rejection_reason" class="form-label small fw-semibold">Reason for Rejection <span class="text-danger">*</span></label>
+            <textarea name="rejection_reason" id="id_rejection_reason" class="form-control" rows="3" placeholder="Provide a detailed explanation for rejection..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Reject Requisition</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

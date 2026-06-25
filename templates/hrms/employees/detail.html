@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ employee.full_name|default:"Employee Details" }} | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a>
+</li>
+<li class="breadcrumb-item">
+  <a href="{% url 'hrms:employees' %}">Employees</a>
+</li>
+<li class="breadcrumb-item active">{{ employee.full_name|default:"Details" }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Employee Profile</h1>
+    <p class="text-muted mb-0">View and manage employee information</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:employee_update' employee.pk %}" class="btn btn-warning btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
+    <form method="post" action="#" class="d-inline">
+      {% csrf_token %}
+      <button type="button" class="btn btn-danger btn-sm" data-confirm-delete="Archive this employee?">
+        <i class="fas fa-trash me-1"></i>Archive
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Header card -->
+<div class="card mb-3 shadow-sm border-0">
+  <div class="card-body p-4">
+    <div class="row align-items-center">
+      <div class="col-auto">
+        {% if employee.photo %}
+        <img src="{{ employee.photo.url }}" class="rounded-circle" style="width: 96px; height: 96px; object-fit: cover; border: 3px solid var(--border-color);">
+        {% else %}
+        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 96px; height: 96px; font-size: 32px;">
+          {{ employee.first_name|first|default:"E" }}{{ employee.last_name|first|default:"" }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="col">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <h4 class="fw-800 mb-1 text-dark">{{ employee.full_name|default:"John Doe" }}</h4>
+            <div class="text-muted mb-2">
+              <span class="badge bg-secondary me-2">{{ employee.employee_id|default:"EMP-001" }}</span>
+              <span class="fw-semibold text-dark">{{ employee.job_title.name|default:"Software Engineer" }}</span> &bull; 
+              {{ employee.department.name|default:"IT Department" }}
+            </div>
+            <div class="d-flex align-items-center gap-3 mt-2 small">
+              <span class="text-muted"><i class="fas fa-calendar-alt me-1"></i>Joined: {{ employee.joining_date|date:"M j, Y" }}</span>
+              <span class="text-muted"><i class="fas fa-clock me-1"></i>{{ employee.years_of_service|default:"0" }} years</span>
+              <span class="badge badge-{{ employee.work_type|default:'full_time' }}">{{ employee.get_work_type_display|default:'Full Time' }}</span>
+              <span class="text-muted"><i class="fas fa-building me-1"></i>{{ employee.branch.name|default:"HQ" }}</span>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-{{ employee.status|default:'active' }} px-3 py-2 fs-6">{{ employee.get_status_display|default:'Active' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Content tabs -->
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-transparent p-0 border-bottom">
+    <ul class="nav nav-tabs border-0 px-3 pt-3" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active fw-600" data-bs-toggle="tab" data-bs-target="#tab-personal">
+          <i class="fas fa-user me-1"></i>Personal
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-attendance">
+          <i class="fas fa-clock me-1"></i>Attendance
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-leave">
+          <i class="fas fa-calendar-times me-1"></i>Leave
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-payroll">
+          <i class="fas fa-file-invoice-dollar me-1"></i>Payroll
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-documents">
+          <i class="fas fa-folder-open me-1"></i>Documents
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-skills">
+          <i class="fas fa-star me-1"></i>Skills
+        </button>
+      </li>
+    </ul>
+  </div>
+  <div class="tab-content p-4">
+    <!-- Personal Tab -->
+    <div class="tab-pane fade show active" id="tab-personal">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-bold text-primary mb-3">Basic Information</h6>
+          <table class="table table-sm table-borderless">
+            <tr><th class="text-muted w-35">Date of Birth</th><td class="fw-medium">{{ employee.date_of_birth|date:"M j, Y"|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">Gender</th><td class="fw-medium">{{ employee.get_gender_display|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">Marital Status</th><td class="fw-medium">{{ employee.get_marital_status_display|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">Nationality</th><td class="fw-medium">{{ employee.nationality|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">National ID</th><td class="fw-medium">{{ employee.national_id|default:"-" }}</td></tr>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-primary mb-3">Contact Details</h6>
+          <table class="table table-sm table-borderless">
+            <tr><th class="text-muted w-35">Email</th><td class="fw-medium">{{ employee.email|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">Phone</th><td class="fw-medium">{{ employee.phone|default:"-" }}</td></tr>
+            <tr><th class="text-muted w-35">Address</th><td class="fw-medium">{{ employee.address_line1|default:"-" }}<br>{{ employee.city|default:"" }}</td></tr>
+          </table>
+        </div>
+      </div>
+      <hr>
+      <h6 class="fw-bold text-danger mb-3">Emergency Contact</h6>
+      <table class="table table-sm table-borderless w-50">
+        <tr><th class="text-muted w-35">Name</th><td class="fw-medium">{{ employee.emergency_contact_name|default:"-" }}</td></tr>
+        <tr><th class="text-muted w-35">Relation</th><td class="fw-medium">{{ employee.emergency_contact_relation|default:"-" }}</td></tr>
+        <tr><th class="text-muted w-35">Phone</th><td class="fw-medium">{{ employee.emergency_contact_phone|default:"-" }}</td></tr>
+      </table>
+    </div>
+
+    <!-- Attendance Tab -->
+    <div class="tab-pane fade" id="tab-attendance">
+      <div class="row g-3 mb-4">
+        <div class="col-3"><div class="card bg-success text-white text-center p-3"><h3 class="mb-0">{{ attendance_stats.present|default:0 }}</h3><small>Present</small></div></div>
+        <div class="col-3"><div class="card bg-danger text-white text-center p-3"><h3 class="mb-0">{{ attendance_stats.absent|default:0 }}</h3><small>Absent</small></div></div>
+        <div class="col-3"><div class="card bg-warning text-white text-center p-3"><h3 class="mb-0">{{ attendance_stats.late|default:0 }}</h3><small>Late</small></div></div>
+        <div class="col-3"><div class="card bg-info text-white text-center p-3"><h3 class="mb-0">{{ attendance_stats.leave|default:0 }}</h3><small>On Leave</small></div></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Hours</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for att in recent_attendance %}
+            <tr>
+              <td>{{ att.date|date:"M j, Y" }}</td>
+              <td>{{ att.check_in|time:"H:i"|default:"-" }}</td>
+              <td>{{ att.check_out|time:"H:i"|default:"-" }}</td>
+              <td>{{ att.work_hours|default:"-" }}</td>
+              <td><span class="badge badge-{{ att.status }}">{{ att.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No attendance records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Other tabs would be implemented similarly -->
+    <div class="tab-pane fade" id="tab-leave">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Leave Balances</h6>
+        <a href="#" class="btn btn-outline-primary btn-sm">Request Leave</a>
+      </div>
+      <table class="table table-bordered">
+        <thead class="table-light"><tr><th>Type</th><th>Allocated</th><th>Used</th><th>Pending</th><th>Available</th></tr></thead>
+        <tbody>
+          {% for bal in leave_balances %}
+          <tr><td>{{ bal.leave_type.name }}</td><td>{{ bal.allocated }}</td><td>{{ bal.used }}</td><td>{{ bal.pending }}</td><td class="fw-bold text-success">{{ bal.available }}</td></tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">No leave balances found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane fade" id="tab-payroll">
+      <table class="table table-hover">
+        <thead class="table-light"><tr><th>Period</th><th>Gross Pay</th><th>Net Pay</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for slip in recent_payslips %}
+          <tr>
+            <td>{{ slip.payroll.period_name }}</td>
+            <td>{{ CURRENCY_SYMBOL }}{{ slip.gross_pay }}</td>
+            <td class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ slip.net_pay }}</td>
+            <td><span class="badge badge-{{ slip.status }}">{{ slip.get_status_display }}</span></td>
+            <td><a href="#" class="btn btn-outline-secondary btn-sm"><i class="fas fa-file-pdf"></i> PDF</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">No payslips found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="tab-pane fade" id="tab-documents">
+      <p class="text-muted">Documents section</p>
+    </div>
+    
+    <div class="tab-pane fade" id="tab-skills">
+      <div class="d-flex flex-wrap gap-2">
+        {% for skill in skills %}
+        <span class="badge bg-light text-dark border p-2"><i class="fas fa-star text-warning me-1"></i>{{ skill.name }} ({{ skill.get_proficiency_display }})</span>
+        {% empty %}
+        <span class="text-muted">No skills recorded.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .w-35 { width: 35%; }
+</style>
+{% endblock %}

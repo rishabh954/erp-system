@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manage Currencies{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Sidebar Navigation -->
+  <div class="col-12 col-lg-3">
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush" style="border-radius: 14px; overflow: hidden;">
+          <a href="{% url 'company:settings' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-building me-3 opacity-50"></i>Company Profile
+          </a>
+          <a href="{% url 'company:branches' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-code-branch me-3 opacity-50"></i>Branches
+          </a>
+          <a href="{% url 'company:departments' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-sitemap me-3 opacity-50"></i>Departments
+          </a>
+          <a href="{% url 'company:users' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-users-cog me-3 opacity-50"></i>Users & Roles
+          </a>
+          <a href="{% url 'company:fiscal_years' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-calendar-alt me-3 opacity-50"></i>Fiscal Years
+          </a>
+          <a href="{% url 'company:currencies' %}" class="list-group-item list-group-item-action active py-3 border-0 fw-semibold">
+            <i class="fas fa-money-bill-wave me-3 opacity-75"></i>Currencies
+          </a>
+          <a href="{% url 'company:uoms' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-balance-scale me-3 opacity-50"></i>Units of Measure
+          </a>
+          <a href="{% url 'company:taxes' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-percentage me-3 opacity-50"></i>Taxes
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="col-12 col-lg-9">
+    
+    <!-- Active Currencies Section -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">Active Currencies</h5>
+        <button class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#newCurrencyModal">
+          <i class="fas fa-plus me-2"></i>Add Currency
+        </button>
+      </div>
+      
+      <div class="card-body p-4">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 14px;">
+            <thead class="table-light">
+              <tr>
+                <th>Currency Code</th>
+                <th>Name</th>
+                <th>Symbol</th>
+                <th>Decimals</th>
+                <th>Base Currency</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for currency in currencies %}
+              <tr>
+                <td class="font-monospace fw-bold text-primary">{{ currency.code }}</td>
+                <td class="fw-semibold text-dark">{{ currency.name }}</td>
+                <td class="text-muted fw-bold">{{ currency.symbol }}</td>
+                <td class="text-muted">{{ currency.decimal_places }}</td>
+                <td>
+                  {% if currency.is_base %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2">Base
+                  {% else %}</span>
+                    <span class="text-muted">—
+                  {% endif %}</span>
+                </td>
+                <td class="text-end text-nowrap">
+                  <a href="{% url 'company:currency_update' currency.pk %}" class="btn btn-sm btn-light border text-primary" title="Edit"><i class="fas fa-edit"></i></a>
+                  <form method="post" action="{% url 'company:currency_delete' currency.pk %}" class="d-inline delete-currency-form">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-sm btn-light border text-danger delete-currency-btn" data-code="{{ currency.code }}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">No currencies defined.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Recent Exchange Rates Section -->
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">Recent Exchange Rates</h5>
+        <button class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#newExchangeRateModal">
+          <i class="fas fa-exchange-alt me-2"></i>Update Rate
+        </button>
+      </div>
+      
+      <div class="card-body p-4">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 14px;">
+            <thead class="table-light">
+              <tr>
+                <th>Effective Date</th>
+                <th>From Currency</th>
+                <th>To Currency</th>
+                <th class="text-end">Exchange Rate</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rate in exchange_rates %}
+              <tr>
+                <td class="text-dark fw-semibold">{{ rate.effective_date|date:"d M Y" }}</td>
+                <td class="font-monospace text-muted">{{ rate.from_currency.code }}</td>
+                <td class="font-monospace text-muted">{{ rate.to_currency.code }}</td>
+                <td class="text-end fw-bold text-primary">{{ rate.rate }}</td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ rate.source|title }}</span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">No exchange rates recorded yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- New Currency Modal -->
+<div class="modal fade" id="newCurrencyModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 16px; border: none;">
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold"><i class="fas fa-money-bill-wave me-2 text-primary"></i>Add Currency</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'company:currency_create' %}">
+        {% csrf_token %}
+        <div class="modal-body px-4 py-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Currency Code <span class="text-danger">*</span></label>
+              <input type="text" name="code" class="form-control font-monospace" required placeholder="e.g. USD" maxlength="3">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Symbol</label>
+              <input type="text" name="symbol" class="form-control" placeholder="e.g. $">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Currency Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required placeholder="e.g. US Dollar">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Decimal Places</label>
+              <input type="number" name="decimal_places" class="form-control" value="2" min="0" max="4">
+            </div>
+            <div class="col-12 mt-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_base" id="isBaseCurrency">
+                <label class="form-check-label fw-semibold" for="isBaseCurrency">Set as Base Company Currency</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Currency</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- New Exchange Rate Modal -->
+<div class="modal fade" id="newExchangeRateModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 16px; border: none;">
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold"><i class="fas fa-exchange-alt me-2 text-primary"></i>Update Exchange Rate</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'company:exchange_rate_create' %}">
+        {% csrf_token %}
+        <div class="modal-body px-4 py-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">From Currency <span class="text-danger">*</span></label>
+              <select name="from_currency" class="form-select" required>
+                {% for curr in currencies %}
+                <option value="{{ curr.pk }}">{{ curr.code }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">To Currency <span class="text-danger">*</span></label>
+              <select name="to_currency" class="form-select" required>
+                {% for curr in currencies %}
+                <option value="{{ curr.pk }}">{{ curr.code }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Exchange Rate <span class="text-danger">*</span></label>
+              <input type="number" step="0.000001" name="rate" class="form-control fw-bold" required placeholder="0.000000">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Effective Date <span class="text-danger">*</span></label>
+              <input type="date" name="effective_date" class="form-control" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.list-group-item.active {
+  background: rgba(67, 97, 238, 0.1) !important;
+  color: #4361ee !important;
+  border-left: 4px solid #4361ee !important;
+}
+.list-group-item {
+  border-left: 4px solid transparent !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const deleteBtns = document.querySelectorAll('.delete-currency-btn');
+  deleteBtns.forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const code = this.getAttribute('data-code');
+      
+      Swal.fire({
+        title: 'Delete Currency?',
+        text: `Are you sure you want to remove ${code}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef233c',
+        cancelButtonColor: '#8d99ae',
+        confirmButtonText: '<i class="fas fa-trash-alt me-2"></i>Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        customClass: {
+          confirmButton: 'btn btn-danger px-4 mx-2',
+          cancelButton: 'btn btn-secondary px-4 mx-2',
+          popup: 'glass-card'
+        },
+        buttonsStyling: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          form.submit();
+        }
+      });
+    });
+  });
+});
+</script>
+{% endblock %}
+
+

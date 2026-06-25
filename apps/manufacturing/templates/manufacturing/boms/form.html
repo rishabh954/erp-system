@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Create BOM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Create Bill of Material</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Finished Product</label>
+                        <select name="product" class="form-select" required>
+                            <option value="">-- Select Product --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Quantity Produced</label>
+                        <input type="number" step="0.01" name="quantity" class="form-control" value="1" required>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <h5 class="fw-bold mb-3">Components</h5>
+                <table class="table" id="componentsTable">
+                    <thead>
+                        <tr>
+                            <th>Raw Material</th>
+                            <th>Quantity Required</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="componentsBody">
+                        <tr>
+                            <td>
+                                <select name="component_id[]" class="form-select" required>
+                                    <option value="">-- Select Component --</option>
+                                    {% for p in products %}
+                                    <option value="{{ p.id }}">{{ p.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.01" name="line_quantity[]" class="form-control" value="1" required></td>
+                            <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-sm btn-secondary mb-4" onclick="addComponent()"><i class="fas fa-plus"></i> Add Component</button>
+
+                <div>
+                    <button type="submit" class="btn btn-primary">Save BOM</button>
+                    <a href="{% url 'manufacturing:boms' %}" class="btn btn-light">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+function addComponent() {
+    const tbody = document.getElementById('componentsBody');
+    const firstRow = tbody.querySelector('tr');
+    if (firstRow) {
+        const newRow = firstRow.cloneNode(true);
+        newRow.querySelector('select').value = '';
+        newRow.querySelector('input').value = '1';
+        tbody.appendChild(newRow);
+    }
+}
+</script>
+{% endblock %}

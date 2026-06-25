@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Journal Entries{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Journal Entries
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-book me-2 opacity-75"></i>Journal Entries
+    </h1>
+    <p class="text-muted mb-0">Double-entry bookkeeping records for your general ledger</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-primary shadow-sm">
+      <i class="fas fa-sitemap me-1"></i>Chart of Accounts
+    </a>
+    <a href="{% url 'accounting:journal_create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus me-1"></i>New Entry
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════ KPI STAT CARDS ══════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-file-invoice"></i></div>
+      <div class="stat-card-value" id="kpi-total">{{ page_obj.paginator.count|default:entries|length }}</div>
+      <div class="stat-card-label">Total Entries</div>
+      <div class="stat-card-trend text-white-50">All journal entries</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-pen-to-square"></i></div>
+      <div class="stat-card-value" id="kpi-draft">0</div>
+      <div class="stat-card-label">Draft</div>
+      <div class="stat-card-trend text-white-50">Pending review</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+      <div class="stat-card-value" id="kpi-posted">0</div>
+      <div class="stat-card-label">Posted</div>
+      <div class="stat-card-trend text-white-50">In the ledger</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-info h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-arrow-right-arrow-left"></i></div>
+      <div class="stat-card-value" id="kpi-total-dr">{{ CURRENCY_SYMBOL }}0</div>
+      <div class="stat-card-label">Total Debits</div>
+      <div class="stat-card-trend text-white-50">This page</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FILTER BAR ══════════════════════════════════════ -->
+<div class="card glass-card border-0 mb-4">
+  <div class="card-body py-3 px-4">
+    <form method="get" class="row g-2 align-items-center">
+
+      <!-- Date range -->
+      <div class="col-12 col-md-2">
+        <input type="date" name="from_date" value="{{ request.GET.from_date }}"
+               class="form-control form-control-sm" placeholder="From date">
+      </div>
+      <div class="col-12 col-md-2">
+        <input type="date" name="to_date" value="{{ request.GET.to_date }}"
+               class="form-control form-control-sm" placeholder="To date">
+      </div>
+
+      <!-- Journal filter -->
+      <div class="col-12 col-md-3">
+        <select name="journal" class="form-select form-select-sm">
+          <option value="">All Journals</option>
+          {% for j in journals %}
+          <option value="{{ j.pk }}" {% if request.GET.journal == j.pk|stringformat:'s' %}selected{% endif %}>
+            {{ j.name }} ({{ j.code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status filter -->
+      <div class="col-12 col-md-2">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Status</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Search -->
+      <div class="col-12 col-md-2">
+        <input type="text" name="q" value="{{ request.GET.q }}"
+               class="form-control form-control-sm" placeholder="Search ref / number…">
+      </div>
+
+      <!-- Buttons -->
+      <div class="col-12 col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-primary btn-sm flex-fill">
+          <i class="fas fa-filter"></i>
+        </button>
+        {% if request.GET.from_date or request.GET.to_date or request.GET.journal or request.GET.status or request.GET.q %}
+        <a href="{% url 'accounting:journals' %}" class="btn btn-outline-secondary btn-sm" title="Clear">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ENTRIES TABLE ════════════════════════════════════ -->
+{% if entries %}
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="journalTable" style="font-size: 13px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4" style="width: 140px;">Number</th>
+            <th style="width: 110px;">Date</th>
+            <th style="width: 150px;">Journal</th>
+            <th>Reference / Notes</th>
+            <th class="text-center" style="width: 110px;">Status</th>
+            <th class="text-end" style="width: 130px;">Total Debit</th>
+            <th class="text-end" style="width: 130px;">Total Credit</th>
+            <th class="text-center" style="width: 80px;">Balanced</th>
+            <th class="text-center" style="width: 80px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+          <tr class="je-row"
+              data-status="{{ entry.status }}"
+              data-debit="{{ entry.total_debit }}">
+
+            <!-- Number -->
+            <td class="ps-4">
+              <a href="{% url 'accounting:journal_detail' entry.pk %}"
+                 class="fw-bold text-primary text-decoration-none je-number">
+                {{ entry.number }}
+              </a>
+              {% if entry.is_reversal %}
+              <span class="badge bg-info-subtle text-info border border-info-subtle ms-1"
+                    style="font-size: 9px;">Reversal
+              {% endif %}</span>
+            </td>
+
+            <!-- Date -->
+            <td class="text-muted">{{ entry.date|date:"d M Y" }}</td>
+
+            <!-- Journal type -->
+            <td>
+              <span class="journal-type-badge jtype-{{ entry.journal.journal_type }}">
+                <i class="fas {% if entry.journal.journal_type == 'sales' %}fa-arrow-trend-up
+                  {% elif entry.journal.journal_type == 'purchase' %}fa-cart-shopping
+                  {% elif entry.journal.journal_type == 'bank' %}fa-building-columns
+                  {% elif entry.journal.journal_type == 'cash' %}fa-coins
+                  {% elif entry.journal.journal_type == 'payroll' %}fa-users
+                  {% else %}fa-book{% endif %} me-1" style="font-size: 10px;"></i>
+                {{ entry.journal.name }}
+              </span>
+            </td>
+
+            <!-- Reference / Notes -->
+            <td>
+              <div class="fw-semibold text-dark">{{ entry.reference|default:"—" }}</div>
+              {% if entry.notes %}
+              <div class="text-muted" style="font-size: 11px;">{{ entry.notes|truncatechars:45 }}</div>
+              {% endif %}
+            </td>
+
+            <!-- Status -->
+            <td class="text-center">
+              {% if entry.status == 'posted' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size: 10px;">
+                  <i class="fas fa-check me-1"></i>Posted
+                </span>
+              {% elif entry.status == 'draft' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2" style="font-size: 10px;">
+                  <i class="fas fa-pen me-1"></i>Draft
+                </span>
+              {% elif entry.status == 'reversed' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2" style="font-size: 10px;">
+                  <i class="fas fa-rotate-left me-1"></i>Reversed
+                </span>
+              {% else %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2" style="font-size: 10px;">Cancelled
+              {% endif %}</span>
+            </td>
+
+            <!-- Debit -->
+            <td class="text-end fw-semibold text-dark">
+              {{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}
+            </td>
+
+            <!-- Credit -->
+            <td class="text-end fw-semibold text-dark">
+              {{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}
+            </td>
+
+            <!-- Balanced indicator -->
+            <td class="text-center">
+              {% if entry.total_debit == entry.total_credit %}
+                <i class="fas fa-check-circle text-success" title="Balanced"></i>
+              {% else %}
+                <i class="fas fa-exclamation-circle text-danger" title="Unbalanced!"></i>
+              {% endif %}
+            </td>
+
+            <!-- Actions -->
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="{% url 'accounting:journal_detail' entry.pk %}"
+                   class="btn btn-outline-primary btn-xs" title="View">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if entry.status == 'draft' %}
+                <form method="post" action="{% url 'accounting:journal_post' entry.pk %}"
+                      class="d-inline" onsubmit="return confirm('Post this entry?')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-success btn-xs" title="Post">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+        <!-- Running totals footer -->
+        <tfoot class="table-light border-top border-2">
+          <tr>
+            <td colspan="5" class="ps-4 fw-bold text-dark py-3" style="font-size: 12px;">
+              Page Total <span class="text-muted fw-normal">({{ entries|length }} entries)</span>
+            </td>
+            <td class="text-end fw-bold text-primary py-3" id="footerDebit">{{ CURRENCY_SYMBOL }}0.00</td>
+            <td class="text-end fw-bold text-primary py-3" id="footerCredit">{{ CURRENCY_SYMBOL }}0.00</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Pagination ─────────────────────────────────────────────────────────── -->
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav class="mt-4 d-flex justify-content-between align-items-center">
+  <div class="text-muted small">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }}
+    of {{ page_obj.paginator.count }} entries
+  </div>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Empty state -->
+<div class="card glass-card border-0">
+  <div class="card-body text-center py-6">
+    <i class="fas fa-book-open fa-4x text-muted d-block mb-4 opacity-15"></i>
+    <h5 class="fw-bold text-dark mb-2">No journal entries found</h5>
+    <p class="text-muted mb-4">
+      {% if request.GET.status or request.GET.journal or request.GET.from_date %}
+        No entries match your current filters.
+      {% else %}
+        Start recording your accounting transactions.
+      {% endif %}
+    </p>
+    {% if request.GET.status or request.GET.journal or request.GET.from_date %}
+    <a href="{% url 'accounting:journals' %}" class="btn btn-outline-secondary me-2">Clear Filters</a>
+    {% endif %}
+    <a href="{% url 'accounting:journal_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>New Journal Entry
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const rows = document.querySelectorAll('.je-row');
+  let draft = 0, posted = 0, totalDr = 0, totalCr = 0;
+
+  rows.forEach(function (r) {
+    const status = r.dataset.status;
+    const dr = parseFloat(r.querySelector('td:nth-child(6)')?.textContent.replace(/[$,]/g, '') || 0);
+    const cr = parseFloat(r.querySelector('td:nth-child(7)')?.textContent.replace(/[$,]/g, '') || 0);
+    if (status === 'draft')  draft++;
+    if (status === 'posted') posted++;
+    totalDr += dr;
+    totalCr += cr;
+  });
+
+  const fmt = n => '{{ CURRENCY_SYMBOL }}' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const el = id => document.getElementById(id);
+  if (el('kpi-draft'))   el('kpi-draft').textContent   = draft;
+  if (el('kpi-posted'))  el('kpi-posted').textContent  = posted;
+  if (el('kpi-total-dr')) el('kpi-total-dr').textContent = fmt(totalDr);
+  if (el('footerDebit'))  el('footerDebit').textContent  = fmt(totalDr);
+  if (el('footerCredit')) el('footerCredit').textContent = fmt(totalCr);
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card-info {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+}
+.stat-card-info .stat-card-value,
+.stat-card-info .stat-card-label { color: #fff !important; }
+
+.journal-type-badge {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px;
+  white-space: nowrap;
+}
+.jtype-sales    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.jtype-purchase { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.jtype-bank     { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.jtype-cash     { background: #cffafe; color: #0e7490; border: 1px solid #67e8f9; }
+.jtype-payroll  { background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; }
+.jtype-general  { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+.je-number:hover { text-decoration: underline !important; }
+.py-6 { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+.opacity-15 { opacity: 0.15 !important; }
+</style>
+{% endblock %}

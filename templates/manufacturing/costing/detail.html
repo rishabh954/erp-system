@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Costing: {{ costing.manufacturing_order.number }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Costing for {{ costing.manufacturing_order.number }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>Product:</strong> {{ costing.manufacturing_order.product.name }}</p>
+<p><strong>Material Cost:</strong> {{ costing.material_cost }}</p>
+<p><strong>Labor Cost:</strong> {{ costing.labor_cost }}</p>
+<p><strong>Overhead Cost:</strong> {{ costing.overhead_cost }}</p>
+<h4 class="mt-3"><strong>Total Cost:</strong> {{ costing.total_cost }}</h4>
+<h4><strong>Unit Cost:</strong> {{ costing.unit_cost }}</h4>
+</div>
+{% endblock %}

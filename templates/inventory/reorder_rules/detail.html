@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Reorder Rule Details{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Reorder Rule: {{ rule.product.name }}</h1></div>
+<div class="card shadow-sm border-0 p-4">
+<p><strong>Warehouse:</strong> {{ rule.warehouse.name }}</p>
+<p><strong>Min Quantity:</strong> {{ rule.min_quantity }}</p>
+<p><strong>Max Quantity:</strong> {{ rule.max_quantity }}</p>
+<p><strong>Active:</strong> {{ rule.is_active|yesno:"Yes,No" }}</p>
+</div>
+{% endblock %}

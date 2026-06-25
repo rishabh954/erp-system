@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Stock Movements{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Stock Movements</h1>
+    <p class="text-muted mb-0">Track history of all stock additions, deliveries, adjustments, and warehouse transfers</p>
+  </div>
+  <div>
+    <a href="{% url 'inventory:stock_adjust' %}" class="btn btn-primary">
+      <i class="fas fa-sliders-h me-1"></i>Adjust Stock
+    </a>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card glass-card mb-4 border-0">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <!-- Product Filter -->
+      <div class="col-12 col-md-4">
+        <select name="product" class="form-select">
+          <option value="">All Products</option>
+          {% for prod in products %}
+          <option value="{{ prod.id }}" {% if request.GET.product == prod.id|stringformat:'s' %}selected{% endif %}>
+            {{ prod.name }} ({{ prod.sku }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Warehouse Filter -->
+      <div class="col-12 col-md-3">
+        <select name="warehouse" class="form-select">
+          <option value="">All Warehouses</option>
+          {% for wh in warehouses %}
+          <option value="{{ wh.id }}" {% if request.GET.warehouse == wh.id|stringformat:'s' %}selected{% endif %}>
+            {{ wh.name }} ({{ wh.code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Movement Type Filter -->
+      <div class="col-12 col-md-3">
+        <select name="type" class="form-select">
+          <option value="">All Movement Types</option>
+          {% for val, label in movement_type_choices %}
+          <option value="{{ val }}" {% if request.GET.type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Actions -->
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        {% if request.GET.product or request.GET.warehouse or request.GET.type %}
+        <a href="{% url 'inventory:movements' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Movements Table -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date & Time</th>
+            <th>Ref Number</th>
+            <th>Product Details</th>
+            <th>Warehouse</th>
+            <th class="text-center">Type</th>
+            <th class="text-end">Qty Change</th>
+            <th class="text-end">Unit Cost</th>
+            <th class="text-end">Total Cost</th>
+            <th>Reference</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for movement in movements %}
+          <tr>
+            <td class="text-nowrap small">
+              <span class="fw-semibold text-dark">{{ movement.movement_date }}</span>
+              <div class="text-muted" style="font-size: 11px;">{{ movement.created_at|date:"H:i" }}</div>
+            </td>
+            <td>
+              <span class="fw-bold text-primary">{{ movement.number|default:movement.id|truncatechars:8 }}</span>
+            </td>
+            <td>
+              <div>
+                <a href="{% url 'inventory:product_detail' movement.product.id %}" class="fw-bold text-dark text-decoration-none hover-link">
+                  {{ movement.product.name }}
+                </a>
+              </div>
+              <div class="small text-muted">SKU: <span class="fw-semibold">{{ movement.product.sku }}</span></div>
+            </td>
+            <td>
+              <span class="small fw-semibold text-dark">{{ movement.warehouse.name }}</span>
+              <div class="small text-muted" style="font-size: 11px;">Code: {{ movement.warehouse.code }}</div>
+            </td>
+            <td class="text-center">
+              {% if movement.movement_type == 'receipt' or movement.movement_type == 'return_in' or movement.movement_type == 'production_in' or movement.movement_type == 'opening' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                  {{ movement.get_movement_type_display }}
+                </span>
+              {% elif movement.movement_type == 'delivery' or movement.movement_type == 'return_out' or movement.movement_type == 'production_out' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                  {{ movement.get_movement_type_display }}
+                </span>
+              {% elif movement.movement_type == 'adjustment' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1">
+                  {{ movement.get_movement_type_display }}
+                </span>
+              {% else %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1">
+                  {{ movement.get_movement_type_display }}
+                </span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-bold">
+              {% if movement.quantity > 0 %}
+                <span class="text-success">+{{ movement.quantity|floatformat:0 }}</span>
+              {% elif movement.quantity < 0 %}
+                <span class="text-danger">{{ movement.quantity|floatformat:0 }}</span>
+              {% else %}
+                <span class="text-muted">0
+              {% endif %}</span>
+            </td>
+            <td class="text-end small">{{ CURRENCY_SYMBOL }}{{ movement.unit_cost|floatformat:2 }}</td>
+            <td class="text-end small fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ movement.total_cost|floatformat:2 }}</td>
+            <td class="small">
+              {% if movement.reference_type %}
+                <span class="badge bg-light text-dark border fw-normal">{{ movement.reference_type }}</span>
+                {% if movement.reference_id %}
+                  <div class="text-muted" style="font-size: 10px;">ID: {{ movement.reference_id|truncatechars:12 }}</div>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">-
+              {% endif %}</span>
+            </td>
+            <td class="small text-truncate" style="max-width: 150px;" title="{{ movement.notes }}">
+              {{ movement.notes|default:"-" }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center py-5">
+              <i class="fas fa-history fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No stock movements found matching the criteria.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated and page_obj %}
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <div class="text-muted small">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} movements
+  </div>
+  <nav>
+    <ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Previous</a>
+      </li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}{% if request.GET.warehouse %}&warehouse={{ request.GET.warehouse }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Next</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
+
+<style>
+.hover-link:hover {
+  color: var(--brand-primary) !important;
+  text-decoration: underline !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+    <h1>Your Invoice: {{ invoice_number }}</h1>
+    <p>Hi {{ customer_name }},</p>
+    <p>Here is your invoice from {{ company_name|default:"our company" }}.</p>
+    
+    <table class="details-table" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef;"><strong>Invoice Number:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef; text-align: right;">{{ invoice_number }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef;"><strong>Total Amount:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef; text-align: right; font-weight: bold;">{{ total }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef;"><strong>Due Date:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #e9ecef; text-align: right;">{{ due_date }}</td>
+        </tr>
+    </table>
+    
+    {% if payment_url %}
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+        <tbody>
+            <tr>
+                <td align="center">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <td> <a href="{{ payment_url }}" target="_blank">Pay Invoice Online</a> </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <p>Thank you for your business!</p>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Vendor{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Create Vendor</h1>
+    <p class="text-muted mb-0">Register a new supplier or service provider</p>
+  </div>
+  <div>
+    <a href="{% url 'purchase:vendors' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to list
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'purchase:vendor_create' %}">
+          {% csrf_token %}
+
+          <!-- Section 1: Basic Profile -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-id-card me-2"></i>General Information</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_name" class="form-label small fw-semibold">Vendor Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Acme Parts Supplies">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_vendor_code" class="form-label small fw-semibold">Vendor Code / SKU Prefix</label>
+              <input type="text" name="vendor_code" id="id_vendor_code" class="form-control" placeholder="e.g. VEN-001">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_vendor_type" class="form-label small fw-semibold">Vendor Type</label>
+              <select name="vendor_type" id="id_vendor_type" class="form-select">
+                {% for val, label in vendor_type_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_tax_id" class="form-label small fw-semibold">Tax ID / Business Reg No</label>
+              <input type="text" name="tax_id" id="id_tax_id" class="form-control" placeholder="e.g. Tax-12345">
+            </div>
+          </div>
+
+          <!-- Section 2: Contact Information -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-address-book me-2"></i>Contact & Address</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_email" class="form-label small fw-semibold">Contact Email</label>
+              <input type="email" name="email" id="id_email" class="form-control" placeholder="e.g. contact@vendor.com">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_phone" class="form-label small fw-semibold">Phone Number</label>
+              <input type="text" name="phone" id="id_phone" class="form-control" placeholder="e.g. +1 555-0199">
+            </div>
+            <div class="col-12">
+              <label for="id_address_line1" class="form-label small fw-semibold">Address Line 1</label>
+              <input type="text" name="address_line1" id="id_address_line1" class="form-control" placeholder="e.g. 123 Industrial Way">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_city" class="form-label small fw-semibold">City</label>
+              <input type="text" name="city" id="id_city" class="form-control" placeholder="e.g. Seattle">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_country" class="form-label small fw-semibold">Country</label>
+              <input type="text" name="country" id="id_country" class="form-control" placeholder="e.g. United States">
+            </div>
+          </div>
+
+          <!-- Section 3: Financial Settings -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-hand-holding-usd me-2"></i>Financial Terms</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_payment_terms" class="form-label small fw-semibold">Payment Terms (Days)</label>
+              <input type="number" name="payment_terms" id="id_payment_terms" class="form-control" value="30" min="0">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_currency" class="form-label small fw-semibold">Preferred Currency</label>
+              <select name="currency" id="id_currency" class="form-select">
+                <option value="">Select Currency</option>
+                {% for curr in currencies %}
+                  <option value="{{ curr.id }}">{{ curr.code }} - {{ curr.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 4: Notes -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-sticky-note me-2"></i>Remarks</h5>
+          <div class="mb-4">
+            <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Add optional remarks or supplier capabilities..."></textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'purchase:vendors' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Vendor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

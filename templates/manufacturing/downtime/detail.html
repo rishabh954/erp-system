@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Downtime Details{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Downtime: {{ downtime_log.work_center.name }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>Reason:</strong> {{ downtime_log.reason }}</p>
+<p><strong>Start Time:</strong> {{ downtime_log.start_time }}</p>
+<p><strong>End Time:</strong> {{ downtime_log.end_time|default:"Ongoing" }}</p>
+<p><strong>Duration (minutes):</strong> {{ downtime_log.duration_minutes }}</p>
+<p><strong>Description:</strong> {{ downtime_log.description }}</p>
+</div>
+{% endblock %}

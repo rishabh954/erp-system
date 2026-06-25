@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Help Desk Tickets{% endblock %}
+{% block nav_helpdesk %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Help Desk Tickets
+{% endblock %}
+
+{% block content %}</li>
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-headset me-2 opacity-75"></i>Support Tickets
+    </h1>
+    <p class="text-muted mb-0">Manage internal requests, IT issues, and support desk tickets</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'helpdesk:ticket_create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus me-2"></i>New Ticket
+    </a>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ KPI & FILTER ═════════════════════════════════════ -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-md-3">
+    <div class="card stat-card h-100 border-0" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+      <div class="stat-card-icon text-white opacity-50"><i class="fas fa-envelope-open-text"></i></div>
+      <div class="stat-card-value text-white">{{ open_count }}</div>
+      <div class="stat-card-label text-white">Open Tickets</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-3">
+    <div class="card stat-card h-100 border-0" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">
+      <div class="stat-card-icon text-white opacity-50"><i class="fas fa-fire-flame-curved"></i></div>
+      <div class="stat-card-value text-white">{{ sla_breached }}</div>
+      <div class="stat-card-label text-white">SLA Breached</div>
+    </div>
+  </div>
+  
+  <div class="col-12 col-md-6">
+    <div class="card glass-card border-0 h-100">
+      <div class="card-body d-flex align-items-center px-4">
+        <form method="get" class="w-100 d-flex gap-3 align-items-center">
+          
+          <div class="flex-grow-1">
+            <label class="form-label text-muted small fw-semibold mb-1">Search</label>
+            <input type="text" name="q" value="{{ request.GET.q }}" class="form-control bg-light border-0" placeholder="Ticket # or Subject">
+          </div>
+          
+          <div>
+            <label class="form-label text-muted small fw-semibold mb-1">Status</label>
+            <select name="status" class="form-select border-0 bg-light">
+              <option value="">All</option>
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="pt-4">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+            {% if request.GET.status or request.GET.q %}
+            <a href="{% url 'helpdesk:tickets' %}" class="btn btn-link text-muted px-2">Clear</a>
+            {% endif %}
+          </div>
+          
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ TICKETS TABLE ════════════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Ticket</th>
+            <th>Requester</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Assigned To</th>
+            <th>Age</th>
+            <th class="text-end pe-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in tickets %}
+          <tr>
+            <!-- Ticket # -->
+            <td class="ps-4">
+              <a href="{% url 'helpdesk:ticket_detail' ticket.pk %}" class="fw-bold text-primary font-monospace text-decoration-none" style="font-size: 12px;">
+                {{ ticket.number }}
+              </a>
+            </td>
+            
+            <!-- Requester -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-circle bg-secondary-subtle text-secondary fw-bold" style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                  {{ ticket.requester.first_name|first|default:"?" }}{{ ticket.requester.last_name|first|default:"" }}
+                </div>
+                <div class="fw-semibold text-dark">{{ ticket.requester.get_full_name|default:ticket.requester.email }}</div>
+              </div>
+            </td>
+            
+            <!-- Subject -->
+            <td>
+              <div class="fw-bold text-dark">{{ ticket.title|truncatechars:45 }}</div>
+              <div class="text-muted" style="font-size: 11px;">{{ ticket.category.name|default:"Uncategorized" }}</div>
+            </td>
+            
+            <!-- Status -->
+            <td>
+              {% if ticket.status == 'open' %}
+                <span class="badge bg-primary-subtle text-primary border rounded-pill px-2 py-1">Open
+              {% elif ticket.status == 'in_progress' %}</span>
+                <span class="badge bg-warning-subtle text-warning border rounded-pill px-2 py-1">In Progress
+              {% elif ticket.status == 'waiting' %}</span>
+                <span class="badge bg-info-subtle text-info border rounded-pill px-2 py-1">Waiting
+              {% elif ticket.status == 'resolved' %}</span>
+                <span class="badge bg-success-subtle text-success border rounded-pill px-2 py-1">Resolved
+              {% else %}</span>
+                <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2 py-1">{{ ticket.get_status_display }}</span>
+              {% endif %}
+            </td>
+            
+            <!-- Priority -->
+            <td>
+              {% if ticket.priority == 'urgent' or ticket.priority == 'high' %}
+                <span class="text-danger fw-bold"><i class="fas fa-arrow-up me-1"></i>{{ ticket.get_priority_display }}</span>
+              {% elif ticket.priority == 'low' %}
+                <span class="text-muted"><i class="fas fa-arrow-down me-1"></i>{{ ticket.get_priority_display }}</span>
+              {% else %}
+                <span class="text-dark">{{ ticket.get_priority_display }}</span>
+              {% endif %}
+            </td>
+            
+            <!-- Assigned To -->
+            <td>
+              {% if ticket.assigned_to %}
+                <span class="text-dark fw-medium">{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.email }}</span>
+              {% else %}
+                <span class="text-muted fst-italic">Unassigned
+              {% endif %}</span>
+            </td>
+            
+            <!-- Age & SLA -->
+            <td>
+              <div class="text-muted" style="font-size: 12px;">{{ ticket.created_at|timesince }} ago</div>
+              {% if ticket.sla_breached and ticket.status in 'open,in_progress' %}
+                <span class="badge bg-danger text-white mt-1" style="font-size: 9px;">SLA Breached
+              {% endif %}</span>
+            </td>
+            
+            <td class="text-end pe-4">
+              <a href="{% url 'helpdesk:ticket_detail' ticket.pk %}" class="btn btn-sm btn-light border text-primary">
+                View
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="fas fa-inbox fa-3x mb-3 opacity-25 d-block"></i>
+              <p>No tickets found matching your criteria.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer bg-transparent border-top-0 px-4 py-3">
+      <ul class="pagination pagination-sm mb-0 justify-content-end">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Previous</a></li>
+        {% endif %}
+        
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Next</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

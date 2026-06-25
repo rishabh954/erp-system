@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create invoice{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Create invoice</h1>
+    <p class="text-muted mb-0">Create a new sales offer for a customer</p>
+  </div>
+  <div>
+    <a href="{% url 'sales:invoices' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to invoices
+    </a>
+  </div>
+</div>
+
+<form method="post" action="{% if invoice %}{% url 'sales:invoice_update' invoice.pk %}{% else %}{% url 'sales:invoice_create' %}{% endif %}" id="invoiceForm" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-4">
+    <!-- General Settings Card -->
+    <div class="col-12">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-file-alt me-2"></i>General Details</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <!-- Customer -->
+            <div class="col-12 col-md-4">
+              <label for="id_customer" class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
+              <select name="customer" id="id_customer" class="form-select" required>
+                <option value="">Select Customer...</option>
+                {% for cust in customers %}
+                  <option value="{{ cust.id }}" {% if invoice.customer_id == cust.id %}selected{% endif %}>{{ cust.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Currency -->
+            <div class="col-6 col-md-2">
+              <label for="id_currency" class="form-label fw-semibold">Currency</label>
+              <select name="currency" id="id_currency" class="form-select">
+                {% for curr in currencies %}
+                  <option value="{{ curr.id }}" {% if invoice and invoice.currency_id == curr.id %}selected{% elif not invoice and curr.is_base %}selected{% endif %}>{{ curr.code }} ({{ curr.symbol }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Payment Terms -->
+            <div class="col-6 col-md-2">
+              <label for="id_payment_terms" class="form-label fw-semibold">Payment Terms (Days)</label>
+              <input type="number" name="payment_terms" id="id_payment_terms" class="form-control" value="{{ invoice.payment_terms|default:30 }}" min="0" required>
+            </div>
+
+            <!-- Invoice Date -->
+            <div class="col-6 col-md-2">
+              <label for="id_invoice_date" class="form-label fw-semibold">Invoice Date</label>
+              <input type="date" name="invoice_date" id="id_invoice_date" class="form-control" value="{{ invoice.invoice_date|date:'Y-m-d' }}">
+            </div>
+
+            <!-- Due Date -->
+            <div class="col-6 col-md-2">
+              <label for="id_due_date" class="form-label fw-semibold">Expected Delivery</label>
+              <input type="date" name="due_date" id="id_due_date" class="form-control" value="{{ invoice.due_date|date:'Y-m-d' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Grid Card -->
+    <div class="col-12">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+          <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-list me-2"></i>Line Items</h5>
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">
+            <i class="fas fa-plus me-1"></i>Add Row
+          </button>
+        </div>
+        <div class="card-body p-4">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="itemsTable">
+              <thead class="table-light">
+                <tr>
+                  <th style="min-width: 200px;">Product</th>
+                  <th style="min-width: 250px;">Description</th>
+                  <th style="width: 100px;" class="text-end">Qty</th>
+                  <th style="width: 130px;" class="text-end">Unit Price</th>
+                  <th style="width: 100px;" class="text-end">Discount %</th>
+                  <th style="width: 150px;">Tax</th>
+                  <th style="width: 120px;" class="text-end">Subtotal</th>
+                  <th style="width: 60px;" class="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if invoice %}
+                  {% for line in invoice.lines.all %}
+                  <tr class="item-row">
+                    <td>
+                      <select name="product[]" class="form-select product-select" onchange="onProductChange(this)" required>
+                        <option value="">Select Product...</option>
+                        {% for prod in products %}
+                          <option value="{{ prod.id }}" data-price="{{ prod.sale_price|default:0 }}" data-desc="{{ prod.description|default:'' }}" {% if line.product_id == prod.id %}selected{% endif %}>{{ prod.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input type="text" name="description[]" class="form-control desc-input" placeholder="Product details..." value="{{ line.description }}" required>
+                    </td>
+                    <td>
+                      <input type="number" name="quantity[]" class="form-control qty-input text-end" value="{{ line.quantity|stringformat:'f'|slice:':-4'|default:line.quantity|floatformat:2 }}" min="0.0001" step="any" oninput="calculateRow(this)" required>
+                    </td>
+                    <td>
+                      <input type="number" name="unit_price[]" class="form-control price-input text-end" value="{{ line.unit_price|floatformat:2 }}" min="0" step="any" oninput="calculateRow(this)" required>
+                    </td>
+                    <td>
+                      <input type="number" name="discount_percent[]" class="form-control disc-input text-end" value="{{ line.discount_percent|floatformat:2 }}" min="0" max="100" step="any" oninput="calculateRow(this)">
+                    </td>
+                    <td>
+                      <select name="tax[]" class="form-select tax-select" onchange="calculateRow(this)">
+                        <option value="" data-rate="0">No Tax</option>
+                        {% for tx in taxes %}
+                          <option value="{{ tx.id }}" data-rate="{{ tx.rate|default:0 }}" {% if line.tax_id == tx.id %}selected{% endif %}>{{ tx.name }} ({{ tx.rate }}%)</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td class="text-end fw-semibold pt-3 row-total">{{ CURRENCY_SYMBOL }}0.00</td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRow(this)"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Calculation Panel -->
+          <div class="row mt-4 justify-content-end">
+            <div class="col-12 col-md-4">
+              <div class="card bg-light border-0">
+                <div class="card-body p-3">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Subtotal</span>
+                    <span class="fw-semibold" id="summarySubtotal">{{ CURRENCY_SYMBOL }}0.00</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Discount</span>
+                    <span class="fw-semibold text-danger" id="summaryDiscount">-{{ CURRENCY_SYMBOL }}0.00</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Tax</span>
+                    <span class="fw-semibold text-success" id="summaryTax">{{ CURRENCY_SYMBOL }}0.00</span>
+                  </div>
+                  <hr class="my-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark">Grand Total</span>
+                    <span class="h4 mb-0 fw-bold text-primary" id="summaryTotal">{{ CURRENCY_SYMBOL }}0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes & Terms -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm border-0 mb-4 h-100">
+        <div class="card-body p-4">
+          <label for="id_notes" class="form-label fw-semibold">Internal Notes</label>
+          <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="Enter notes visible to internal team only...">{{ invoice.notes|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm border-0 mb-4 h-100">
+        <div class="card-body p-4">
+          <label for="id_terms_conditions" class="form-label fw-semibold">Terms & Conditions</label>
+          <textarea name="terms_conditions" id="id_terms_conditions" class="form-control" rows="4" placeholder="Enter terms & conditions to be printed on invoice PDF...">{{ invoice.terms_conditions|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-12 text-end mb-4">
+      <hr class="my-3">
+      <a href="{% url 'sales:invoices' %}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save me-1"></i>Create invoice
+      </button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  if (document.querySelectorAll('.item-row').length === 0) {
+    addRow();
+  } else {
+    document.querySelectorAll('.product-select').forEach(sel => calculateRow(sel));
+  }
+});
+
+function addRow() {
+  const tableBody = document.querySelector("#itemsTable tbody");
+  const rowCount = tableBody.rows.length;
+  const row = tableBody.insertRow(rowCount);
+  row.className = "item-row";
+  row.innerHTML = `
+    <td>
+      <select name="product[]" class="form-select product-select" onchange="onProductChange(this)" required>
+        <option value="">Select Product...</option>
+        {% for prod in products %}
+          <option value="{{ prod.id }}" data-price="{{ prod.sale_price|default:0 }}" data-desc="{{ prod.description|default:'' }}">{{ prod.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td>
+      <input type="text" name="description[]" class="form-control desc-input" placeholder="Product details..." required>
+    </td>
+    <td>
+      <input type="number" name="quantity[]" class="form-control qty-input text-end" value="1" min="0.0001" step="any" oninput="calculateRow(this)" required>
+    </td>
+    <td>
+      <input type="number" name="unit_price[]" class="form-control price-input text-end" value="0.00" min="0" step="any" oninput="calculateRow(this)" required>
+    </td>
+    <td>
+      <input type="number" name="discount_percent[]" class="form-control disc-input text-end" value="0.00" min="0" max="100" step="any" oninput="calculateRow(this)">
+    </td>
+    <td>
+      <select name="tax[]" class="form-select tax-select" onchange="calculateRow(this)">
+        <option value="" data-rate="0">No Tax</option>
+        {% for tx in taxes %}
+          <option value="{{ tx.id }}" data-rate="{{ tx.rate|default:0 }}">{{ tx.name }} ({{ tx.rate }}%)</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td class="text-end fw-semibold pt-3 row-total">{{ CURRENCY_SYMBOL }}0.00</td>
+    <td class="text-center">
+      <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRow(this)"><i class="fas fa-trash"></i></button>
+    </td>
+  `;
+}
+
+function deleteRow(btn) {
+  const row = btn.closest('tr');
+  const tableBody = document.querySelector("#itemsTable tbody");
+  if (tableBody.rows.length > 1) {
+    row.remove();
+    calculateGrandTotal();
+  } else {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Attention',
+      text: 'A transaction must contain at least one line item.'
+    });
+  }
+}
+
+function onProductChange(select) {
+  const row = select.closest('tr');
+  const selectedOption = select.options[select.selectedIndex];
+  if (!selectedOption.value) return;
+  
+  const price = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+  const desc = selectedOption.getAttribute('data-desc') || selectedOption.text;
+  
+  row.querySelector('.price-input').value = price.toFixed(2);
+  row.querySelector('.desc-input').value = desc;
+  
+  calculateRow(select);
+}
+
+function calculateRow(input) {
+  const row = input.closest('tr');
+  const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+  const price = parseFloat(row.querySelector('.price-input').value) || 0;
+  const discPercent = parseFloat(row.querySelector('.disc-input').value) || 0;
+  const taxSelect = row.querySelector('.tax-select');
+  const taxRate = parseFloat(taxSelect.options[taxSelect.selectedIndex].getAttribute('data-rate')) || 0;
+
+  const subtotal = qty * price;
+  const discountAmount = subtotal * (discPercent / 100);
+  const taxable = subtotal - discountAmount;
+  const taxAmount = taxable * (taxRate / 100);
+  const rowTotal = taxable + taxAmount;
+
+  row.querySelector('.row-total').innerText = '{{ CURRENCY_SYMBOL }}' + rowTotal.toFixed(2);
+  calculateGrandTotal();
+}
+
+function calculateGrandTotal() {
+  let subtotal = 0;
+  let discountTotal = 0;
+  let taxTotal = 0;
+  let grandTotal = 0;
+
+  document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
+    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    const discPercent = parseFloat(row.querySelector('.disc-input').value) || 0;
+    const taxSelect = row.querySelector('.tax-select');
+    const taxRate = parseFloat(taxSelect.options[taxSelect.selectedIndex].getAttribute('data-rate')) || 0;
+
+    const rowSubtotal = qty * price;
+    const rowDisc = rowSubtotal * (discPercent / 100);
+    const rowTaxable = rowSubtotal - rowDisc;
+    const rowTax = rowTaxable * (taxRate / 100);
+
+    subtotal += rowSubtotal;
+    discountTotal += rowDisc;
+    taxTotal += rowTax;
+  });
+
+  grandTotal = subtotal - discountTotal + taxTotal;
+
+  document.getElementById('summarySubtotal').innerText = '{{ CURRENCY_SYMBOL }}' + subtotal.toFixed(2);
+  document.getElementById('summaryDiscount').innerText = '-{{ CURRENCY_SYMBOL }}' + discountTotal.toFixed(2);
+  document.getElementById('summaryTax').innerText = '{{ CURRENCY_SYMBOL }}' + taxTotal.toFixed(2);
+  document.getElementById('summaryTotal').innerText = '{{ CURRENCY_SYMBOL }}' + grandTotal.toFixed(2);
+}
+</script>
+{% endblock %}
+
+
+

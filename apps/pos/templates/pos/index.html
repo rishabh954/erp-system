@@ -1,0 +1,413 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fc; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        .pos-header { background: #4e73df; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 10; }
+        .pos-container { display: flex; flex: 1; overflow: hidden; }
+        .products-panel { flex: 3; padding: 20px; display: flex; flex-direction: column; background: #f8f9fc; }
+        .cart-panel { flex: 1; min-width: 350px; background: white; border-left: 1px solid #e3e6f0; display: flex; flex-direction: column; box-shadow: -2px 0 10px rgba(0,0,0,0.05); z-index: 5; }
+        
+        .category-filter { margin-bottom: 20px; display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .category-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid #4e73df; color: #4e73df; background: white; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .category-btn.active, .category-btn:hover { background: #4e73df; color: white; }
+        
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; overflow-y: auto; align-content: start; }
+        .product-card { background: white; border-radius: 8px; border: 1px solid #e3e6f0; padding: 15px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; height: 160px; }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: #4e73df; }
+        .product-img { max-height: 80px; margin-bottom: 10px; object-fit: contain; }
+        .product-icon { font-size: 40px; color: #b7b9cc; margin-bottom: 10px; }
+        .product-name { font-weight: 600; font-size: 14px; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-price { color: #1cc88a; font-weight: 700; font-size: 16px; }
+        
+        .cart-items { flex: 1; overflow-y: auto; padding: 0; list-style: none; margin: 0; }
+        .cart-item { display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #e3e6f0; align-items: center; }
+        .cart-item-details { flex: 1; }
+        .cart-item-name { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+        .cart-item-price { color: #858796; font-size: 13px; }
+        .cart-item-controls { display: flex; align-items: center; gap: 10px; }
+        .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #d1d3e2; background: white; color: #4e73df; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+        .qty-btn:hover { background: #eaecf4; }
+        .qty-input { width: 40px; text-align: center; border: 1px solid #d1d3e2; border-radius: 4px; padding: 2px 5px; font-weight: bold; }
+        .item-total { font-weight: 700; min-width: 70px; text-align: right; }
+        
+        .cart-summary { padding: 20px; background: #f8f9fc; border-top: 1px solid #e3e6f0; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }
+        .summary-total { font-weight: 800; font-size: 24px; color: #1cc88a; margin-top: 10px; padding-top: 10px; border-top: 2px dashed #d1d3e2; }
+        
+        .checkout-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: 700; border-radius: 8px; margin-top: 15px; }
+        
+        /* Modal Styles */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .num-btn { padding: 15px; font-size: 20px; font-weight: 600; border-radius: 8px; border: 1px solid #d1d3e2; background: white; cursor: pointer; transition: background 0.1s; }
+        .num-btn:active { background: #eaecf4; }
+        .tendered-input { font-size: 30px; font-weight: 800; text-align: right; border: none; border-bottom: 2px solid #4e73df; border-radius: 0; padding: 10px 0; background: transparent; width: 100%; margin-bottom: 10px; }
+        .tendered-input:focus { outline: none; box-shadow: none; border-bottom-color: #1cc88a; }
+    </style>
+</head>
+<body>
+
+    <div class="pos-header">
+        <div class="d-flex align-items-center">
+            <a href="{% url 'dashboard:index' %}" class="btn btn-light btn-sm me-3"><i class="fas fa-arrow-left"></i> Back to ERP</a>
+            <h4 class="mb-0 fw-bold"><i class="fas fa-cash-register me-2"></i> Point of Sale</h4>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="me-4 text-end">
+                <div class="small text-white-50">Session ID</div>
+                <div class="fw-bold">{{ session.number|default:"N/A" }}</div>
+            </div>
+            <div class="text-end">
+                <div class="small text-white-50">Cashier</div>
+                <div class="fw-bold"><i class="fas fa-user-circle me-1"></i> {{ request.user.full_name }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger m-4">
+        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+    </div>
+    {% else %}
+    <div class="pos-container">
+        <!-- Products Panel -->
+        <div class="products-panel">
+            <div class="category-filter" id="categoryFilter">
+                <button class="category-btn active" data-id="all">All Items</button>
+                {% for cat in categories %}
+                <button class="category-btn" data-id="{{ cat.id }}">{{ cat.name }}</button>
+                {% endfor %}
+            </div>
+            
+            <div class="products-grid" id="productsGrid">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+        <!-- Cart Panel -->
+        <div class="cart-panel">
+            <ul class="cart-items" id="cartItems">
+                <li class="p-4 text-center text-muted" id="emptyCartMsg">
+                    <i class="fas fa-shopping-cart fa-3x mb-3 text-gray-300"></i>
+                    <p>Cart is empty</p>
+                </li>
+            </ul>
+            
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span class="text-muted">Subtotal</span>
+                    <span id="summarySubtotal">.00</span>
+                </div>
+                <div class="summary-row">
+                    <span class="text-muted">Tax (0%)</span>
+                    <span id="summaryTax">.00</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span>Total</span>
+                    <span id="summaryTotal">.00</span>
+                </div>
+                
+                <button class="btn btn-success checkout-btn" id="btnCheckout" disabled>
+                    <i class="fas fa-credit-card me-2"></i> Checkout
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Checkout Modal -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-money-bill-wave me-2"></i> Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <div class="text-muted small fw-bold text-uppercase mb-1">Total Due</div>
+                            <h2 class="text-primary fw-bold" id="modalTotalDue">.00</h2>
+                        </div>
+                        <div class="col-6 text-end">
+                            <div class="text-muted small fw-bold text-uppercase mb-1">Change</div>
+                            <h2 class="text-success fw-bold" id="modalChange">.00</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted">Amount Tendered</label>
+                        <input type="text" class="form-control tendered-input" id="tenderedAmount" value="0.00" readonly>
+                    </div>
+                    
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn btn-outline-primary flex-fill" onclick="setExact()">Exact</button>
+                        <button class="btn btn-outline-primary flex-fill" onclick="addAmount(10)">+10</button>
+                        <button class="btn btn-outline-primary flex-fill" onclick="addAmount(20)">+20</button>
+                        <button class="btn btn-outline-primary flex-fill" onclick="addAmount(50)">+50</button>
+                        <button class="btn btn-outline-primary flex-fill" onclick="addAmount(100)">+100</button>
+                    </div>
+                    
+                    <div class="numpad">
+                        <button class="num-btn" onclick="numpad('1')">1</button>
+                        <button class="num-btn" onclick="numpad('2')">2</button>
+                        <button class="num-btn" onclick="numpad('3')">3</button>
+                        <button class="num-btn" onclick="numpad('4')">4</button>
+                        <button class="num-btn" onclick="numpad('5')">5</button>
+                        <button class="num-btn" onclick="numpad('6')">6</button>
+                        <button class="num-btn" onclick="numpad('7')">7</button>
+                        <button class="num-btn" onclick="numpad('8')">8</button>
+                        <button class="num-btn" onclick="numpad('9')">9</button>
+                        <button class="num-btn" onclick="numpad('C')">C</button>
+                        <button class="num-btn" onclick="numpad('0')">0</button>
+                        <button class="num-btn" onclick="numpad('00')">00</button>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success px-4" id="btnCompleteSale">
+                        <i class="fas fa-check-circle me-2"></i> Complete Sale
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-check-circle text-success" style="font-size: 60px;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-1">Sale Complete</h4>
+                    <p class="text-muted mb-4" id="receiptOrderNum">Order #</p>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total</span>
+                        <span class="fw-bold" id="receiptTotal">.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="text-muted">Change</span>
+                        <span class="fw-bold text-success" id="receiptChange">.00</span>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary w-100 mb-2" onclick="startNewSale()"><i class="fas fa-plus me-2"></i> New Sale</button>
+                    <button type="button" class="btn btn-light w-100" data-bs-dismiss="modal"><i class="fas fa-print me-2"></i> Print Receipt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const products = {{ products_json|safe }};
+        const sessionId = "{{ session.id }}";
+        const csrfToken = '{{ csrf_token }}';
+        
+        let cart = [];
+        let total = 0;
+        let tendered = 0;
+        let isTypingTendered = false;
+
+        // Render Products
+        function renderProducts(categoryId = 'all') {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+            
+            const filtered = categoryId === 'all' ? products : products.filter(p => p.category_id === categoryId);
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-12 text-center text-muted p-5">No products found.</div>';
+                return;
+            }
+            
+            filtered.forEach(p => {
+                const imgHtml = p.image_url ? <img src="" class="product-img"> : <i class="fas fa-box product-icon"></i>;
+                grid.innerHTML += 
+                    <div class="product-card" onclick="addToCart('')">
+                        <div></div>
+                        <div>
+                            <div class="product-name"></div>
+                            <div class="product-price">{p.price.toFixed(2)}</div>
+                        </div>
+                    </div>
+                ;
+            });
+        }
+
+        // Category Filter
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                renderProducts(e.target.dataset.id);
+            });
+        });
+
+        // Cart Functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            const existing = cart.find(item => item.id === productId);
+            if (existing) {
+                existing.qty++;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            updateCartUI();
+        }
+
+        function updateCartQty(index, delta) {
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cartItems');
+            const emptyMsg = document.getElementById('emptyCartMsg');
+            const btnCheckout = document.getElementById('btnCheckout');
+            
+            if (cart.length === 0) {
+                list.innerHTML = '';
+                list.appendChild(emptyMsg);
+                emptyMsg.style.display = 'block';
+                btnCheckout.disabled = true;
+                total = 0;
+            } else {
+                emptyMsg.style.display = 'none';
+                list.innerHTML = '';
+                
+                total = 0;
+                cart.forEach((item, index) => {
+                    const itemTotal = item.price * item.qty;
+                    total += itemTotal;
+                    
+                    list.innerHTML += 
+                        <li class="cart-item">
+                            <div class="cart-item-details">
+                                <div class="cart-item-name"></div>
+                                <div class="cart-item-price">{item.price.toFixed(2)}</div>
+                            </div>
+                            <div class="cart-item-controls">
+                                <button class="qty-btn" onclick="updateCartQty(, -1)">-</button>
+                                <span class="qty-input"></span>
+                                <button class="qty-btn" onclick="updateCartQty(, 1)">+</button>
+                            </div>
+                            <div class="item-total">{itemTotal.toFixed(2)}</div>
+                        </li>
+                    ;
+                });
+                btnCheckout.disabled = false;
+            }
+            
+            document.getElementById('summarySubtotal').innerText = '$' + total.toFixed(2);
+            document.getElementById('summaryTotal').innerText = '$' + total.toFixed(2);
+        }
+
+        // Checkout & Numpad
+        const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+        const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+        
+        document.getElementById('btnCheckout').addEventListener('click', () => {
+            document.getElementById('modalTotalDue').innerText = '$' + total.toFixed(2);
+            tendered = 0;
+            isTypingTendered = false;
+            updateTenderedUI();
+            checkoutModal.show();
+        });
+
+        function updateTenderedUI() {
+            document.getElementById('tenderedAmount').value = tendered.toFixed(2);
+            const change = Math.max(0, tendered - total);
+            document.getElementById('modalChange').innerText = '$' + change.toFixed(2);
+            
+            const btnComplete = document.getElementById('btnCompleteSale');
+            if (tendered >= total) {
+                btnComplete.disabled = false;
+            } else {
+                btnComplete.disabled = true;
+            }
+        }
+
+        function setExact() { tendered = total; updateTenderedUI(); }
+        function addAmount(amt) { tendered += amt; updateTenderedUI(); }
+        
+        function numpad(val) {
+            if (val === 'C') {
+                tendered = 0;
+                isTypingTendered = false;
+            } else {
+                if (!isTypingTendered) {
+                    tendered = 0;
+                    isTypingTendered = true;
+                }
+                const current = Math.round(tendered * 100).toString();
+                tendered = parseInt(current + val) / 100;
+            }
+            updateTenderedUI();
+        }
+
+        // Process API
+        document.getElementById('btnCompleteSale').addEventListener('click', async () => {
+            const btnComplete = document.getElementById('btnCompleteSale');
+            btnComplete.disabled = true;
+            btnComplete.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+            
+            try {
+                const response = await fetch("{% url 'pos:api_checkout' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        cart: cart,
+                        payment_method: 'cash',
+                        tendered: tendered
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    checkoutModal.hide();
+                    
+                    document.getElementById('receiptOrderNum').innerText = data.order_number;
+                    document.getElementById('receiptTotal').innerText = '$' + total.toFixed(2);
+                    document.getElementById('receiptChange').innerText = '$' + data.change.toFixed(2);
+                    
+                    receiptModal.show();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Connection error');
+            } finally {
+                btnComplete.innerHTML = '<i class="fas fa-check-circle me-2"></i> Complete Sale';
+            }
+        });
+
+        function startNewSale() {
+            cart = [];
+            updateCartUI();
+            receiptModal.hide();
+        }
+
+        // Init
+        renderProducts();
+    </script>
+</body>
+</html>

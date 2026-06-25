@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Import Bank Statement{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Import Bank Statement (CSV)</h1>
+        <a href="{% url 'accounting:bank_statement_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Bank Account</label>
+                        {{ form.bank_account }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">CSV File</label>
+                        <input type="file" name="file_upload" class="form-control" accept=".csv" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Start Date</label>
+                        <input type="date" name="date_start" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">End Date</label>
+                        <input type="date" name="date_end" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Starting Balance</label>
+                        <input type="number" step="0.01" name="starting_balance" class="form-control" value="0.00">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Ending Balance</label>
+                        <input type="number" step="0.01" name="ending_balance" class="form-control" value="0.00">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i> Import</button>
+                </div>
+            </form>
+            
+            <hr class="mt-4">
+            <h5 class="fw-bold">CSV Format Instructions</h5>
+            <p class="text-muted small">Your CSV must have exactly these headers (case sensitive): <strong>Date, Description, Amount, Reference</strong></p>
+            <pre class="bg-light p-3 border rounded">Date,Description,Amount,Reference
+2026-10-01,Transfer from Savings,500.00,TRX-001
+2026-10-02,Office Supplies,-120.50,INV-882</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

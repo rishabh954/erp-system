@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Sales Payments{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Payments</h1>
+    <p class="text-muted mb-0">Track customer payments and transactions</p>
+  </div>
+</div>
+
+<!-- Payments Dashboard Indicators -->
+<div class="row g-3 mb-4">
+  <!-- Total Received Card -->
+  <div class="col-12 col-md-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3 d-flex align-items-center gap-3">
+        <div class="bg-success-subtle text-success rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:48px; height:48px;">
+          <i class="fas fa-check-circle fa-lg"></i>
+        </div>
+        <div>
+          <div class="text-muted small text-uppercase fw-bold">Total Received</div>
+          <div class="h3 mb-0 text-success fw-bold">{{ CURRENCY_SYMBOL }}{{ total_received|floatformat:2|intcomma }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Pending Card -->
+  <div class="col-12 col-md-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body p-3 d-flex align-items-center gap-3">
+        <div class="bg-warning-subtle text-warning rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:48px; height:48px;">
+          <i class="fas fa-clock fa-lg"></i>
+        </div>
+        <div>
+          <div class="text-muted small text-uppercase fw-bold">Total Pending</div>
+          <div class="h3 mb-0 text-warning fw-bold">{{ CURRENCY_SYMBOL }}{{ total_pending|floatformat:2|intcomma }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-12 col-md-4">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="q" class="form-control" style="padding-left:36px"
+            placeholder="Search by payment no, invoice, or customer..." value="{{ request.GET.q|default:'' }}">
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="status" class="form-select">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="method" class="form-select">
+          <option value="">All Methods</option>
+          {% for val, label in method_choices %}
+          <option value="{{ val }}" {% if request.GET.method == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        {% if request.GET.q or request.GET.status or request.GET.method %}
+        <a href="{% url 'sales:payments' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Payments Table -->
+<div class="card shadow-sm border-0">
+  <div class="card-body p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
+        <thead class="table-light">
+          <tr>
+            <th>Payment No.</th>
+            <th>Invoice No.</th>
+            <th>Customer</th>
+            <th>Payment Date</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td>
+              <span class="fw-bold text-dark">{{ payment.number }}</span>
+            </td>
+            <td>
+              <a href="{% url 'sales:invoice_detail' payment.invoice.pk %}" class="fw-bold text-primary">
+                {{ payment.invoice.number }}
+              </a>
+            </td>
+            <td>
+              <div class="fw-semibold">{{ payment.customer.name }}</div>
+            </td>
+            <td class="small">{{ payment.payment_date|date:"Y-m-d" }}</td>
+            <td>
+              <span class="small text-dark">
+                {% if payment.method == 'cash' %}
+                  <i class="fas fa-money-bill-wave text-success me-1"></i> Cash
+                {% elif payment.method == 'bank_transfer' %}
+                  <i class="fas fa-university text-info me-1"></i> Bank Transfer
+                {% elif payment.method == 'cheque' %}
+                  <i class="fas fa-money-check text-warning me-1"></i> Cheque
+                {% elif payment.method == 'credit_card' %}
+                  <i class="fas fa-credit-card text-primary me-1"></i> Credit Card
+                {% elif payment.method == 'online' %}
+                  <i class="fas fa-globe text-secondary me-1"></i> Online
+                {% else %}
+                  {{ payment.get_method_display }}
+                {% endif %}
+              </span>
+            </td>
+            <td class="small text-muted">{{ payment.reference|default:"-" }}</td>
+            <td class="fw-bold text-success">
+              {{ CURRENCY_SYMBOL }}{{ payment.amount|floatformat:2|intcomma }}
+            </td>
+            <td>
+              <span class="badge 
+                {% if payment.status == 'pending' %}bg-warning text-dark
+                {% elif payment.status == 'completed' %}bg-success
+                {% elif payment.status == 'failed' %}bg-danger
+                {% elif payment.status == 'refunded' %}bg-info
+                {% endif %}">
+                {{ payment.get_status_display }}
+              </span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5">
+              <i class="fas fa-credit-card fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No payments found matching current criteria.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

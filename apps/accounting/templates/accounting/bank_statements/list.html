@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Bank Statements{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Bank Statements</h1>
+        <a href="{% url 'accounting:bank_statement_import' %}" class="btn btn-primary">
+            <i class="fas fa-file-import me-2"></i> Import Statement
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Account</th>
+                            <th>Date Range</th>
+                            <th>Status</th>
+                            <th>Starting Balance</th>
+                            <th>Ending Balance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stmt in statements %}
+                        <tr>
+                            <td>{{ stmt.number|default:stmt.id }}</td>
+                            <td>{{ stmt.bank_account.name }}</td>
+                            <td>{{ stmt.date_start }} to {{ stmt.date_end }}</td>
+                            <td>
+                                {% if stmt.status == 'reconciled' %}
+                                <span class="badge bg-success">Reconciled</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ stmt.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>${{ stmt.starting_balance }}</td>
+                            <td>${{ stmt.ending_balance }}</td>
+                            <td>
+                                <a href="{% url 'accounting:bank_reconciliation' %}?bank_account={{ stmt.bank_account.id }}" class="btn btn-sm btn-info text-white">Reconcile</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted">No statements found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

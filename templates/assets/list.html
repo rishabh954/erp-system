@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Asset Register{% endblock %}
+{% block nav_assets %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Asset Register
+{% endblock %}
+
+{% block content %}</li>
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-boxes-stacked me-2 opacity-75"></i>Fixed Assets
+    </h1>
+    <p class="text-muted mb-0">Track company equipment, property, and depreciation</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'assets:create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus me-2"></i>Register Asset
+    </a>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ KPI CARDS ════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-desktop"></i></div>
+      <div class="stat-card-value">{{ total_assets }}</div>
+      <div class="stat-card-label">Total Assets</div>
+      <div class="stat-card-trend text-white-50">Registered in system</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ total_value|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Net Book Value</div>
+      <div class="stat-card-trend text-white-50">Current depreciated value</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card glass-card border-0 h-100 shadow-sm p-3 d-flex justify-content-center">
+      <form method="get" class="w-100">
+        <label class="form-label text-muted small fw-semibold mb-1">Quick Search</label>
+        <div class="input-group">
+          <input type="text" name="q" value="{{ request.GET.q }}" class="form-control bg-light border-0" placeholder="Search code or serial...">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FILTERS ══════════════════════════════════════════ -->
+<div class="card glass-card border-0 mb-4 shadow-sm">
+  <div class="card-body px-4 py-3">
+    <form method="get" class="row g-3 align-items-end">
+      
+      {% if request.GET.q %}
+      <input type="hidden" name="q" value="{{ request.GET.q }}">
+      {% endif %}
+      
+      <div class="col-md-5">
+        <label class="form-label text-muted small fw-semibold mb-1">Category</label>
+        <select name="category" class="form-select bg-light border-0" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+          <option value="{{ cat.pk }}" {% if request.GET.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="col-md-5">
+        <label class="form-label text-muted small fw-semibold mb-1">Status</label>
+        <select name="status" class="form-select bg-light border-0" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="col-md-2">
+        {% if request.GET.status or request.GET.category or request.GET.q %}
+        <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary w-100">Clear Filters</a>
+        {% endif %}
+      </div>
+      
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ASSETS TABLE ═════════════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Asset ID</th>
+            <th>Asset Details</th>
+            <th>Location/User</th>
+            <th class="text-end">Purchase Cost</th>
+            <th class="text-end">Current Value</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr>
+            <td class="ps-4 fw-bold text-primary font-monospace" style="font-size: 12px;">
+              <a href="{% url 'assets:detail' asset.pk %}" class="text-decoration-none">{{ asset.number }}</a>
+            </td>
+            
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                {% if asset.image %}
+                  <img src="{{ asset.image.url }}" alt="{{ asset.name }}" class="rounded shadow-sm" style="width: 40px; height: 40px; object-fit: cover;">
+                {% else %}
+                  <div class="avatar-circle bg-light text-muted border shadow-sm" style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-box"></i>
+                  </div>
+                {% endif %}
+                <div>
+                  <div class="fw-bold text-dark">{{ asset.name }}</div>
+                  <div class="text-muted" style="font-size: 11px;">{{ asset.category.name }} {% if asset.serial_number %}· SN: {{ asset.serial_number }}{% endif %}</div>
+                </div>
+              </div>
+            </td>
+            
+            <td>
+              {% if asset.assigned_to %}
+                <div class="fw-semibold text-dark"><i class="fas fa-user text-primary me-1" style="font-size: 10px;"></i>{{ asset.assigned_to.get_full_name }}</div>
+              {% elif asset.branch %}
+                <div class="fw-semibold text-dark"><i class="fas fa-building text-info me-1" style="font-size: 10px;"></i>{{ asset.branch.name }}</div>
+              {% else %}
+                <span class="text-muted fst-italic">Unassigned
+              {% endif %}</span>
+            </td>
+            
+            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ asset.purchase_cost|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ asset.current_value|floatformat:2|intcomma }}</td>
+            
+            <td>
+              {% if asset.status == 'active' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">Active
+              {% elif asset.status == 'maintenance' %}</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1">In Maintenance
+              {% elif asset.status == 'retired' %}</span>
+                <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2 py-1">Retired
+              {% elif asset.status == 'lost' %}</span>
+                <span class="badge bg-danger-subtle text-danger border rounded-pill px-2 py-1">Lost/Stolen
+              {% endif %}</span>
+            </td>
+            
+            <td class="text-end pe-4">
+              <a href="{% url 'assets:detail' asset.pk %}" class="btn btn-sm btn-light border text-primary" title="View details">
+                View
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="fas fa-box-open fa-3x mb-3 opacity-25 d-block"></i>
+              <p>No assets found.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer bg-transparent border-top-0 px-4 py-3">
+      <ul class="pagination pagination-sm mb-0 justify-content-end">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Previous</a></li>
+        {% endif %}
+        
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Next</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

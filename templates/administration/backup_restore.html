@@ -1,0 +1,52 @@
+{% extends "administration/base_admin.html" %}
+{% block title %}Backup & Restore{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-0"><i class="fas fa-database me-2 text-primary"></i>Backup & Restore</h1>
+    <p class="text-muted mb-0">Manage backup & restore for your organization</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Create Backup</h6></div>
+      <div class="card-body px-4">
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
+          <div class="mb-3"><label class="form-label fw-medium">Backup Type</label>
+            <select name="backup_type" class="form-select">{% for v,l in backup_types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+          </div>
+          <div class="mb-3"><label class="form-label fw-medium">Notes</label><textarea name="notes" class="form-control" rows="3" placeholder="Optional notes about this backup..."></textarea></div>
+          <button class="btn btn-warning w-100 text-white"><i class="fas fa-database me-2"></i>Create Backup Now</button>
+        </form>
+        <div class="alert alert-info mt-3 small"><i class="fas fa-info-circle me-1"></i>Backup jobs run in the background. You will be notified on completion.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Backup History</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th class="px-4">Type</th><th>Status</th><th>Size</th><th>Initiated By</th><th>Date</th></tr></thead>
+            <tbody>
+              {% for b in backups %}
+              <tr>
+                <td class="px-4 fw-medium">{{ b.get_backup_type_display }}</td>
+                <td><span class="badge bg-{% if b.status == 'completed' %}success{% elif b.status == 'failed' %}danger{% else %}warning{% endif %}">{{ b.status }}</span></td>
+                <td>{{ b.file_size_display }}</td>
+                <td class="small">{{ b.initiated_by }}</td>
+                <td class="small text-muted">{{ b.created_at|date:"d M Y H:i" }}</td>
+              </tr>
+              {% empty %}<tr><td colspan="5" class="text-center text-muted py-5">No backups yet.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

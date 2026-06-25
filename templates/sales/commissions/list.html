@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Sales Commissions{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Sales Commissions</h1></div>
+<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
+<thead class="table-light"><tr><th>Sales Rep</th><th>Invoice</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+<tbody>
+{% for com in commissions %}<tr><td>{{ com.sales_rep.full_name }}</td><td><a href="{% url 'sales:invoice_detail' com.invoice.pk %}">{{ com.invoice.number }}</a></td><td>{{ com.amount }}</td><td><span class="badge bg-{% if com.status == 'paid' %}success{% else %}warning{% endif %}">{{ com.get_status_display }}</span></td><td>{{ com.created_at|date }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-center py-4">No commissions found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

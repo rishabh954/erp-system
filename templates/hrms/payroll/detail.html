@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ period.name }} — Payroll{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:payroll' %}">Payroll Runs</a></li>
+<li class="breadcrumb-item active">{{ period.name }}</li>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-3 mb-1">
+      <h1 class="h3 text-primary mb-0">{{ period.name }}</h1>
+      
+      {% if period.status == 'draft' %}
+        <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3">Draft
+      {% elif period.status == 'processing' %}</span>
+        <span class="badge bg-warning-subtle text-warning border rounded-pill px-3"><i class="fas fa-circle-notch fa-spin me-1"></i>Processing</span>
+      {% elif period.status == 'completed' %}
+        <span class="badge bg-info-subtle text-info border rounded-pill px-3">Completed
+      {% elif period.status == 'approved' %}</span>
+        <span class="badge bg-primary-subtle text-primary border rounded-pill px-3">Approved
+      {% elif period.status == 'paid' %}</span>
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3"><i class="fas fa-check me-1"></i>Paid</span>
+      {% endif %}
+    </div>
+    
+    <p class="text-muted mb-0">
+      <i class="fas fa-calendar-alt me-1"></i> {{ period.period_start|date:"d M Y" }} to {{ period.period_end|date:"d M Y" }}
+      {% if period.payment_date %}
+      &nbsp;·&nbsp; <i class="fas fa-money-check-dollar me-1"></i> Payment Date: {{ period.payment_date|date:"d M Y" }}
+      {% endif %}
+    </p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:payroll' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to List
+    </a>
+    
+    {% if period.status == 'draft' %}
+    <form method="post" action="{% url 'hrms:payroll_process' period.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm" onclick="return confirm('Start processing payslips for this period? This may take a few moments.')">
+        <i class="fas fa-cogs me-2"></i>Process Payroll
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ KPI CARDS ════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-users"></i></div>
+      <div class="stat-card-value">{{ payslips|length }}</div>
+      <div class="stat-card-label">Total Employees</div>
+      <div class="stat-card-trend text-white-50">Included in run</div>
+    </div>
+  </div>
+  
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-info h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-plus-circle"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Gross Payroll</div>
+      <div class="stat-card-trend text-white-50">Before deductions</div>
+    </div>
+  </div>
+  
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-danger h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-minus-circle"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_deductions|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Total Deductions</div>
+      <div class="stat-card-trend text-white-50">Taxes, benefits, etc.</div>
+    </div>
+  </div>
+  
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-money-bill-wave"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Net Payroll</div>
+      <div class="stat-card-trend text-white-50">Total cash disbursed</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ PAYSLIPS TABLE ═══════════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+    <h5 class="fw-bold text-dark mb-0"><i class="fas fa-file-invoice me-2 text-primary"></i>Employee Payslips</h5>
+  </div>
+  
+  <div class="card-body p-0 mt-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Payslip #</th>
+            <th>Employee</th>
+            <th class="text-center">Days (W/P/A)</th>
+            <th class="text-end">Basic Salary</th>
+            <th class="text-end">Gross</th>
+            <th class="text-end">Deductions</th>
+            <th class="text-end text-success fw-bold">Net Salary</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slip in payslips %}
+          <tr>
+            <td class="ps-4 fw-bold text-primary font-monospace" style="font-size: 11.5px;">{{ slip.number }}</td>
+            
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-circle bg-primary-subtle text-primary fw-bold" style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                  {{ slip.employee.first_name|first }}{{ slip.employee.last_name|first }}
+                </div>
+                <div>
+                  <a href="{% url 'hrms:employee_detail' slip.employee.pk %}" class="fw-semibold text-dark text-decoration-none">
+                    {{ slip.employee.full_name }}
+                  </a>
+                  <div class="text-muted" style="font-size: 10px; font-family: monospace;">{{ slip.employee.employee_id }}</div>
+                </div>
+              </div>
+            </td>
+            
+            <td class="text-center">
+              <span class="badge bg-light text-dark border">{{ slip.working_days|floatformat:1 }}</span> /
+              <span class="badge bg-success-subtle text-success border">{{ slip.present_days|floatformat:1 }}</span> /
+              <span class="badge bg-danger-subtle text-danger border">{{ slip.absent_days|floatformat:1 }}</span>
+            </td>
+            
+            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ slip.basic_salary|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-medium text-dark">{{ CURRENCY_SYMBOL }}{{ slip.gross_salary|floatformat:2|intcomma }}</td>
+            <td class="text-end text-danger">{{ CURRENCY_SYMBOL }}{{ slip.total_deductions|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-bold text-success fs-6">{{ CURRENCY_SYMBOL }}{{ slip.net_salary|floatformat:2|intcomma }}</td>
+            
+            <td>
+              {% if slip.status == 'draft' %}
+                <span class="badge bg-secondary-subtle text-secondary border">Draft
+              {% elif slip.status == 'generated' %}</span>
+                <span class="badge bg-info-subtle text-info border">Generated
+              {% elif slip.status == 'approved' %}</span>
+                <span class="badge bg-primary-subtle text-primary border">Approved
+              {% elif slip.status == 'paid' %}</span>
+                <span class="badge bg-success-subtle text-success border">Paid
+              {% endif %}</span>
+            </td>
+            
+            <td class="text-end pe-4">
+              <button class="btn btn-sm btn-light border text-primary" title="View/Download Payslip" {% if slip.status == 'draft' %}disabled{% endif %}>
+                <i class="fas fa-download"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center py-5 text-muted">
+              <i class="fas fa-file-invoice fa-3x mb-3 opacity-25 d-block"></i>
+              <p>No payslips generated for this period yet.</p>
+              {% if period.status == 'draft' %}
+              <p class="small">Click "Process Payroll" to calculate employee attendance and generate slips.</p>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        
+        <!-- Totals Footer -->
+        {% if payslips %}
+        <tfoot class="table-light border-top border-2">
+          <tr>
+            <td colspan="3" class="ps-4 py-3 fw-bold text-dark text-uppercase text-end" style="font-size: 12px;">Period Totals</td>
+            <td class="text-end py-3 fw-bold text-muted">—</td>
+            <td class="text-end py-3 fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</td>
+            <td class="text-end py-3 fw-bold text-danger">{{ CURRENCY_SYMBOL }}{{ period.total_deductions|floatformat:2|intcomma }}</td>
+            <td class="text-end py-3 fw-bold text-success fs-5 border-bottom border-success border-3" style="border-bottom-style: double !important;">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+        
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.stat-card-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+.stat-card-danger .stat-card-value,
+.stat-card-danger .stat-card-label { color: #fff !important; }
+</style>
+{% endblock %}

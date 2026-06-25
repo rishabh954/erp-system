@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Branch{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'company:settings' %}">Settings</a></li>
+<li class="breadcrumb-item"><a href="{% url 'company:branches' %}">Branches</a></li>
+<li class="breadcrumb-item active">Add Branch
+{% endblock %}
+
+{% block content %}</li>
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-8">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="h3 text-primary mb-1"><i class="fas fa-code-branch me-2 opacity-75"></i>Add New Branch</h1>
+        <p class="text-muted mb-0">Register a new physical office or branch location</p>
+      </div>
+      <a href="{% url 'company:branches' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Cancel
+      </a>
+    </div>
+    
+    <div class="card glass-card border-0 shadow-sm">
+      <form method="post" action="{% url 'company:branch_create' %}">
+        {% csrf_token %}
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold text-dark mb-0">Branch Information</h5>
+        </div>
+        
+        <div class="card-body p-4">
+          <div class="row g-4">
+            
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Branch Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required placeholder="e.g. London Office">
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Branch Code <span class="text-danger">*</span></label>
+              <input type="text" name="code" class="form-control font-monospace" required placeholder="e.g. LON-01">
+            </div>
+            
+            <div class="col-12">
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" name="is_headquarters" id="isHQ">
+                <label class="form-check-label fw-semibold" for="isHQ">Set as Headquarters</label>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Contact Email</label>
+              <input type="email" name="email" class="form-control" placeholder="branch@company.com">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Contact Phone</label>
+              <input type="text" name="phone" class="form-control">
+            </div>
+            
+            <div class="col-12 mt-4 pt-4 border-top">
+              <h6 class="fw-bold text-dark mb-3">Location & Management</h6>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-semibold">Address Line 1</label>
+              <input type="text" name="address_line1" class="form-control" placeholder="Street address, P.O. box, etc.">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">City</label>
+              <input type="text" name="city" class="form-control">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Country</label>
+              <input type="text" name="country" class="form-control">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-semibold">Branch Manager</label>
+              <select name="manager" class="form-select">
+                <option value="">— Unassigned —</option>
+                {% for mgr in managers %}
+                <option value="{{ mgr.pk }}">{{ mgr.get_full_name }} ({{ mgr.email }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+          </div>
+          
+          <div class="mt-5 text-end border-top pt-4">
+            <a href="{% url 'company:branches' %}" class="btn btn-outline-secondary px-4 me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary px-5 shadow-sm">
+              <i class="fas fa-save me-2"></i>Create Branch
+            </button>
+          </div>
+          
+        </div>
+      </form>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

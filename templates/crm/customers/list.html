@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Customers{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Customers</h1>
+    <p class="text-muted mb-0">Total active customers: <span class="fw-bold text-dark">{{ total_count|default:customers.count|default:0 }}</span></p>
+  </div>
+  <div>
+    <a href="{% url 'crm:customer_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>Add New Customer
+    </a>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-12 col-md-9">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="q" class="form-control" style="padding-left:36px"
+            placeholder="Search by name, email, or customer code..." value="{{ request.GET.q|default:'' }}">
+        </div>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-search me-1"></i>Search
+        </button>
+        {% if request.GET.q %}
+        <a href="{% url 'crm:customers' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Customers Table -->
+<div class="card shadow-sm border-0">
+  <div class="card-body p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
+        <thead class="table-light">
+          <tr>
+            <th>Customer Code</th>
+            <th>Customer Name</th>
+            <th>Type</th>
+            <th>Tax ID</th>
+            <th>Credit Limit</th>
+            <th>Outstanding Balance</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+          <tr>
+            <td>
+              <span class="fw-bold text-primary">{{ customer.customer_code|default:"-" }}</span>
+            </td>
+            <td>
+              <div class="fw-bold">{{ customer.name }}</div>
+              {% if customer.email %}
+              <div class="text-muted small"><i class="fas fa-envelope me-1"></i>{{ customer.email }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if customer.customer_type == 'business' %}
+                <span class="badge bg-light text-primary border border-primary-subtle"><i class="fas fa-building me-1"></i>Business</span>
+              {% else %}
+                <span class="badge bg-light text-success border border-success-subtle"><i class="fas fa-user me-1"></i>Individual</span>
+              {% endif %}
+            </td>
+            <td>{{ customer.tax_id|default:"-" }}</td>
+            <td class="fw-semibold">
+              {{ CURRENCY_SYMBOL }}{{ customer.credit_limit|floatformat:2|intcomma }}
+            </td>
+            <td>
+              {% if customer.outstanding_balance > 0 %}
+                <span class="text-danger fw-bold">{{ CURRENCY_SYMBOL }}{{ customer.outstanding_balance|floatformat:2|intcomma }}</span>
+              {% else %}
+                <span class="text-success fw-semibold">{{ CURRENCY_SYMBOL }}0.00
+              {% endif %}</span>
+            </td>
+            <td>
+              {% if customer.is_active %}
+                <span class="badge bg-success">Active
+              {% else %}</span>
+                <span class="badge bg-secondary">Inactive
+              {% endif %}</span>
+            </td>
+            <td class="text-center">
+              <a href="{% url 'crm:customer_detail' customer.pk %}" class="btn btn-outline-primary btn-xs" title="View Details">
+                <i class="fas fa-eye"></i> View
+              </a>
+              <a href="{% url 'crm:customer_update' customer.pk %}" class="btn btn-outline-warning btn-xs" title="Edit Customer">
+                <i class="fas fa-edit"></i>
+              </a>
+              <form method="post" action="{% url 'crm:customer_delete' customer.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-xs" data-confirm-delete="Delete this customer?">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5">
+              <i class="fas fa-users fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No customers found.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

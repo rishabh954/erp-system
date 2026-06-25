@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Receive Goods | Purchase{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Receive Goods</h1>
+    <p class="text-muted mb-0">For Purchase Order {{ po.number }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'purchase:order_detail' po.pk %}" class="btn btn-outline-secondary">
+      <i class="fas fa-times me-1"></i>Cancel
+    </a>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-white py-3">
+    <h6 class="mb-0 fw-bold"><i class="fas fa-box-open me-2 text-primary"></i>Items to Receive</h6>
+  </div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="table-responsive mb-4">
+        <table class="table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th>
+              <th class="text-center">Ordered</th>
+              <th class="text-center">Previously Received</th>
+              <th style="width: 150px;">Receive Now</th>
+              <th style="width: 200px;">Batch / Serial</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in po.lines.all %}
+            <tr>
+              <td>
+                <div class="fw-bold">{{ line.product.name }}</div>
+                <div class="small text-muted">{{ line.product.sku }}</div>
+              </td>
+              <td class="text-center">{{ line.quantity|floatformat:2 }}</td>
+              <td class="text-center">{{ line.qty_received|floatformat:2 }}</td>
+              <td>
+                <input type="number" step="0.0001" min="0" 
+                       max="{{ line.quantity|add:'-'|add:line.qty_received }}" 
+                       name="qty_{{ line.pk }}" class="form-control form-control-sm"
+                       value="{{ line.quantity|add:'-'|add:line.qty_received }}">
+              </td>
+              <td>
+                <input type="text" name="batch_{{ line.pk }}" class="form-control form-control-sm" placeholder="Batch or Serial">
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">No lines found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="mb-4">
+        <label class="form-label fw-bold">Notes</label>
+        <textarea name="notes" class="form-control" rows="3" placeholder="Condition of goods, delivery remarks, etc."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check me-1"></i>Confirm Receipt
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

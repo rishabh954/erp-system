@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice {{ invoice.number }}</title>
+  <style>
+    @page {
+      size: a4 portrait;
+      margin: 1.5cm;
+    }
+    body { 
+      font-family: Helvetica, Arial, sans-serif; 
+      color: #222222; 
+      font-size: 11px; 
+      margin: 0; 
+      padding: 0;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    td { vertical-align: top; }
+    
+    /* Header */
+    .header-table { margin-bottom: 20px; }
+    .company-logo { font-size: 24px; font-weight: bold; color: #0f766e; }
+    .invoice-title { font-size: 24px; font-weight: bold; color: #111111; letter-spacing: 1px; }
+    .invoice-number { font-size: 12px; color: #555555; }
+    
+    /* Addresses */
+    .address-table { margin-bottom: 30px; }
+    .address-table td { line-height: 1.4; }
+    .company-name { font-size: 13px; font-weight: bold; margin-bottom: 4px; display: block; }
+    .section-title { font-weight: bold; text-align: right; display: block; margin-bottom: 2px; }
+    .customer-name { font-weight: bold; text-align: right; display: block; }
+    .address-text { text-align: right; color: #444444; }
+    
+    /* Dates */
+    .dates-table { margin-bottom: 20px; text-align: right; line-height: 1.4; }
+    
+    /* Items Table */
+    .items-table { margin-bottom: 30px; }
+    .items-table th { 
+      background-color: #374151; 
+      color: #ffffff; 
+      padding: 8px; 
+      text-align: left; 
+      font-weight: normal;
+    }
+    .items-table td { 
+      padding: 8px; 
+      border-bottom: 1px solid #eeeeee; 
+    }
+    .items-table .text-right { text-align: right; }
+    .items-table th.text-right { text-align: right; }
+    .items-table .text-center { text-align: center; }
+    .items-table th.text-center { text-align: center; }
+    
+    /* Totals */
+    .totals-table { width: 45%; margin-left: 55%; border-collapse: collapse; }
+    .totals-table td { padding: 6px 8px; }
+    .totals-table tr:nth-child(odd) td { background-color: #ffffff; }
+    .totals-table tr:nth-child(even) td { background-color: #f3f4f6; }
+    .totals-table .amount-due td { background-color: #e5e7eb; font-weight: bold; }
+    
+    /* Terms */
+    .terms-section { margin-top: 40px; line-height: 1.5; }
+    .terms-title { font-weight: bold; font-size: 12px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <table class="header-table">
+    <tr>
+      <td width="50%">
+        <span class="company-logo">{{ company.name|upper }}</span>
+      </td>
+      <td width="50%" style="text-align: right;">
+        <span class="invoice-title">INVOICE</span><br>
+        <span class="invoice-number"># {{ invoice.number }}</span>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ADDRESSES & DATES -->
+  <table class="address-table">
+    <tr>
+      <td width="50%">
+        <span class="company-name">{{ company.name }}</span>
+        <span style="color: #444444;">
+          {{ company.full_address|default:""|linebreaksbr }}<br>
+          {{ company.phone|default:"" }}<br>
+          {{ company.email|default:"" }}<br>
+          {{ company.website|default:"" }}
+        </span>
+      </td>
+      <td width="50%" style="text-align: right;">
+        <span class="section-title">Bill To:</span>
+        <span class="customer-name">{{ invoice.customer.name }}</span>
+        <span class="address-text">
+          {{ invoice.customer.full_address|default:"" }}
+        </span>
+        
+        <br><br>
+        
+        <span class="section-title">Ship to:</span>
+        <span class="address-text">
+          {% if invoice.sales_order and invoice.sales_order.shipping_address %}
+            {{ invoice.sales_order.shipping_address|linebreaksbr }}
+          {% elif invoice.customer.shipping_address %}
+            {{ invoice.customer.shipping_address|linebreaksbr }}
+          {% else %}
+            {{ invoice.customer.full_address|default:"" }}
+          {% endif %}
+        </span>
+        
+        <br><br>
+        
+        <table class="dates-table" style="width: 100%;">
+          <tr>
+            <td style="text-align: right;">
+              Invoice Date: {{ invoice.invoice_date|date:"d/m/Y" }}<br>
+              Due Date: {{ invoice.due_date|date:"d/m/Y" }}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ITEMS TABLE -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th width="5%" class="text-center">#</th>
+        <th width="45%">Item</th>
+        <th width="10%" class="text-center">Qty</th>
+        <th width="15%" class="text-right">Rate</th>
+        <th width="10%" class="text-center">Tax</th>
+        <th width="15%" class="text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td class="text-center">{{ forloop.counter }}</td>
+        <td>
+          <strong>{{ line.product.name|default:"Custom Item" }}</strong><br>
+          <span style="color: #666666; font-size: 10px;">{{ line.description|linebreaksbr }}</span>
+        </td>
+        <td class="text-center">{{ line.quantity|floatformat:0 }}</td>
+        <td class="text-right">{{ line.unit_price|floatformat:2 }}</td>
+        <td class="text-center">{% if line.tax %}{{ line.tax.rate }}%{% else %}0%{% endif %}</td>
+        <td class="text-right">{{ line.total|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  <!-- TOTALS -->
+  <table class="totals-table">
+    <tr>
+      <td style="font-weight: bold; text-align: left;">Sub Total</td>
+      <td style="text-align: right;">{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.subtotal|floatformat:2 }}</td>
+    </tr>
+    {% if invoice.discount_amount > 0 %}
+    <tr>
+      <td style="font-weight: bold; text-align: left;">Discount</td>
+      <td style="text-align: right;">-{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.discount_amount|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+    {% if invoice.tax_amount > 0 %}
+    <tr>
+      <td style="font-weight: bold; text-align: left;">Tax</td>
+      <td style="text-align: right;">{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.tax_amount|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td style="font-weight: bold; text-align: left;">Total</td>
+      <td style="text-align: right;">{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.total|floatformat:2 }}</td>
+    </tr>
+    {% if invoice.amount_paid > 0 %}
+    <tr>
+      <td style="font-weight: bold; text-align: left;">Total Paid</td>
+      <td style="text-align: right;">-{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.amount_paid|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+    <tr class="amount-due">
+      <td style="text-align: left;">Amount Due</td>
+      <td style="text-align: right;">{{ invoice.currency.symbol|default:invoice.currency.code }} {{ invoice.balance_due|floatformat:2 }}</td>
+    </tr>
+  </table>
+
+  <!-- TERMS -->
+  <div class="terms-section">
+    <div class="terms-title">Terms &amp; Conditions:</div>
+    {% if invoice.terms_conditions %}
+      {{ invoice.terms_conditions|linebreaksbr }}
+    {% else %}
+      1. Quotation valid for 5 days only. | 2. 30% Advance Payment Required For Any Work<br>
+      3. If the quotation is accepted, a Message or Email must be sent.<br>
+      4. 100% Advance Payment In Any Printing Job.<br>
+      5. Urgent Tasks Will Not Be Accepted in Any Situation.
+    {% endif %}
+  </div>
+
+</body>
+</html>

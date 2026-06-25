@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Bills of Material{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Bills of Material</h1>
+    <a href="{% url 'manufacturing:bom_create' %}" class="btn btn-primary">New BOM</a>
+</div>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Routing</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bom in boms %}
+                <tr>
+                    <td>{{ bom.number }}</td>
+                    <td>{{ bom.product.name }}</td>
+                    <td>{{ bom.quantity }}</td>
+                    <td>{{ bom.routing.name|default:"-" }}</td>
+                    <td><a href="{% url 'manufacturing:bom_detail' bom.pk %}" class="btn btn-sm btn-info">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">No BOMs found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

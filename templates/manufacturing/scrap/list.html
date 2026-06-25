@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Scrap Orders{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Scrap Orders</h1></div>
+<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
+<thead class="table-light"><tr><th>Number</th><th>Product</th><th>Quantity</th><th>Reason</th><th>Status</th></tr></thead>
+<tbody>
+{% for scrap in scrap_orders %}<tr><td><a href="{% url 'manufacturing:scrap_order_detail' scrap.pk %}">{{ scrap.number }}</a></td><td>{{ scrap.product.name }}</td><td>{{ scrap.quantity }}</td><td>{{ scrap.reason }}</td><td>{{ scrap.get_status_display }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-center py-4">No scrap orders found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

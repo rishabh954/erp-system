@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Builder{% endblock %}
+{% block nav_analytics %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Custom Report Builder</h1>
+        <a href="{% url 'analytics:dashboard' %}" class="btn btn-secondary shadow-sm text-dark bg-white border">
+            <i class="fas fa-arrow-left fa-sm"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="card shadow mb-4 border-0">
+                <div class="card-header py-3 bg-white border-bottom-0">
+                    <h6 class="m-0 font-weight-bold text-primary">Configure Your Report</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'analytics:builder' %}">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label text-dark fw-bold">Report Name</label>
+                            <input type="text" name="name" class="form-control bg-light" required placeholder="e.g. Sales by Status">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-dark fw-bold">Description</label>
+                            <textarea name="description" class="form-control bg-light" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-dark fw-bold">Data Module</label>
+                                <select name="module_source" id="module_source" class="form-control bg-white text-dark border" required>
+                                    <option value="">Select Module...</option>
+                                    {% for value, label in modules %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-dark fw-bold">Chart Type</label>
+                                <select name="chart_type" class="form-control bg-white text-dark border" required>
+                                    {% for value, label in charts %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-dark fw-bold">Group By Field</label>
+                                <select name="group_by_field" id="group_by_field" class="form-control bg-white text-dark border" required disabled>
+                                    <option value="">Select Module First...</option>
+                                </select>
+                                <small class="text-muted">Field to group data</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-dark fw-bold">Aggregate Field</label>
+                                <select name="aggregate_field" id="aggregate_field" class="form-control bg-white text-dark border" required disabled>
+                                    <option value="">Select Module First...</option>
+                                </select>
+                                <small class="text-muted">Field to calculate</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-dark fw-bold">Calculation</label>
+                                <select name="aggregate_function" class="form-control bg-white text-dark border" required>
+                                    {% for value, label in aggregates %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary px-4 shadow-sm">Save & Generate Report</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-info border-0 shadow-sm">
+                <h6 class="alert-heading fw-bold"><i class="fas fa-lightbulb me-2"></i>Tips for fields:</h6>
+                <ul class="mb-0 small">
+                    <li><strong>Sales Orders:</strong> Group by <code>status</code> or <code>customer</code>. Aggregate on <code>total</code> (Sum) or <code>id</code> (Count).</li>
+                    <li><strong>Purchase Orders:</strong> Group by <code>status</code>. Aggregate on <code>total</code> (Sum).</li>
+                    <li><strong>Inventory:</strong> Group by <code>transaction_type</code>. Aggregate on <code>quantity</code> (Sum).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const moduleSelect = document.getElementById('module_source');
+    const groupSelect = document.getElementById('group_by_field');
+    const aggSelect = document.getElementById('aggregate_field');
+
+    moduleSelect.addEventListener('change', function() {
+        const moduleName = this.value;
+        if (!moduleName) {
+            groupSelect.innerHTML = '<option value="">Select Module First...</option>';
+            aggSelect.innerHTML = '<option value="">Select Module First...</option>';
+            groupSelect.disabled = true;
+            aggSelect.disabled = true;
+            return;
+        }
+
+        groupSelect.innerHTML = '<option value="">Loading...</option>';
+        aggSelect.innerHTML = '<option value="">Loading...</option>';
+
+        fetch("{% url 'analytics:api_get_fields' %}?module=" + moduleName)
+            .then(response => response.json())
+            .then(data => {
+                const fields = data.fields;
+                groupSelect.innerHTML = '<option value="">Select Field...</option>';
+                aggSelect.innerHTML = '<option value="">Select Field...</option>';
+                
+                fields.forEach(field => {
+                    groupSelect.innerHTML += `<option value="${field}">${field}</option>`;
+                    aggSelect.innerHTML += `<option value="${field}">${field}</option>`;
+                });
+
+                groupSelect.disabled = false;
+                aggSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error fetching fields:', error);
+                groupSelect.innerHTML = '<option value="">Error loading fields</option>';
+                aggSelect.innerHTML = '<option value="">Error loading fields</option>';
+            });
+    });
+});
+</script>
+{% endblock %}

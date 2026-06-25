@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Currency{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'company:settings' %}">Settings</a></li>
+<li class="breadcrumb-item"><a href="{% url 'company:currencies' %}">Currencies</a></li>
+<li class="breadcrumb-item active">Edit
+{% endblock %}
+
+{% block content %}</li>
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-6">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="h3 text-primary mb-1"><i class="fas fa-money-bill-wave me-2 opacity-75"></i>Edit Currency</h1>
+        <p class="text-muted mb-0">Update the configuration for {{ object.name }}</p>
+      </div>
+      <a href="{% url 'company:currencies' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Cancel
+      </a>
+          <a href="{% url 'company:uoms' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-balance-scale me-3 opacity-50"></i>Units of Measure
+          </a>
+          <a href="{% url 'company:taxes' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-percentage me-3 opacity-50"></i>Taxes
+          </a>
+    </div>
+    
+    <div class="card glass-card border-0 shadow-sm">
+      <form method="post">
+        {% csrf_token %}
+        <div class="card-body p-4">
+          <div class="row g-4">
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Currency Code <span class="text-danger">*</span></label>
+              <input type="text" name="code" class="form-control font-monospace" required value="{{ object.code }}" maxlength="3">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Symbol</label>
+              <input type="text" name="symbol" class="form-control" value="{{ object.symbol }}">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-semibold">Currency Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required value="{{ object.name }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Decimal Places</label>
+              <input type="number" name="decimal_places" class="form-control" value="{{ object.decimal_places }}" min="0" max="4">
+            </div>
+            
+            <div class="col-12 mt-4">
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActive" {% if object.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">Active in System</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_base" id="isBaseCurrency" {% if object.is_base %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isBaseCurrency">Set as Base Company Currency</label>
+              </div>
+            </div>
+            
+          </div>
+          
+          <div class="mt-5 text-end border-top pt-4">
+            <a href="{% url 'company:currencies' %}" class="btn btn-outline-secondary px-4 me-2">Cancel</a>
+          <a href="{% url 'company:uoms' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-balance-scale me-3 opacity-50"></i>Units of Measure
+          </a>
+          <a href="{% url 'company:taxes' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-percentage me-3 opacity-50"></i>Taxes
+          </a>
+            <button type="submit" class="btn btn-primary px-5 shadow-sm">
+              <i class="fas fa-save me-2"></i>Update Currency
+            </button>
+          </div>
+          
+        </div>
+      </form>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}
+
+

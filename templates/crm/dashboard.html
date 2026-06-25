@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}CRM Dashboard{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">CRM Dashboard</h1>
+</div>
+
+<div class="row">
+    <!-- Funnel Analytics Card -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Sales Funnel Analytics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-sm-4 mb-3">
+                        <div class="display-4 fw-bold text-secondary">{{ funnel.total }}</div>
+                        <div class="text-muted text-uppercase small font-weight-bold">Total Leads</div>
+                    </div>
+                    <div class="col-sm-4 mb-3">
+                        <div class="display-4 fw-bold text-primary">{{ funnel.opportunities }}</div>
+                        <div class="text-muted text-uppercase small font-weight-bold">Opportunities</div>
+                    </div>
+                    <div class="col-sm-4 mb-3">
+                        <div class="display-4 fw-bold text-success">{{ funnel.won }}</div>
+                        <div class="text-muted text-uppercase small font-weight-bold">Deals Won</div>
+                    </div>
+                </div>
+                
+                <div class="text-center py-3 bg-light rounded">
+                    <h5 class="mb-0">Overall Conversion Rate: <span class="text-success fw-bold">{{ funnel.conversion_rate }}%</span></h5>
+                </div>
+                
+                <!-- Chart.js Canvas -->
+                <div class="chart-area mt-4" style="height: 300px;">
+                    <canvas id="funnelChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Customers CLV -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Top Customers (CLV)</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for cust in top_customers %}
+                    <a href="{% url 'crm:customer_detail' cust.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <h6 class="mb-0 fw-bold">{{ cust.name }}</h6>
+                            <small class="text-muted">{{ cust.customer_code }}</small>
+                        </div>
+                        <span class="badge bg-success rounded-pill px-3 py-2">${{ cust.total_invoiced|floatformat:2 }}</span>
+                    </a>
+                    {% empty %}
+                    <div class="p-4 text-center text-muted">No invoiced customers yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Interactions -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Interactions</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for act in recent_activities %}
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1"><a href="{% url 'crm:lead_detail' act.lead.pk %}">{{ act.lead.name }}</a></h6>
+                            <small class="text-muted">{{ act.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="mb-1 small">{{ act.subject }}</p>
+                        <small class="text-muted"><i class="fas fa-user-circle"></i> {{ act.assigned_to.get_full_name|default:"Auto" }}</small>
+                    </div>
+                    {% empty %}
+                    <div class="p-4 text-center text-muted">No interactions recorded.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Funnel Chart using Chart.js Bar Chart
+    var ctx = document.getElementById("funnelChart");
+    if (ctx) {
+        var myBarChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ["Leads", "Opportunities", "Won Deals"],
+                datasets: [{
+                    label: "Count",
+                    backgroundColor: ["#6c757d", "#4e73df", "#1cc88a"],
+                    hoverBackgroundColor: ["#5a6268", "#2e59d9", "#17a673"],
+                    borderColor: ["#6c757d", "#4e73df", "#1cc88a"],
+                    data: [{{ funnel.total }}, {{ funnel.opportunities }}, {{ funnel.won }}],
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

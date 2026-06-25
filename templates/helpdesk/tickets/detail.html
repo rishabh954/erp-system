@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Ticket {{ ticket.number }} — Help Desk{% endblock %}
+{% block nav_helpdesk %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'helpdesk:tickets' %}">Help Desk</a></li>
+<li class="breadcrumb-item active">{{ ticket.number }}</li>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-3 mb-1">
+      <h1 class="h3 text-primary mb-0 font-monospace">{{ ticket.number }}</h1>
+      
+      {% if ticket.status == 'open' %}
+        <span class="badge bg-primary-subtle text-primary border rounded-pill px-3">Open
+      {% elif ticket.status == 'in_progress' %}</span>
+        <span class="badge bg-warning-subtle text-warning border rounded-pill px-3">In Progress
+      {% elif ticket.status == 'waiting' %}</span>
+        <span class="badge bg-info-subtle text-info border rounded-pill px-3">Waiting on Customer
+      {% elif ticket.status == 'resolved' %}</span>
+        <span class="badge bg-success-subtle text-success border rounded-pill px-3">Resolved
+      {% elif ticket.status == 'closed' %}</span>
+        <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3">Closed
+      {% endif %}
+      
+      {% if ticket.priority == 'urgent' or ticket.priority == 'high' %}</span>
+        <span class="badge bg-danger rounded-pill px-3"><i class="fas fa-arrow-up me-1"></i>{{ ticket.get_priority_display }}</span>
+      {% endif %}
+    </div>
+    <p class="text-muted mb-0 fw-bold fs-5 text-dark">{{ ticket.title }}</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'helpdesk:tickets' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+
+
+<div class="row g-4">
+  <!-- ── LEFT COLUMN: THREAD ────────────────────────────────────────────── -->
+  <div class="col-12 col-xl-8">
+    
+    <!-- Original Request -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-start">
+        <div class="d-flex align-items-center gap-3">
+          <div class="avatar-circle bg-secondary-subtle text-secondary fw-bold" style="width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+            {{ ticket.requester.first_name|first|default:"?" }}{{ ticket.requester.last_name|first|default:"" }}
+          </div>
+          <div>
+            <div class="fw-bold text-dark">{{ ticket.requester.get_full_name|default:ticket.requester.email }}</div>
+            <div class="text-muted" style="font-size: 11px;">reported this {{ ticket.created_at|timesince }} ago ({{ ticket.created_at|date:"d M Y, H:i" }})</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body px-4 pb-4 pt-2">
+        <div class="ticket-content p-4 rounded-3" style="background: #f8fafc; font-size: 14px; white-space: pre-wrap;">{{ ticket.description }}</div>
+      </div>
+    </div>
+    
+    <!-- Replies Thread -->
+    {% if replies %}
+    <h6 class="fw-bold text-muted mb-3 text-uppercase" style="font-size: 11px; letter-spacing: 1px;"><i class="fas fa-comments me-2"></i>Conversation</h6>
+    <div class="replies-timeline mb-4">
+      {% for reply in replies %}
+      <div class="card border-0 shadow-sm mb-3 {% if reply.is_internal %}bg-warning-subtle border-warning border-start border-4{% else %}glass-card{% endif %}">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-circle {% if reply.author == ticket.requester %}bg-secondary-subtle text-secondary{% else %}bg-primary-subtle text-primary{% endif %} fw-bold" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                {{ reply.author.first_name|first|default:"?" }}{{ reply.author.last_name|first|default:"" }}
+              </div>
+              <div>
+                <span class="fw-bold text-dark">{{ reply.author.get_full_name|default:reply.author.email }}</span>
+                {% if reply.author != ticket.requester %}<span class="badge bg-light text-primary border ms-2" style="font-size: 9px;">Agent{% endif %}
+                {% if reply.is_internal %}</span><span class="badge bg-warning text-dark border border-warning ms-2" style="font-size: 9px;"><i class="fas fa-lock me-1"></i>Internal Note</span>{% endif %}
+              </div>
+            </div>
+            <div class="text-muted" style="font-size: 11px;">{{ reply.created_at|timesince }} ago</div>
+          </div>
+          <div style="font-size: 14px; white-space: pre-wrap; color: #334155;">{{ reply.content }}</div>
+          {% if reply.attachment %}
+          <div class="mt-3">
+            <a href="{{ reply.attachment.url }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+              <i class="fas fa-paperclip me-1"></i>View Attachment
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Add Reply Form -->
+    {% if ticket.status != 'closed' %}
+    <div class="card glass-card border-0 shadow-sm border-top border-primary border-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Add a Reply</h6>
+        <form method="post" action="{% url 'helpdesk:ticket_reply' ticket.pk %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <textarea name="content" class="form-control" rows="4" required placeholder="Type your message here..."></textarea>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-3 align-items-center">
+              <div>
+                <input type="file" name="attachment" class="form-control form-control-sm" style="width: 200px;">
+              </div>
+              {% if request.user.role in 'company_admin,super_admin,hr_manager' or request.user == ticket.assigned_to %}
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" name="is_internal" id="internalNote">
+                <label class="form-check-label text-warning fw-bold" for="internalNote" style="font-size: 12px;"><i class="fas fa-lock me-1"></i>Internal Note</label>
+              </div>
+              {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="fas fa-paper-plane me-2"></i>Send Reply
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    
+  </div>
+  
+  <!-- ── RIGHT COLUMN: SIDEBAR ──────────────────────────────────────────── -->
+  <div class="col-12 col-xl-4">
+    
+    <!-- Properties Card -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h6 class="fw-bold text-dark mb-0"><i class="fas fa-sliders-h me-2 text-primary"></i>Ticket Properties</h6>
+      </div>
+      <div class="card-body p-4">
+        <dl class="ticket-props-dl mb-0">
+          <dt>Status</dt>
+          <dd>
+            {% if request.user.role in 'company_admin,super_admin,hr_manager' or request.user == ticket.assigned_to %}
+            <!-- Agent can change status (mockup, would need an update endpoint/form) -->
+            <select class="form-select form-select-sm" disabled>
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if ticket.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+              {{ ticket.get_status_display }}
+            {% endif %}
+          </dd>
+          
+          <dt>Priority</dt>
+          <dd>{{ ticket.get_priority_display }}</dd>
+          
+          <dt>Category</dt>
+          <dd>{{ ticket.category.name|default:"—" }}</dd>
+          
+          <dt>Assigned To</dt>
+          <dd>
+            {% if request.user.role in 'company_admin,super_admin,hr_manager' %}
+            <select class="form-select form-select-sm" disabled>
+              <option value="">Unassigned</option>
+              {% for ag in agents %}
+              <option value="{{ ag.pk }}" {% if ticket.assigned_to == ag %}selected{% endif %}>{{ ag.get_full_name }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+              {{ ticket.assigned_to.get_full_name|default:"Unassigned" }}
+            {% endif %}
+          </dd>
+          
+          <hr class="opacity-25 my-3">
+          
+          <dt>SLA Due</dt>
+          <dd class="{% if ticket.sla_breached and ticket.status in 'open,in_progress' %}text-danger fw-bold{% endif %}">
+            {{ ticket.sla_due_at|date:"d M Y, H:i"|default:"Not Set" }}
+            {% if ticket.sla_breached and ticket.status in 'open,in_progress' %} (Breached){% endif %}
+          </dd>
+          
+          <dt>Created</dt>
+          <dd>{{ ticket.created_at|date:"d M Y, H:i" }}</dd>
+          
+          <dt>Source</dt>
+          <dd>{{ ticket.get_source_display }}</dd>
+        </dl>
+      </div>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.ticket-props-dl dt {
+  font-size: 10px; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-top: 14px; margin-bottom: 4px;
+}
+.ticket-props-dl dt:first-child { margin-top: 0; }
+.ticket-props-dl dd {
+  font-size: 13px; color: #1e293b; margin-bottom: 0; font-weight: 600;
+}
+</style>
+{% endblock %}

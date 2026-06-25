@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Accounting Dashboard | Accounting{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a>
+</li>
+<li class="breadcrumb-item">
+  <a href="{% url 'accounting:index' %}">Accounting</a>
+</li>
+<li class="breadcrumb-item active">Accounting Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">
+    <h1>Accounting Dashboard</h1>
+    <p class="text-muted">Manage accounting dashboard</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if is_paginated or objects %}
+    <a href="#" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>Add New
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body text-center py-5">
+    <h4>Specialized view: {ptype}</h4>
+    <p class="text-muted">This view requires custom frontend logic (e.g., Kanban, Chart.js, etc.)</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Page specific JS here
+</script>
+{% endblock %}

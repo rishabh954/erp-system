@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Applicant: {{ application.first_name }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">{{ application.first_name }} {{ application.last_name }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>Job:</strong> <a href="{% url 'hrms:job_posting_detail' application.job_posting.pk %}">{{ application.job_posting.title }}</a></p>
+<p><strong>Stage:</strong> {{ application.get_stage_display }}</p>
+<p><strong>Email:</strong> {{ application.email }}</p>
+</div>
+<div class="card shadow-sm border-0"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="text-primary mb-0 fw-bold">Interviews</h5></div>
+<table class="table table-hover mb-0"><thead class="table-light"><tr><th>Interviewer</th><th>Scheduled For</th><th>Status</th></tr></thead>
+<tbody>
+{% for i in interviews %}<tr><td>{{ i.interviewer.full_name }}</td><td>{{ i.scheduled_at }}</td><td>{{ i.get_status_display }}</td></tr>
+{% empty %}<tr><td colspan="3" class="text-center py-4">No interviews scheduled.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

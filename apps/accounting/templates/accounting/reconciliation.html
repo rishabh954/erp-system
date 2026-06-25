@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block title %}Bank Reconciliation{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Bank Reconciliation</h1>
+    </div>
+
+    <!-- Bank Account Selector -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="get" class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Select Bank Account</label>
+                    <select name="bank_account" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Select Bank Account --</option>
+                        {% for bank in bank_accounts %}
+                        <option value="{{ bank.id }}" {% if selected_bank.id == bank.id %}selected{% endif %}>
+                            {{ bank.name }} ({{ bank.account_number }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mt-4">
+                    {% if selected_bank %}
+                    <span class="badge bg-primary fs-6">Balance: ${{ selected_bank.current_balance }}</span>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_bank %}
+    <div class="row">
+        <!-- LEFT: Bank Statement Lines -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4 border-left-primary">
+                <div class="card-header py-3 bg-white">
+                    <h6 class="m-0 font-weight-bold text-primary">1. Bank Statement Lines (Unreconciled)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="statementLinesList">
+                        {% for line in statement_lines %}
+                        <button type="button" class="list-group-item list-group-item-action statement-line" 
+                                data-id="{{ line.id }}" data-amount="{{ line.amount }}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 fw-bold">{{ line.description }}</h6>
+                                <span class="fw-bold {% if line.amount > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ line.amount }}
+                                </span>
+                            </div>
+                            <small class="text-muted">{{ line.date }} | Ref: {{ line.reference }}</small>
+                        </button>
+                        {% empty %}
+                        <div class="p-4 text-center text-muted">No unreconciled bank statement lines.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: System Journal Items -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4 border-left-success">
+                <div class="card-header py-3 bg-white">
+                    <h6 class="m-0 font-weight-bold text-success">2. System Ledger Entries (Unreconciled)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="journalItemsList">
+                        {% for item in journal_items %}
+                        <button type="button" class="list-group-item list-group-item-action journal-item" 
+                                data-id="{{ item.id }}" data-debit="{{ item.debit }}" data-credit="{{ item.credit }}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 fw-bold">{{ item.journal_entry.reference|default:item.description|default:item.journal_entry.number }}</h6>
+                                <span>
+                                    {% if item.debit > 0 %}<span class="text-success fw-bold">Dr: ${{ item.debit }}</span>{% endif %}
+                                    {% if item.credit > 0 %}<span class="text-danger fw-bold">Cr: ${{ item.credit }}</span>{% endif %}
+                                </span>
+                            </div>
+                            <small class="text-muted">{{ item.journal_entry.date }}</small>
+                        </button>
+                        {% empty %}
+                        <div class="p-4 text-center text-muted">No unreconciled ledger entries.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Action Bar -->
+    <div class="position-fixed bottom-0 start-0 w-100 bg-dark text-white p-3 shadow-lg" style="display: none; z-index: 1000;" id="matchActionBar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <span class="me-4"><i class="fas fa-university text-primary me-2"></i> Bank: <span id="selectedBankAmount" class="fw-bold">$0.00</span></span>
+                <span><i class="fas fa-book text-success me-2"></i> Ledger: <span id="selectedLedgerAmount" class="fw-bold">$0.00</span></span>
+            </div>
+            <div class="d-flex align-items-center">
+                <span id="matchDifference" class="me-4 fw-bold">Diff: $0.00</span>
+                <form method="post" id="reconcileForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reconcile">
+                    <input type="hidden" name="statement_line_id" id="formStatementLineId">
+                    <input type="hidden" name="journal_item_id" id="formJournalItemId">
+                    <button type="submit" class="btn btn-success px-4 fw-bold" id="btnMatch" disabled>
+                        <i class="fas fa-check-circle me-2"></i> Match
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let selectedLine = null;
+        let selectedItem = null;
+        
+        const lines = document.querySelectorAll('.statement-line');
+        const items = document.querySelectorAll('.journal-item');
+        const actionBar = document.getElementById('matchActionBar');
+        const bankAmtDisplay = document.getElementById('selectedBankAmount');
+        const ledgerAmtDisplay = document.getElementById('selectedLedgerAmount');
+        const diffDisplay = document.getElementById('matchDifference');
+        const btnMatch = document.getElementById('btnMatch');
+        
+        function updateActionBar() {
+            if (selectedLine || selectedItem) {
+                actionBar.style.display = 'block';
+            } else {
+                actionBar.style.display = 'none';
+            }
+            
+            let bankAmt = 0;
+            let ledgerAmt = 0;
+            
+            if (selectedLine) {
+                bankAmt = parseFloat(selectedLine.dataset.amount);
+            }
+            if (selectedItem) {
+                let dr = parseFloat(selectedItem.dataset.debit) || 0;
+                let cr = parseFloat(selectedItem.dataset.credit) || 0;
+                // For a Bank asset account: Debit means balance increases (like deposit), Credit means decreases (like withdrawal)
+                ledgerAmt = dr - cr; 
+            }
+            
+            bankAmtDisplay.textContent = '$' + bankAmt.toFixed(2);
+            ledgerAmtDisplay.textContent = '$' + ledgerAmt.toFixed(2);
+            
+            let diff = Math.abs(bankAmt - ledgerAmt);
+            diffDisplay.textContent = 'Diff: $' + diff.toFixed(2);
+            
+            if (selectedLine && selectedItem && diff < 0.01) {
+                diffDisplay.className = 'me-4 fw-bold text-success';
+                btnMatch.disabled = false;
+                document.getElementById('formStatementLineId').value = selectedLine.dataset.id;
+                document.getElementById('formJournalItemId').value = selectedItem.dataset.id;
+            } else {
+                diffDisplay.className = 'me-4 fw-bold text-danger';
+                btnMatch.disabled = true;
+            }
+        }
+        
+        lines.forEach(el => {
+            el.addEventListener('click', function() {
+                if (selectedLine === this) {
+                    this.classList.remove('active');
+                    selectedLine = null;
+                } else {
+                    if (selectedLine) selectedLine.classList.remove('active');
+                    this.classList.add('active');
+                    selectedLine = this;
+                }
+                updateActionBar();
+            });
+        });
+        
+        items.forEach(el => {
+            el.addEventListener('click', function() {
+                if (selectedItem === this) {
+                    this.classList.remove('active');
+                    selectedItem = null;
+                } else {
+                    if (selectedItem) selectedItem.classList.remove('active');
+                    this.classList.add('active');
+                    selectedItem = this;
+                }
+                updateActionBar();
+            });
+        });
+    });
+</script>
+{% endblock %}

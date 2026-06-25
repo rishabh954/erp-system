@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Employees{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Employees
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header">
+  <div class="page-header-title">
+    <h1>Employees</h1>
+    <p>{{ total_count }} total · {{ active_count }} active</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:employee_create' %}" class="btn btn-primary btn-sm">
+      <i class="fas fa-user-plus me-1"></i>Add Employee
+    </a>
+    <button class="btn btn-outline-primary btn-sm" onclick="exportEmployees()">
+      <i class="fas fa-download me-1"></i>Export
+    </button>
+  </div>
+</div>
+
+<!-- ── Quick Stats ──────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 hover-lift">
+      <div style="font-size:24px;font-weight:800;color:var(--brand-primary)">{{ active_count }}</div>
+      <div class="text-muted small mt-1"><i class="fas fa-user-check me-1"></i>Active</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 hover-lift">
+      <div style="font-size:24px;font-weight:800;color:#f8a200">
+        {{ employees|length }}
+      </div>
+      <div class="text-muted small mt-1"><i class="fas fa-clock me-1"></i>Showing</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 hover-lift">
+      <div style="font-size:24px;font-weight:800;color:#2dc653" id="presentCount">—</div>
+      <div class="text-muted small mt-1"><i class="fas fa-calendar-check me-1"></i>Present Today</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 hover-lift">
+      <div style="font-size:24px;font-weight:800;color:#e63946" id="onLeaveCount">—</div>
+      <div class="text-muted small mt-1"><i class="fas fa-umbrella-beach me-1"></i>On Leave</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filters ─────────────────────────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="q" class="form-control" style="padding-left:36px"
+            placeholder="Search by name, ID, email…" value="{{ search_query|default:'' }}">
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="department" class="form-select">
+          <option value="">All Departments</option>
+          {% for dept in departments %}
+          <option value="{{ dept.pk }}" {% if request.GET.department == dept.pk|stringformat:'s' %}selected{% endif %}>
+            {{ dept.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="status" class="form-select">
+          <option value="">All Status</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        <a href="{% url 'hrms:employees' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Employee Grid / List Toggle ───────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="text-muted small">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} employees
+  </div>
+  <div class="btn-group btn-group-sm">
+    <button class="btn btn-outline-secondary active" id="gridViewBtn" onclick="setView('grid')">
+      <i class="fas fa-th"></i>
+    </button>
+    <button class="btn btn-outline-secondary" id="listViewBtn" onclick="setView('list')">
+      <i class="fas fa-list"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ── Grid View ─────────────────────────────────────────────────────────────── -->
+<div class="row g-3" id="gridView">
+  {% for emp in employees %}
+  <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+    <div class="card hover-lift" style="cursor:pointer" onclick="window.location='{% url 'hrms:employee_detail' emp.pk %}'">
+      <div class="card-body text-center p-4">
+        {% if emp.profile_photo %}
+        <img src="{{ emp.profile_photo.url }}" alt="{{ emp.full_name }}"
+          style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--brand-primary);margin-bottom:12px">
+        {% else %}
+        <div style="width:72px;height:72px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px;font-weight:800;color:#fff">
+          {{ emp.first_name|first }}{{ emp.last_name|first }}
+        </div>
+        {% endif %}
+
+        <div class="fw-700" style="font-size:15px">{{ emp.full_name }}</div>
+        <div class="text-muted small mb-1">{{ emp.job_title.name|default:'—' }}</div>
+        <div class="text-muted" style="font-size:11.5px">
+          <i class="fas fa-id-badge me-1"></i>{{ emp.employee_id }}
+        </div>
+        {% if emp.department %}
+        <div class="text-muted" style="font-size:11.5px">
+          <i class="fas fa-building me-1"></i>{{ emp.department.name }}
+        </div>
+        {% endif %}
+
+        <div class="mt-3">
+          <span class="badge badge-{{ emp.status }}">{{ emp.get_status_display }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-users fa-3x text-muted mb-3 d-block opacity-25"></i>
+        <div class="text-muted">No employees found matching your criteria.</div>
+        <a href="{% url 'hrms:employee_create' %}" class="btn btn-primary btn-sm mt-3">
+          <i class="fas fa-user-plus me-1"></i>Add First Employee
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── List View (hidden by default) ─────────────────────────────────────────── -->
+<div class="card d-none" id="listView">
+  <div class="card-body p-3">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" data-datatable>
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>ID</th>
+            <th>Department</th>
+            <th>Job Title</th>
+            <th>Joining Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if emp.profile_photo %}
+                <img src="{{ emp.profile_photo.url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
+                {% else %}
+                <div class="user-avatar-placeholder">{{ emp.first_name|first }}{{ emp.last_name|first }}</div>
+                {% endif %}
+                <div>
+                  <div class="fw-600">{{ emp.full_name }}</div>
+                  <div class="text-muted small">{{ emp.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="fw-600 text-primary">{{ emp.employee_id }}</td>
+            <td>{{ emp.department.name|default:'—' }}</td>
+            <td>{{ emp.job_title.name|default:'—' }}</td>
+            <td>{{ emp.joining_date|date:"M j, Y" }}</td>
+            <td><span class="badge badge-{{ emp.status }}">{{ emp.get_status_display }}</span></td>
+            <td>
+              <a href="{% url 'hrms:employee_detail' emp.pk %}" class="btn btn-sm btn-outline-primary">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+    {% if page_obj.number == num %}
+    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// View toggle
+function setView(type) {
+  const grid = document.getElementById('gridView');
+  const list = document.getElementById('listView');
+  const gridBtn = document.getElementById('gridViewBtn');
+  const listBtn = document.getElementById('listViewBtn');
+
+  if (type === 'grid') {
+    grid.classList.remove('d-none');
+    list.classList.add('d-none');
+    gridBtn.classList.add('active');
+    listBtn.classList.remove('active');
+    localStorage.setItem('employeeView', 'grid');
+  } else {
+    grid.classList.add('d-none');
+    list.classList.remove('d-none');
+    listBtn.classList.add('active');
+    gridBtn.classList.remove('active');
+    localStorage.setItem('employeeView', 'list');
+  }
+}
+
+// Restore last view preference
+document.addEventListener('DOMContentLoaded', () => {
+  const pref = localStorage.getItem('employeeView') || 'grid';
+  setView(pref);
+
+  // Load today's attendance counts
+  ERP.request('/api/v1/hrms/attendance/today_summary/')
+    .then(data => {
+      document.getElementById('presentCount').textContent = data.present || 0;
+      document.getElementById('onLeaveCount').textContent = data.on_leave || 0;
+    }).catch(() => {});
+});
+
+function exportEmployees() {
+  window.open('/api/v1/hrms/employees/export/?format=xlsx', '_blank');
+}
+</script>
+{% endblock %}

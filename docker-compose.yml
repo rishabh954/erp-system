@@ -1,0 +1,156 @@
+version: '3.9'
+
+services:
+
+  # ─── PostgreSQL ──────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: erp_db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_DB: ${DB_NAME:-erp_db}
+      POSTGRES_USER: ${DB_USER:-erp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-erp_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_user} -d ${DB_NAME:-erp_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - erp_network
+
+  # ─── Redis ───────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: erp_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispass}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - erp_network
+
+  # ─── Django / Gunicorn ───────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: erp_web
+    restart: unless-stopped
+    command: gunicorn
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+      - static_volume:/app/staticfiles
+      - logs_volume:/app/logs
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - erp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Celery Worker ───────────────────────────────────────────────────────
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: erp_celery_worker
+    restart: unless-stopped
+    command: celery -A config.celery worker -l info -c 4 --max-tasks-per-child=1000
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
+    depends_on:
+      - db
+      - redis
+    networks:
+      - erp_network
+
+  # ─── Celery Beat ─────────────────────────────────────────────────────────
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: erp_celery_beat
+    restart: unless-stopped
+    command: celery -A config.celery beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+      - logs_volume:/app/logs
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
+    depends_on:
+      - db
+      - redis
+      - celery_worker
+    networks:
+      - erp_network
+
+  # ─── Nginx ───────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: erp_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/erp.conf:/etc/nginx/conf.d/erp.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./docker/nginx/logs:/var/log/nginx
+    depends_on:
+      - web
+    networks:
+      - erp_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_volume:
+  static_volume:
+  logs_volume:
+
+networks:
+  erp_network:
+    driver: bridge

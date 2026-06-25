@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Routings{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Routings</h1>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table">
+            <thead><tr><th>Code</th><th>Name</th></tr></thead>
+            <tbody>
+                {% for r in routings %}
+                <tr><td>{{ r.code }}</td><td>{{ r.name }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

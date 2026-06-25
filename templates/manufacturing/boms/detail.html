@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}BOM {{ bom.number }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">BOM: {{ bom.number }}</h1>
+</div>
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <p><strong>Product:</strong> {{ bom.product.name }}</p>
+        <p><strong>Yield Quantity:</strong> {{ bom.quantity }}</p>
+        <p><strong>Routing:</strong> {{ bom.routing.name|default:"None" }}</p>
+    </div>
+</div>
+<h4>Components</h4>
+<table class="table">
+    <thead>
+        <tr><th>Component</th><th>Quantity</th><th>Scrap %</th></tr>
+    </thead>
+    <tbody>
+        {% for line in bom.lines.all %}
+        <tr>
+            <td>{{ line.component.name }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ line.scrap_percentage }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

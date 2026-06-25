@@ -1,0 +1,23 @@
+{% if messages %}
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1060; margin-top: 60px;">
+  {% for message in messages %}
+  <div class="toast custom-toast show align-items-center mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
+    <div class="d-flex">
+      <div class="toast-icon-wrap toast-{{ message.tags|default:'info' }}">
+        <i class="fas fa-{% if message.tags == 'success' %}check{% elif message.tags == 'error' or message.tags == 'danger' %}times{% elif message.tags == 'warning' %}exclamation{% else %}info{% endif %}"></i>
+      </div>
+      <div class="toast-body-wrap flex-grow-1">
+        <h6 class="toast-title">
+          {% if message.tags == 'success' %}Success
+          {% elif message.tags == 'error' or message.tags == 'danger' %}Error
+          {% elif message.tags == 'warning' %}Warning
+          {% else %}Notification{% endif %}
+        </h6>
+        <div class="toast-message">{{ message }}</div>
+      </div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

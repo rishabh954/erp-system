@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Serial Number Tracking: {{ serial.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Serial Number: {{ serial.number }}</h1>
+        <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+    </div>
+
+    <div class="row">
+        <!-- Traceability Info -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Information</h6></div>
+                <div class="card-body">
+                    <p><strong>Product:</strong> {{ serial.product.name }}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-secondary">{{ serial.status|title }}</span></p>
+                    {% if title == "Serial Number" %}
+                        <p><strong>Associated Lot:</strong> {{ serial.lot.number|default:'None' }}</p>
+                        <p><strong>Warranty Exp:</strong> {{ serial.warranty_expiration|default:'-' }}</p>
+                    {% else %}
+                        <p><strong>Mfg Date:</strong> {{ serial.manufacturing_date|default:'-' }}</p>
+                        <p><strong>Expiration Date:</strong> {{ serial.expiration_date|default:'-' }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Auto-Generated Barcode -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Generated Barcode</h6></div>
+                <div class="card-body text-center">
+                    <svg id="barcode"></svg>
+                    <p class="text-muted mt-2 small">Scan to retrieve Serial Number</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        JsBarcode("#barcode", "{{ serial.number }}", {
+            format: "CODE128",
+            width: 2,
+            height: 80,
+            displayValue: true
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}MO {{ order.number }}{% endblock %}
+{% block nav_manufacturing %}active{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Manufacturing Order: {{ order.number }}</h1>
+    <div>
+        {% if order.status == 'draft' %}
+        <form action="{% url 'manufacturing:mo_action' order.pk %}" method="post" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="confirm"><button class="btn btn-primary">Confirm</button>
+        </form>
+        {% elif order.status == 'confirmed' %}
+        <form action="{% url 'manufacturing:mo_action' order.pk %}" method="post" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="start"><button class="btn btn-success">Start Production</button>
+        </form>
+        {% elif order.status == 'in_progress' %}
+        <form action="{% url 'manufacturing:mo_action' order.pk %}" method="post" class="d-inline">
+            {% csrf_token %}<input type="hidden" name="action" value="done"><button class="btn btn-dark">Mark Done</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+<div class="card shadow">
+    <div class="card-body">
+        <p><strong>Product:</strong> {{ order.product.name }}</p>
+        <p><strong>Quantity to Produce:</strong> {{ order.quantity_to_produce }}</p>
+        <p><strong>Status:</strong> {{ order.get_status_display }}</p>
+    </div>
+</div>
+{% endblock %}

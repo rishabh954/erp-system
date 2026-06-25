@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}CEO Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Dashboard
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header">
+  <div class="page-header-title">
+    <h1>Good {% now "H" as hour %}{% if hour < 12 %}Morning{% elif hour < 17 %}Afternoon{% else %}Evening{% endif %}, {{ request.user.first_name }} 👋</h1>
+    <p>Here's what's happening in your business today — {% now "l, F j, Y" %}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+      <option value="month" selected>This Month</option>
+      <option value="quarter">This Quarter</option>
+      <option value="year">This Year</option>
+    </select>
+    <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+      <i class="fas fa-sync-alt me-1"></i> Refresh
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">
+      <i class="fas fa-download me-1"></i> Export
+    </button>
+  </div>
+</div>
+
+<!-- ── KPI Stat Cards ─────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-primary hover-lift" id="kpi-revenue">
+      <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+      <div class="stat-card-value" id="val-revenue">
+        <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Total Revenue</div>
+      <div class="stat-card-trend"><span id="trend-revenue" class="positive">+12.4% vs last period</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-success hover-lift" id="kpi-profit">
+      <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
+      <div class="stat-card-value" id="val-profit">
+        <span class="skeleton" style="height:32px;width:100px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Net Profit</div>
+      <div class="stat-card-trend"><span id="trend-profit" class="positive">+8.1% vs last period</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-warning hover-lift" id="kpi-expenses">
+      <div class="stat-card-icon"><i class="fas fa-receipt"></i></div>
+      <div class="stat-card-value" id="val-expenses">
+        <span class="skeleton" style="height:32px;width:110px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Total Expenses</div>
+      <div class="stat-card-trend"><span id="trend-expenses" class="negative">+3.2% vs last period</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-danger hover-lift" id="kpi-employees">
+      <div class="stat-card-icon"><i class="fas fa-users"></i></div>
+      <div class="stat-card-value" id="val-employees">
+        <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Active Employees</div>
+      <div class="stat-card-trend"><span id="trend-employees" class="positive">+5 this period</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Secondary KPIs ────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  {% for kpi in secondary_kpis %}
+  <div class="col-6 col-lg-2">
+    <div class="card text-center p-3">
+      <div style="font-size:22px;font-weight:800;color:var(--brand-primary)" class="mb-1">{{ kpi.value }}</div>
+      <div style="font-size:12px;color:var(--text-muted);font-weight:500">{{ kpi.label }}</div>
+      {% if kpi.change %}
+      <div style="font-size:11px;margin-top:4px" class="{% if kpi.positive %}text-success{% else %}text-danger{% endif %}">
+        <i class="fas fa-{% if kpi.positive %}arrow-up{% else %}arrow-down{% endif %}"></i> {{ kpi.change }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  {% for item in "123456" %}
+  <div class="col-6 col-lg-2">
+    <div class="card text-center p-3">
+      <div class="skeleton mb-1" style="height:28px;width:80%;margin:0 auto"></div>
+      <div class="skeleton" style="height:14px;width:60%;margin:0 auto"></div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+<!-- ── Charts Row 1 ───────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div>
+          <h6 class="mb-0 fw-700">Revenue vs Expenses</h6>
+          <small class="text-muted">Monthly comparison</small>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge" style="background:rgba(67,97,238,0.15);color:var(--brand-primary)"><i class="fas fa-circle me-1" style="font-size:8px"></i>Revenue</span>
+          <span class="badge" style="background:rgba(230,57,70,0.15);color:#e63946"><i class="fas fa-circle me-1" style="font-size:8px"></i>Expenses</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="height:280px;position:relative">
+          <canvas id="revenueExpensesChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="mb-0 fw-700">Revenue Breakdown</h6>
+        <small class="text-muted">By category</small>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <div style="height:220px;width:100%;position:relative">
+          <canvas id="revenueBreakdownChart"></canvas>
+        </div>
+        <div id="breakdownLegend" class="mt-3 w-100"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Charts Row 2 ───────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-700">Sales Pipeline</h6>
+      </div>
+      <div class="card-body">
+        <div style="height:220px">
+          <canvas id="pipelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-700">Inventory Value</h6>
+      </div>
+      <div class="card-body">
+        <div style="height:220px">
+          <canvas id="inventoryChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0 fw-700">Cash Flow</h6>
+      </div>
+      <div class="card-body">
+        <div style="height:220px">
+          <canvas id="cashFlowChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tables Row ─────────────────────────────────────────────────────────── -->
+<div class="row g-3">
+  <!-- Recent Invoices -->
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-700">Recent Invoices</h6>
+        <a href="{% url 'sales:invoices' %}" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recentInvoicesBody">
+              {% for invoice in recent_invoices %}
+              <tr>
+                <td><a href="{% url 'sales:invoice_detail' invoice.pk %}" class="fw-600">{{ invoice.number }}</a></td>
+                <td>{{ invoice.customer.name|truncatechars:22 }}</td>
+                <td class="fw-600">{{ invoice.total|floatformat:2|intcomma }}</td>
+                <td><span class="badge badge-{{ invoice.status }}">{{ invoice.get_status_display }}</span></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">No invoices yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Customers -->
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-700">Top Customers</h6>
+        <a href="{% url 'crm:customers' %}" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr><th>Customer</th><th>Orders</th><th>Revenue</th><th>Growth</th></tr>
+            </thead>
+            <tbody id="topCustomersBody">
+              {% for c in top_customers %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="user-avatar-placeholder" style="width:30px;height:30px;font-size:11px">{{ c.name|first }}</div>
+                    <span>{{ c.name|truncatechars:20 }}</span>
+                  </div>
+                </td>
+                <td>{{ c.order_count }}</td>
+                <td class="fw-600">{{ c.total_revenue|floatformat:0|intcomma }}</td>
+                <td>
+                  <span class="text-{% if c.growth >= 0 %}success{% else %}danger{% endif %}">
+                    <i class="fas fa-arrow-{% if c.growth >= 0 %}up{% else %}down{% endif %}"></i>
+                    {{ c.growth|floatformat:1 }}%
+                  </span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">No customers yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quick Actions ──────────────────────────────────────────────────────── -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0 fw-700">Quick Actions</h6></div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+          {% for action in quick_actions %}
+          <a href="{{ action.url }}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-{{ action.icon }} me-1"></i>{{ action.label }}
+          </a>
+          {% empty %}
+          <a href="{% url 'sales:quotation_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-plus me-1"></i>New Quotation</a>
+          <a href="{% url 'crm:lead_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-user-plus me-1"></i>Add Lead</a>
+          <a href="{% url 'purchase:request_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-shopping-cart me-1"></i>Purchase Request</a>
+          <a href="{% url 'hrms:leave_request_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-calendar me-1"></i>Leave Request</a>
+          <a href="{% url 'helpdesk:ticket_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-ticket-alt me-1"></i>New Ticket</a>
+          <a href="{% url 'projects:task_create' %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-tasks me-1"></i>Add Task</a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Load dashboard data from API ──────────────────────────────────────────
+async function loadDashboardData(period = 'month') {
+  try {
+    const data = await ERP.request(`/api/v1/dashboard/ceo/?period=${period}`);
+    renderKPIs(data.kpis);
+    renderCharts(data.charts);
+  } catch(e) {
+    console.error('Dashboard load error', e);
+  }
+}
+
+function renderKPIs(kpis) {
+  if (!kpis) return;
+  const fmt = (v) => ERP.formatCurrency(v, '{{ current_company.default_currency.code|default:"USD" }}');
+  document.getElementById('val-revenue').textContent  = fmt(kpis.revenue  || 0);
+  document.getElementById('val-profit').textContent   = fmt(kpis.profit   || 0);
+  document.getElementById('val-expenses').textContent = fmt(kpis.expenses || 0);
+  document.getElementById('val-employees').textContent = kpis.employees  || 0;
+}
+
+function renderCharts(charts) {
+  if (!charts) return;
+
+  // Revenue vs Expenses
+  const months = charts.months || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  ERP.Charts.line('revenueExpensesChart', months, [
+    {
+      label: 'Revenue',
+      data: charts.revenue || [],
+      borderColor: '#4361ee',
+      backgroundColor: 'rgba(67,97,238,0.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+    },
+    {
+      label: 'Expenses',
+      data: charts.expenses || [],
+      borderColor: '#e63946',
+      backgroundColor: 'rgba(230,57,70,0.06)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+    },
+  ]);
+
+  // Revenue Breakdown Doughnut
+  const breakdown = charts.breakdown || {};
+  ERP.Charts.doughnut(
+    'revenueBreakdownChart',
+    Object.keys(breakdown),
+    Object.values(breakdown),
+    ['#4361ee','#4cc9f0','#7b2d8b','#2dc653','#f8a200','#e63946'],
+  );
+
+  // Pipeline Bar
+  const pipeline = charts.pipeline || {};
+  ERP.Charts.bar('pipelineChart',
+    Object.keys(pipeline),
+    [{ label: 'Leads', data: Object.values(pipeline), backgroundColor: '#4361ee', borderRadius: 6 }],
+  );
+
+  // Inventory Bar
+  ERP.Charts.bar('inventoryChart',
+    charts.inventory_categories || [],
+    [{ label: 'Value', data: charts.inventory_values || [], backgroundColor: '#4cc9f0', borderRadius: 6 }],
+  );
+
+  // Cash Flow Line
+  ERP.Charts.line('cashFlowChart', months, [
+    { label: 'Inflow', data: charts.cash_inflow || [], borderColor: '#2dc653', tension: 0.4, fill: false },
+    { label: 'Outflow', data: charts.cash_outflow || [], borderColor: '#e63946', tension: 0.4, fill: false },
+  ]);
+}
+
+function refreshDashboard() {
+  const period = document.getElementById('periodFilter').value;
+  loadDashboardData(period);
+}
+
+document.getElementById('periodFilter')?.addEventListener('change', refreshDashboard);
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => loadDashboardData('month'));
+</script>
+{% endblock %}

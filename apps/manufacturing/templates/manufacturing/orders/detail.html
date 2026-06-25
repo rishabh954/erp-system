@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}MO: {{ order.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Manufacturing Order: {{ order.number }}</h1>
+        <div>
+            {% if order.status == 'draft' %}
+            <form method="post" action="{% url 'manufacturing:mo_action' order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm">
+                <button type="submit" class="btn btn-success">Confirm</button>
+            </form>
+            {% elif order.status == 'confirmed' %}
+            <form method="post" action="{% url 'manufacturing:mo_action' order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="start">
+                <button type="submit" class="btn btn-primary">Start Production</button>
+            </form>
+            {% elif order.status == 'in_progress' %}
+            <form method="post" action="{% url 'manufacturing:mo_action' order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="done">
+                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Mark as Done</button>
+            </form>
+            {% endif %}
+            
+            {% if order.status != 'done' and order.status != 'cancelled' %}
+            <form method="post" action="{% url 'manufacturing:mo_action' order.pk %}" class="d-inline ms-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel">
+                <button type="submit" class="btn btn-danger">Cancel</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Information</h6></div>
+                <div class="card-body">
+                    <p><strong>Product:</strong> {{ order.product.name }}</p>
+                    <p><strong>Quantity to Produce:</strong> {{ order.quantity_to_produce }}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge bg-secondary">{{ order.status|title }}</span>
+                    </p>
+                    <p><strong>Planned Start:</strong> {{ order.planned_start_date|default:'-' }}</p>
+                    <p><strong>BOM:</strong> <a href="{% url 'manufacturing:bom_detail' order.bom.pk %}">{{ order.bom.number }}</a></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Components to Consume</h6></div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Expected Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in order.bom.lines.all %}
+                            <tr>
+                                <td>{{ line.component.name }}</td>
+                                <td>{% widthratio line.quantity 1 order.quantity_to_produce %}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="2">No components found in BOM.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

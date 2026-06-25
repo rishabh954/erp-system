@@ -1,0 +1,66 @@
+{% extends "administration/base_admin.html" %}
+{% block title %}API Key Management{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-0"><i class="fas fa-key me-2 text-primary"></i>API Key Management</h1>
+    <p class="text-muted mb-0">Manage api key management for your organization</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Generate API Key</h6></div>
+      <div class="card-body px-4">
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
+          <div class="mb-3"><label class="form-label fw-medium">Key Name</label><input type="text" name="name" class="form-control" required placeholder="e.g. Shopify Integration"></div>
+          <div class="mb-3"><label class="form-label fw-medium">Rate Limit (req/hr)</label><input type="number" name="rate_limit" class="form-control" value="1000"></div>
+          <div class="mb-3"><label class="form-label fw-medium">Scopes</label>
+            <div class="row g-1">
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="read:all" id="s1"><label class="form-check-label small" for="s1">read:all</label></div></div>
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="write:invoices" id="s2"><label class="form-check-label small" for="s2">write:invoices</label></div></div>
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="write:orders" id="s3"><label class="form-check-label small" for="s3">write:orders</label></div></div>
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="read:reports" id="s4"><label class="form-check-label small" for="s4">read:reports</label></div></div>
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="write:products" id="s5"><label class="form-check-label small" for="s5">write:products</label></div></div>
+              <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="read:hrms" id="s6"><label class="form-check-label small" for="s6">read:hrms</label></div></div>
+            </div>
+          </div>
+          <button class="btn btn-primary w-100"><i class="fas fa-key me-2"></i>Generate Key</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    {% for key in api_keys %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1">{{ key.name }}
+              <span class="badge ms-2 {% if key.status == 'active' %}bg-success{% else %}bg-danger{% endif %}">{{ key.status }}</span>
+            </h6>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <code class="bg-light px-2 py-1 rounded small" style="letter-spacing:.05em">{{ key.key|slice:":32" }}...</code>
+            </div>
+            <div class="d-flex gap-3 small text-muted">
+              <span><i class="fas fa-tachometer-alt me-1"></i>{{ key.rate_limit }} req/hr</span>
+              <span><i class="fas fa-chart-bar me-1"></i>{{ key.request_count }} total calls</span>
+              <span><i class="fas fa-clock me-1"></i>Created {{ key.created_at|date:"d M Y" }}</span>
+            </div>
+          </div>
+          {% if key.status == 'active' %}
+          <form method="post" class="ms-3" onsubmit="return confirm('Revoke this API key?')">{% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="pk" value="{{ key.pk }}">
+            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-ban me-1"></i>Revoke</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5"><i class="fas fa-key fa-3x mb-3 opacity-25"></i><p>No API keys yet. Generate your first key.</p></div></div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

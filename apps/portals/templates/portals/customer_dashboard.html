@@ -1,0 +1,106 @@
+{% extends 'portals/portal_base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon indigo"><i class="fas fa-shopping-cart"></i></div>
+        <div>
+            <div class="stat-value">{{ total_orders }}</div>
+            <div class="stat-label">Total Orders</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon yellow"><i class="fas fa-clock"></i></div>
+        <div>
+            <div class="stat-value">{{ open_orders }}</div>
+            <div class="stat-label">Active Orders</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-file-invoice-dollar"></i></div>
+        <div>
+            <div class="stat-value">{{ unpaid_invoices }}</div>
+            <div class="stat-label">Unpaid Invoices</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-headset"></i></div>
+        <div>
+            <div class="stat-value">{{ open_tickets }}</div>
+            <div class="stat-label">Open Tickets</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+    <!-- Recent Orders -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fas fa-shopping-cart" style="color:var(--primary);margin-right:6px;"></i>Recent Orders</span>
+            <a href="{% url 'portals:customer_orders' %}" class="btn btn-outline btn-sm">View All</a>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>Order #</th><th>Date</th><th>Total</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><a href="{% url 'portals:customer_order_detail' order.pk %}" style="color:var(--primary);font-weight:600;">{{ order.number }}</a></td>
+                        <td>{{ order.date|date:"d M Y" }}</td>
+                        <td>{{ order.currency.symbol|default:"$" }}{{ order.total_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if order.status == 'confirmed' %}<span class="badge badge-blue">Confirmed</span>
+                            {% elif order.status == 'delivered' %}<span class="badge badge-green">Delivered</span>
+                            {% elif order.status == 'processing' %}<span class="badge badge-yellow">Processing</span>
+                            {% elif order.status == 'cancelled' %}<span class="badge badge-red">Cancelled</span>
+                            {% else %}<span class="badge badge-gray">{{ order.status|title }}</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:20px;">No orders yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Invoices -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fas fa-file-invoice" style="color:var(--primary);margin-right:6px;"></i>Recent Invoices</span>
+            <a href="{% url 'portals:customer_invoices' %}" class="btn btn-outline btn-sm">View All</a>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>Invoice #</th><th>Date</th><th>Amount</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        <td><strong>{{ inv.number }}</strong></td>
+                        <td>{{ inv.date|date:"d M Y" }}</td>
+                        <td>{{ inv.currency.symbol|default:"$" }}{{ inv.total_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if inv.status == 'paid' %}<span class="badge badge-green">Paid</span>
+                            {% elif inv.status == 'overdue' %}<span class="badge badge-red">Overdue</span>
+                            {% elif inv.status == 'partial' %}<span class="badge badge-yellow">Partial</span>
+                            {% elif inv.status == 'sent' %}<span class="badge badge-blue">Sent</span>
+                            {% else %}<span class="badge badge-gray">{{ inv.status|title }}</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:20px;">No invoices yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

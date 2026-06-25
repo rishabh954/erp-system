@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Lead - {{ lead.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">{{ lead.name }}</h1>
+      <span class="badge bg-light text-dark border">{{ lead.number }}</span>
+    </div>
+    <p class="text-muted mb-0">
+      {% if lead.company_name %}
+        Representing <span class="fw-semibold">{{ lead.company_name }}</span>
+      {% else %}
+        Individual Lead
+      {% endif %}
+      &bull; 
+      {% if lead.is_opportunity %}
+        <span class="badge bg-success">Opportunity</span>
+      {% else %}
+        <span class="badge bg-secondary">Lead</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'crm:leads' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to Leads
+    </a>
+    
+    <!-- Convert to Customer Button / Link -->
+    {% if lead.customer %}
+      <a href="{% url 'crm:customer_detail' lead.customer.pk %}" class="btn btn-success btn-sm">
+        <i class="fas fa-check-double me-1"></i>View Customer
+      </a>
+    {% else %}
+      <form method="post" action="{% url 'crm:lead_convert' lead.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-success btn-sm">
+          <i class="fas fa-user-check me-1"></i>Convert to Customer
+        </button>
+      </form>
+    {% endif %}
+
+    <!-- Status Dropdown (with AJAX handler) -->
+    <div class="dropdown d-inline-block">
+      <button class="btn {% if lead.status == 'won' %}btn-success{% elif lead.status == 'lost' %}btn-danger{% elif lead.status == 'qualified' %}btn-warning text-dark{% elif lead.status == 'new' %}btn-primary{% else %}btn-info text-white{% endif %} btn-sm dropdown-toggle fw-semibold" type="button" id="leadStatusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        {{ lead.get_status_display }}
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="leadStatusDropdown">
+        {% for val, label in status_choices %}
+          <li>
+            <a class="dropdown-item status-change-btn {% if lead.status == val %}active{% endif %}" 
+               href="#" 
+               data-value="{{ val }}" 
+               data-color-class="{% if val == 'won' %}btn-success{% elif val == 'lost' %}btn-danger{% elif val == 'qualified' %}btn-warning text-dark{% elif val == 'new' %}btn-primary{% else %}btn-info text-white{% endif %}">
+               {{ label }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Column: Lead Information -->
+  <div class="col-12 col-lg-7">
+    <!-- Contact Information Card -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-address-card me-2"></i>Contact Details</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <span class="text-muted small d-block">Email Address
+            {% if lead.email %}</span>
+              <a href="mailto:{{ lead.email }}" class="fw-semibold text-primary"><i class="fas fa-envelope me-1 small"></i>{{ lead.email }}</a>
+            {% else %}
+              <span class="text-muted italic small">-
+            {% endif %}</span>
+          </div>
+          <div class="col-12 col-md-6">
+            <span class="text-muted small d-block">Phone Number
+            {% if lead.phone %}</span>
+              <a href="tel:{{ lead.phone }}" class="fw-semibold text-dark"><i class="fas fa-phone me-1 small"></i>{{ lead.phone }}</a>
+            {% else %}
+              <span class="text-muted italic small">-
+            {% endif %}</span>
+          </div>
+          <div class="col-12 col-md-6">
+            <span class="text-muted small d-block">Mobile Number
+            {% if lead.mobile %}</span>
+              <a href="tel:{{ lead.mobile }}" class="fw-semibold text-dark"><i class="fas fa-mobile-alt me-1 small"></i>{{ lead.mobile }}</a>
+            {% else %}
+              <span class="text-muted italic small">-
+            {% endif %}</span>
+          </div>
+          <div class="col-12 col-md-6">
+            <span class="text-muted small d-block">Website
+            {% if lead.website %}</span>
+              <a href="{{ lead.website }}" target="_blank" class="fw-semibold text-primary"><i class="fas fa-globe me-1 small"></i>{{ lead.website }}</a>
+            {% else %}
+              <span class="text-muted italic small">-
+            {% endif %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deal Information Card -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-briefcase me-2"></i>Deal Details</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-6 col-md-4">
+            <span class="text-muted small d-block">Expected Revenue</span>
+            <span class="fs-5 fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ lead.expected_revenue|floatformat:2|intcomma }}</span>
+          </div>
+          <div class="col-6 col-md-4">
+            <span class="text-muted small d-block">Probability</span>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <span class="fw-semibold">{{ lead.probability }}%</span>
+              <div class="progress flex-fill" style="height: 6px; width: 60px; margin-bottom:0">
+                <div class="progress-bar bg-info" style="width: {{ lead.probability }}%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <span class="text-muted small d-block">Expected Close Date</span>
+            <span class="fw-semibold"><i class="fas fa-calendar-alt me-1 small text-muted"></i>{{ lead.expected_close_date|date:"Y-m-d"|default:"-" }}</span>
+          </div>
+          <div class="col-6 col-md-6">
+            <span class="text-muted small d-block">Lead Source</span>
+            <span class="badge bg-light text-dark border">{{ lead.get_source_display|default:"Unknown" }}</span>
+          </div>
+          <div class="col-6 col-md-6">
+            <span class="text-muted small d-block">Assigned Representative</span>
+            <span class="fw-semibold">
+              {% if lead.assigned_to %}
+                <i class="fas fa-user-tie me-1 small text-muted"></i>{{ lead.assigned_to.full_name }}
+              {% else %}
+                <span class="text-muted small">Unassigned</span>
+              {% endif %}
+            </span>
+          </div>
+          
+          <!-- New Enterprise CRM Fields -->
+          <div class="col-6 col-md-6 mt-3 border-top pt-2">
+            <span class="text-muted small d-block">Lead Score</span>
+            <span class="fw-bold {% if lead.lead_score >= 50 %}text-success{% elif lead.lead_score >= 20 %}text-warning{% else %}text-muted{% endif %} fs-5">{{ lead.lead_score }}</span>
+          </div>
+          <div class="col-6 col-md-6 mt-3 border-top pt-2">
+            <span class="text-muted small d-block">Campaign</span>
+            <span class="fw-semibold">
+              {% if lead.campaign %}
+                <a href="{% url 'crm:campaign_detail' lead.campaign.pk %}"><i class="fas fa-bullhorn me-1 small text-muted"></i>{{ lead.campaign.name }}</a>
+              {% else %}
+                <span class="text-muted small">None</span>
+              {% endif %}
+            </span>
+          </div>
+          {% if lead.notes %}
+          <div class="col-12 border-top pt-3">
+            <span class="text-muted small d-block">Lead Description & Notes</span>
+            <p class="mb-0 text-secondary" style="white-space: pre-wrap">{{ lead.notes }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Log Activity & Timeline -->
+  <div class="col-12 col-lg-5">
+    <!-- Log Activity Form -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-pen-square me-2"></i>Log New Activity</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'crm:lead_add_activity' lead.pk %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_activity_type" class="form-label small fw-semibold">Activity Type</label>
+            <select name="activity_type" id="id_activity_type" class="form-select form-select-sm" required>
+              {% for val, label in activity_type_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="id_subject" class="form-label small fw-semibold">Subject / Title</label>
+            <input type="text" name="subject" id="id_subject" class="form-control form-control-sm" placeholder="e.g. Call to discuss proposal" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_scheduled_at" class="form-label small fw-semibold">Scheduled Date/Time</label>
+            <input type="datetime-local" name="scheduled_at" id="id_scheduled_at" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label for="id_duration" class="form-label small fw-semibold">Duration (Minutes)</label>
+            <input type="number" name="duration_minutes" id="id_duration" class="form-control form-control-sm" placeholder="e.g. 30">
+          </div>
+          <div class="mb-3">
+            <label for="id_description" class="form-label small fw-semibold">Details</label>
+            <textarea name="description" id="id_description" class="form-control form-control-sm" rows="3" placeholder="Enter details of the conversation or meeting..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="fas fa-check me-1"></i>Log Activity
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Timeline of Activities -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-history me-2"></i>Activity History</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="timeline" style="position:relative; padding-left: 20px; border-left: 2px solid var(--border-color)">
+          {% for act in activities %}
+          <div class="timeline-item mb-4" style="position:relative">
+            <!-- Icon Indicator -->
+            <span style="position:absolute; left:-31px; top:2px; background:var(--bg-body); border:2px solid var(--brand-primary); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--brand-primary)">
+              {% if act.activity_type == 'call' %}<i class="fas fa-phone"></i>
+              {% elif act.activity_type == 'email' %}<i class="fas fa-envelope"></i>
+              {% elif act.activity_type == 'meeting' %}<i class="fas fa-calendar-alt"></i>
+              {% elif act.activity_type == 'task' %}<i class="fas fa-tasks"></i>
+              {% else %}<i class="fas fa-sticky-note"></i>{% endif %}
+            </span>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-dark small">{{ act.subject }}</span>
+              <span class="text-muted" style="font-size:11px">{{ act.created_at|naturaltime }}</span>
+            </div>
+            <div class="text-muted small my-1">{{ act.get_activity_type_display }}</div>
+            {% if act.description %}
+              <p class="text-secondary small mb-0">{{ act.description }}</p>
+            {% endif %}
+            <span class="text-muted d-block mt-1" style="font-size:10px">Logged by: {{ act.created_by.first_name }}</span>
+          </div>
+          {% empty %}
+          <div class="text-center py-4 text-muted">
+            <i class="fas fa-info-circle fa-2x mb-2 opacity-50"></i>
+            <p class="small mb-0">No activities logged yet.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  $('.status-change-btn').click(function(e) {
+    e.preventDefault();
+    const newStatus = $(this).data('value');
+    const newColorClass = $(this).data('color-class');
+    
+    // Update button text visually
+    const dropdownBtn = $('#leadStatusDropdown');
+    dropdownBtn.text($(this).text());
+    
+    // Update button color class
+    dropdownBtn.removeClass('btn-primary btn-success btn-danger btn-warning btn-info text-white text-dark').addClass(newColorClass);
+
+    $('.status-change-btn').removeClass('active');
+    $(this).addClass('active');
+    const csrfToken = '{{ csrf_token }}';
+    
+    $.ajax({
+      url: "{% url 'crm:lead_update_status' lead.pk %}",
+      method: "POST",
+      data: {
+        'status': newStatus,
+        'csrfmiddlewaretoken': csrfToken
+      },
+      success: function(response) {
+        if (response.ok) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Status Updated',
+            text: 'Lead status successfully updated to ' + response.label,
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+          });
+          // Optionally reload to update any conditional layout elements
+          if (newStatus === 'won') {
+            setTimeout(function() { location.reload(); }, 1500);
+          }
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Could not update status.'
+          });
+        }
+      },
+      error: function(xhr, status, error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'AJAX Error',
+          text: 'Request failed: ' + error
+        });
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

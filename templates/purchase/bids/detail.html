@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Bid Details{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Bid from {{ bid.vendor.name }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>RFQ:</strong> {{ bid.rfq.title }}</p>
+<p><strong>Total Amount:</strong> {{ bid.total_amount }}</p>
+<p><strong>Status:</strong> {{ bid.get_status_display }}</p>
+</div>
+{% endblock %}

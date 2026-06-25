@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Inventory Transfer Detail{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Transfer Details</h1>
+    <p class="text-muted mb-0">Review route, items, and status of stock transfer {{ transfer.number }}</p>
+  </div>
+  <div>
+    <a href="{% url 'inventory:transfers' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>Back to Transfers
+    </a>
+  </div>
+</div>
+
+<!-- Workflow Steps/Progress Bar -->
+<div class="card glass-card border-0 mb-4 py-3">
+  <div class="card-body">
+    <div class="row text-center position-relative">
+      <!-- Line connector -->
+      <div class="position-absolute top-50 start-50 translate-middle-y bg-light" style="height: 4px; width: 80%; z-index: 1; left: 10% !important;"></div>
+      
+      <!-- Connect progress line based on status -->
+      {% if transfer.status == 'requested' %}
+        <div class="position-absolute top-50 translate-middle-y bg-warning" style="height: 4px; width: 20%; z-index: 1; left: 10% !important;"></div>
+      {% elif transfer.status == 'approved' %}
+        <div class="position-absolute top-50 translate-middle-y bg-info" style="height: 4px; width: 40%; z-index: 1; left: 10% !important;"></div>
+      {% elif transfer.status == 'in_transit' %}
+        <div class="position-absolute top-50 translate-middle-y bg-primary" style="height: 4px; width: 60%; z-index: 1; left: 10% !important;"></div>
+      {% elif transfer.status == 'received' %}
+        <div class="position-absolute top-50 translate-middle-y bg-success" style="height: 4px; width: 80%; z-index: 1; left: 10% !important;"></div>
+      {% endif %}
+
+      <!-- Step 1: Draft -->
+      <div class="col-2 offset-1 position-relative" style="z-index: 2;">
+        <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center border border-2 
+             {% if transfer.status == 'draft' %}border-secondary bg-white text-secondary
+             {% else %}border-success bg-success text-white{% endif %}" 
+             style="width: 38px; height: 38px;">
+          <i class="fas fa-file-edit"></i>
+        </div>
+        <div class="small fw-semibold mt-2 {% if transfer.status == 'draft' %}text-dark{% else %}text-muted{% endif %}">Draft</div>
+      </div>
+
+      <!-- Step 2: Requested -->
+      <div class="col-2 position-relative" style="z-index: 2;">
+        <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center border border-2 
+             {% if transfer.status == 'draft' %}border-light bg-light text-muted
+             {% elif transfer.status == 'requested' %}border-warning bg-white text-warning
+             {% else %}border-success bg-success text-white{% endif %}" 
+             style="width: 38px; height: 38px;">
+          <i class="fas fa-paper-plane"></i>
+        </div>
+        <div class="small fw-semibold mt-2 {% if transfer.status == 'requested' %}text-dark{% else %}text-muted{% endif %}">Requested</div>
+      </div>
+
+      <!-- Step 3: Approved -->
+      <div class="col-2 position-relative" style="z-index: 2;">
+        <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center border border-2 
+             {% if transfer.status == 'draft' or transfer.status == 'requested' %}border-light bg-light text-muted
+             {% elif transfer.status == 'approved' %}border-info bg-white text-info
+             {% else %}border-success bg-success text-white{% endif %}" 
+             style="width: 38px; height: 38px;">
+          <i class="fas fa-clipboard-check"></i>
+        </div>
+        <div class="small fw-semibold mt-2 {% if transfer.status == 'approved' %}text-dark{% else %}text-muted{% endif %}">Approved</div>
+      </div>
+
+      <!-- Step 4: In Transit -->
+      <div class="col-2 position-relative" style="z-index: 2;">
+        <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center border border-2 
+             {% if transfer.status == 'received' or transfer.status == 'cancelled' %}border-success bg-success text-white
+             {% elif transfer.status == 'in_transit' %}border-primary bg-white text-primary
+             {% else %}border-light bg-light text-muted{% endif %}" 
+             style="width: 38px; height: 38px;">
+          <i class="fas fa-truck"></i>
+        </div>
+        <div class="small fw-semibold mt-2 {% if transfer.status == 'in_transit' %}text-dark{% else %}text-muted{% endif %}">In Transit</div>
+      </div>
+
+      <!-- Step 5: Received -->
+      <div class="col-2 position-relative" style="z-index: 2;">
+        <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center border border-2 
+             {% if transfer.status == 'received' %}border-success bg-success text-white
+             {% else %}border-light bg-light text-muted{% endif %}" 
+             style="width: 38px; height: 38px;">
+          <i class="fas fa-check-double"></i>
+        </div>
+        <div class="small fw-semibold mt-2 {% if transfer.status == 'received' %}text-dark{% else %}text-muted{% endif %}">Received</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: Routing & Info -->
+  <div class="col-12 col-lg-5">
+    <!-- General Info Card -->
+    <div class="card glass-card border-0 mb-4 h-100">
+      <div class="card-header border-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
+        <h5 class="text-dark fw-bold m-0">Route Information</h5>
+        {% if transfer.status == 'draft' %}
+          <span class="badge bg-secondary">Draft
+        {% elif transfer.status == 'requested' %}</span>
+          <span class="badge bg-warning">Requested
+        {% elif transfer.status == 'approved' %}</span>
+          <span class="badge bg-info">Approved
+        {% elif transfer.status == 'in_transit' %}</span>
+          <span class="badge bg-primary">In Transit
+        {% elif transfer.status == 'received' %}</span>
+          <span class="badge bg-success">Received
+        {% else %}</span>
+          <span class="badge bg-danger">Cancelled
+        {% endif %}</span>
+      </div>
+      
+      <div class="card-body">
+        <!-- Routing visualization -->
+        <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mb-4">
+          <div class="text-center flex-fill">
+            <div class="small text-muted mb-1"><i class="fas fa-sign-out-alt text-danger me-1"></i>From</div>
+            <div class="fw-bold text-dark">{{ transfer.from_warehouse.name }}</div>
+            <div class="small text-muted">Code: {{ transfer.from_warehouse.code }}</div>
+          </div>
+          <div class="px-3 text-muted">
+            <i class="fas fa-long-arrow-alt-right fa-2x text-primary animate-pulse"></i>
+          </div>
+          <div class="text-center flex-fill">
+            <div class="small text-muted mb-1"><i class="fas fa-sign-in-alt text-success me-1"></i>To</div>
+            <div class="fw-bold text-dark">{{ transfer.to_warehouse.name }}</div>
+            <div class="small text-muted">Code: {{ transfer.to_warehouse.code }}</div>
+          </div>
+        </div>
+
+        <!-- Meta fields list -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
+            <span class="text-muted">Transfer Date</span>
+            <span class="fw-semibold text-dark">{{ transfer.transfer_date }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
+            <span class="text-muted">Expected Arrival</span>
+            <span class="fw-semibold text-dark">{{ transfer.expected_arrival|default:"-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
+            <span class="text-muted">Approved By</span>
+            <span class="fw-semibold text-dark">{% if transfer.approved_by %}{{ transfer.approved_by.full_name|default:transfer.approved_by.username }}{% else %}-{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2 small pb-1 border-bottom">
+            <span class="text-muted">Created By</span>
+            <span class="fw-semibold text-dark">{% if transfer.created_by %}{{ transfer.created_by.full_name|default:transfer.created_by.username }}{% else %}-{% endif %}</span>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="p-3 bg-light rounded-3">
+          <h6 class="fw-bold text-dark mb-1"><i class="far fa-sticky-note me-1 text-primary"></i>Remarks / Notes</h6>
+          <p class="text-secondary small mb-0">{{ transfer.notes|default:"No notes or remarks provided." }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Items, Action forms -->
+  <div class="col-12 col-lg-7">
+    <!-- Form/Actions Box based on status -->
+    {% if transfer.status != 'received' and transfer.status != 'cancelled' %}
+    <div class="card glass-card border-0 mb-4 p-4">
+      <h5 class="text-dark fw-bold mb-3"><i class="fas fa-cog text-primary me-2"></i>Workflow Actions</h5>
+      
+      <form method="post" action="{% url 'inventory:transfer_action' transfer.id %}">
+        {% csrf_token %}
+
+        {% if transfer.status == 'draft' %}
+          <p class="text-muted small">Submit this transfer draft to request approval from warehouse management.</p>
+          <div class="d-flex gap-2">
+            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger btn-sm">
+              <i class="fas fa-times me-1"></i>Cancel Transfer
+            </button>
+            <button type="submit" name="action" value="submit" class="btn btn-primary btn-sm flex-fill">
+              <i class="fas fa-paper-plane me-1"></i>Submit for Approval
+            </button>
+          </div>
+
+        {% elif transfer.status == 'requested' %}
+          <p class="text-muted small">Review the items and warehouses. Select an action below to Approve or Reject/Cancel the transfer request.</p>
+          <div class="d-flex gap-2">
+            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger btn-sm">
+              <i class="fas fa-ban me-1"></i>Reject / Cancel
+            </button>
+            <button type="submit" name="action" value="approve" class="btn btn-success btn-sm flex-fill">
+              <i class="fas fa-check me-1"></i>Approve Request
+            </button>
+          </div>
+
+        {% elif transfer.status == 'approved' %}
+          <p class="text-muted small">Verify actual quantities shipped from <strong>{{ transfer.from_warehouse.name }}</strong> before marking the stock as In Transit.</p>
+          
+          <table class="table table-sm align-middle small mb-3">
+            <thead>
+              <tr class="table-light">
+                <th>Product</th>
+                <th class="text-end">Requested</th>
+                <th class="text-end" style="width: 30%">Qty Shipped</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td>{{ line.product.name }}</td>
+                <td class="text-end">{{ line.quantity_requested|floatformat:0 }}</td>
+                <td>
+                  <input type="number" step="any" min="0" name="qty_sent_{{ line.id }}" class="form-control form-control-sm text-end" value="{{ line.quantity_requested|floatformat:0 }}" required>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <button type="submit" name="action" value="ship" class="btn btn-primary btn-sm w-100">
+            <i class="fas fa-truck me-1"></i>Mark Shipped (Stock In Transit)
+          </button>
+
+        {% elif transfer.status == 'in_transit' %}
+          <p class="text-muted small">Confirm the actual quantities received at <strong>{{ transfer.to_warehouse.name }}</strong> to update the destination inventory levels.</p>
+          
+          <table class="table table-sm align-middle small mb-3">
+            <thead>
+              <tr class="table-light">
+                <th>Product</th>
+                <th class="text-end">Shipped</th>
+                <th class="text-end" style="width: 30%">Qty Received</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td>{{ line.product.name }}</td>
+                <td class="text-end">{{ line.quantity_sent|floatformat:0 }}</td>
+                <td>
+                  <input type="number" step="any" min="0" name="qty_recv_{{ line.id }}" class="form-control form-control-sm text-end" value="{{ line.quantity_sent|floatformat:0 }}" required>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <button type="submit" name="action" value="receive" class="btn btn-success btn-sm w-100">
+            <i class="fas fa-check-double me-1"></i>Confirm Stock Received
+          </button>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Items List Card -->
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-header border-0 pb-0 bg-transparent">
+        <h5 class="text-dark fw-bold m-0">Transfer Line Items</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>Product / SKU</th>
+                <th class="text-end">Requested
+                {% if transfer.status != 'draft' and transfer.status != 'requested' %}</th>
+                  <th class="text-end">Shipped
+                {% endif %}
+                {% if transfer.status == 'received' %}</th>
+                  <th class="text-end">Received
+                {% endif %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td>
+                  <div class="fw-bold">{{ line.product.name }}</div>
+                  <div class="text-muted" style="font-size: 11px;">SKU: {{ line.product.sku }}</div>
+                </td>
+                <td class="text-end fw-semibold text-dark">{{ line.quantity_requested|floatformat:0 }}</td>
+                {% if transfer.status != 'draft' and transfer.status != 'requested' %}
+                  <td class="text-end fw-semibold text-primary">{{ line.quantity_sent|floatformat:0 }}</td>
+                {% endif %}
+                {% if transfer.status == 'received' %}
+                  <td class="text-end fw-semibold text-success">{{ line.quantity_received|floatformat:0 }}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Subtle micro animation pulse for long arrow */
+.animate-pulse {
+  animation: pulse-animation 2s infinite;
+}
+@keyframes pulse-animation {
+  0% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.7; }
+}
+</style>
+{% endblock %}

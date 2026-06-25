@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Product{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Create Product</h1>
+    <p class="text-muted mb-0">Add a new item to your product catalog</p>
+  </div>
+  <div>
+    <a href="{% url 'inventory:products' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to catalog
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'inventory:product_create' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <!-- Section 1: General Info -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-box me-2"></i>Product General Info</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_name" class="form-label small fw-semibold">Product Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Ergonomic Office Chair">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_sku" class="form-label small fw-semibold">SKU / Catalog No. <span class="text-danger">*</span></label>
+              <input type="text" name="sku" id="id_sku" class="form-control" required placeholder="e.g. FURN-CHR-01">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_barcode" class="form-label small fw-semibold">Barcode / UPC / EAN</label>
+              <input type="text" name="barcode" id="id_barcode" class="form-control" placeholder="e.g. 123456789012">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_product_type" class="form-label small fw-semibold">Product Type</label>
+              <select name="product_type" id="id_product_type" class="form-select">
+                {% for val, label in product_type_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="d-flex justify-content-between align-items-end">
+                <label for="id_category" class="form-label small fw-semibold mb-0">Product Category</label>
+                <a href="#" class="small text-decoration-none" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fas fa-plus"></i> New</a>
+              </div>
+              <select name="category" id="id_category" class="form-select">
+                <option value="">Select Category</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_brand" class="form-label small fw-semibold">Brand / Manufacturer</label>
+              <select name="brand" id="id_brand" class="form-select">
+                <option value="">Select Brand</option>
+                {% for brand in brands %}
+                  <option value="{{ brand.id }}">{{ brand.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_uom" class="form-label small fw-semibold">Unit of Measure (UOM)</label>
+              <select name="uom" id="id_uom" class="form-select">
+                <option value="">Select UOM</option>
+                {% for uom in uoms %}
+                  <option value="{{ uom.id }}">{{ uom.name }} ({{ uom.abbreviation }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 2: Pricing & Tax -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-tags me-2"></i>Pricing & Financials</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+              <label for="id_cost_price" class="form-label small fw-semibold">Cost Price ($)</label>
+              <input type="number" name="cost_price" id="id_cost_price" class="form-control" value="0.00" step="0.0001" min="0">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_sale_price" class="form-label small fw-semibold">Sale Price ($)</label>
+              <input type="number" name="sale_price" id="id_sale_price" class="form-control" value="0.00" step="0.0001" min="0">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_tax" class="form-label small fw-semibold">Associated Customer Tax</label>
+              <select name="tax" id="id_tax" class="form-select">
+                <option value="">Select Customer Tax</option>
+                {% for tax in taxes %}
+                  <option value="{{ tax.id }}">{{ tax.name }} ({{ tax.rate }}%)</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 3: Inventory Levels -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-cubes me-2"></i>Inventory Thresholds</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+              <label for="id_min_stock_level" class="form-label small fw-semibold">Minimum Safety Stock Level</label>
+              <input type="number" name="min_stock_level" id="id_min_stock_level" class="form-control" value="0" step="any">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_reorder_point" class="form-label small fw-semibold">Reorder Point Level</label>
+              <input type="number" name="reorder_point" id="id_reorder_point" class="form-control" value="0" step="any">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="id_reorder_quantity" class="form-label small fw-semibold">Standard Reorder Quantity</label>
+              <input type="number" name="reorder_quantity" id="id_reorder_quantity" class="form-control" value="0" step="any">
+            </div>
+          </div>
+
+          <!-- Section 4: Specifications & Assets -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-image me-2"></i>Media & Description</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <label for="id_description" class="form-label small fw-semibold">Item Specification / Description</label>
+              <textarea name="description" id="id_description" class="form-control" rows="3" placeholder="Add detailed product description..."></textarea>
+            </div>
+            <div class="col-12">
+              <label for="id_image" class="form-label small fw-semibold">Product Image File</label>
+              <input type="file" name="image" id="id_image" class="form-control" accept="image/*">
+            </div>
+          </div>
+
+          <!-- Section 5: Behaviors & Active States -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-toggle-on me-2"></i>Behaviors & Status</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4 d-flex align-items-center">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" checked>
+                <label class="form-check-label small fw-bold" for="id_is_active">Product Is Active</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-center">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_purchasable" id="id_is_purchasable" checked>
+                <label class="form-check-label small fw-bold" for="id_is_purchasable">Is Purchasable (Purchase Orders)</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-center">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_sellable" id="id_is_sellable" checked>
+                <label class="form-check-label small fw-bold" for="id_is_sellable">Is Sellable (Sales Orders)</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'inventory:products' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold" id="addCategoryModalLabel">New Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addCategoryForm">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Category Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newCategoryName" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Category Code</label>
+            <input type="text" class="form-control" id="newCategoryCode">
+          </div>
+          <div id="categoryError" class="alert alert-danger d-none small py-2"></div>
+        </form>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" id="saveCategoryBtn">Save Category</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const saveBtn = document.getElementById('saveCategoryBtn');
+    const form = document.getElementById('addCategoryForm');
+    const errorDiv = document.getElementById('categoryError');
+    const categorySelect = document.getElementById('id_category');
+    
+    saveBtn.addEventListener('click', function() {
+        const name = document.getElementById('newCategoryName').value.trim();
+        const code = document.getElementById('newCategoryCode').value.trim();
+        const csrfToken = document.querySelector('#addCategoryForm [name=csrfmiddlewaretoken]').value;
+        
+        if (!name) {
+            errorDiv.textContent = 'Category Name is required.';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        errorDiv.classList.add('d-none');
+        
+        const formData = new URLSearchParams();
+        formData.append('name', name);
+        formData.append('code', code);
+        
+        fetch('{% url "inventory:category_ajax_create" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+            },
+            body: formData.toString()
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Add to dropdown and select it
+                const option = new Option(data.category.name, data.category.id, true, true);
+                categorySelect.add(option);
+                
+                // Close modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addCategoryModal'));
+                modal.hide();
+                form.reset();
+            } else {
+                errorDiv.textContent = data.message || 'An error occurred.';
+                errorDiv.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            errorDiv.textContent = 'Network error. Please try again.';
+            errorDiv.classList.remove('d-none');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Category';
+        });
+    });
+});
+</script>
+{% endblock %}

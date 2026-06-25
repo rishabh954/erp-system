@@ -1,0 +1,54 @@
+{% extends 'portals/portal_base.html' %}
+{% block title %}New Support Ticket{% endblock %}
+{% block nav_tickets %}active{% endblock %}
+{% block page_title %}New Support Ticket{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;">
+    <div style="margin-bottom:16px;">
+        <a href="{% url 'portals:customer_tickets' %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back to Tickets</a>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fas fa-headset" style="color:var(--primary);margin-right:6px;"></i>Submit a Support Request</span>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label">Subject <span style="color:var(--danger);">*</span></label>
+                    <input type="text" name="title" class="form-control" placeholder="Brief description of your issue..." required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-control">
+                        <option value="">-- Select Category --</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-control">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description <span style="color:var(--danger);">*</span></label>
+                    <textarea name="description" class="form-control" placeholder="Please describe your issue in detail. The more information you provide, the faster we can help you." required style="min-height:140px;"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Submit Ticket
+                    </button>
+                    <a href="{% url 'portals:customer_tickets' %}" class="btn btn-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

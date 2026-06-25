@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Accounting Dashboard{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Accounting Dashboard</h1>
+    <div>
+        <a href="{% url 'accounting:journal_create' %}" class="btn btn-primary shadow-sm"><i class="fas fa-plus fa-sm text-white-50"></i> New Journal Entry</a>
+        <a href="{% url 'accounting:reports' %}" class="btn btn-outline-primary shadow-sm ms-2"><i class="fas fa-chart-line"></i> View Reports</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Total Cash -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Cash (Bank Balances)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_cash|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-university fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Open AR -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Accounts Receivable (Open)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ open_ar|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Open AP -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Accounts Payable (Open)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ open_ap|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-file-invoice fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Net Profit YTD -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Net Profit (YTD)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ net_profit_ytd|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-chart-line fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Income vs Expenses Chart -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Cash Flow Overview</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area" style="height: 300px;">
+                    <canvas id="cashFlowChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Journal Entries -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4 h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Journal Entries</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for entry in recent_entries %}
+                    <a href="{% url 'accounting:journal_detail' entry.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1 fw-bold">{{ entry.number }}</h6>
+                            <small class="text-muted">{{ entry.date|date:"M d, Y" }}</small>
+                        </div>
+                        <p class="mb-1 small">{{ entry.reference|default:"No reference" }}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="badge {% if entry.status == 'posted' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">{{ entry.status|title }}</span>
+                            <span class="fw-bold text-dark">${{ entry.total_debit|floatformat:2 }}</span>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="p-4 text-center text-muted">No recent journal entries.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-2">
+    <!-- Bank Accounts Summary -->
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Bank Accounts</h6>
+                <a href="{% url 'accounting:bank_reconciliation' %}" class="btn btn-sm btn-outline-primary">Bank Reconciliation</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Account Name</th>
+                                <th>Bank</th>
+                                <th>Account Number</th>
+                                <th class="text-end">Current Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bank in bank_accounts %}
+                            <tr>
+                                <td><span class="fw-bold">{{ bank.name }}</span></td>
+                                <td>{{ bank.bank_name }}</td>
+                                <td>{{ bank.account_number }}</td>
+                                <td class="text-end fw-bold">${{ bank.current_balance|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No bank accounts configured.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var ctx = document.getElementById("cashFlowChart");
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [
+                    {
+                        label: "Income",
+                        backgroundColor: "#1cc88a",
+                        data: [4500, 5000, 6000, 5500, 7000, 8500],
+                    },
+                    {
+                        label: "Expenses",
+                        backgroundColor: "#e74a3b",
+                        data: [3000, 3200, 4500, 3100, 4000, 4200],
+                    }
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                        ticks: { callback: function(value) { return '$' + value; } },
+                        grid: { borderDash: [2], zeroLineBorderDash: [2] }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

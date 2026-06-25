@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Serial Number Tracking{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Serial Number Tracking</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Serial Number</th>
+                            <th>Product</th>
+                            <th>Lot/Batch</th>
+                            <th>Status</th>
+                            <th>Warranty Expiration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for serial in serials %}
+                        <tr>
+                            <td><strong>{{ serial.number }}</strong></td>
+                            <td>{{ serial.product.name }}</td>
+                            <td>{{ serial.lot.number|default:'-' }}</td>
+                            <td>
+                                {% if serial.status == 'in_stock' %}<span class="badge bg-primary">In Stock</span>
+                                {% elif serial.status == 'sold' %}<span class="badge bg-success">Sold</span>
+                                {% else %}<span class="badge bg-secondary">{{ serial.status|title }}</span>{% endif %}
+                            </td>
+                            <td>{{ serial.warranty_expiration|default:'-' }}</td>
+                            <td>
+                                <a href="{% url 'inventory:serial_detail' serial.pk %}" class="btn btn-sm btn-info text-white">View Traceability</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center">No serial numbers found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

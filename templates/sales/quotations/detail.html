@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}quotation - {{ quotation.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">quotation {{ quotation.number }}</h1>
+      <span class="badge 
+        {% if quotation.status == 'draft' %}bg-secondary
+        {% elif quotation.status == 'sent' %}bg-info
+        {% elif quotation.status == 'partial' %}bg-warning text-dark
+        {% elif quotation.status == 'paid' %}bg-success
+        {% elif quotation.status == 'cancelled' %}bg-danger
+        {% endif %}">
+        {{ quotation.get_status_display }}
+      </span>
+    </div>
+    <p class="text-muted mb-0">Created on {{ quotation.validity_date|date:"Y-m-d" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'sales:quotations' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+    <!-- Action: Send Email -->
+    {% if quotation.status == 'draft' %}
+    <form method="post" action="{% url 'sales:quotation_send' quotation.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-info btn-sm">
+        <i class="fas fa-paper-plane me-1"></i>Send to Customer
+      </button>
+    </form>
+    {% endif %}
+
+    <!-- Action: Approve Quotation -->
+    {% if quotation.status == 'sent' or quotation.status == 'draft' %}
+    <form method="post" action="{% url 'workflow:action' %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="app_label" value="sales">
+      <input type="hidden" name="model_name" value="Quotation">
+      <input type="hidden" name="obj_id" value="{{ quotation.pk }}">
+      <input type="hidden" name="action" value="approve">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn btn-warning btn-sm">
+        <i class="fas fa-check-circle me-1"></i>Approve
+      </button>
+    </form>
+    {% endif %}
+
+    <!-- Action: Convert to Sales Order -->
+    {% if quotation.status == 'sent' or quotation.status == 'approved' %}
+    <form method="post" action="{% url 'sales:quotation_convert' quotation.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success btn-sm">
+        <i class="fas fa-exchange-alt me-1"></i>Convert to Sales Order
+      </button>
+    </form>
+    {% endif %}
+
+    <!-- Action: Reject Quotation -->
+    {% if quotation.status == 'draft' or quotation.status == 'sent' or quotation.status == 'approved' %}
+    <form method="post" action="{% url 'sales:quotation_reject' quotation.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm ms-1" onclick="return confirm('Are you sure you want to mark this quotation as rejected?');">
+        <i class="fas fa-times-circle me-1"></i>Reject
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: quotation Items & Billing -->
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <!-- Client / Company Head -->
+        <div class="row mb-4 border-bottom pb-3">
+          <div class="col-12 col-md-6 mb-3 mb-md-0">
+            <span class="text-muted small d-block">Client Bill-To</span>
+            <h5 class="fw-bold text-dark mb-1">{{ quotation.customer.name }}</h5>
+            {% if quotation.customer.email %}
+              <div class="small text-muted"><i class="fas fa-envelope me-1"></i>{{ quotation.customer.email }}</div>
+            {% endif %}
+            {% if quotation.customer.phone %}
+              <div class="small text-muted"><i class="fas fa-phone me-1"></i>{{ quotation.customer.phone }}</div>
+            {% endif %}
+          </div>
+          <div class="col-12 col-md-6 text-md-end">
+            <span class="text-muted small d-block">Company Vendor</span>
+            <h5 class="fw-bold text-primary mb-1">{{ quotation.company.name }}</h5>
+            <div class="small text-muted">{{ quotation.company.full_address|default:"" }}</div>
+          </div>
+        </div>
+
+        <!-- Line items table -->
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr class="small text-uppercase">
+                <th>Product</th>
+                <th>Description</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-end">Discount</th>
+                <th class="text-end">Tax</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
+                <td class="small">{{ line.description }}</td>
+                <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
+                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end text-danger">
+                  {% if line.discount_percent > 0 %}
+                    -{{ line.discount_percent }}%
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end small">
+                  {% if line.tax %}
+                    {{ line.tax.name }} ({{ line.tax.rate }}%)
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.total|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">No items found in quotation.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Grand Total Breakdown -->
+        <div class="row justify-content-end mt-4">
+          <div class="col-12 col-md-5">
+            <ul class="list-group list-group-flush bg-transparent">
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Subtotal</span>
+                <span class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ quotation.subtotal|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Discount</span>
+                <span class="fw-semibold text-danger">-{{ CURRENCY_SYMBOL }}{{ quotation.discount_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Tax</span>
+                <span class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ quotation.tax_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Amount Created</span>
+                <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ quotation.total|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+                <span class="fw-bold text-dark">Balance Due</span>
+                <span class="h4 mb-0 fw-bold text-danger">{{ CURRENCY_SYMBOL }}{{ quotation.balance_due|floatformat:2|intcomma }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: quotation Details & Payment Logs -->
+  <div class="col-12 col-lg-4">
+    <!-- quotation details -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-info-circle me-2"></i>quotation Details</h5>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Due Date</span>
+            <span class="fw-semibold small"><i class="far fa-calendar-times me-1 text-muted"></i>{{ quotation.due_date|date:"Y-m-d" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Payment Terms</span>
+            <span class="fw-semibold small">Net {{ quotation.payment_terms }} Days</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Currency</span>
+            <span class="fw-semibold small">{{ quotation.currency|default:"USD" }}</span>
+          </li>
+          {% if quotation.sales_order %}
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+            <span class="text-muted small">Source Order</span>
+            <span class="fw-semibold small">
+              <a href="{% url 'sales:order_detail' quotation.sales_order.pk %}" class="fw-bold text-primary">
+                {{ quotation.sales_order.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
+              </a>
+            </span>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+

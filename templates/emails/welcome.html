@@ -1,0 +1,25 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+    <h1>Welcome to {{ company_name|default:"the ERP System" }}!</h1>
+    <p>Hi {{ user_name }},</p>
+    <p>We are thrilled to have you on board. Your account has been successfully set up, and you can now log in to access your dashboard.</p>
+    
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+        <tbody>
+            <tr>
+                <td align="center">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <td> <a href="{{ login_url }}" target="_blank">Log In Now</a> </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <p>If you have any questions or need assistance getting started, feel free to contact our support team.</p>
+{% endblock %}

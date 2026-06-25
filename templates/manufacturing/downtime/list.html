@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Downtime Logs{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Downtime Logs</h1></div>
+<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
+<thead class="table-light"><tr><th>Work Center</th><th>Reason</th><th>Start Time</th><th>Duration (min)</th></tr></thead>
+<tbody>
+{% for log in downtime_logs %}<tr><td><a href="{% url 'manufacturing:downtime_log_detail' log.pk %}">{{ log.work_center.name }}</a></td><td>{{ log.reason }}</td><td>{{ log.start_time }}</td><td>{{ log.duration_minutes }}</td></tr>
+{% empty %}<tr><td colspan="4" class="text-center py-4">No downtime logs found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

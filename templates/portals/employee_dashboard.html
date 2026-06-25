@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Employee Portal{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Employee Portal</h1></div>
+
+{% if employee %}
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="text-primary mb-0 fw-bold">Leave Requests</h5></div>
+            <ul class="list-group list-group-flush">
+                {% for l in leaves %}<li class="list-group-item d-flex justify-content-between align-items-center">{{ l.start_date }} to {{ l.end_date }} <span class="badge bg-info">{{ l.get_status_display }}</span></li>{% empty %}<li class="list-group-item text-muted">No leave requests.</li>{% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="text-primary mb-0 fw-bold">Expense Claims</h5></div>
+            <ul class="list-group list-group-flush">
+                {% for e in expenses %}<li class="list-group-item d-flex justify-content-between align-items-center">{{ e.expense_date }} - {{ e.amount }} <span class="badge bg-warning text-dark">{{ e.get_status_display }}</span></li>{% empty %}<li class="list-group-item text-muted">No expense claims.</li>{% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Your user account is not linked to an employee profile.</div>
+{% endif %}
+{% endblock %}

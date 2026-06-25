@@ -1,0 +1,20 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+    <h1 style="color: #2dce89;">Leave Request Approved</h1>
+    <p>Hi {{ employee_name }},</p>
+    <p>Your <strong>{{ leave_type }}</strong> leave request has been approved.</p>
+    
+    <table class="details-table" style="width: 100%; border-collapse: collapse; margin-bottom: 24px; background-color: #f1fef8;">
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #bcf5df;"><strong>Start Date:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #bcf5df; text-align: right;">{{ start_date }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #bcf5df;"><strong>End Date:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #bcf5df; text-align: right;">{{ end_date }}</td>
+        </tr>
+    </table>
+    
+    <p>Enjoy your time off!</p>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bank Reconciliation{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Bank Reconciliation</h1>
+    <a href="{% url 'accounting:dashboard' %}" class="btn btn-outline-primary shadow-sm"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
+        <h6 class="m-0 font-weight-bold text-primary">Select Bank Account</h6>
+        <form method="get" class="d-flex align-items-center" id="bankSelectForm" style="min-width: 300px;">
+            <select name="bank_account" class="form-select shadow-sm" onchange="document.getElementById('bankSelectForm').submit()">
+                {% for bank in bank_accounts %}
+                <option value="{{ bank.id }}" {% if selected_bank and selected_bank.id == bank.id %}selected{% endif %}>{{ bank.name }} ({{ bank.account_number }})</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+{% if selected_bank %}
+<div class="row">
+    <!-- Unreconciled Bank Transactions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-dark">Bank Statement Transactions</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newTransactionModal">
+                    <i class="fas fa-plus"></i> Add Manual
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                    {% for tx in transactions %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3 transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.transaction_type }}" onclick="selectTransaction(this)">
+                        <div>
+                            <div class="fw-bold">{{ tx.description }}</div>
+                            <small class="text-muted">{{ tx.transaction_date|date:"M d, Y" }} | ID: {{ tx.id|stringformat:"s"|slice:":8" }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if tx.transaction_type == 'credit' %}bg-success{% else %}bg-danger{% endif %} rounded-pill mb-1">
+                                {{ tx.transaction_type|title }}
+                            </span>
+                            <div class="fw-bold fs-5">${{ tx.amount|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <h5>All Caught Up!</h5>
+                        <p>No unreconciled bank transactions.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unreconciled Journal Items -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3 bg-white">
+                <h6 class="m-0 font-weight-bold text-dark">System Journal Items (GL)</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                    {% for item in journal_items %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3 journal-item" data-id="{{ item.id }}" data-debit="{{ item.debit }}" data-credit="{{ item.credit }}" onclick="selectJournalItem(this)">
+                        <div>
+                            <div class="fw-bold">{{ item.journal_entry.reference|default:item.journal_entry.number }}</div>
+                            <div class="small text-muted">{{ item.description|default:"No description" }}</div>
+                            <small class="text-muted">{{ item.journal_entry.date|date:"M d, Y" }}</small>
+                        </div>
+                        <div class="text-end">
+                            {% if item.debit > 0 %}
+                            <span class="badge bg-success rounded-pill mb-1">Debit (In)</span>
+                            <div class="fw-bold fs-5">${{ item.debit|floatformat:2 }}</div>
+                            {% else %}
+                            <span class="badge bg-danger rounded-pill mb-1">Credit (Out)</span>
+                            <div class="fw-bold fs-5">${{ item.credit|floatformat:2 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <h5>All Caught Up!</h5>
+                        <p>No unreconciled journal items for this account.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sticky Reconciliation Bar -->
+<div class="position-fixed bottom-0 start-0 w-100 bg-dark text-white p-3 shadow-lg d-none" id="reconciliationBar" style="z-index: 1050;">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div>
+            <span class="me-4"><i class="fas fa-file-invoice text-primary"></i> Bank Tx: <strong id="selectedTxAmount">$0.00</strong></span>
+            <span class="me-4"><i class="fas fa-book text-info"></i> Journal Item: <strong id="selectedJlAmount">$0.00</strong></span>
+            <span><i class="fas fa-balance-scale text-warning"></i> Difference: <strong id="differenceAmount">$0.00</strong></span>
+        </div>
+        <div>
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reconcile">
+                <input type="hidden" name="bank_account" value="{{ selected_bank.id }}">
+                <input type="hidden" name="transaction_id" id="formTxId">
+                <input type="hidden" name="journal_item_id" id="formJlId">
+                <button type="submit" class="btn btn-success fw-bold px-4" id="btnReconcile" disabled>
+                    <i class="fas fa-check-double me-2"></i> Reconcile Matches
+                </button>
+            </form>
+            <button type="button" class="btn btn-outline-light ms-2" onclick="clearSelection()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Manual Transaction -->
+<div class="modal fade" id="newTransactionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_transaction">
+                <input type="hidden" name="bank_account" value="{{ selected_bank.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Manual Bank Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="date" class="form-control" required value="{% now 'Y-m-d' %}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="credit">Money In (Credit)</option>
+                            <option value="debit">Money Out (Debit)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <input type="number" step="0.01" name="amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .transaction-item, .journal-item { cursor: pointer; transition: background-color 0.2s; }
+    .transaction-item:hover, .journal-item:hover { background-color: #f8f9fa; }
+    .selected-item { background-color: #e3f2fd !important; border-left: 4px solid #0d6efd !important; }
+</style>
+<script>
+    let selectedTxId = null;
+    let selectedTxAmount = 0;
+    
+    let selectedJlId = null;
+    let selectedJlAmount = 0;
+
+    function selectTransaction(element) {
+        document.querySelectorAll('.transaction-item').forEach(el => el.classList.remove('selected-item'));
+        element.classList.add('selected-item');
+        
+        selectedTxId = element.dataset.id;
+        selectedTxAmount = parseFloat(element.dataset.amount);
+        // Note: Bank credit is money in (System debit), Bank debit is money out (System credit).
+        
+        updateBar();
+    }
+
+    function selectJournalItem(element) {
+        document.querySelectorAll('.journal-item').forEach(el => el.classList.remove('selected-item'));
+        element.classList.add('selected-item');
+        
+        selectedJlId = element.dataset.id;
+        let dr = parseFloat(element.dataset.debit);
+        let cr = parseFloat(element.dataset.credit);
+        selectedJlAmount = dr > 0 ? dr : cr;
+        
+        updateBar();
+    }
+
+    function updateBar() {
+        const bar = document.getElementById('reconciliationBar');
+        
+        if (selectedTxId || selectedJlId) {
+            bar.classList.remove('d-none');
+            
+            document.getElementById('selectedTxAmount').innerText = '$' + selectedTxAmount.toFixed(2);
+            document.getElementById('selectedJlAmount').innerText = '$' + selectedJlAmount.toFixed(2);
+            
+            let diff = Math.abs(selectedTxAmount - selectedJlAmount);
+            document.getElementById('differenceAmount').innerText = '$' + diff.toFixed(2);
+            
+            const btn = document.getElementById('btnReconcile');
+            if (selectedTxId && selectedJlId && diff < 0.01) {
+                btn.disabled = false;
+                document.getElementById('formTxId').value = selectedTxId;
+                document.getElementById('formJlId').value = selectedJlId;
+            } else {
+                btn.disabled = true;
+            }
+        } else {
+            bar.classList.add('d-none');
+        }
+    }
+
+    function clearSelection() {
+        selectedTxId = null;
+        selectedJlId = null;
+        selectedTxAmount = 0;
+        selectedJlAmount = 0;
+        
+        document.querySelectorAll('.transaction-item, .journal-item').forEach(el => el.classList.remove('selected-item'));
+        updateBar();
+    }
+</script>
+{% endblock %}

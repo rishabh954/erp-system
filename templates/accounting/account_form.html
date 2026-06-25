@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}New Account — Chart of Accounts{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'accounting:chart_of_accounts' %}">Chart of Accounts</a></li>
+<li class="breadcrumb-item active">New Account
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-plus-circle me-2 opacity-75"></i>New Account
+    </h1>
+    <p class="text-muted mb-0">Add a new account to your Chart of Accounts</p>
+  </div>
+  <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Accounts
+  </a>
+</div>
+
+
+
+<!-- ═══════════════════════ FORM ══════════════════════════════════════════════ -->
+<form method="post" action="{% url 'accounting:account_create' %}" id="accountForm">
+  {% csrf_token %}
+
+  <div class="row g-4">
+
+    <!-- ── LEFT COLUMN — Main Details ─────────────────────────────────────── -->
+    <div class="col-12 col-lg-8">
+
+      <!-- Basic Information -->
+      <div class="card glass-card border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="fas fa-info-circle me-2 text-primary opacity-75"></i>Basic Information
+          </h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+
+          <div class="row g-3">
+            <!-- Account Code -->
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Account Code <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="code" id="accountCode"
+                     class="form-control font-monospace fw-bold"
+                     placeholder="e.g. 1001"
+                     required autofocus maxlength="20">
+              <div class="form-text">Unique numeric or alphanumeric code</div>
+            </div>
+
+            <!-- Account Name -->
+            <div class="col-md-9">
+              <label class="form-label fw-semibold">
+                Account Name <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="name"
+                     class="form-control"
+                     placeholder="e.g. Cash and Cash Equivalents"
+                     required maxlength="255">
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea name="description" class="form-control" rows="2"
+                        placeholder="Optional: describe the purpose of this account…"
+                        maxlength="1000"></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Classification -->
+      <div class="card glass-card border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="fas fa-tags me-2 text-success opacity-75"></i>Classification
+          </h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+          <div class="row g-3">
+
+            <!-- Account Type -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">
+                Account Type <span class="text-danger">*</span>
+              </label>
+              <select name="account_type" id="accountType" class="form-select" required>
+                <option value="">— Select Type —</option>
+                {% for val, label in account_type_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <!-- Visual type indicator -->
+              <div id="typeIndicator" class="type-indicator mt-2" style="display:none;">
+                <span id="typeIndicatorBadge"></span>
+                <span id="typeIndicatorNote" class="text-muted" style="font-size: 11px;"></span>
+              </div>
+            </div>
+
+            <!-- Account Sub-Type -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Sub-Type</label>
+              <select name="account_subtype" id="accountSubtype" class="form-select">
+                <option value="">— None —</option>
+                {% for val, label in account_subtype_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Parent Account -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Parent Account</label>
+              <select name="parent" class="form-select" id="parentAccount">
+                <option value="">— No Parent (Top-Level) —</option>
+                {% for pa in parent_accounts %}
+                <option value="{{ pa.pk }}">{{ pa.code }} — {{ pa.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Set a parent to create a hierarchical sub-account</div>
+            </div>
+
+            <!-- Currency -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Currency</label>
+              <select name="currency" class="form-select">
+                <option value="">— Company Default —</option>
+                {% for cur in currencies %}
+                <option value="{{ cur.pk }}">{{ cur.code }} — {{ cur.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Opening Balance -->
+      <div class="card glass-card border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="fas fa-dollar-sign me-2 text-warning opacity-75"></i>Opening Balance
+          </h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">Opening Balance</label>
+              <div class="input-group">
+                <span class="input-group-text bg-transparent">$</span>
+                <input type="number" name="opening_balance"
+                       class="form-control"
+                       placeholder="0.00"
+                       step="0.01" min="0" value="0">
+              </div>
+              <div class="form-text">Balance as of the opening date below</div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">Opening Balance Date</label>
+              <input type="date" name="opening_balance_date" class="form-control">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT COLUMN — Settings & Help ────────────────────────────────── -->
+    <div class="col-12 col-lg-4">
+
+      <!-- Account Settings -->
+      <div class="card glass-card border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="fas fa-sliders-h me-2 text-warning opacity-75"></i>Account Settings
+          </h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+
+          <!-- Allow Journal Entries -->
+          <div class="setting-toggle-row mb-3">
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 13px;">Allow Journal Entries</div>
+              <div class="text-muted" style="font-size: 11px;">Permit manual debit/credit entries</div>
+            </div>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="allow_journal_entries"
+                     id="allowJE" style="width: 2.2em; height: 1.25em;" checked>
+            </div>
+          </div>
+
+          <hr class="my-3 opacity-25">
+
+          <!-- Reconcilable -->
+          <div class="setting-toggle-row mb-3">
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 13px;">Reconcilable</div>
+              <div class="text-muted" style="font-size: 11px;">Allow bank reconciliation for this account</div>
+            </div>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="is_reconcilable"
+                     id="isReconcilable" style="width: 2.2em; height: 1.25em;">
+            </div>
+          </div>
+
+          <hr class="my-3 opacity-25">
+
+          <!-- Active -->
+          <div class="setting-toggle-row">
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 13px;">Active</div>
+              <div class="text-muted" style="font-size: 11px;">Inactive accounts are hidden from forms</div>
+            </div>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="is_active"
+                     id="isActive" style="width: 2.2em; height: 1.25em;" checked>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Account Numbering Guide -->
+      <div class="card border-0 mb-4" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe); border-radius: 14px;">
+        <div class="card-body px-4 py-3">
+          <h6 class="fw-bold text-primary mb-3">
+            <i class="fas fa-lightbulb me-2 text-warning"></i>Numbering Convention
+          </h6>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-asset-code">1xxx</span>
+            <span class="coa-guide-label">Assets</span>
+          </div>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-liability-code">2xxx</span>
+            <span class="coa-guide-label">Liabilities</span>
+          </div>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-equity-code">3xxx</span>
+            <span class="coa-guide-label">Equity</span>
+          </div>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-revenue-code">4xxx</span>
+            <span class="coa-guide-label">Revenue</span>
+          </div>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-expense-code">5xxx</span>
+            <span class="coa-guide-label">Expenses / COGS</span>
+          </div>
+          <div class="coa-guide-item">
+            <span class="coa-guide-code coa-bank-code">6xxx</span>
+            <span class="coa-guide-label">Bank & Cash</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Normal Balance Info Box -->
+      <div class="card border-0" id="normalBalanceCard" style="display:none; border-radius: 14px; overflow: hidden;">
+        <div class="card-body px-4 py-3" id="normalBalanceBody">
+          <h6 class="fw-bold mb-2" id="normalBalanceTitle"></h6>
+          <p class="mb-0" style="font-size: 12px; color: #374151;" id="normalBalanceDesc"></p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── Form Actions ─────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-3 align-items-center mt-2 mb-5 pb-3">
+    <button type="submit" class="btn btn-primary btn-lg px-5">
+      <i class="fas fa-save me-2"></i>Create Account
+    </button>
+    <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-secondary btn-lg">
+      Cancel
+    </a>
+    <div class="ms-auto text-muted" style="font-size: 12px;">
+      <i class="fas fa-info-circle me-1"></i>
+      Fields marked <span class="text-danger fw-bold">* are required</span>
+    </div>
+  </div>
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const typeSelect   = document.getElementById('accountType');
+  const indicator    = document.getElementById('typeIndicator');
+  const badge        = document.getElementById('typeIndicatorBadge');
+  const note         = document.getElementById('typeIndicatorNote');
+  const nbCard       = document.getElementById('normalBalanceCard');
+  const nbBody       = document.getElementById('normalBalanceBody');
+  const nbTitle      = document.getElementById('normalBalanceTitle');
+  const nbDesc       = document.getElementById('normalBalanceDesc');
+  const codeInput    = document.getElementById('accountCode');
+  const subtypeSelect = document.getElementById('accountSubtype');
+
+  // Type metadata
+  const typeInfo = {
+    asset:     { label: 'Asset',          color: '#3b82f6', bg: '#dbeafe', normal: 'Debit',  icon: 'fa-building-columns', desc: 'Assets increase with debits and decrease with credits. Examples: Cash, Accounts Receivable, Equipment.' },
+    liability: { label: 'Liability',      color: '#ef4444', bg: '#fee2e2', normal: 'Credit', icon: 'fa-scale-balanced',   desc: 'Liabilities increase with credits and decrease with debits. Examples: Accounts Payable, Loans Payable.' },
+    equity:    { label: 'Equity',         color: '#8b5cf6', bg: '#ede9fe', normal: 'Credit', icon: 'fa-landmark',         desc: 'Equity accounts increase with credits. Examples: Retained Earnings, Common Stock.' },
+    revenue:   { label: 'Revenue',        color: '#22c55e', bg: '#dcfce7', normal: 'Credit', icon: 'fa-arrow-trend-up',   desc: 'Revenue accounts increase with credits. Examples: Sales Revenue, Service Income.' },
+    expense:   { label: 'Expense',        color: '#f59e0b', bg: '#fef3c7', normal: 'Debit',  icon: 'fa-receipt',          desc: 'Expense accounts increase with debits. Examples: Rent Expense, Salaries Expense.' },
+    cogs:      { label: 'Cost of Goods',  color: '#f97316', bg: '#ffedd5', normal: 'Debit',  icon: 'fa-boxes-stacked',    desc: 'COGS accounts track the direct cost of goods sold. Increases with debits.' },
+    bank:      { label: 'Bank & Cash',    color: '#06b6d4', bg: '#cffafe', normal: 'Debit',  icon: 'fa-piggy-bank',       desc: 'Bank and cash accounts increase with debits. Examples: Petty Cash, Business Checking Account.' },
+  };
+
+  // Recommended subtypes per account type
+  const typeSubtypes = {
+    asset:     ['current_asset', 'fixed_asset', 'accounts_receivable'],
+    liability: ['current_liability', 'long_term_liability', 'accounts_payable'],
+    equity:    ['capital', 'retained_earnings'],
+    revenue:   ['other'],
+    expense:   ['other'],
+    cogs:      ['other'],
+    bank:      ['current_asset'],
+  };
+
+  function updateTypeUI(val) {
+    if (!val || !typeInfo[val]) {
+      indicator.style.display = 'none';
+      nbCard.style.display = 'none';
+      return;
+    }
+    const info = typeInfo[val];
+
+    // Show badge indicator under the select
+    indicator.style.display = 'flex';
+    badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${info.bg};color:${info.color};border:1px solid ${info.color}30;"><i class="fas ${info.icon}"></i>${info.label}</span>`;
+    note.textContent = `Normal balance: ${info.normal}`;
+
+    // Show info card
+    nbCard.style.display = '';
+    nbBody.style.background = info.bg;
+    nbTitle.textContent = info.label + ' Account';
+    nbTitle.style.color = info.color;
+    nbDesc.textContent  = info.desc;
+
+    // Auto-suggest subtype
+    const recommended = typeSubtypes[val] || [];
+    Array.from(subtypeSelect.options).forEach(opt => {
+      opt.style.fontWeight = recommended.includes(opt.value) ? '700' : '';
+    });
+  }
+
+  typeSelect.addEventListener('change', function () {
+    updateTypeUI(this.value);
+  });
+
+  // Auto-suggest account code prefix based on type
+  codeInput.addEventListener('focus', function () {
+    if (!this.value && typeSelect.value) {
+      const prefixes = { asset:'1', liability:'2', equity:'3', revenue:'4', expense:'5', cogs:'5', bank:'6' };
+      const p = prefixes[typeSelect.value];
+      if (p) this.placeholder = `e.g. ${p}001`;
+    }
+  });
+
+  typeSelect.addEventListener('change', function () {
+    const prefixes = { asset:'1', liability:'2', equity:'3', revenue:'4', expense:'5', cogs:'5', bank:'6' };
+    const p = prefixes[this.value];
+    if (p) codeInput.placeholder = `e.g. ${p}001`;
+    else codeInput.placeholder = 'e.g. 1001';
+  });
+
+  // Form validation UX
+  document.getElementById('accountForm').addEventListener('submit', function (e) {
+    const code = document.getElementById('accountCode').value.trim();
+    const type = document.getElementById('accountType').value;
+    if (!code || !type) {
+      e.preventDefault();
+      if (!code) document.getElementById('accountCode').classList.add('is-invalid');
+      if (!type) document.getElementById('accountType').classList.add('is-invalid');
+    }
+  });
+
+  // Remove invalid on input
+  document.getElementById('accountCode').addEventListener('input', function () {
+    this.classList.remove('is-invalid');
+  });
+  document.getElementById('accountType').addEventListener('change', function () {
+    this.classList.remove('is-invalid');
+  });
+
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Setting toggle row ───────────────────────────────────────────── */
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ── Guide list ───────────────────────────────────────────────────── */
+.coa-guide-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.coa-guide-item:last-child { margin-bottom: 0; }
+.coa-guide-code {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  min-width: 46px;
+  text-align: center;
+}
+.coa-guide-label { font-size: 12px; color: #374151; }
+.coa-asset-code     { background: #dbeafe; color: #1d4ed8; }
+.coa-liability-code { background: #fee2e2; color: #b91c1c; }
+.coa-equity-code    { background: #ede9fe; color: #6d28d9; }
+.coa-revenue-code   { background: #dcfce7; color: #15803d; }
+.coa-expense-code   { background: #fef3c7; color: #b45309; }
+.coa-bank-code      { background: #cffafe; color: #0e7490; }
+
+/* ── Type indicator row ───────────────────────────────────────────── */
+.type-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Font monospace for code input ────────────────────────────────── */
+#accountCode {
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Glass card ───────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

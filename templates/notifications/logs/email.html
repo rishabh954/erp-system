@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Email Logs{% endblock %}
+{% block nav_notifications %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Email Logs</h1>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Recipient</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Date Sent</th>
+                        <th>Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.recipient_name }} <br><small class="text-muted">{{ log.recipient_email }}</small></td>
+                        <td>{{ log.subject }}</td>
+                        <td>
+                            {% if log.status == 'sent' %}
+                            <span class="badge bg-success">Sent</span>
+                            {% elif log.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% elif log.status == 'bounced' %}
+                            <span class="badge bg-warning">Bounced</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ log.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.sent_at|date:"M d, Y H:i"|default:"-" }}</td>
+                        <td><small class="text-danger">{{ log.error_message|truncatechars:50 }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4">No email logs found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}

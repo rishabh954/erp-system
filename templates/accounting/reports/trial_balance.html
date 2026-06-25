@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Trial Balance{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'accounting:reports' %}">Financial Reports</a></li>
+<li class="breadcrumb-item active">Trial Balance
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-list-check me-2 opacity-75"></i>Trial Balance
+    </h1>
+    <p class="text-muted mb-0">General ledger account balances as of {{ as_of }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'accounting:reports' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to Reports
+    </a>
+    <button class="btn btn-outline-primary btn-sm" onclick="window.print()">
+      <i class="fas fa-print me-1"></i>Print
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FILTER BAR ══════════════════════════════════════ -->
+<div class="card glass-card border-0 mb-4 d-print-none">
+  <div class="card-body py-3 px-4">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label fw-semibold text-muted small mb-1">As Of Date</label>
+        <input type="date" name="as_of" value="{{ as_of }}" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="fas fa-sync-alt me-2"></i>Update
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BALANCE CHECK HERO ══════════════════════════════ -->
+<div class="card border-0 mb-4 {% if is_balanced %}bg-success-subtle border-success{% else %}bg-danger-subtle border-danger{% endif %}"
+     style="border-radius: 16px; border-width: 1px !important;">
+  <div class="card-body px-4 py-3 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;
+                  background: {% if is_balanced %}#dcfce7{% else %}#fee2e2{% endif %};
+                  color: {% if is_balanced %}#15803d{% else %}#b91c1c{% endif %};">
+        <i class="fas {% if is_balanced %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+      </div>
+      <div>
+        <h6 class="fw-bold mb-0 {% if is_balanced %}text-success{% else %}text-danger{% endif %}">
+          {% if is_balanced %}Trial Balance is Balanced{% else %}Trial Balance is Unbalanced!{% endif %}
+        </h6>
+        <div class="text-muted" style="font-size: 13px;">Total Debits = Total Credits</div>
+      </div>
+    </div>
+    <div class="text-end">
+      <div class="text-muted small">Difference</div>
+      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}">
+        <!-- Cannot do simple widthratio math on large numbers easily without custom filter, just hardcode if 0 -->
+        {% if is_balanced %}{{ CURRENCY_SYMBOL }}0.00{% else %}Review Entries{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ REPORT CONTENT ══════════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm printable-report">
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0 report-table">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-4">Account Code</th>
+          <th>Account Name</th>
+          <th>Type</th>
+          <th class="text-end" style="width: 150px;">Debit</th>
+          <th class="text-end pe-4" style="width: 150px;">Credit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="ps-4">
+            <a href="{% url 'accounting:account_detail' row.account.pk %}" class="text-decoration-none">
+              <span class="report-code">{{ row.account.code }}</span>
+            </a>
+          </td>
+          <td>
+            <a href="{% url 'accounting:account_detail' row.account.pk %}" class="text-decoration-none fw-semibold text-dark">
+              {{ row.account.name }}
+            </a>
+          </td>
+          <td>
+            <span class="type-badge type-badge-{{ row.account.account_type }}">
+              {{ row.account.get_account_type_display }}
+            </span>
+          </td>
+          <td class="text-end fw-medium text-dark">
+            {% if row.debit > 0 %}{{ CURRENCY_SYMBOL }}{{ row.debit|floatformat:2|intcomma }}{% else %}<span class="text-muted">—{% endif %}</span>
+          </td>
+          <td class="text-end pe-4 fw-medium text-dark">
+            {% if row.credit > 0 %}{{ CURRENCY_SYMBOL }}{{ row.credit|floatformat:2|intcomma }}{% else %}<span class="text-muted">—{% endif %}</span>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-5 text-muted">No accounts with balances found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light border-top border-2">
+        <tr>
+          <td colspan="3" class="ps-4 py-3 fw-bold text-dark text-uppercase text-end" style="font-size: 13px;">Totals</td>
+          <td class="text-end py-3 fw-bold text-primary fs-6 border-bottom border-primary border-3" style="border-bottom-style: double !important;">
+            {{ CURRENCY_SYMBOL }}{{ total_debit|floatformat:2|intcomma }}
+          </td>
+          <td class="text-end pe-4 py-3 fw-bold text-primary fs-6 border-bottom border-primary border-3" style="border-bottom-style: double !important;">
+            {{ CURRENCY_SYMBOL }}{{ total_credit|floatformat:2|intcomma }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.report-table { font-size: 13px; }
+.report-table tbody tr:hover { background: rgba(0,0,0,0.015); }
+.report-code {
+  font-family: 'Courier New', monospace; font-size: 12px; font-weight: 800;
+  color: #6366f1; background: rgba(99,102,241,0.08);
+  padding: 2px 8px; border-radius: 6px;
+}
+
+/* Type badge */
+.type-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+}
+.type-badge-asset     { background: #dbeafe; color: #1d4ed8; }
+.type-badge-liability { background: #fee2e2; color: #b91c1c; }
+.type-badge-equity    { background: #ede9fe; color: #6d28d9; }
+.type-badge-revenue   { background: #dcfce7; color: #15803d; }
+.type-badge-expense   { background: #fef3c7; color: #b45309; }
+.type-badge-cogs      { background: #ffedd5; color: #c2410c; }
+.type-badge-bank      { background: #cffafe; color: #0e7490; }
+
+@media print {
+  .d-print-none { display: none !important; }
+  .page-header { display: none !important; }
+  #sidebar { display: none !important; }
+  .main-content { margin-left: 0 !important; padding: 0 !important; }
+  .glass-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  body { background: #fff !important; }
+  a { text-decoration: none !important; color: #000 !important; }
+}
+</style>
+{% endblock %}

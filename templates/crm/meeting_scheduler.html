@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Meeting Scheduler{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <h1 class="h3 text-primary mb-1">Meeting Scheduler</h1>
+  <p class="text-muted">Upcoming meetings scheduled with Leads and Opportunities.</p>
+</div>
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Date/Time</th>
+          <th>Subject</th>
+          <th>Lead / Opportunity</th>
+          <th>Assigned To</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for meeting in meetings %}
+        <tr>
+          <td class="fw-semibold">{{ meeting.scheduled_at|date:"M d, Y H:i" }}</td>
+          <td>{{ meeting.subject }}</td>
+          <td><a href="{% url 'crm:lead_detail' meeting.lead.pk %}">{{ meeting.lead.name }}</a></td>
+          <td>{{ meeting.assigned_to.full_name|default:"-" }}</td>
+          <td>{{ meeting.outcome|default:"Pending" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center py-5">No upcoming meetings.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

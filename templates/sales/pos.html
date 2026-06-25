@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Point of Sale{% endblock %}
+{% block nav_sales %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-container { height: calc(100vh - 150px); display: flex; flex-direction: column; }
+.pos-products { flex-grow: 1; overflow-y: auto; padding-right: 15px; }
+.pos-cart { background: #f8f9fa; border-radius: .35rem; padding: 20px; display: flex; flex-direction: column; height: 100%; }
+.pos-cart-items { flex-grow: 1; overflow-y: auto; }
+.product-card { cursor: pointer; transition: transform 0.2s; }
+.product-card:hover { transform: scale(1.02); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="pos-container" x-data="posApp()">
+    <div class="row h-100">
+        <!-- Products Section -->
+        <div class="col-lg-8 h-100 pos-products">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cash-register"></i> Point of Sale</h1>
+                <input type="text" class="form-control w-50" placeholder="Search product or scan barcode..." x-model="searchQuery" @keyup.enter="scanBarcode()">
+            </div>
+            <div class="row">
+                <template x-for="product in filteredProducts" :key="product.id">
+                    <div class="col-md-4 col-sm-6 mb-4">
+                        <div class="card shadow-sm product-card h-100" @click="addToCart(product)">
+                            <div class="card-body text-center">
+                                <i class="fas fa-box fa-3x text-primary mb-3 mt-2"></i>
+                                <h6 class="card-title mb-1" x-text="product.name"></h6>
+                                <p class="text-muted small mb-2" x-text="product.sku"></p>
+                                <h5 class="text-success mb-0 fw-bold">$<span x-text="product.sale_price"></span></h5>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div class="col-12 text-center py-5 text-muted" x-show="filteredProducts.length === 0">
+                    <i class="fas fa-search fa-3x mb-3"></i>
+                    <h5>No products found</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Section -->
+        <div class="col-lg-4 h-100">
+            <div class="pos-cart shadow">
+                <h4 class="mb-3 border-bottom pb-2">Current Sale</h4>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Customer</label>
+                    <select class="form-select" x-model="selectedCustomer">
+                        <option value="">Walk-in Customer (Default)</option>
+                        {% for c in customers %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="pos-cart-items mb-3">
+                    <template x-for="(item, index) in cart" :key="index">
+                        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                            <div style="flex: 1;">
+                                <div class="fw-bold" x-text="item.name"></div>
+                                <div class="small text-muted">$<span x-text="item.price"></span> x <span x-text="item.quantity"></span></div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-sm btn-outline-secondary me-2" @click="decreaseQty(index)"><i class="fas fa-minus"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary me-3" @click="increaseQty(index)"><i class="fas fa-plus"></i></button>
+                                <div class="fw-bold text-end" style="width: 60px;">$<span x-text="(item.price * item.quantity).toFixed(2)"></span></div>
+                                <button class="btn btn-sm btn-outline-danger ms-2" @click="removeFromCart(index)"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="text-center text-muted py-4" x-show="cart.length === 0">
+                        Cart is empty
+                    </div>
+                </div>
+                
+                <div class="border-top pt-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="fw-bold">$<span x-text="cartTotal.toFixed(2)"></span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                        <span class="text-muted">Tax</span>
+                        <span class="fw-bold">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <h4 class="mb-0">Total</h4>
+                        <h4 class="mb-0 text-success fw-bold">$<span x-text="cartTotal.toFixed(2)"></span></h4>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-lg w-100 py-3 fw-bold" :disabled="cart.length === 0 || processing" @click="checkout()">
+                        <span x-show="!processing"><i class="fas fa-credit-card me-2"></i> Checkout</span>
+                        <span x-show="processing"><i class="fas fa-spinner fa-spin me-2"></i> Processing...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function posApp() {
+    return {
+        products: {{ products_json|safe }},
+        searchQuery: '',
+        cart: [],
+        selectedCustomer: '',
+        processing: false,
+        
+        get filteredProducts() {
+            if (this.searchQuery === '') return this.products;
+            const q = this.searchQuery.toLowerCase();
+            return this.products.filter(p => 
+                p.name.toLowerCase().includes(q) ||
+                (p.sku && p.sku.toLowerCase().includes(q)) ||
+                (p.barcode && p.barcode.includes(q))
+            );
+        },
+        
+        get cartTotal() {
+            return this.cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        },
+        
+        scanBarcode() {
+            const product = this.products.find(p => p.barcode === this.searchQuery || p.sku === this.searchQuery);
+            if (product) {
+                this.addToCart(product);
+                this.searchQuery = '';
+            }
+        },
+        
+        addToCart(product) {
+            const existing = this.cart.find(i => i.product_id === product.id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                this.cart.push({
+                    product_id: product.id,
+                    name: product.name,
+                    price: parseFloat(product.sale_price),
+                    quantity: 1
+                });
+            }
+        },
+        
+        increaseQty(index) {
+            this.cart[index].quantity++;
+        },
+        
+        decreaseQty(index) {
+            if (this.cart[index].quantity > 1) {
+                this.cart[index].quantity--;
+            } else {
+                this.removeFromCart(index);
+            }
+        },
+        
+        removeFromCart(index) {
+            this.cart.splice(index, 1);
+        },
+        
+        checkout() {
+            if (this.cart.length === 0) return;
+            if (!this.selectedCustomer) {
+                alert('Please select a customer first.');
+                return;
+            }
+            
+            this.processing = true;
+            
+            fetch('{% url "sales:pos_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    customer_id: this.selectedCustomer,
+                    items: this.cart,
+                    total: this.cartTotal,
+                    amount_paid: this.cartTotal,
+                    payment_method: 'cash'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Sale completed! Invoice: ' + data.invoice_number);
+                    this.cart = [];
+                    this.selectedCustomer = '';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => {
+                alert('Error processing sale.');
+                console.error(err);
+            })
+            .finally(() => {
+                this.processing = false;
+            });
+        }
+    }
+}
+</script>
+{% endblock %}

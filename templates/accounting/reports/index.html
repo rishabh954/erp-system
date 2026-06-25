@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Financial Reports{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Financial Reports
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-chart-pie me-2 opacity-75"></i>Financial Reports
+    </h1>
+    <p class="text-muted mb-0">GAAP-compliant financial statements and accounting reports</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-sitemap me-1"></i>Chart of Accounts
+    </a>
+    <a href="{% url 'accounting:journals' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-book me-1"></i>Journals
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════ REPORT CARDS GRID ════════════════════════════════ -->
+<div class="row g-4 mb-5">
+
+  <!-- Balance Sheet -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="report-card report-card-blue h-100">
+      <div class="report-card-glow"></div>
+      <div class="report-card-body">
+        <div class="report-icon-wrap">
+          <i class="fas fa-scale-balanced"></i>
+        </div>
+        <h5 class="report-title">Balance Sheet</h5>
+        <p class="report-desc">
+          Snapshot of assets, liabilities, and equity at a specific date. The fundamental accounting equation: Assets = Liabilities + Equity.
+        </p>
+        <div class="report-tags">
+          <span class="report-tag">Assets</span>
+          <span class="report-tag">Liabilities</span>
+          <span class="report-tag">Equity</span>
+          <span class="report-tag">Point-in-time</span>
+        </div>
+        <a href="{% url 'accounting:balance_sheet' %}" class="btn btn-primary report-btn">
+          <i class="fas fa-arrow-right me-2"></i>View Balance Sheet
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profit & Loss -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="report-card report-card-green h-100">
+      <div class="report-card-glow"></div>
+      <div class="report-card-body">
+        <div class="report-icon-wrap">
+          <i class="fas fa-arrow-trend-up"></i>
+        </div>
+        <h5 class="report-title">Profit & Loss</h5>
+        <p class="report-desc">
+          Income statement showing revenue, cost of goods sold, gross profit, operating expenses, and net profit over a period.
+        </p>
+        <div class="report-tags">
+          <span class="report-tag">Revenue</span>
+          <span class="report-tag">COGS</span>
+          <span class="report-tag">Expenses</span>
+          <span class="report-tag">Net Profit</span>
+        </div>
+        <a href="{% url 'accounting:profit_loss' %}" class="btn btn-success report-btn">
+          <i class="fas fa-arrow-right me-2"></i>View P&amp;L Statement
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trial Balance -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="report-card report-card-purple h-100">
+      <div class="report-card-glow"></div>
+      <div class="report-card-body">
+        <div class="report-icon-wrap">
+          <i class="fas fa-list-check"></i>
+        </div>
+        <h5 class="report-title">Trial Balance</h5>
+        <p class="report-desc">
+          List of all general ledger accounts with their total debit and credit balances, verifying the double-entry system is in balance.
+        </p>
+        <div class="report-tags">
+          <span class="report-tag">All Accounts</span>
+          <span class="report-tag">Debit / Credit</span>
+          <span class="report-tag">Verification</span>
+        </div>
+        <a href="{% url 'accounting:trial_balance' %}" class="btn report-btn" style="background:#8b5cf6; color:#fff;">
+          <i class="fas fa-arrow-right me-2"></i>View Trial Balance
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ QUICK REPORT SHORTCUTS ══════════════════════════ -->
+<div class="card glass-card border-0 mb-4">
+  <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+    <h6 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-bolt me-2 text-warning opacity-75"></i>Quick Date Shortcuts
+    </h6>
+  </div>
+  <div class="card-body px-4 pb-4">
+    <div class="row g-3">
+
+      <!-- This Month P&L -->
+      <div class="col-6 col-md-3">
+        <a href="{% url 'accounting:profit_loss' %}?from_date={{ today|date:'Y-m-01' }}&to_date={{ today|date:'Y-m-d' }}"
+           class="shortcut-tile shortcut-green">
+          <i class="fas fa-calendar-day mb-2 d-block" style="font-size: 22px;"></i>
+          <div class="shortcut-label">This Month</div>
+          <div class="shortcut-sub">P&L Statement</div>
+        </a>
+      </div>
+
+      <!-- This Year P&L -->
+      <div class="col-6 col-md-3">
+        <a href="{% url 'accounting:profit_loss' %}?from_date={{ today|date:'Y-01-01' }}&to_date={{ today|date:'Y-m-d' }}"
+           class="shortcut-tile shortcut-blue">
+          <i class="fas fa-calendar mb-2 d-block" style="font-size: 22px;"></i>
+          <div class="shortcut-label">This Year (YTD)</div>
+          <div class="shortcut-sub">P&L Statement</div>
+        </a>
+      </div>
+
+      <!-- Current Balance Sheet -->
+      <div class="col-6 col-md-3">
+        <a href="{% url 'accounting:balance_sheet' %}?as_of={{ today|date:'Y-m-d' }}"
+           class="shortcut-tile shortcut-indigo">
+          <i class="fas fa-scale-balanced mb-2 d-block" style="font-size: 22px;"></i>
+          <div class="shortcut-label">Today</div>
+          <div class="shortcut-sub">Balance Sheet</div>
+        </a>
+      </div>
+
+      <!-- Current Trial Balance -->
+      <div class="col-6 col-md-3">
+        <a href="{% url 'accounting:trial_balance' %}?as_of={{ today|date:'Y-m-d' }}"
+           class="shortcut-tile shortcut-purple">
+          <i class="fas fa-list-check mb-2 d-block" style="font-size: 22px;"></i>
+          <div class="shortcut-label">Today</div>
+          <div class="shortcut-sub">Trial Balance</div>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ REPORT GUIDE ════════════════════════════════════ -->
+<div class="row g-4">
+  <div class="col-12 col-md-4">
+    <div class="card border-0 h-100"
+         style="background: linear-gradient(135deg,#dbeafe,#eff6ff); border-radius: 14px;">
+      <div class="card-body px-4 py-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:32px;height:32px;border-radius:10px;background:#3b82f6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;">
+            <i class="fas fa-scale-balanced"></i>
+          </div>
+          <h6 class="fw-bold mb-0 text-dark">Balance Sheet</h6>
+        </div>
+        <ul class="mb-0 ps-3" style="font-size: 12px; color: #374151; line-height: 1.9;">
+          <li>Point-in-time snapshot</li>
+          <li>Assets = Liabilities + Equity</li>
+          <li>Shows financial position</li>
+          <li>Used by investors & lenders</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card border-0 h-100"
+         style="background: linear-gradient(135deg,#dcfce7,#f0fdf4); border-radius: 14px;">
+      <div class="card-body px-4 py-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:32px;height:32px;border-radius:10px;background:#22c55e;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;">
+            <i class="fas fa-arrow-trend-up"></i>
+          </div>
+          <h6 class="fw-bold mb-0 text-dark">Profit & Loss</h6>
+        </div>
+        <ul class="mb-0 ps-3" style="font-size: 12px; color: #374151; line-height: 1.9;">
+          <li>Period-based statement</li>
+          <li>Revenue − COGS = Gross Profit</li>
+          <li>Gross − Expenses = Net Profit</li>
+          <li>Shows operational performance</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card border-0 h-100"
+         style="background: linear-gradient(135deg,#ede9fe,#f5f3ff); border-radius: 14px;">
+      <div class="card-body px-4 py-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:32px;height:32px;border-radius:10px;background:#8b5cf6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;">
+            <i class="fas fa-list-check"></i>
+          </div>
+          <h6 class="fw-bold mb-0 text-dark">Trial Balance</h6>
+        </div>
+        <ul class="mb-0 ps-3" style="font-size: 12px; color: #374151; line-height: 1.9;">
+          <li>All accounts listed</li>
+          <li>Debit & credit totals shown</li>
+          <li>Total Dr must = Total Cr</li>
+          <li>Pre-step to financial statements</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Report cards ─────────────────────────────────────────────────── */
+.report-card {
+  border-radius: 20px;
+  border: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s, box-shadow 0.25s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.report-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.14);
+}
+.report-card-blue  { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
+.report-card-green { background: linear-gradient(135deg, #14532d 0%, #22c55e 100%); }
+.report-card-purple{ background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%); }
+
+/* Glowing orb BG effect */
+.report-card-glow {
+  position: absolute;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  top: -60px; right: -60px;
+  pointer-events: none;
+}
+
+.report-card-body { padding: 28px 28px 24px; position: relative; }
+
+.report-icon-wrap {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #fff;
+  margin-bottom: 18px;
+}
+.report-title {
+  font-size: 19px; font-weight: 800; color: #fff;
+  margin-bottom: 10px;
+}
+.report-desc {
+  font-size: 12.5px; color: rgba(255,255,255,0.78);
+  line-height: 1.7; margin-bottom: 16px;
+}
+.report-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.report-tag {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+  background: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.2);
+  letter-spacing: 0.3px;
+}
+.report-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 2px solid rgba(255,255,255,0.4) !important;
+  background: rgba(255,255,255,0.15) !important;
+  color: #fff !important;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, border-color 0.2s;
+}
+.report-btn:hover {
+  background: rgba(255,255,255,0.28) !important;
+  border-color: rgba(255,255,255,0.6) !important;
+}
+
+/* ── Shortcut tiles ───────────────────────────────────────────────── */
+.shortcut-tile {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 18px 12px; border-radius: 14px;
+  text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+  text-align: center;
+}
+.shortcut-tile:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.1); }
+.shortcut-label { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.shortcut-sub { font-size: 10.5px; font-weight: 600; opacity: 0.75; }
+.shortcut-green  { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+.shortcut-blue   { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+.shortcut-indigo { background: #eef2ff; color: #4338ca; border-color: #a5b4fc; }
+.shortcut-purple { background: #f5f3ff; color: #6d28d9; border-color: #c4b5fd; }
+
+/* ── Glass card ───────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px); border-radius: 14px;
+}
+</style>
+{% endblock %}

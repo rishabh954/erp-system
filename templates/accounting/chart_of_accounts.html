@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Chart of Accounts{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Chart of Accounts
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-sitemap me-2 opacity-75"></i>Chart of Accounts
+    </h1>
+    <p class="text-muted mb-0">Manage your complete general ledger account structure</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'accounting:reports' %}" class="btn btn-outline-primary shadow-sm">
+      <i class="fas fa-chart-bar me-1"></i>Reports
+    </a>
+    <a href="{% url 'accounting:account_create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus me-1"></i>New Account
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ACCOUNT TYPE SUMMARY CARDS ══════════════════════ -->
+<div class="row g-3 mb-4" id="typeSummaryCards">
+
+  <!-- Asset -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="asset">
+    <div class="coa-type-card coa-asset {% if request.GET.type == 'asset' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-building-columns"></i></div>
+      <div class="coa-type-label">Assets</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-asset">— accounts</div>
+    </div>
+  </div>
+
+  <!-- Liability -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="liability">
+    <div class="coa-type-card coa-liability {% if request.GET.type == 'liability' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="coa-type-label">Liabilities</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-liability">— accounts</div>
+    </div>
+  </div>
+
+  <!-- Equity -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="equity">
+    <div class="coa-type-card coa-equity {% if request.GET.type == 'equity' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-landmark"></i></div>
+      <div class="coa-type-label">Equity</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-equity">— accounts</div>
+    </div>
+  </div>
+
+  <!-- Revenue -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="revenue">
+    <div class="coa-type-card coa-revenue {% if request.GET.type == 'revenue' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-arrow-trend-up"></i></div>
+      <div class="coa-type-label">Revenue</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-revenue">— accounts</div>
+    </div>
+  </div>
+
+  <!-- Expense -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="expense">
+    <div class="coa-type-card coa-expense {% if request.GET.type == 'expense' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-receipt"></i></div>
+      <div class="coa-type-label">Expenses</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-expense">— accounts</div>
+    </div>
+  </div>
+
+  <!-- Bank & Cash -->
+  <div class="col-6 col-md-4 col-xl type-filter-card" data-type="bank">
+    <div class="coa-type-card coa-bank {% if request.GET.type == 'bank' %}active{% endif %}">
+      <div class="coa-type-icon"><i class="fas fa-piggy-bank"></i></div>
+      <div class="coa-type-label">Bank & Cash</div>
+      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-count" id="cnt-bank">— accounts</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ FILTER BAR ══════════════════════════════════════ -->
+<div class="card glass-card border-0 mb-4">
+  <div class="card-body py-3 px-4">
+    <form method="get" class="row g-2 align-items-center" id="coaFilterForm">
+      <!-- Search -->
+      <div class="col-12 col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0">
+            <i class="fas fa-search text-muted"></i>
+          </span>
+          <input type="text" name="q" value="{{ request.GET.q }}" id="coaSearch"
+                 class="form-control border-start-0 ps-0"
+                 placeholder="Search by code or account name…" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Type filter -->
+      <div class="col-12 col-md-3">
+        <select name="type" class="form-select" id="typeSelect">
+          <option value="">All Account Types</option>
+          {% for val, label in account_type_choices %}
+          <option value="{{ val }}" {% if request.GET.type == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Active toggle -->
+      <div class="col-12 col-md-2">
+        <select name="active" class="form-select">
+          <option value="">All Status</option>
+          <option value="1" {% if request.GET.active == '1' %}selected{% endif %}>Active Only</option>
+          <option value="0" {% if request.GET.active == '0' %}selected{% endif %}>Inactive Only</option>
+        </select>
+      </div>
+
+      <!-- Actions -->
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        {% if request.GET.q or request.GET.type or request.GET.active %}
+        <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-secondary" title="Clear">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ VIEW TOGGLE ══════════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="text-muted small" id="coaCountLabel">
+    {% if accounts %}
+      Showing <strong>{{ accounts|length }}</strong> account{{ accounts|length|pluralize }}
+      {% if request.GET.type %} · Filtered by <strong>{{ request.GET.type|capfirst }}</strong>{% endif %}
+      {% if request.GET.q %} · Search: <strong>"{{ request.GET.q }}"</strong>{% endif %}
+    {% endif %}
+  </div>
+  <div class="btn-group btn-group-sm" role="group">
+    <button class="btn btn-outline-secondary active" id="viewFlat" title="Flat List">
+      <i class="fas fa-list"></i>
+    </button>
+    <button class="btn btn-outline-secondary" id="viewGrouped" title="Grouped by Type">
+      <i class="fas fa-layer-group"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FLAT TABLE VIEW ══════════════════════════════════ -->
+<div id="flatView">
+  {% if accounts %}
+  <div class="card glass-card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 coa-table" id="coaTable" style="font-size: 13px;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4" style="width: 110px;">Code</th>
+              <th>Account Name</th>
+              <th style="width: 140px;">Type</th>
+              <th style="width: 160px;">Sub-Type</th>
+              <th class="text-center" style="width: 90px;">Status</th>
+              <th class="text-center" style="width: 90px;">Reconcile</th>
+              <th class="text-end pe-4" style="width: 140px;">Balance</th>
+              <th class="text-center" style="width: 90px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc in accounts %}
+            <tr class="coa-row"
+                data-type="{{ acc.account_type }}"
+                data-name="{{ acc.name|lower }}"
+                data-code="{{ acc.code|lower }}"
+                data-active="{{ acc.is_active|yesno:'1,0' }}">
+
+              <!-- Code with indent for children -->
+              <td class="ps-4">
+                <span class="coa-code {% if acc.parent %}coa-child-code{% endif %}">
+                  {% if acc.parent %}<span class="coa-indent-arrow">↳{% endif %}
+                  {{ acc.code }}</span>
+                </span>
+              </td>
+
+              <!-- Name -->
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Type dot -->
+                  <span class="type-dot type-dot-{{ acc.account_type }}" title="{{ acc.get_account_type_display }}"></span>
+                  <div>
+                    <div class="fw-semibold text-dark {% if not acc.is_active %}text-decoration-line-through text-muted{% endif %}">
+                      {{ acc.name }}
+                    </div>
+                    {% if acc.description %}
+                    <div class="text-muted" style="font-size: 11px;">{{ acc.description|truncatechars:55 }}</div>
+                    {% endif %}
+                    {% if acc.parent %}
+                    <div class="text-muted" style="font-size: 10px;">
+                      <i class="fas fa-sitemap me-1 opacity-50"></i>Parent: {{ acc.parent.code }} — {{ acc.parent.name }}
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+
+              <!-- Type badge -->
+              <td>
+                <span class="type-badge type-badge-{{ acc.account_type }}">
+                  {{ acc.get_account_type_display }}
+                </span>
+              </td>
+
+              <!-- Sub-type -->
+              <td class="text-muted" style="font-size: 12px;">
+                {{ acc.get_account_subtype_display|default:"—" }}
+              </td>
+
+              <!-- Status -->
+              <td class="text-center">
+                {% if acc.is_active %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size: 10px;">Active
+                {% else %}</span>
+                  <span class="badge bg-secondary-subtle text-muted border rounded-pill px-2" style="font-size: 10px;">Inactive
+                {% endif %}</span>
+              </td>
+
+              <!-- Reconcilable -->
+              <td class="text-center">
+                {% if acc.is_reconcilable %}
+                  <i class="fas fa-check-circle text-success" title="Reconcilable"></i>
+                {% else %}
+                  <i class="fas fa-minus text-muted opacity-30" title="Not reconcilable"></i>
+                {% endif %}
+              </td>
+
+              <!-- Balance -->
+              <td class="text-end pe-4">
+                <span class="fw-bold {% if acc.current_balance < 0 %}text-danger{% elif acc.current_balance > 0 %}text-dark{% else %}text-muted{% endif %}">
+                  {% if acc.current_balance < 0 %}
+                    <span class="text-danger">({{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
+                  {% else %}
+                    {{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|intcomma }}
+                  {% endif %}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="text-center">
+                <a href="{% url 'accounting:account_detail' acc.pk %}"
+                   class="btn btn-outline-primary btn-xs" title="View Ledger">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <!-- Totals footer -->
+          <tfoot class="table-light border-top border-2">
+            <tr>
+              <td colspan="6" class="ps-4 fw-bold text-dark py-3">Total Balance (all accounts)</td>
+              <td class="text-end pe-4 fw-bold text-primary py-3" id="grandTotal">
+                ${% with total=totals.asset|add:totals.bank|add:totals.revenue %}{{ total|floatformat:2|intcomma }}{% endwith %}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="card glass-card border-0">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-sitemap fa-4x text-muted mb-4 d-block opacity-15"></i>
+      <h5 class="fw-bold text-dark mb-2">No accounts found</h5>
+      <p class="text-muted mb-4">
+        {% if request.GET.q or request.GET.type %}
+          No accounts match your current filters.
+        {% else %}
+          Start by creating your first chart of accounts.
+        {% endif %}
+      </p>
+      {% if request.GET.q or request.GET.type %}
+      <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-outline-secondary me-2">Clear Filters</a>
+      {% endif %}
+      <a href="{% url 'accounting:account_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Create First Account
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════ GROUPED VIEW (hidden by default) ════════════════ -->
+<div id="groupedView" style="display:none;">
+  {% regroup accounts by account_type as accounts_by_type %}
+  {% for group in accounts_by_type %}
+  <div class="coa-group-section mb-4">
+    <div class="coa-group-header type-header-{{ group.grouper }}">
+      <div class="d-flex align-items-center gap-3">
+        <div class="coa-group-icon">
+          {% if group.grouper == 'asset' %}<i class="fas fa-building-columns"></i>
+          {% elif group.grouper == 'liability' %}<i class="fas fa-scale-balanced"></i>
+          {% elif group.grouper == 'equity' %}<i class="fas fa-landmark"></i>
+          {% elif group.grouper == 'revenue' %}<i class="fas fa-arrow-trend-up"></i>
+          {% elif group.grouper == 'expense' %}<i class="fas fa-receipt"></i>
+          {% elif group.grouper == 'cogs' %}<i class="fas fa-boxes-stacked"></i>
+          {% else %}<i class="fas fa-piggy-bank"></i>{% endif %}
+        </div>
+        <div>
+          <div class="coa-group-title">{{ group.grouper|capfirst }}</div>
+          <div class="coa-group-subtitle">{{ group.list|length }} account{{ group.list|length|pluralize }}</div>
+        </div>
+      </div>
+      <div class="coa-group-total">
+        {% if group.grouper == 'asset' %}{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'liability' %}{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'equity' %}{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'revenue' %}{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'expense' %}{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'cogs' %}{{ CURRENCY_SYMBOL }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'bank' %}{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:2|intcomma }}
+        {% else %}{{ CURRENCY_SYMBOL }}0.00{% endif %}
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" style="border-radius: 0 0 14px 14px; overflow: hidden;">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+          <tbody>
+            {% for acc in group.list %}
+            <tr class="coa-row"
+                data-type="{{ acc.account_type }}"
+                data-name="{{ acc.name|lower }}"
+                data-code="{{ acc.code|lower }}"
+                data-active="{{ acc.is_active|yesno:'1,0' }}">
+              <td class="ps-4" style="width: 110px;">
+                <span class="coa-code {% if acc.parent %}coa-child-code{% endif %}">
+                  {% if acc.parent %}<span class="coa-indent-arrow">↳{% endif %}
+                  {{ acc.code }}</span>
+                </span>
+              </td>
+              <td>
+                <div class="fw-semibold {% if not acc.is_active %}text-decoration-line-through text-muted{% endif %}">
+                  {{ acc.name }}
+                </div>
+                {% if acc.description %}
+                <div class="text-muted" style="font-size: 11px;">{{ acc.description|truncatechars:50 }}</div>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size: 12px;">{{ acc.get_account_subtype_display|default:"—" }}</td>
+              <td class="text-center">
+                {% if acc.is_active %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size: 10px;">Active
+                {% else %}</span>
+                  <span class="badge bg-secondary-subtle text-muted border rounded-pill px-2" style="font-size: 10px;">Inactive
+                {% endif %}</span>
+              </td>
+              <td class="text-end pe-4 fw-bold {% if acc.current_balance < 0 %}text-danger{% else %}text-dark{% endif %}">
+                {% if acc.current_balance < 0 %}
+                  ({{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})
+                {% else %}
+                  {{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|intcomma }}
+                {% endif %}
+              </td>
+              <td class="text-center pe-3">
+                <a href="{% url 'accounting:account_detail' acc.pk %}" class="btn btn-outline-primary btn-xs">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="bg-light border-top">
+            <tr>
+              <td colspan="4" class="ps-4 text-muted fw-semibold py-2" style="font-size: 12px;">
+                Subtotal — {{ group.grouper|capfirst }}
+              </td>
+              <td class="text-end pe-4 fw-bold text-primary py-2">
+                {% if group.grouper == 'asset' %}{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'liability' %}{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'equity' %}{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'revenue' %}{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'expense' %}{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'cogs' %}{{ CURRENCY_SYMBOL }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'bank' %}{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:2|intcomma }}
+                {% else %}{{ CURRENCY_SYMBOL }}0.00{% endif %}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-center py-5 text-muted">
+    <i class="fas fa-sitemap fa-3x mb-3 d-block opacity-25"></i>
+    No accounts found.
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ═══════════════════════ QUICK CREATE MODAL ══════════════════════════════ -->
+<div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 24px 60px rgba(0,0,0,0.15);">
+      <div class="modal-header border-0 px-5 pt-4 pb-0">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="quickCreateLabel">
+            <i class="fas fa-plus-circle me-2 text-primary"></i>New Account
+          </h5>
+          <p class="text-muted mb-0" style="font-size: 12px;">Add to Chart of Accounts</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'accounting:account_create' %}">
+        {% csrf_token %}
+        <div class="modal-body px-5 py-4">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+              <input type="text" name="code" class="form-control" placeholder="e.g. 1001" required>
+            </div>
+            <div class="col-md-9">
+              <label class="form-label fw-semibold">Account Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="e.g. Cash and Cash Equivalents" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Account Type <span class="text-danger">*</span></label>
+              <select name="account_type" class="form-select" required>
+                <option value="">— Select Type —</option>
+                {% for val, label in account_type_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Sub-Type</label>
+              <select name="account_subtype" class="form-select">
+                <option value="">— None —</option>
+                <option value="current_asset">Current Asset</option>
+                <option value="fixed_asset">Fixed Asset</option>
+                <option value="current_liability">Current Liability</option>
+                <option value="long_term_liability">Long-Term Liability</option>
+                <option value="accounts_receivable">Accounts Receivable</option>
+                <option value="accounts_payable">Accounts Payable</option>
+                <option value="retained_earnings">Retained Earnings</option>
+                <option value="capital">Capital</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Opening Balance</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="opening_balance" class="form-control" placeholder="0.00" step="0.01">
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <input type="text" name="description" class="form-control" placeholder="Optional description…">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check form-switch ps-0 d-flex align-items-center gap-3">
+                <input class="form-check-input" type="checkbox" name="is_reconcilable" id="modalReconcilable"
+                       style="width: 2.2em; height: 1.3em;">
+                <label class="form-check-label fw-semibold" for="modalReconcilable">Reconcilable Account</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-5 pb-4 pt-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-save me-2"></i>Create Account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Floating Quick Create button ──────────────────────────────────────── -->
+<button class="coa-fab" data-bs-toggle="modal" data-bs-target="#quickCreateModal" title="Quick Add Account">
+  <i class="fas fa-plus"></i>
+</button>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Count accounts per type and update summary cards ─────────────────────
+  const rows = document.querySelectorAll('.coa-row');
+  const counts = {};
+  rows.forEach(function (r) {
+    const t = r.dataset.type;
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  Object.keys(counts).forEach(function (t) {
+    const el = document.getElementById('cnt-' + t);
+    if (el) el.textContent = counts[t] + ' account' + (counts[t] !== 1 ? 's' : '');
+  });
+
+  // ── Type card click → filter by type ─────────────────────────────────────
+  document.querySelectorAll('.type-filter-card').forEach(function (card) {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function () {
+      const type = this.dataset.type;
+      const currentType = new URLSearchParams(window.location.search).get('type');
+      if (currentType === type) {
+        window.location.href = '{% url "accounting:chart_of_accounts" %}';
+      } else {
+        window.location.href = '{% url "accounting:chart_of_accounts" %}?type=' + type;
+      }
+    });
+  });
+
+  // ── View toggle (flat / grouped) ──────────────────────────────────────────
+  const flatView    = document.getElementById('flatView');
+  const groupedView = document.getElementById('groupedView');
+  const btnFlat     = document.getElementById('viewFlat');
+  const btnGrouped  = document.getElementById('viewGrouped');
+
+  function showFlat() {
+    flatView.style.display = '';
+    groupedView.style.display = 'none';
+    btnFlat.classList.add('active');
+    btnGrouped.classList.remove('active');
+    localStorage.setItem('coaView', 'flat');
+  }
+  function showGrouped() {
+    flatView.style.display = 'none';
+    groupedView.style.display = '';
+    btnGrouped.classList.add('active');
+    btnFlat.classList.remove('active');
+    localStorage.setItem('coaView', 'grouped');
+  }
+
+  btnFlat.addEventListener('click', showFlat);
+  btnGrouped.addEventListener('click', showGrouped);
+  if (localStorage.getItem('coaView') === 'grouped') showGrouped();
+
+  // ── Live search (client-side) ─────────────────────────────────────────────
+  const searchInput = document.getElementById('coaSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      const q = this.value.toLowerCase().trim();
+      let visible = 0;
+      document.querySelectorAll('.coa-row').forEach(function (row) {
+        const name = row.dataset.name || '';
+        const code = row.dataset.code || '';
+        const show = !q || name.includes(q) || code.includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      const label = document.getElementById('coaCountLabel');
+      if (label) label.innerHTML = 'Showing <strong>' + visible + '</strong> account' + (visible !== 1 ? 's' : '');
+    });
+  }
+
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   CHART OF ACCOUNTS — Premium Design Styles
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Type summary cards ──────────────────────────────────────────── */
+.coa-type-card {
+  border-radius: 14px;
+  padding: 18px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.22s, box-shadow 0.22s;
+  border: 2px solid transparent;
+  background: #fff;
+  height: 100%;
+}
+.coa-type-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+}
+.coa-type-card.active {
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+}
+
+/* Type colours */
+.coa-asset    { border-color: #3b82f6; background: linear-gradient(135deg,#eff6ff,#fff); }
+.coa-asset.active    { background: linear-gradient(135deg,#dbeafe,#eff6ff); }
+.coa-liability { border-color: #ef4444; background: linear-gradient(135deg,#fef2f2,#fff); }
+.coa-liability.active { background: linear-gradient(135deg,#fee2e2,#fef2f2); }
+.coa-equity   { border-color: #8b5cf6; background: linear-gradient(135deg,#f5f3ff,#fff); }
+.coa-equity.active   { background: linear-gradient(135deg,#ede9fe,#f5f3ff); }
+.coa-revenue  { border-color: #22c55e; background: linear-gradient(135deg,#f0fdf4,#fff); }
+.coa-revenue.active  { background: linear-gradient(135deg,#dcfce7,#f0fdf4); }
+.coa-expense  { border-color: #f59e0b; background: linear-gradient(135deg,#fffbeb,#fff); }
+.coa-expense.active  { background: linear-gradient(135deg,#fef3c7,#fffbeb); }
+.coa-bank     { border-color: #06b6d4; background: linear-gradient(135deg,#ecfeff,#fff); }
+.coa-bank.active     { background: linear-gradient(135deg,#cffafe,#ecfeff); }
+
+.coa-type-icon {
+  font-size: 20px;
+  margin-bottom: 8px;
+  opacity: 0.75;
+}
+.coa-asset    .coa-type-icon { color: #3b82f6; }
+.coa-liability .coa-type-icon { color: #ef4444; }
+.coa-equity   .coa-type-icon { color: #8b5cf6; }
+.coa-revenue  .coa-type-icon { color: #22c55e; }
+.coa-expense  .coa-type-icon { color: #f59e0b; }
+.coa-bank     .coa-type-icon { color: #06b6d4; }
+
+.coa-type-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.coa-type-balance {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+.coa-type-count {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ── Type dot in table ───────────────────────────────────────────── */
+.type-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.type-dot-asset     { background: #3b82f6; }
+.type-dot-liability { background: #ef4444; }
+.type-dot-equity    { background: #8b5cf6; }
+.type-dot-revenue   { background: #22c55e; }
+.type-dot-expense   { background: #f59e0b; }
+.type-dot-cogs      { background: #f97316; }
+.type-dot-bank      { background: #06b6d4; }
+
+/* ── Type badge ──────────────────────────────────────────────────── */
+.type-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.type-badge-asset     { background: #dbeafe; color: #1d4ed8; }
+.type-badge-liability { background: #fee2e2; color: #b91c1c; }
+.type-badge-equity    { background: #ede9fe; color: #6d28d9; }
+.type-badge-revenue   { background: #dcfce7; color: #15803d; }
+.type-badge-expense   { background: #fef3c7; color: #b45309; }
+.type-badge-cogs      { background: #ffedd5; color: #c2410c; }
+.type-badge-bank      { background: #cffafe; color: #0e7490; }
+
+/* ── Account code styling ────────────────────────────────────────── */
+.coa-code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6366f1;
+  background: rgba(99,102,241,0.08);
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.coa-child-code {
+  color: #8b5cf6;
+  background: rgba(139,92,246,0.08);
+}
+.coa-indent-arrow {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* ── Table hover ─────────────────────────────────────────────────── */
+.coa-table tbody tr:hover { background: rgba(99,102,241,0.03); }
+
+/* ── Grouped view ────────────────────────────────────────────────── */
+.coa-group-section { border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.coa-group-header {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.type-header-asset     { background: linear-gradient(135deg,#dbeafe,#eff6ff); }
+.type-header-liability { background: linear-gradient(135deg,#fee2e2,#fef2f2); }
+.type-header-equity    { background: linear-gradient(135deg,#ede9fe,#f5f3ff); }
+.type-header-revenue   { background: linear-gradient(135deg,#dcfce7,#f0fdf4); }
+.type-header-expense   { background: linear-gradient(135deg,#fef3c7,#fffbeb); }
+.type-header-cogs      { background: linear-gradient(135deg,#ffedd5,#fff7ed); }
+.type-header-bank      { background: linear-gradient(135deg,#cffafe,#ecfeff); }
+
+.coa-group-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: #374151;
+  flex-shrink: 0;
+}
+.coa-group-title { font-size: 15px; font-weight: 800; color: #1e293b; }
+.coa-group-subtitle { font-size: 11px; color: #64748b; }
+.coa-group-total { font-size: 18px; font-weight: 800; color: #1e293b; }
+
+/* ── Floating action button ──────────────────────────────────────── */
+.coa-fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+  cursor: pointer;
+  z-index: 1040;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.coa-fab:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 12px 32px rgba(99,102,241,0.5);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.opacity-15 { opacity: 0.15 !important; }
+</style>
+{% endblock %}

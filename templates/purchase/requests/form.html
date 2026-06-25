@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New Purchase Request{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Create Purchase Request</h1>
+    <p class="text-muted mb-0">Initiate a request for materials, products, or services</p>
+  </div>
+  <div>
+    <a href="{% url 'purchase:requests' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'purchase:request_create' %}" id="prForm">
+          {% csrf_token %}
+
+          <!-- Section 1: Header Info -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-file-alt me-2"></i>Request Details</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_title" class="form-label small fw-semibold">Request Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="id_title" class="form-control" required placeholder="e.g. Office Stationery / Dev Server Upgrade">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_department" class="form-label small fw-semibold">Department</label>
+              <select name="department" id="id_department" class="form-select">
+                <option value="">Select Department</option>
+                {% for dept in departments %}
+                  <option value="{{ dept.id }}">{{ dept.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_required_by" class="form-label small fw-semibold">Required By Date</label>
+              <input type="date" name="required_by" id="id_required_by" class="form-control" required value="{% now 'Y-m-d' %}">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_priority" class="form-label small fw-semibold">Priority</label>
+              <select name="priority" id="id_priority" class="form-select">
+                {% for val, label in priority_choices %}
+                  <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 2: Requisition Lines -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0"><i class="fas fa-list-ol me-2"></i>Requested Items</h5>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="addItemBtn">
+              <i class="fas fa-plus me-1"></i>Add Row
+            </button>
+          </div>
+          
+          <div class="table-responsive mb-4">
+            <table class="table align-middle" id="itemsTable">
+              <thead class="table-light">
+                <tr class="small text-uppercase">
+                  <th style="width: 30%">Product / SKU</th>
+                  <th style="width: 35%">Item Description <span class="text-danger">*</span></th>
+                  <th style="width: 15%" class="text-end">Qty</th>
+                  <th style="width: 15%" class="text-end">Est. Unit Cost ($)</th>
+                  <th style="width: 5%" class="text-center"></th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody">
+                <!-- Template row -->
+                <tr class="item-row">
+                  <td>
+                    <select name="product[]" class="form-select product-select select2-basic">
+                      <option value="">-- Custom Item --</option>
+                      {% for prod in products %}
+                        <option value="{{ prod.id }}" data-price="{{ prod.sale_price }}">{{ prod.name }} ({{ prod.sku }})</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td>
+                    <input type="text" name="description[]" class="form-control desc-input" required placeholder="Item description/specification...">
+                  </td>
+                  <td>
+                    <input type="number" name="quantity[]" class="form-control text-end qty-input" value="1" min="1" step="any" required>
+                  </td>
+                  <td>
+                    <input type="number" name="estimated_unit_price[]" class="form-control text-end price-input" value="0.00" min="0" step="0.01" required>
+                  </td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-outline-danger btn-xs remove-row-btn" style="padding: 4px 8px">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Section 3: Summary & Notes -->
+          <div class="row g-4 mb-4">
+            <div class="col-12 col-md-7">
+              <label for="id_notes" class="form-label small fw-semibold">Internal Remarks / Justification</label>
+              <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Add justification or special notes for approvers..."></textarea>
+            </div>
+            <div class="col-12 col-md-5">
+              <div class="card bg-light border-0 shadow-none">
+                <div class="card-body p-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted fw-bold">Estimated Cost Summary:</span>
+                    <span class="h4 mb-0 fw-bold text-primary" id="totalCost">{{ CURRENCY_SYMBOL }}0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'purchase:requests' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Math Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const itemsBody = document.getElementById('itemsBody');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const totalCostSpan = document.getElementById('totalCost');
+
+    // Update row math and totals
+    function calculateTotals() {
+        let total = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            total += qty * price;
+        });
+        totalCostSpan.textContent = '{{ CURRENCY_SYMBOL }}' + total.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
+
+    // Auto-fill price & description when product is selected
+    function handleProductChange(e) {
+        if (!e.target.classList.contains('product-select')) return;
+        const row = e.target.closest('.item-row');
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        
+        if (selectedOption.value) {
+            const price = selectedOption.getAttribute('data-price') || '0.00';
+            row.querySelector('.price-input').value = parseFloat(price).toFixed(2);
+            row.querySelector('.desc-input').value = selectedOption.text;
+        }
+        calculateTotals();
+    }
+
+    // Remove row
+    function handleRemoveRow(e) {
+        const btn = e.target.closest('.remove-row-btn');
+        if (!btn) return;
+        
+        // Keep at least one row
+        if (document.querySelectorAll('.item-row').length > 1) {
+            btn.closest('.item-row').remove();
+            calculateTotals();
+        } else {
+            alert("A request must contain at least one item.");
+        }
+    }
+
+    // Add Row
+    addItemBtn.addEventListener('click', function() {
+        const firstRow = document.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        // Reset fields
+        newRow.querySelector('.product-select').selectedIndex = 0;
+        newRow.querySelector('.desc-input').value = '';
+        newRow.querySelector('.qty-input').value = '1';
+        newRow.querySelector('.price-input').value = '0.00';
+        
+        itemsBody.appendChild(newRow);
+        calculateTotals();
+    });
+
+    itemsBody.addEventListener('change', handleProductChange);
+    itemsBody.addEventListener('input', calculateTotals);
+    itemsBody.addEventListener('click', handleRemoveRow);
+
+    calculateTotals();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Register Asset{% endblock %}
+{% block nav_assets %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'assets:list' %}">ssets</a></a></li>
+<li class="breadcrumb-item active">Register Asset
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-box-open me-2 opacity-75"></i>Register New Asset
+    </h1>
+    <p class="text-muted mb-0">Add a new fixed asset to the company registry</p>
+  </div>
+  <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Cancel
+  </a>
+</div>
+
+<div class="row g-4 justify-content-center">
+  <div class="col-12 col-xl-10">
+    
+    <form method="post" action="{% url 'assets:create' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      
+      <!-- General Details -->
+      <div class="card glass-card border-0 shadow-sm mb-4 border-top border-primary border-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold text-dark mb-0">General Details</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Asset Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required placeholder="e.g. MacBook Pro M3">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+              <select name="category" class="form-select" required>
+                <option value="">— Select Category —</option>
+                {% for cat in categories %}
+                <option value="{{ cat.pk }}">{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Internal Asset Code</label>
+              <input type="text" name="asset_code" class="form-control font-monospace" placeholder="e.g. IT-LAP-001">
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Serial Number</label>
+              <input type="text" name="serial_number" class="form-control" placeholder="Manufacturer SN">
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Model Number</label>
+              <input type="text" name="model_number" class="form-control" placeholder="Model info">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-semibold">Asset Image <span class="text-muted fw-normal">(Optional)</span></label>
+              <input type="file" name="image" class="form-control" accept="image/*">
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <!-- Financials & Depreciation -->
+      <div class="card glass-card border-0 shadow-sm mb-4 border-top border-success border-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold text-dark mb-0">Financial & Depreciation</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Purchase Cost <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" min="0" name="purchase_cost" class="form-control fw-bold" required>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Purchase Date <span class="text-danger">*</span></label>
+              <input type="date" name="purchase_date" class="form-control" required>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Expected Useful Life (Years) <span class="text-danger">*</span></label>
+              <input type="number" min="1" name="useful_life_years" class="form-control" value="5" required>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Salvage/Scrap Value</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" min="0" name="salvage_value" class="form-control" value="0">
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Depreciation Method</label>
+              <select name="depreciation_method" class="form-select">
+                {% for val, label in depreciation_methods %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Vendor/Supplier</label>
+              <select name="vendor" class="form-select">
+                <option value="">— Select Vendor —</option>
+                {% for v in vendors %}
+                <option value="{{ v.pk }}">{{ v.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Warranty Expiry Date</label>
+              <input type="date" name="warranty_expiry" class="form-control">
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <!-- Allocation & Status -->
+      <div class="card glass-card border-0 shadow-sm mb-4 border-top border-info border-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold text-dark mb-0">Allocation & Notes</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Branch Location</label>
+              <select name="branch" class="form-select">
+                <option value="">— Head Office —</option>
+                {% for b in branches %}
+                <option value="{{ b.pk }}">{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Assigned Employee</label>
+              <select name="assigned_to" class="form-select">
+                <option value="">— Unassigned —</option>
+                {% for u in users %}
+                <option value="{{ u.pk }}">{{ u.get_full_name }} ({{ u.email }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Physical Location</label>
+              <input type="text" name="location" class="form-control" placeholder="e.g. Server Room Rack 2">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-semibold">Additional Notes</label>
+              <textarea name="notes" class="form-control" rows="3" placeholder="Condition details, configuration notes..."></textarea>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-4 mb-5 text-end">
+        <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary btn-lg px-4 me-2">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg px-5">
+          <i class="fas fa-save me-2"></i>Register Asset
+        </button>
+      </div>
+      
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

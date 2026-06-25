@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Taxes | Company Settings{% endblock %}
+{% block nav_company %}active{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Sidebar Navigation -->
+  <div class="col-12 col-lg-3">
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush" style="border-radius: 14px; overflow: hidden;">
+          <a href="{% url 'company:settings' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-building me-3 opacity-50"></i>Company Profile
+          </a>
+          <a href="{% url 'company:branches' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-code-branch me-3 opacity-50"></i>Branches
+          </a>
+          <a href="{% url 'company:departments' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-sitemap me-3 opacity-50"></i>Departments
+          </a>
+          <a href="{% url 'company:users' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-users-cog me-3 opacity-50"></i>Users & Roles
+          </a>
+          <a href="{% url 'company:fiscal_years' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-calendar-alt me-3 opacity-50"></i>Fiscal Years
+          </a>
+          <a href="{% url 'company:currencies' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-money-bill-wave me-3 opacity-50"></i>Currencies
+          </a>
+          <a href="{% url 'company:uoms' %}" class="list-group-item list-group-item-action py-3 border-0 text-muted fw-medium">
+            <i class="fas fa-balance-scale me-3 opacity-50"></i>Units of Measure
+          </a>
+          <a href="{% url 'company:taxes' %}" class="list-group-item list-group-item-action active py-3 border-0 fw-semibold">
+            <i class="fas fa-percentage me-3 opacity-75"></i>Taxes
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="col-12 col-lg-9">
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">Taxes</h5>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTaxModal">
+          <i class="fas fa-plus me-1"></i> Add Tax
+        </button>
+      </div>
+      <div class="card-body p-4">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Name</th>
+                <th>Rate</th>
+                <th>Type</th>
+                <th>Group</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tax in taxes %}
+              <tr>
+                <td class="fw-semibold text-dark">
+                  {{ tax.name }}
+                  {% if tax.is_compound %}<span class="badge bg-warning text-dark ms-1" style="font-size: 10px;">Compound</span>{% endif %}
+                </td>
+                <td class="fw-bold text-primary">{{ tax.rate }}</td>
+                <td>{{ tax.get_tax_type_display }}</td>
+                <td>{{ tax.tax_group.name|default:"-" }}</td>
+                <td>
+                  {% if tax.is_active %}
+                  <span class="badge bg-success-subtle text-success">Active</span>
+                  {% else %}
+                  <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editTaxModal{{ tax.id }}">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <form method="post" action="{% url 'company:tax_delete' tax.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm-delete="Delete this tax?">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">No taxes found. Click "Add Tax" to create one.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal fade" id="createTaxModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'company:tax_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Add Tax</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. Standard VAT">
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Rate <span class="text-danger">*</span></label>
+              <input type="number" step="0.0001" name="rate" class="form-control" required placeholder="e.g. 15.00">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+              <select name="tax_type" class="form-select" required>
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed Amount</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tax Group</label>
+            <select name="tax_group" class="form-select">
+              <option value="">-- None --</option>
+              {% for tg in tax_groups %}
+              <option value="{{ tg.id }}">{{ tg.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Linked Account</label>
+            <select name="tax_account" class="form-select">
+              <option value="">-- None --</option>
+              {% for acc in accounts %}
+              <option value="{{ acc.id }}">{{ acc.code }} - {{ acc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_compound" id="taxCompound">
+            <label class="form-check-label" for="taxCompound">Compound Tax <small class="text-muted">(Applied on top of other taxes)</small></label>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_active" id="taxActive" checked>
+            <label class="form-check-label" for="taxActive">Active</label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Tax</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modals -->
+{% for tax in taxes %}
+<div class="modal fade" id="editTaxModal{{ tax.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'company:tax_update' tax.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Edit Tax</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ tax.name }}" required>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Rate <span class="text-danger">*</span></label>
+              <input type="number" step="0.0001" name="rate" class="form-control" value="{{ tax.rate }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+              <select name="tax_type" class="form-select" required>
+                <option value="percentage" {% if tax.tax_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                <option value="fixed" {% if tax.tax_type == 'fixed' %}selected{% endif %}>Fixed Amount</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tax Group</label>
+            <select name="tax_group" class="form-select">
+              <option value="">-- None --</option>
+              {% for tg in tax_groups %}
+              <option value="{{ tg.id }}" {% if tax.tax_group_id == tg.id %}selected{% endif %}>{{ tg.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Linked Account</label>
+            <select name="tax_account" class="form-select">
+              <option value="">-- None --</option>
+              {% for acc in accounts %}
+              <option value="{{ acc.id }}" {% if tax.tax_account_id == acc.id %}selected{% endif %}>{{ acc.code }} - {{ acc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_compound" id="editTaxCompound{{ tax.id }}" {% if tax.is_compound %}checked{% endif %}>
+            <label class="form-check-label" for="editTaxCompound{{ tax.id }}">Compound Tax</label>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_active" id="editTaxActive{{ tax.id }}" {% if tax.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="editTaxActive{{ tax.id }}">Active</label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Tax</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

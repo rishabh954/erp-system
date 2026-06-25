@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}New Manufacturing Order{% endblock %}
+{% block content %}
+<h2>New Manufacturing Order</h2>
+<form method="post" class="card shadow p-4">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label>BOM</label>
+        <select name="bom" class="form-select" required>
+            {% for bom in boms %}
+            <option value="{{ bom.pk }}">{{ bom }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Warehouse</label>
+        <select name="warehouse" class="form-select">
+            <option value="">-- Optional --</option>
+            {% for w in warehouses %}
+            <option value="{{ w.pk }}">{{ w.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Quantity</label>
+        <input type="number" name="quantity_to_produce" step="0.01" class="form-control" value="1" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{% endblock %}

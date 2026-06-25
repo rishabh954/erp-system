@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Notification Preferences{% endblock %}
+{% block nav_notifications %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Notification Preferences</h1>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Manage Alerts</h6>
+    </div>
+    <div class="card-body p-0">
+        <form method="post">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Alert Type</th>
+                            <th class="text-center">In-App</th>
+                            <th class="text-center">Email</th>
+                            <th class="text-center">SMS</th>
+                            <th class="text-center">WhatsApp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pref in preferences %}
+                        <tr>
+                            <td class="align-middle"><strong>{{ pref.get_notification_type_display }}</strong></td>
+                            <td class="text-center align-middle">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" name="in_app_{{ pref.pk }}" {% if pref.in_app_enabled %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" name="email_{{ pref.pk }}" {% if pref.email_enabled %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" name="sms_{{ pref.pk }}" {% if pref.sms_enabled %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" name="whatsapp_{{ pref.pk }}" {% if pref.whatsapp_enabled %}checked{% endif %}>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-3 text-end">
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

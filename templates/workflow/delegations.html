@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Delegated Approvals{% endblock %}
+{% block nav_workflow %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">My Delegations</h1>
+    <a href="{% url 'workflow:delegation_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Delegation</a>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Delegated To</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for del in delegations %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if del.delegatee.avatar %}
+                                <img src="{{ del.delegatee.avatar.url }}" class="rounded-circle me-2" width="30" height="30">
+                                {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                    {{ del.delegatee.first_name|first }}{{ del.delegatee.last_name|first }}
+                                </div>
+                                {% endif %}
+                                {{ del.delegatee.get_full_name }}
+                            </div>
+                        </td>
+                        <td>{{ del.start_date|date:"M d, Y" }}</td>
+                        <td>{{ del.end_date|date:"M d, Y" }}</td>
+                        <td>
+                            {% if del.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ del.notes|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4">You have not delegated your approvals to anyone.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

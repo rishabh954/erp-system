@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% block title %}API Explorer{% endblock %}
+
+{% block content %}
+<style>
+.api-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+    border-radius: 16px;
+    padding: 40px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.api-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.api-hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.api-hero p { opacity: 0.75; font-size: 1rem; max-width: 600px; }
+.badge-version {
+    display: inline-flex; align-items: center;
+    background: rgba(99,102,241,0.3);
+    border: 1px solid rgba(99,102,241,0.5);
+    color: #a5b4fc;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+    margin-bottom: 16px;
+}
+.doc-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 0.9rem; font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-right: 10px;
+}
+.doc-btn.swagger { background: #10b981; color: #fff; }
+.doc-btn.swagger:hover { background: #059669; color: #fff; }
+.doc-btn.redoc { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+.doc-btn.redoc:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+.endpoint-card { margin-bottom: 12px; }
+.endpoint-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.endpoint-header:hover { background: #f9fafb; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.method-badge {
+    padding: 3px 10px; border-radius: 5px;
+    font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em;
+    font-family: monospace; min-width: 55px; text-align: center;
+}
+.method-get { background: #d1fae5; color: #065f46; }
+.method-post { background: #dbeafe; color: #1e40af; }
+.method-put { background: #fef3c7; color: #92400e; }
+.method-delete { background: #fee2e2; color: #991b1b; }
+.endpoint-path {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: #374151;
+    font-weight: 600;
+}
+.endpoint-desc { font-size: 0.8rem; color: #6b7280; margin-left: auto; }
+
+.module-section { margin-bottom: 28px; }
+.module-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #6366f1;
+    padding-bottom: 8px; margin-bottom: 12px;
+    border-bottom: 2px solid #e0e7ff;
+    display: flex; align-items: center; gap: 8px;
+}
+
+.code-block {
+    background: #0f172a;
+    color: #a5b4fc;
+    border-radius: 10px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    position: relative;
+    overflow-x: auto;
+}
+.code-block .comment { color: #64748b; }
+.code-block .string { color: #86efac; }
+.code-block .key { color: #93c5fd; }
+.copy-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(255,255,255,0.1);
+    border: none; color: #a5b4fc;
+    padding: 4px 10px; border-radius: 5px;
+    font-size: 0.72rem; cursor: pointer;
+    transition: background 0.15s;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.2); }
+
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+.info-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+.info-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
+.info-card .label { font-size: 0.78rem; color: #6b7280; margin-bottom: 4px; }
+.info-card .value { font-size: 1rem; font-weight: 700; color: #1f2937; }
+</style>
+
+<!-- Hero -->
+<div class="api-hero">
+    <div class="badge-version">🔌 REST API v1.0</div>
+    <h1>ERP System API Explorer</h1>
+    <p>Production-ready REST API with JWT authentication. All endpoints are company-scoped, paginated, and filterable. Build mobile apps and integrations in minutes.</p>
+    <div style="margin-top:24px;">
+        <a href="/api/schema/swagger/" target="_blank" class="doc-btn swagger">
+            <i class="fas fa-book-open"></i> Open Swagger UI
+        </a>
+        <a href="/api/schema/redoc/" target="_blank" class="doc-btn redoc">
+            <i class="fas fa-file-alt"></i> ReDoc Reference
+        </a>
+    </div>
+</div>
+
+<!-- Info Cards -->
+<div class="info-grid">
+    <div class="info-card">
+        <div class="icon">🔐</div>
+        <div class="label">Authentication</div>
+        <div class="value">JWT Bearer Token</div>
+    </div>
+    <div class="info-card">
+        <div class="icon">📦</div>
+        <div class="label">Default Page Size</div>
+        <div class="value">25 items / page</div>
+    </div>
+    <div class="info-card">
+        <div class="icon">🏢</div>
+        <div class="label">Data Isolation</div>
+        <div class="value">Company-Scoped</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <!-- Endpoints -->
+        {% for module in modules %}
+        <div class="module-section">
+            <div class="module-title"><i class="{{ module.icon }}"></i> {{ module.name }}</div>
+            {% for ep in module.endpoints %}
+            <div class="endpoint-card">
+                <div class="endpoint-header">
+                    <span class="method-badge method-{{ ep.method|lower }}">{{ ep.method }}</span>
+                    <span class="endpoint-path">{{ ep.path }}</span>
+                    <span class="endpoint-desc">{{ ep.desc }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="col-lg-5">
+        <!-- Auth Quick Start -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-key me-2"></i>Quick Start: Get a Token</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode('auth-code')"><i class="fas fa-copy"></i> Copy</button>
+                    <pre id="auth-code"><span class="comment"># Python Example</span>
+import requests
+
+response = requests.post(
+    <span class="string">'http://localhost:8000/api/auth/token/'</span>,
+    json={
+        <span class="key">'username'</span>: <span class="string">'your_username'</span>,
+        <span class="key">'password'</span>: <span class="string">'your_password'</span>
+    }
+)
+token = response.json()[<span class="string">'access'</span>]
+
+<span class="comment"># Use the token in subsequent requests</span>
+headers = {<span class="key">'Authorization'</span>: f<span class="string">'Bearer {token}'</span>}
+products = requests.get(
+    <span class="string">'http://localhost:8000/api/inventory/products/'</span>,
+    headers=headers
+).json()</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtering Quick Reference -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filtering & Search</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode('filter-code')"><i class="fas fa-copy"></i> Copy</button>
+                    <pre id="filter-code"><span class="comment"># Filter by field value</span>
+GET /api/sales/orders/?status=confirmed
+
+<span class="comment"># Full-text search</span>
+GET /api/inventory/products/?search=laptop
+
+<span class="comment"># Ordering (prefix - for descending)</span>
+GET /api/crm/customers/?ordering=-created_at
+
+<span class="comment"># Pagination</span>
+GET /api/sales/orders/?page=2&page_size=10
+
+<span class="comment"># Combine filters</span>
+GET /api/sales/invoices/?status=overdue&ordering=-due_date</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- curl example -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-terminal me-2"></i>cURL Example</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode('curl-code')"><i class="fas fa-copy"></i> Copy</button>
+                    <pre id="curl-code"><span class="comment"># Step 1: Obtain a token</span>
+curl -X POST http://localhost:8000/api/auth/token/ \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"username":"admin","password":"pass"}'</span>
+
+<span class="comment"># Step 2: Call an endpoint</span>
+curl http://localhost:8000/api/inventory/products/ \
+  -H <span class="string">"Authorization: Bearer &lt;your_token&gt;"</span></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyCode(id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target.closest('.copy-btn');
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i> Copy', 2000);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Create Inventory Transfer{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">New Stock Transfer</h1>
+    <p class="text-muted mb-0">Record and request a new stock transfer between warehouse locations</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card glass-card border-0 p-4">
+      <h5 class="text-dark fw-bold mb-4"><i class="fas fa-exchange-alt text-primary me-2"></i>Transfer Details</h5>
+      
+      <form method="post" id="transferForm" action="{% url 'inventory:transfer_create' %}">
+        {% csrf_token %}
+
+        <!-- Warehouse Routing and Dates -->
+        <div class="row g-3 mb-4">
+          <!-- From Warehouse -->
+          <div class="col-12 col-md-6">
+            <label for="fromWarehouse" class="form-label fw-semibold text-dark">Source Warehouse <span class="text-danger">*</span></label>
+            <select name="from_warehouse" id="fromWarehouse" class="form-select" required>
+              <option value="" disabled selected>-- Choose Source Warehouse --</option>
+              {% for wh in warehouses %}
+              <option value="{{ wh.id }}">{{ wh.name }} (Code: {{ wh.code }})</option>
+              {% endfor %}
+            </select>
+            <div class="form-text small">Select the warehouse location to deduct stock from.</div>
+          </div>
+
+          <!-- To Warehouse -->
+          <div class="col-12 col-md-6">
+            <label for="toWarehouse" class="form-label fw-semibold text-dark">Destination Warehouse <span class="text-danger">*</span></label>
+            <select name="to_warehouse" id="toWarehouse" class="form-select" required>
+              <option value="" disabled selected>-- Choose Destination Warehouse --</option>
+              {% for wh in warehouses %}
+              <option value="{{ wh.id }}">{{ wh.name }} (Code: {{ wh.code }})</option>
+              {% endfor %}
+            </select>
+            <div class="form-text small">Select the warehouse location receiving the stock.</div>
+          </div>
+
+          <!-- Dates -->
+          <div class="col-12 col-md-6">
+            <label for="transferDate" class="form-label fw-semibold text-dark">Transfer Date <span class="text-danger">*</span></label>
+            <input type="date" name="transfer_date" id="transferDate" class="form-control" value="{% now 'Y-m-d' %}" required>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="expectedArrival" class="form-label fw-semibold text-dark">Expected Arrival</label>
+            <input type="date" name="expected_arrival" id="expectedArrival" class="form-control">
+          </div>
+        </div>
+
+        <!-- Requisition Lines -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold text-primary mb-0"><i class="fas fa-list-ol me-2"></i>Items to Transfer</h5>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="addItemBtn">
+            <i class="fas fa-plus me-1"></i>Add Row
+          </button>
+        </div>
+        
+        <div class="table-responsive mb-4">
+          <table class="table align-middle" id="itemsTable">
+            <thead class="table-light">
+              <tr class="small text-uppercase">
+                <th style="width: 75%">Product / SKU <span class="text-danger">*</span></th>
+                <th style="width: 20%" class="text-end">Quantity <span class="text-danger">*</span></th>
+                <th style="width: 5%" class="text-center"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody">
+              <!-- Default Row -->
+              <tr class="item-row">
+                <td>
+                  <select name="product[]" class="form-select product-select" required>
+                    <option value="" disabled selected>-- Select Product --</option>
+                    {% for prod in products %}
+                      <option value="{{ prod.id }}">{{ prod.name }} (SKU: {{ prod.sku }})</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input type="number" name="quantity[]" class="form-control text-end qty-input" value="1.0" min="0.0001" step="any" required>
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-outline-danger btn-xs remove-row-btn" style="padding: 4px 8px">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-4">
+          <label for="notes" class="form-label fw-semibold text-dark">Transfer Notes / Reason</label>
+          <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Add any details, shipment/freight comments, or context for the approvers..."></textarea>
+        </div>
+
+        <!-- Error alert placeholder -->
+        <div class="alert alert-danger d-none" id="routingErrorAlert">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <span id="routingErrorMessage"></span>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <a href="{% url 'inventory:transfers' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          <button type="submit" class="btn btn-primary px-4">Create Draft Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const itemsBody = document.getElementById('itemsBody');
+  const addItemBtn = document.getElementById('addItemBtn');
+  const transferForm = document.getElementById('transferForm');
+  const fromWh = document.getElementById('fromWarehouse');
+  const toWh = document.getElementById('toWarehouse');
+  const errorAlert = document.getElementById('routingErrorAlert');
+  const errorMessage = document.getElementById('routingErrorMessage');
+
+  // Add Row
+  addItemBtn.addEventListener('click', function() {
+    const firstRow = document.querySelector('.item-row');
+    const newRow = firstRow.cloneNode(true);
+    
+    // Reset fields
+    newRow.querySelector('.product-select').selectedIndex = 0;
+    newRow.querySelector('.qty-input').value = '1.0';
+    
+    itemsBody.appendChild(newRow);
+  });
+
+  // Remove row
+  itemsBody.addEventListener('click', function(e) {
+    const btn = e.target.closest('.remove-row-btn');
+    if (!btn) return;
+    
+    // Keep at least one row
+    if (document.querySelectorAll('.item-row').length > 1) {
+      btn.closest('.item-row').remove();
+    } else {
+      alert("A transfer must contain at least one item.");
+    }
+  });
+
+  // Form submit validation
+  transferForm.addEventListener('submit', function(e) {
+    if (fromWh.value === toWh.value) {
+      e.preventDefault();
+      errorMessage.textContent = "Source Warehouse and Destination Warehouse cannot be the same location.";
+      errorAlert.classList.remove('d-none');
+      window.scrollTo(0, document.body.scrollHeight);
+    } else {
+      errorAlert.classList.add('d-none');
+    }
+  });
+});
+</script>
+{% endblock %}

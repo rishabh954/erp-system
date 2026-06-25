@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Subscription - {{ subscription.customer.name }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Subscription: {{ subscription.customer.name }}</h1></div>
+<div class="card shadow-sm border-0 p-4">
+<p><strong>Product:</strong> {{ subscription.product.name }}</p>
+<p><strong>Status:</strong> {{ subscription.get_status_display }}</p>
+<p><strong>Recurring Amount:</strong> {{ subscription.recurring_amount }}</p>
+<p><strong>Next Billing Date:</strong> {{ subscription.next_billing_date }}</p>
+</div>
+{% endblock %}

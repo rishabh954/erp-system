@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Inventory Warehouses{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Warehouses</h1>
+    <p class="text-muted mb-0">Manage physical storage locations, track stock counts, and monitor valuation</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createWarehouseModal">
+      <i class="fas fa-plus me-1"></i> Add Warehouse
+    </button>
+  </div>
+</div>
+
+<!-- Warehouses Summary Dashboard -->
+<div class="row g-3 mb-4">
+  <!-- Total Warehouses Card -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-value" id="stat-total-warehouses">{{ warehouses|length }}</div>
+      <div class="stat-card-label">Total Warehouses</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-warehouse"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">
+        <span id="stat-active-warehouses">0 Active Locations</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Products Stored -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-value" id="stat-total-products">0</div>
+      <div class="stat-card-label">Total Unique Products in Stock</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-box-open"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">Across all warehouses</div>
+    </div>
+  </div>
+
+  <!-- Total Inventory Valuation -->
+  <div class="col-12 col-md-4">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-value" id="stat-total-value">{{ CURRENCY_SYMBOL }}0.00</div>
+      <div class="stat-card-label">Total Stock Valuation</div>
+      <div class="stat-card-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-card-trend text-white-50">Based on average cost</div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+{% regroup warehouses by branch as branch_list %}
+{% regroup warehouses by manager as manager_list %}
+<div class="card glass-card mb-4 border-0">
+  <div class="card-body py-3">
+    <div class="row g-3 align-items-center">
+      <!-- Search Input -->
+      <div class="col-12 col-md-4">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" id="search-input" class="form-control" style="padding-left:36px"
+            placeholder="Search by name, code, or address...">
+        </div>
+      </div>
+      
+      <!-- Branch Filter -->
+      <div class="col-6 col-md-2">
+        <select id="branch-filter" class="form-select">
+          <option value="">All Branches</option>
+          {% for b in branch_list %}
+            {% if b.grouper %}
+              <option value="{{ b.grouper.id }}">{{ b.grouper.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Manager Filter -->
+      <div class="col-6 col-md-2">
+        <select id="manager-filter" class="form-select">
+          <option value="">All Managers</option>
+          {% for m in manager_list %}
+            {% if m.grouper %}
+              <option value="{{ m.grouper.id }}">{{ m.grouper.full_name|default:m.grouper.username }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="col-6 col-md-2">
+        <select id="status-filter" class="form-select">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      <!-- Reset Filter Button -->
+      <div class="col-6 col-md-2 d-flex">
+        <button id="reset-filters" class="btn btn-outline-secondary w-100">
+          <i class="fas fa-undo me-1"></i>Reset
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Warehouses Grid -->
+<div class="row g-4" id="warehouses-grid">
+  {% for wh in warehouses %}
+  <div class="col-12 col-md-6 col-lg-4 warehouse-card-container" 
+       data-name="{{ wh.name|lower }}"
+       data-code="{{ wh.code|lower }}"
+       data-address="{{ wh.address|lower }}"
+       data-branch-id="{{ wh.branch.id|default:'' }}"
+       data-branch-name="{{ wh.branch.name|default:''|lower }}"
+       data-manager-id="{{ wh.manager.id|default:'' }}"
+       data-manager-name="{% if wh.manager %}{{ wh.manager.full_name|default:wh.manager.username|lower }}{% endif %}"
+       data-status="{% if wh.is_active %}active{% else %}inactive{% endif %}"
+       data-stock-value="{{ wh.stock_value|default:0 }}"
+       data-product-count="{{ wh.product_count|default:0 }}">
+    
+    <div class="card glass-card h-100 border-0 shadow-sm hover-shadow transition">
+      <!-- Card Header -->
+      <div class="card-header border-0 pb-0 d-flex justify-content-between align-items-start bg-transparent">
+        <div>
+          <span class="badge bg-primary-subtle text-primary fw-bold text-uppercase mb-2" style="font-size: 11px; letter-spacing: 0.5px;">
+            {{ wh.code }}
+          </span>
+          <h5 class="card-title text-dark fw-bold mb-1">{{ wh.name }}</h5>
+        </div>
+        <div>
+          {% if wh.is_active %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold rounded-pill px-2 py-1">
+              <i class="fas fa-circle me-1" style="font-size: 8px;"></i>Active
+            </span>
+          {% else %}
+            <span class="badge bg-secondary-subtle text-muted border border-secondary-subtle fw-semibold rounded-pill px-2 py-1">
+              <i class="fas fa-circle me-1" style="font-size: 8px;"></i>Inactive
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card Body -->
+      <div class="card-body d-flex flex-column justify-content-between pt-3">
+        <!-- Info fields -->
+        <div class="mb-4">
+          <!-- Branch -->
+          <div class="d-flex align-items-center mb-2 text-secondary">
+            <div class="text-primary-subtle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+              <i class="fas fa-map-marker-alt text-primary"></i>
+            </div>
+            <span class="small">
+              <strong>Branch:</strong> {{ wh.branch.name|default:"Not Assigned" }}
+            </span>
+          </div>
+
+          <!-- Manager -->
+          <div class="d-flex align-items-center mb-2 text-secondary">
+            <div class="text-primary-subtle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+              <i class="fas fa-user-tie text-primary"></i>
+            </div>
+            <span class="small">
+              <strong>Manager:</strong> {% if wh.manager %}{{ wh.manager.full_name|default:wh.manager.username }}{% else %}Unassigned{% endif %}
+            </span>
+          </div>
+
+          <!-- Address -->
+          <div class="d-flex align-items-start text-secondary">
+            <div class="text-primary-subtle d-flex align-items-center justify-content-center me-2 mt-1" style="width: 24px; height: 24px;">
+              <i class="fas fa-building text-primary"></i>
+            </div>
+            <span class="small text-truncate-2">
+              <strong>Address:</strong> {{ wh.address|default:"No Address Provided" }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Inventory Stats -->
+        <div class="p-3 bg-light-subtle rounded-3 border border-light-subtle mb-4">
+          <div class="row text-center">
+            <div class="col-6 border-end">
+              <div class="text-muted small mb-1">Products in Stock</div>
+              <div class="fw-bold h5 text-dark mb-0">{{ wh.product_count|default:0|intcomma }}</div>
+            </div>
+            <div class="col-6">
+              <div class="text-muted small mb-1">Stock Valuation</div>
+              <div class="fw-bold h5 text-primary mb-0">{{ CURRENCY_SYMBOL }}{{ wh.stock_value|default:0|floatformat:2|intcomma }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Actions -->
+        <div class="d-flex gap-2 mb-2">
+          <a href="{% url 'inventory:movements' %}?warehouse={{ wh.id }}" class="btn btn-outline-primary btn-sm flex-fill">
+            <i class="fas fa-history me-1"></i>View History
+          </a>
+          <a href="{% url 'inventory:stock_adjust' %}?warehouse={{ wh.id }}" class="btn btn-primary btn-sm flex-fill">
+            <i class="fas fa-sliders-h me-1"></i>Adjust Stock
+          </a>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-warning btn-sm flex-fill" data-bs-toggle="modal" data-bs-target="#editWarehouseModal{{ wh.id }}">
+            <i class="fas fa-edit"></i> Edit
+          </button>
+          <form method="post" action="{% url 'inventory:warehouse_delete' wh.id %}" class="d-inline flex-fill">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm w-100" data-confirm-delete="Archive this warehouse?">
+              <i class="fas fa-trash"></i> Archive
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-5">
+    <div class="card glass-card p-5 border-0">
+      <i class="fas fa-warehouse fa-4x text-muted mb-3 opacity-25"></i>
+      <h4 class="text-dark fw-bold">No Warehouses Registered</h4>
+      <p class="text-muted">No warehouses found in your company directory.</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Empty Search State -->
+<div class="row d-none" id="empty-search-state">
+  <div class="col-12 text-center py-5">
+    <div class="card glass-card p-5 border-0">
+      <i class="fas fa-search fa-4x text-muted mb-3 opacity-25"></i>
+      <h4 class="text-dark fw-bold">No Matching Warehouses</h4>
+      <p class="text-muted">We couldn't find any warehouses matching your filter criteria.</p>
+      <div class="mt-3">
+        <button id="clear-search-btn" class="btn btn-primary btn-sm">
+          <i class="fas fa-undo me-1"></i>Clear Filters
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for dynamic client-side filtering and KPI calculations -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('search-input');
+  const branchFilter = document.getElementById('branch-filter');
+  const managerFilter = document.getElementById('manager-filter');
+  const statusFilter = document.getElementById('status-filter');
+  const resetFilters = document.getElementById('reset-filters');
+  const clearSearchBtn = document.getElementById('clear-search-btn');
+  
+  const cards = document.querySelectorAll('.warehouse-card-container');
+  const grid = document.getElementById('warehouses-grid');
+  const emptyState = document.getElementById('empty-search-state');
+
+  // KPI elements
+  const statActive = document.getElementById('stat-active-warehouses');
+  const statProducts = document.getElementById('stat-total-products');
+  const statValue = document.getElementById('stat-total-value');
+
+  // Initial Calculation of KPIs based on loaded list
+  calculateKPIs();
+
+  function calculateKPIs() {
+    let activeCount = 0;
+    let totalUniqueProducts = 0;
+    let totalStockValuation = 0;
+
+    cards.forEach(card => {
+      // Status
+      if (card.dataset.status === 'active') {
+        activeCount++;
+      }
+      
+      // Stock values
+      const val = parseFloat(card.dataset.stockValue) || 0;
+      const count = parseInt(card.dataset.productCount) || 0;
+
+      totalStockValuation += val;
+      totalUniqueProducts += count;
+    });
+
+    if (statActive) statActive.textContent = activeCount;
+    if (statProducts) statProducts.textContent = totalUniqueProducts.toLocaleString();
+    if (statValue) statValue.textContent = '{{ CURRENCY_SYMBOL }}' + totalStockValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Filter function
+  function applyFilters() {
+    const query = searchInput.value.toLowerCase().trim();
+    const branch = branchFilter.value;
+    const manager = managerFilter.value;
+    const status = statusFilter.value;
+
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const name = card.dataset.name;
+      const code = card.dataset.code;
+      const address = card.dataset.address;
+      const cardBranch = card.dataset.branchId;
+      const cardManager = card.dataset.managerId;
+      const cardStatus = card.dataset.status;
+
+      // Text query match (name, code, address)
+      const matchesText = !query || name.includes(query) || code.includes(query) || address.includes(query);
+      
+      // Select dropdown matches
+      const matchesBranch = !branch || cardBranch === branch;
+      const matchesManager = !manager || cardManager === manager;
+      const matchesStatus = !status || cardStatus === status;
+
+      if (matchesText && matchesBranch && matchesManager && matchesStatus) {
+        card.classList.remove('d-none');
+        visibleCount++;
+      } else {
+        card.classList.add('d-none');
+      }
+    });
+
+    // Handle empty state visibility
+    if (cards.length > 0) {
+      if (visibleCount === 0) {
+        emptyState.classList.remove('d-none');
+        grid.classList.add('d-none');
+      } else {
+        emptyState.classList.add('d-none');
+        grid.classList.remove('d-none');
+      }
+    }
+  }
+
+  function resetAll() {
+    searchInput.value = '';
+    branchFilter.value = '';
+    managerFilter.value = '';
+    statusFilter.value = '';
+    applyFilters();
+  }
+
+  // Event Listeners
+  searchInput.addEventListener('input', applyFilters);
+  branchFilter.addEventListener('change', applyFilters);
+  managerFilter.addEventListener('change', applyFilters);
+  statusFilter.addEventListener('change', applyFilters);
+  resetFilters.addEventListener('click', resetAll);
+  clearSearchBtn.addEventListener('click', resetAll);
+});
+</script>
+
+<style>
+/* Subtle transition and styling tweaks for premium feel */
+.warehouse-card-container .card {
+  transition: all var(--transition-base);
+}
+.warehouse-card-container .card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg) !important;
+}
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+}
+</style>
+<!-- Create Warehouse Modal -->
+<div class="modal fade" id="createWarehouseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'inventory:warehouse_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Add Warehouse</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+            <input type="text" name="code" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Address</label>
+            <textarea name="address" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Branch</label>
+            <select name="branch" class="form-select">
+              <option value="">-- None --</option>
+              {% for b in branches %}
+              <option value="{{ b.id }}">{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Manager</label>
+            <select name="manager" class="form-select">
+              <option value="">-- None --</option>
+              {% for u in users %}
+              <option value="{{ u.id }}">{{ u.full_name|default:u.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_active" id="whActive" checked>
+            <label class="form-check-label" for="whActive">Active</label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Warehouse</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Warehouse Modals -->
+{% for wh in warehouses %}
+<div class="modal fade" id="editWarehouseModal{{ wh.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'inventory:warehouse_update' wh.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Edit Warehouse</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ wh.name }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+            <input type="text" name="code" class="form-control" value="{{ wh.code }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Address</label>
+            <textarea name="address" class="form-control" rows="2">{{ wh.address }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Branch</label>
+            <select name="branch" class="form-select">
+              <option value="">-- None --</option>
+              {% for b in branches %}
+              <option value="{{ b.id }}" {% if wh.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Manager</label>
+            <select name="manager" class="form-select">
+              <option value="">-- None --</option>
+              {% for u in users %}
+              <option value="{{ u.id }}" {% if wh.manager_id == u.id %}selected{% endif %}>{{ u.full_name|default:u.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_active" id="editWhActive{{ wh.id }}" {% if wh.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="editWhActive{{ wh.id }}">Active</label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Warehouse</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

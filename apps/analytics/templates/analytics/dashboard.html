@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}BI & Analytics Dashboard{% endblock %}
+{% block nav_analytics %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">BI & Analytics Dashboard</h1>
+        <a href="{% url 'analytics:builder' %}" class="btn btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Build New Report
+        </a>
+    </div>
+
+    <div class="row">
+        {% for report in reports %}
+        <div class="col-xl-6 col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ report.name }}</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle text-secondary" href="#" role="button" id="dropdownMenuLink{{ report.id }}" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end shadow animated--fade-in" aria-labelledby="dropdownMenuLink{{ report.id }}">
+                            <div class="dropdown-header">Report Actions:</div>
+                            <form action="{% url 'analytics:report_delete' report.id %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if report.description %}
+                    <p class="text-muted small mb-3">{{ report.description }}</p>
+                    {% endif %}
+                    <div class="chart-area" style="position: relative; height:30vh; width:100%">
+                        <canvas id="chart-{{ report.id }}"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <img src="https://cdni.iconscout.com/illustration/premium/thumb/empty-state-2130362-1800926.png" width="200" alt="No Reports" class="mb-3 opacity-50">
+            <h4>No reports built yet</h4>
+            <p class="text-muted">Use the Report Builder to create custom charts and tables.</p>
+            <a href="{% url 'analytics:builder' %}" class="btn btn-outline-primary mt-2">Go to Report Builder</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% for report in reports %}
+        fetch("{% url 'analytics:api_generate_report' %}?report_id={{ report.id }}")
+            .then(response => response.json())
+            .then(data => {
+                const chartArea = document.getElementById('chart-{{ report.id }}').parentNode;
+                if (data.error) {
+                    console.error("Error loading report {{ report.id }}:", data.error);
+                    chartArea.innerHTML = `<div class="text-danger text-center mt-5"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>Failed to load chart:<br><small>${data.error}</small></div>`;
+                    return;
+                }
+                
+                const ctx = document.getElementById('chart-{{ report.id }}').getContext('2d');
+                
+                // Color palette
+                const bgColors = [
+                    'rgba(78, 115, 223, 0.5)', 'rgba(28, 200, 138, 0.5)', 'rgba(54, 185, 204, 0.5)',
+                    'rgba(246, 194, 62, 0.5)', 'rgba(231, 74, 59, 0.5)', 'rgba(133, 135, 150, 0.5)'
+                ];
+                const borderColors = [
+                    'rgba(78, 115, 223, 1)', 'rgba(28, 200, 138, 1)', 'rgba(54, 185, 204, 1)',
+                    'rgba(246, 194, 62, 1)', 'rgba(231, 74, 59, 1)', 'rgba(133, 135, 150, 1)'
+                ];
+
+                let type = data.chart_type;
+                if(type === 'table') {
+                    // For table type, maybe we just draw a bar for now or we could dynamically build a table.
+                    type = 'bar';
+                }
+
+                new Chart(ctx, {
+                    type: type,
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: data.name,
+                            data: data.values,
+                            backgroundColor: type === 'pie' || type === 'doughnut' ? bgColors : bgColors[0],
+                            borderColor: type === 'pie' || type === 'doughnut' ? borderColors : borderColors[0],
+                            borderWidth: 1,
+                            fill: type === 'line' ? true : false,
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: (type === 'pie' || type === 'doughnut')
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                display: (type !== 'pie' && type !== 'doughnut')
+                            },
+                            x: {
+                                display: (type !== 'pie' && type !== 'doughnut')
+                            }
+                        }
+                    }
+                });
+            });
+    {% endfor %}
+});
+</script>
+{% endblock %}

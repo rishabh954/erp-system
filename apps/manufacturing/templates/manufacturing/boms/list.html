@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Bills of Material{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Bills of Material</h1>
+        <a href="{% url 'manufacturing:bom_create' %}" class="btn btn-primary">Create BOM</a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Number</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bom in boms %}
+                        <tr>
+                            <td>{{ bom.number }}</td>
+                            <td>{{ bom.product.name }}</td>
+                            <td>{{ bom.quantity }}</td>
+                            <td>{% if bom.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</td>
+                            <td>
+                                <a href="{% url 'manufacturing:bom_detail' bom.pk %}" class="btn btn-sm btn-info text-white">View</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center">No BOMs found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

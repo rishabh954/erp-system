@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">My Profile
+{% endblock %}
+
+{% block content %}</li>
+<div class="row g-4">
+  
+  <!-- Left Column: User Card & Navigation -->
+  <div class="col-12 col-xl-4">
+    
+    <!-- User Avatar & Quick Info -->
+    <div class="card glass-card border-0 shadow-sm mb-4 text-center">
+      <div class="card-body p-4 pt-5">
+        <div class="position-relative d-inline-block mb-3">
+          {% if request.user.avatar %}
+          <img src="{{ request.user.avatar.url }}" alt="Avatar" class="rounded-circle shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+          {% else %}
+          <div class="rounded-circle shadow-sm d-flex align-items-center justify-content-center bg-primary text-white mx-auto" style="width: 120px; height: 120px; font-size: 48px; font-weight: 600;">
+            {{ request.user.first_name|first }}{{ request.user.last_name|first }}
+          </div>
+          {% endif %}
+          <!-- You can add a quick upload overlay here if you implement avatar uploads via JS -->
+        </div>
+        <h4 class="fw-bold text-dark mb-1">{{ request.user.full_name }}</h4>
+        <p class="text-muted mb-2">{{ request.user.email }}</p>
+        <div><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">{{ request.user.get_role_display }}</span></div>
+        
+        <div class="d-flex justify-content-center mt-4 pt-3 border-top">
+          <div class="text-center px-3">
+            <div class="fw-bold text-dark fs-5">{{ request.user.companies.count }}</div>
+            <div class="text-muted small">Companies</div>
+          </div>
+          <div class="text-center px-3 border-start">
+            <div class="fw-bold text-dark fs-5">{% if request.user.two_factor_enabled %}<i class="fas fa-check-circle text-success"></i>{% else %}<i class="fas fa-times-circle text-danger"></i>{% endif %}</div>
+            <div class="text-muted small">2FA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tabs Navigation -->
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush profile-nav" style="border-radius: 14px; overflow: hidden;" id="profile-tabs" role="tablist">
+          <a class="list-group-item list-group-item-action active py-3 border-0 fw-semibold" id="tab-general" data-bs-toggle="list" href="#pane-general" role="tab">
+            <i class="fas fa-user-edit me-3 opacity-75"></i>General Information
+          </a>
+          <a class="list-group-item list-group-item-action py-3 border-0 fw-semibold text-muted" id="tab-security" data-bs-toggle="list" href="#pane-security" role="tab">
+            <i class="fas fa-shield-alt me-3 opacity-50"></i>Security & Passwords
+          </a>
+          <a class="list-group-item list-group-item-action py-3 border-0 fw-semibold text-muted" id="tab-sessions" data-bs-toggle="list" href="#pane-sessions" role="tab">
+            <i class="fas fa-laptop-house me-3 opacity-50"></i>Active Sessions
+          </a>
+          <a class="list-group-item list-group-item-action py-3 border-0 fw-semibold text-muted" id="tab-activity" data-bs-toggle="list" href="#pane-activity" role="tab">
+            <i class="fas fa-history me-3 opacity-50"></i>Activity Log
+          </a>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- Right Column: Tab Content -->
+  <div class="col-12 col-xl-8">
+    <div class="tab-content" id="profile-tab-content">
+      
+      <!-- General Information -->
+      <div class="tab-pane fade show active" id="pane-general" role="tabpanel" aria-labelledby="tab-general">
+        <div class="card glass-card border-0 shadow-sm h-100">
+          <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+            <h5 class="fw-bold text-dark mb-0">General Information</h5>
+          </div>
+          <div class="card-body p-4">
+            <form method="post" action="{% url 'auth:profile_update' %}" enctype="multipart/form-data">
+              {% csrf_token %}
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">First Name
+                  {{ profile_form.first_name }}
+                  {% if profile_form.first_name.errors %}</label>
+                  <div class="text-danger small mt-1">{{ profile_form.first_name.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Last Name
+                  {{ profile_form.last_name }}
+                  {% if profile_form.last_name.errors %}</label>
+                  <div class="text-danger small mt-1">{{ profile_form.last_name.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Email Address</label>
+                  <input type="email" class="form-control bg-light" value="{{ request.user.email }}" readonly disabled>
+                  <div class="form-text">Your email address cannot be changed directly.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Phone Number
+                  {{ profile_form.phone }}</label>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Profile Avatar
+                  {{ profile_form.avatar }}</label>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Language Preference
+                  {{ profile_form.language_preference }}</label>
+                </div>
+                <div class="col-12 mt-4 pt-3 border-top text-end">
+                  <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Save Changes</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Security & Passwords -->
+      <div class="tab-pane fade" id="pane-security" role="tabpanel" aria-labelledby="tab-security">
+        <div class="card glass-card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+            <h5 class="fw-bold text-dark mb-0">Change Password</h5>
+          </div>
+          <div class="card-body p-4">
+            <form method="post" action="{% url 'auth:change_password' %}">
+              {% csrf_token %}
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Current Password</label>
+                  <input type="password" name="old_password" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">New Password</label>
+                  <input type="password" name="new_password" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Confirm New Password</label>
+                  <input type="password" name="new_password_confirm" class="form-control" required>
+                </div>
+                <div class="col-12 mt-4 text-end">
+                  <button type="submit" class="btn btn-primary px-4"><i class="fas fa-key me-2"></i>Update Password</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div class="card glass-card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+            <h5 class="fw-bold text-dark mb-0">Two-Factor Authentication</h5>
+          </div>
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="fw-bold mb-1">Protect your account with 2FA</h6>
+                <p class="text-muted mb-0 small">Add an extra layer of security to your account by requiring an OTP code during login.</p>
+              </div>
+              <div>
+                {% if request.user.two_factor_enabled %}
+                <button class="btn btn-outline-danger">Disable 2FA
+                {% else %}</button>
+                <button class="btn btn-outline-success">Enable 2FA
+                {% endif %}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Active Sessions -->
+      <div class="tab-pane fade" id="pane-sessions" role="tabpanel" aria-labelledby="tab-sessions">
+        <div class="card glass-card border-0 shadow-sm h-100">
+          <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0">Active Sessions</h5>
+            {% if active_sessions.count > 1 %}
+            <form method="post" action="{% url 'auth:revoke_all_sessions' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt me-2"></i>Sign out of all other devices</button>
+            </form>
+            {% endif %}
+          </div>
+          <div class="card-body p-4">
+            <div class="list-group list-group-flush">
+              {% for session in active_sessions %}
+              <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center border-bottom">
+                <div class="d-flex align-items-center">
+                  <div class="me-3 fs-3 text-muted">
+                    {% if 'Mobile' in session.user_agent %}<i class="fas fa-mobile-alt"></i>{% else %}<i class="fas fa-laptop"></i>{% endif %}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-1">
+                      {{ session.ip_address }}
+                      {% if session.session_key == request.session.session_key %}
+                      <span class="badge bg-success-subtle text-success ms-2">Current Session
+                      {% endif %}</span>
+                    </h6>
+                    <p class="text-muted mb-0 small text-truncate" style="max-width: 400px;" title="{{ session.user_agent }}">{{ session.user_agent }}</p>
+                    <p class="text-muted mb-0 small">Started: {{ session.created_at|date:"M d, Y H:i" }}</p>
+                  </div>
+                </div>
+                {% if session.session_key != request.session.session_key %}
+                <form method="post" action="{% url 'auth:revoke_session' session.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-light text-danger border" title="Revoke Session"><i class="fas fa-times"></i></button>
+                </form>
+                {% endif %}
+              </div>
+              {% empty %}
+              <div class="text-center text-muted py-4">No active sessions found.
+              {% endfor %}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Activity Log -->
+      <div class="tab-pane fade" id="pane-activity" role="tabpanel" aria-labelledby="tab-activity">
+        <div class="card glass-card border-0 shadow-sm h-100">
+          <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+            <h5 class="fw-bold text-dark mb-0">Recent Activity</h5>
+          </div>
+          <div class="card-body p-4">
+            <div class="timeline position-relative ps-4 ms-2" style="border-left: 2px solid #e9ecef;">
+              {% for log in activity_logs %}
+              <div class="timeline-item position-relative mb-4">
+                <div class="timeline-icon position-absolute rounded-circle bg-white border border-2 border-primary d-flex align-items-center justify-content-center text-primary" style="width: 32px; height: 32px; left: -41px; top: -5px;">
+                  <i class="fas fa-{% if log.action == 'login' %}sign-in-alt{% elif log.action == 'logout' %}sign-out-alt{% elif log.action == 'password_reset' %}key{% else %}bolt{% endif %} small"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">{{ log.get_action_display|default:log.action|title }}</h6>
+                  <p class="text-muted mb-1 small">{{ log.description|default:"No details provided." }}</p>
+                  <p class="text-muted mb-0" style="font-size: 11px;">
+                    <i class="far fa-clock me-1"></i>{{ log.created_at|date:"M d, Y H:i" }}
+                    {% if log.ip_address %}<span class="ms-3"><i class="fas fa-network-wired me-1"></i>{{ log.ip_address }}</span>{% endif %}
+                  </p>
+                </div>
+              </div>
+              {% empty %}
+              <div class="text-center text-muted py-4">No recent activity.
+              {% endfor %}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.profile-nav .list-group-item {
+  transition: all 0.2s ease;
+}
+.profile-nav .list-group-item.active {
+  background: rgba(67, 97, 238, 0.1) !important;
+  color: #4361ee !important;
+  border-left: 4px solid #4361ee !important;
+}
+.profile-nav .list-group-item:not(.active) {
+  border-left: 4px solid transparent !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    // Automatically add form-control class to all inputs from the Django form
+    $('#pane-general input, #pane-general select, #pane-general textarea').addClass('form-control');
+    
+    // Add active class toggling for the list group menu
+    $('.profile-nav .list-group-item').on('click', function() {
+      $('.profile-nav .list-group-item').removeClass('active').addClass('text-muted');
+      $(this).removeClass('text-muted').addClass('active');
+    });
+  });
+</script>
+{% endblock %}

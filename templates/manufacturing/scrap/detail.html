@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Scrap Order: {{ scrap_order.number }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">{{ scrap_order.number }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>Product:</strong> {{ scrap_order.product.name }}</p>
+<p><strong>Quantity:</strong> {{ scrap_order.quantity }}</p>
+<p><strong>Reason:</strong> {{ scrap_order.reason }}</p>
+<p><strong>Status:</strong> {{ scrap_order.get_status_display }}</p>
+</div>
+{% endblock %}

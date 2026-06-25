@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}General Ledger{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">General Ledger</h1><p class="text-muted">From {{ from_date }} to {{ to_date }}</p></div>
+{% for acc_data in ledger_data %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-light"><strong>{{ acc_data.account.code }} - {{ acc_data.account.name }}</strong></div>
+  <table class="table table-sm table-hover mb-0">
+    <thead><tr><th>Date</th><th>Entry</th><th>Debit</th><th>Credit</th></tr></thead>
+    <tbody>
+      {% for item in acc_data.items %}
+      <tr><td>{{ item.journal_entry.date }}</td><td><a href="{% url 'accounting:journal_detail' item.journal_entry.pk %}">{{ item.journal_entry.number }}</a></td><td>{{ item.debit|floatformat:2|intcomma }}</td><td>{{ item.credit|floatformat:2|intcomma }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-light fw-bold"><tr><td colspan="2" class="text-end">Total</td><td>{{ acc_data.total_debit|floatformat:2|intcomma }}</td><td>{{ acc_data.total_credit|floatformat:2|intcomma }}</td></tr><tr><td colspan="2" class="text-end">Net Change</td><td colspan="2">{{ acc_data.net_change|floatformat:2|intcomma }}</td></tr></tfoot>
+  </table>
+</div>
+{% empty %}<div class="alert alert-info">No journal entries found in this period.</div>{% endfor %}
+{% endblock %}

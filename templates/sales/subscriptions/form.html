@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if subscription %}Edit Subscription{% else %}New Subscription{% endif %}{% endblock %}
+{% block nav_sales %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">{% if subscription %}Edit Subscription{% else %}New Subscription{% endif %}</h6>
+                <a href="{% url 'sales:subscriptions' %}" class="btn btn-sm btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Customer</label>
+                            <select name="customer" class="form-select" required {% if subscription %}disabled{% endif %}>
+                                <option value="">--- Select Customer ---</option>
+                                {% for c in customers %}
+                                <option value="{{ c.id }}" {% if subscription and subscription.customer.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Product</label>
+                            <select name="product" class="form-select" required {% if subscription %}disabled{% endif %}>
+                                <option value="">--- Select Product ---</option>
+                                {% for p in products %}
+                                <option value="{{ p.id }}" {% if subscription and subscription.product.id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Billing Cycle</label>
+                            <select name="billing_cycle" class="form-select" required>
+                                {% for val, label in cycles %}
+                                <option value="{{ val }}" {% if subscription and subscription.billing_cycle == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Recurring Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="recurring_amount" class="form-control" required value="{{ subscription.recurring_amount|default:'0.00' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" name="start_date" class="form-control" required value="{{ subscription.start_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Next Billing Date</label>
+                            <input type="date" name="next_billing_date" class="form-control" required value="{{ subscription.next_billing_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select" required>
+                                {% for val, label in statuses %}
+                                <option value="{{ val }}" {% if subscription and subscription.status == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Subscription</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

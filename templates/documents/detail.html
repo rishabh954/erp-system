@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ document.title }} — Documents{% endblock %}
+{% block nav_documents %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'documents:list' %}">Documents</a></li>
+<li class="breadcrumb-item active">{{ document.number }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-3 mb-1">
+      <h1 class="h3 text-primary mb-0 font-monospace">{{ document.number }}</h1>
+      
+      {% if document.status == 'draft' %}
+        <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3">Draft
+      {% elif document.status == 'pending_approval' %}</span>
+        <span class="badge bg-warning-subtle text-warning border rounded-pill px-3">Pending Approval
+      {% elif document.status == 'approved' %}</span>
+        <span class="badge bg-success-subtle text-success border rounded-pill px-3">Approved
+      {% elif document.status == 'rejected' %}</span>
+        <span class="badge bg-danger-subtle text-danger border rounded-pill px-3">Rejected
+      {% elif document.status == 'archived' %}</span>
+        <span class="badge bg-dark-subtle text-dark border rounded-pill px-3">Archived
+      {% endif %}
+      
+      {% if not document.is_public %}</span>
+        <span class="badge bg-dark rounded-pill px-3"><i class="fas fa-lock me-1"></i>Private</span>
+      {% endif %}
+    </div>
+    <p class="text-muted mb-0 fw-bold fs-5 text-dark">{{ document.title }}</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'documents:list' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+    <a href="{% url 'documents:download' document.pk %}" class="btn btn-success shadow-sm">
+      <i class="fas fa-download me-2"></i>Download Latest (v{{ document.version }})
+    </a>
+  </div>
+</div>
+
+
+
+<div class="row g-4">
+  
+  <!-- ── LEFT COLUMN ──────────────────────────────────────────────────────── -->
+  <div class="col-12 col-xl-8">
+    
+    <!-- Document Info Card -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-file-invoice me-2 text-primary"></i>Document Info</h5>
+      </div>
+      <div class="card-body p-4">
+        
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Category</div>
+            <div class="fw-semibold text-dark">{{ document.category.name|default:"Uncategorized" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Current Version</div>
+            <div class="fw-semibold text-primary font-monospace">v{{ document.version }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">File Type</div>
+            <div class="fw-semibold text-dark">{{ document.file_type }} ({{ document.file_size|filesizeformat }})</div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Uploaded By</div>
+            <div class="fw-semibold text-dark">{{ document.created_by.get_full_name|default:document.created_by.email }}</div>
+          </div>
+        </div>
+        
+        {% if document.description %}
+        <div class="mb-4">
+          <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 10px; letter-spacing: 0.5px;">Description</div>
+          <p class="text-dark mb-0" style="font-size: 14px;">{{ document.description }}</p>
+        </div>
+        {% endif %}
+        
+        {% if document.tags %}
+        <div>
+          <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 10px; letter-spacing: 0.5px;">Tags</div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for tag in document.tags %}
+            <span class="badge bg-light text-primary border" style="font-weight: 700;">#{{ tag }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        
+      </div>
+    </div>
+    
+    <!-- Version History -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-history me-2 text-primary"></i>Version History</h5>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newVersionModal">
+          <i class="fas fa-upload me-1"></i>Upload New Version
+        </button>
+      </div>
+      <div class="card-body p-0 mt-3">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4">Version</th>
+                <th>Uploaded By</th>
+                <th>Date</th>
+                <th>Notes</th>
+                <th class="text-end pe-4">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in versions %}
+              <tr class="{% if forloop.first %}bg-primary-subtle border-primary border-start border-4{% endif %}">
+                <td class="ps-4 fw-bold font-monospace text-primary">
+                  v{{ v.version }}
+                  {% if forloop.first %}<span class="badge bg-primary ms-1" style="font-size: 9px;">Current{% endif %}</span>
+                </td>
+                <td class="fw-semibold text-dark">{{ v.uploaded_by.get_full_name|default:v.uploaded_by.email }}</td>
+                <td class="text-muted">{{ v.created_at|date:"d M Y, H:i" }}</td>
+                <td class="text-muted fst-italic">{{ v.change_notes|default:"-"|truncatechars:40 }}</td>
+                <td class="text-end pe-4">
+                  <!-- A route for downloading specific versions would ideally go here -->
+                  <!-- For now, we point to the main download if it's the latest, or just show a button -->
+                  {% if forloop.first %}
+                  <a href="{% url 'documents:download' document.pk %}" class="btn btn-sm btn-light border text-primary">
+                    <i class="fas fa-download"></i>
+                  </a>
+                  {% else %}
+                  <button class="btn btn-sm btn-light border text-secondary" title="Historical download not supported in this view" disabled>
+                    <i class="fas fa-download"></i>
+                  </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">No version history available.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- ── RIGHT COLUMN ─────────────────────────────────────────────────────── -->
+  <div class="col-12 col-xl-4">
+    
+    <!-- Approval Workflow Card -->
+    <div class="card glass-card border-0 shadow-sm mb-4 border-top border-warning border-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h6 class="fw-bold text-dark mb-0"><i class="fas fa-stamp me-2 text-warning"></i>Approval Status</h6>
+      </div>
+      <div class="card-body p-4">
+        
+        {% if document.status == 'approved' %}
+        <div class="alert bg-success-subtle border-success text-success mb-3">
+          <i class="fas fa-check-circle me-2"></i><strong>Approved</strong>
+          <div class="mt-1 small text-dark">By {{ document.approved_by.get_full_name|default:document.approved_by.email }}<br>on {{ document.approved_at|date:"d M Y, H:i" }}</div>
+        </div>
+        {% elif document.status == 'rejected' %}
+        <div class="alert bg-danger-subtle border-danger text-danger mb-3">
+          <i class="fas fa-xmark-circle me-2"></i><strong>Rejected</strong>
+        </div>
+        {% else %}
+        <p class="text-muted" style="font-size: 13px;">This document requires administrative approval to be marked as an official company record.</p>
+        
+        <!-- Only visible if user has rights to approve -->
+        {% if request.user.role in 'company_admin,super_admin' or request.user.role == 'hr_manager' %}
+        <div class="d-flex gap-2 mt-3">
+          <form method="post" action="{% url 'documents:approve' document.pk %}" class="flex-fill">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">
+              <i class="fas fa-check me-2"></i>Approve
+            </button>
+          </form>
+          <form method="post" action="{% url 'documents:approve' document.pk %}" class="flex-fill">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <button type="submit" class="btn btn-outline-danger w-100 fw-bold">
+              <i class="fas fa-times me-2"></i>Reject
+            </button>
+          </form>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- ═══════════════════════ NEW VERSION MODAL ════════════════════════════════ -->
+<div class="modal fade" id="newVersionModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 16px; border: none;">
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold"><i class="fas fa-upload me-2 text-primary"></i>Upload New Version</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'documents:new_version' document.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body px-4 py-4">
+          <div class="alert alert-info border-info bg-info-subtle mb-4" style="font-size: 13px;">
+            <i class="fas fa-info-circle me-2"></i>This will increment the document version (e.g. from <strong>v{{ document.version }}</strong> to a new minor version).
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Updated File <span class="text-danger">*</span></label>
+            <input type="file" name="file" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Change Notes / Changelog</label>
+            <textarea name="change_notes" class="form-control" rows="3" placeholder="What changed in this version?"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 px-4 pb-4">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-cloud-upload-alt me-2"></i>Upload Version</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

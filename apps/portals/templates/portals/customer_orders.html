@@ -1,0 +1,56 @@
+{% extends 'portals/portal_base.html' %}
+{% block title %}My Orders{% endblock %}
+{% block nav_orders %}active{% endblock %}
+{% block page_title %}My Orders{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Order History</span>
+        <span style="font-size:0.8rem;color:var(--gray-400);">{{ orders.count }} orders total</span>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><strong style="color:var(--primary);">{{ order.number }}</strong></td>
+                    <td>{{ order.date|date:"d M Y" }}</td>
+                    <td>{{ order.lines.count }} item(s)</td>
+                    <td><strong>{{ order.currency.symbol|default:"$" }}{{ order.total_amount|floatformat:2 }}</strong></td>
+                    <td>
+                        {% if order.status == 'confirmed' %}<span class="badge badge-blue">Confirmed</span>
+                        {% elif order.status == 'delivered' %}<span class="badge badge-green">Delivered</span>
+                        {% elif order.status == 'processing' %}<span class="badge badge-yellow">Processing</span>
+                        {% elif order.status == 'cancelled' %}<span class="badge badge-red">Cancelled</span>
+                        {% else %}<span class="badge badge-gray">{{ order.status|title }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'portals:customer_order_detail' order.pk %}" class="btn btn-outline btn-sm">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400);">
+                        <i class="fas fa-shopping-cart" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
+                        No orders found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Sales Order - {{ order.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">Sales Order {{ order.number }}</h1>
+      <span class="badge 
+        {% if order.status == 'draft' %}bg-secondary
+        {% elif order.status == 'confirmed' %}bg-info
+        {% elif order.status == 'processing' %}bg-primary
+        {% elif order.status == 'shipped' %}bg-warning text-dark
+        {% elif order.status == 'delivered' %}bg-success
+        {% elif order.status == 'invoiced' %}bg-dark
+        {% elif order.status == 'cancelled' %}bg-danger
+        {% endif %}">
+        {{ order.get_status_display }}
+      </span>
+    </div>
+    <p class="text-muted mb-0">Ordered on {{ order.order_date|date:"Y-m-d" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'sales:orders' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+    
+    <!-- Action: Create Delivery from SO -->
+    {% if order.status == 'confirmed' or order.status == 'processing' %}
+      <form method="post" action="{% url 'sales:order_delivery' order.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-warning btn-sm">
+          <i class="fas fa-truck me-1"></i>Create Delivery
+        </button>
+      </form>
+    {% endif %}
+
+    <!-- Action: Create Invoice from SO -->
+    {% if order.status != 'invoiced' %}
+      <form method="post" action="{% url 'sales:order_invoice' order.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success btn-sm">
+          <i class="fas fa-file-invoice me-1"></i>Create Invoice
+        </button>
+      </form>
+    {% endif %}
+
+    <!-- Action: Cancel Order -->
+    {% if order.status == 'draft' or order.status == 'confirmed' or order.status == 'processing' %}
+      <form method="post" action="{% url 'sales:order_cancel' order.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm ms-1" onclick="return confirm('Are you sure you want to cancel this Sales Order? This will also cancel any pending deliveries.');">
+          <i class="fas fa-times-circle me-1"></i>Cancel Order
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: Transaction lines -->
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <!-- Client Profile Head -->
+        <div class="row mb-4 border-bottom pb-3">
+          <div class="col-12 col-md-6 mb-3 mb-md-0">
+            <span class="text-muted small d-block">Client Bill-To</span>
+            <h5 class="fw-bold text-dark mb-1">{{ order.customer.name }}</h5>
+            {% if order.customer.email %}
+              <div class="small text-muted"><i class="fas fa-envelope me-1"></i>{{ order.customer.email }}</div>
+            {% endif %}
+            {% if order.customer.phone %}
+              <div class="small text-muted"><i class="fas fa-phone me-1"></i>{{ order.customer.phone }}</div>
+            {% endif %}
+          </div>
+          <div class="col-12 col-md-6 text-md-end">
+            <span class="text-muted small d-block">Company Vendor</span>
+            <h5 class="fw-bold text-primary mb-1">{{ order.company.name }}</h5>
+            <div class="small text-muted">{{ order.company.full_address|default:"" }}</div>
+          </div>
+        </div>
+
+        <!-- Line items table -->
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr class="small text-uppercase">
+                <th>Product</th>
+                <th>Description</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-end">Discount</th>
+                <th class="text-end">Tax</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
+                <td class="small">{{ line.description }}</td>
+                <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
+                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end text-danger">
+                  {% if line.discount_percent > 0 %}
+                    -{{ line.discount_percent }}%
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end small">
+                  {% if line.tax %}
+                    {{ line.tax.name }} ({{ line.tax.rate }}%)
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.total|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">No items found in sales order.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Grand Total Breakdown -->
+        <div class="row justify-content-end mt-4">
+          <div class="col-12 col-md-5">
+            <ul class="list-group list-group-flush bg-transparent">
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Subtotal</span>
+                <span class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ order.subtotal|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Discount</span>
+                <span class="fw-semibold text-danger">-{{ CURRENCY_SYMBOL }}{{ order.discount_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Tax</span>
+                <span class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ order.tax_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+                <span class="fw-bold text-dark">Grand Total</span>
+                <span class="h4 mb-0 fw-bold text-primary">{{ CURRENCY_SYMBOL }}{{ order.total|floatformat:2|intcomma }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Terms / notes print -->
+        {% if order.notes %}
+        <div class="mt-4 border-top pt-3">
+          <span class="text-muted small fw-bold d-block mb-1">Order Remarks</span>
+          <p class="mb-0 text-secondary small" style="white-space: pre-wrap">{{ order.notes }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Metadata tracking details -->
+  <div class="col-12 col-lg-4">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-info-circle me-2"></i>Tracking Details</h5>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Sales Representative</span>
+            <span class="fw-semibold small">{{ order.sales_rep.full_name|default:"-" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Billing Currency</span>
+            <span class="fw-semibold small">{{ order.currency|default:"USD" }}</span>
+          </li>
+          {% if order.quotation %}
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Linked Quotation</span>
+            <span class="fw-semibold small">
+              <a href="{% url 'sales:quotation_detail' order.quotation.pk %}" class="fw-bold text-primary">
+                {{ order.quotation.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
+              </a>
+            </span>
+          </li>
+          {% endif %}
+          {% if invoices.exists %}
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+            <span class="text-muted small">Associated Invoice</span>
+            <span class="fw-semibold small">
+              <a href="{% url 'sales:invoice_detail' invoices.first.pk %}" class="fw-bold text-primary">
+                {{ invoices.first.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
+              </a>
+            </span>
+          </li>
+          {% endif %}
+          {% for delivery in deliveries %}
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 {% if forloop.first and not invoices.exists %}border-top{% else %}border-0{% endif %}">
+            <span class="text-muted small">Delivery Note</span>
+            <span class="fw-semibold small">
+              <a href="{% url 'inventory:delivery_detail' delivery.pk %}" class="fw-bold text-warning">
+                {{ delivery.number }}<i class="fas fa-truck ms-1 small"></i>
+              </a>
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

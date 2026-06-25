@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Apply for Leave — HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:leaves' %}">Leave Requests</a></li>
+<li class="breadcrumb-item active">Apply
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-plane-departure me-2 opacity-75"></i>Apply for Leave
+    </h1>
+    <p class="text-muted mb-0">Submit a new time-off request for manager approval</p>
+  </div>
+  <a href="{% url 'hrms:leaves' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Leaves
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold text-dark mb-0">Leave Request Form</h5>
+      </div>
+      
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'hrms:leave_request_create' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          
+          <div class="row g-4">
+            <!-- Leave Type -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Leave Type <span class="text-danger">*</span></label>
+              <select name="leave_type" class="form-select" required>
+                <option value="">— Select Type —</option>
+                {% for lt in leave_types %}
+                <option value="{{ lt.pk }}">{{ lt.name }} ({{ lt.days_allowed }} days/yr)</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Day Type -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Duration Type <span class="text-danger">*</span></label>
+              <select name="day_type" class="form-select" required>
+                {% for val, label in day_type_choices %}
+                <option value="{{ val }}" {% if val == 'full' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Start Date -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+              <input type="date" name="start_date" id="start_date" class="form-control" required onchange="calculateDays()">
+            </div>
+            
+            <!-- End Date -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+              <input type="date" name="end_date" id="end_date" class="form-control" required onchange="calculateDays()">
+            </div>
+            
+            <!-- Calculator Info -->
+            <div class="col-12">
+              <div class="alert bg-light border text-dark py-2 px-3 d-flex align-items-center gap-2 mb-0" style="border-radius: 8px;">
+                <i class="fas fa-calculator text-primary"></i>
+                <span>Estimated duration: <strong id="calc_days">0</strong> days</span>
+              </div>
+            </div>
+            
+            <!-- Reason -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Reason for Leave <span class="text-danger">*</span></label>
+              <textarea name="reason" class="form-control" rows="4" required placeholder="Please provide a brief reason for your leave request..."></textarea>
+            </div>
+            
+            <!-- Attachment -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Supporting Document <span class="text-muted fw-normal">(Optional)</span></label>
+              <input type="file" name="attachment" class="form-control">
+              <div class="form-text">Attach medical certificates or other relevant documents if required.</div>
+            </div>
+          </div>
+          
+          <div class="mt-5 d-flex gap-3">
+            <button type="submit" class="btn btn-primary px-5">
+              <i class="fas fa-paper-plane me-2"></i>Submit Request
+            </button>
+            <a href="{% url 'hrms:leaves' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+          
+        </form>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="col-12 col-lg-4">
+    <!-- Policy Card -->
+    <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 14px;">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-success mb-3"><i class="fas fa-shield-halved me-2"></i>Leave Policy</h6>
+        <ul class="text-success-emphasis ps-3 mb-0" style="font-size: 13px; line-height: 1.8;">
+          <li>Requests must be submitted at least 7 days in advance for planned leaves.</li>
+          <li>Sick leave over 2 consecutive days requires a medical certificate.</li>
+          <li>Weekends and company holidays within the date range are counted unless configured otherwise by HR.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculateDays() {
+  const start = document.getElementById('start_date').value;
+  const end = document.getElementById('end_date').value;
+  
+  if (start && end) {
+    const d1 = new Date(start);
+    const d2 = new Date(end);
+    
+    if (d2 >= d1) {
+      // Calculate days difference (inclusive)
+      const diffTime = Math.abs(d2 - d1);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      document.getElementById('calc_days').textContent = diffDays;
+    } else {
+      document.getElementById('calc_days').textContent = '0 (Invalid range)';
+    }
+  } else {
+    document.getElementById('calc_days').textContent = '0';
+  }
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

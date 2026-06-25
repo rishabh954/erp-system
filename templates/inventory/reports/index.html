@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Inventory Reports | Inventory{% endblock %}
+{% block nav_inventory %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a>
+</li>
+<li class="breadcrumb-item">
+  <a href="{% url 'inventory:products' %}">Inventory</a>
+</li>
+<li class="breadcrumb-item active">Reports</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Inventory Reports</h1>
+    <p class="text-muted mb-0">Real-time analytics, valuation insights & stock alerts</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'inventory:movements' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-list me-1"></i>All Movements
+    </a>
+    <a href="{% url 'inventory:products' %}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-box me-1"></i>Products
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════ KPI CARDS ════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- Total Inventory Value -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+      <div class="stat-card-value kpi-animated" data-value="{{ total_value|floatformat:0 }}">
+        {{ CURRENCY_SYMBOL }}{{ total_value|floatformat:2|intcomma }}
+      </div>
+      <div class="stat-card-label">Total Inventory Value</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-warehouse me-1"></i>Across all warehouses
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Products -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-cubes"></i></div>
+      <div class="stat-card-value">{{ total_products }}</div>
+      <div class="stat-card-label">Active Products</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-tag me-1"></i>In catalog
+      </div>
+    </div>
+  </div>
+
+  <!-- Low Stock Alerts -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card {% if low_stock_count > 0 %}stat-card-danger{% else %}stat-card-success{% endif %} h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+      <div class="stat-card-value">{{ low_stock_count }}</div>
+      <div class="stat-card-label">Low Stock Alerts</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-bell me-1"></i>At or below reorder point
+      </div>
+    </div>
+  </div>
+
+  <!-- Movements (30 days) -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-exchange-alt"></i></div>
+      <div class="stat-card-value">{{ movements_30d }}</div>
+      <div class="stat-card-label">Movements (30 Days)</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-calendar me-1"></i>Recent activity
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ MAIN CONTENT ROW ═════════════════════════════ -->
+<div class="row g-4 mb-4">
+
+  <!-- ── Warehouse Valuation (left 7 cols) ────────────────────────────── -->
+  <div class="col-12 col-lg-7">
+    <div class="card glass-card border-0 h-100">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0 text-dark">
+              <i class="fas fa-warehouse me-2 text-primary opacity-75"></i>Warehouse Valuation
+            </h6>
+            <p class="text-muted mb-0" style="font-size: 12px;">Stock value distributed across locations</p>
+          </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3">
+            {{ total_warehouses }} Warehouse{{ total_warehouses|pluralize }}
+          </span>
+        </div>
+      </div>
+      <div class="card-body px-4">
+        {% if warehouse_valuations %}
+          {% for wh in warehouse_valuations %}
+          {% with pct=wh.total_value|default:0 %}
+          <div class="wh-bar-item mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <div>
+                <span class="fw-semibold text-dark" style="font-size: 13px;">{{ wh.warehouse__name }}</span>
+                <span class="badge bg-light text-muted border ms-2" style="font-size: 10px;">{{ wh.warehouse__code }}</span>
+              </div>
+              <div class="text-end">
+                <span class="fw-bold text-primary" style="font-size: 13px;">{{ CURRENCY_SYMBOL }}{{ wh.total_value|default:0|floatformat:2|intcomma }}</span>
+                <div class="text-muted" style="font-size: 11px;">{{ wh.sku_count }} SKU{{ wh.sku_count|pluralize }} · {{ wh.total_qty|default:0|floatformat:0|intcomma }} units</div>
+              </div>
+            </div>
+            <div class="progress wh-progress" style="height: 8px; border-radius: 10px;">
+              {% if warehouse_max_value %}
+              <div class="progress-bar bg-primary wh-bar-fill" role="progressbar"
+                   data-width="{% widthratio wh.total_value|default:0 warehouse_max_value 100 %}"
+                   style="width: 0%; border-radius: 10px; transition: width 1s ease;"> 
+              {% endif %}</div>
+            </div>
+          </div>
+          {% endwith %}
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fas fa-warehouse fa-3x mb-3 d-block opacity-25"></i>
+            <span>No warehouse stock data available.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Category Breakdown (right 5 cols) ────────────────────────────── -->
+  <div class="col-12 col-lg-5">
+    <div class="card glass-card border-0 h-100">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-tags me-2 text-success opacity-75"></i>Product Categories
+        </h6>
+        <p class="text-muted mb-0" style="font-size: 12px;">roducts and value by category</p></p>
+      </div>
+      <div class="card-body px-4">
+        {% if category_breakdown %}
+          <div class="cat-donut-wrapper mb-3" id="catChartWrapper">
+            <canvas id="catChart" height="180"></canvas>
+          </div>
+          <div class="cat-legend" id="catLegend">
+            {% for cat in category_breakdown %}
+            <div class="cat-legend-item d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+              <div class="d-flex align-items-center gap-2">
+                <span class="cat-dot" data-index="{{ forloop.counter0 }}" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #ccc;"></span>
+                <span style="font-size: 12px;">{{ cat.category__name|default:"Uncategorised" }}</span>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-light text-muted border" style="font-size: 11px;">{{ cat.product_count }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fas fa-tags fa-3x mb-3 d-block opacity-25"></i>
+            <span>No category data available.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ LOWER SECTION ════════════════════════════════ -->
+<div class="row g-4 mb-4">
+
+  <!-- ── Low Stock Alerts ──────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-6">
+    <div class="card glass-card border-0">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0 text-dark">
+              <i class="fas fa-exclamation-triangle me-2 text-warning opacity-75"></i>Low Stock Alerts
+            </h6>
+            <p class="text-muted mb-0" style="font-size: 12px;">roducts at or below reorder point</p></p>
+          </div>
+          {% if low_stock_count > 0 %}
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">
+            {{ low_stock_count }} item{{ low_stock_count|pluralize }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4">Product</th>
+                <th class="text-center">Current Qty</th>
+                <th class="text-center">Reorder Point</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in low_stock_items %}
+              <tr>
+                <td class="ps-4">
+                  <div class="fw-semibold text-dark">{{ item.name|truncatechars:30 }}</div>
+                  <div class="text-muted" style="font-size: 11px;">{{ item.sku }} · {{ item.category.name|default:"—" }}</div>
+                </td>
+                <td class="text-center">
+                  <span class="fw-bold {% if item.stock is not None and item.stock <= 0 %}text-danger{% else %}text-warning{% endif %}">
+                    {{ item.stock|default:0|floatformat:0 }}
+                  </span>
+                  {% if item.uom %}<span class="text-muted" style="font-size: 11px;"> {{ item.uom.abbreviation }}</span>{% endif %}
+                </td>
+                <td class="text-center text-muted">{{ item.reorder_point|floatformat:0 }}</td>
+                <td class="text-center">
+                  {% if item.stock is not None and item.stock <= 0 %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2" style="font-size: 10px;">Out of Stock
+                  {% else %}</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2" style="font-size: 10px;">Low Stock
+                  {% endif %}</span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center py-5">
+                  <i class="fas fa-check-circle fa-3x text-success mb-3 d-block opacity-50"></i>
+                  <span class="text-muted">All products are well stocked!</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Top Value Items ───────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-6">
+    <div class="card glass-card border-0">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-trophy me-2 text-primary opacity-75"></i>Top Products by Value
+        </h6>
+        <p class="text-muted mb-0" style="font-size: 12px;">Highest-value stock records</p>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4">#</th>
+                <th>Product</th>
+                <th class="text-center">Qty</th>
+                <th class="text-center">Avg Cost</th>
+                <th class="text-end pe-4">Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rec in top_value_items %}
+              <tr>
+                <td class="ps-4">
+                  <span class="badge {% if forloop.counter == 1 %}bg-warning text-dark{% elif forloop.counter == 2 %}bg-secondary text-white{% elif forloop.counter == 3 %}bg-danger-subtle text-danger{% else %}bg-light text-muted border{% endif %} rounded-pill px-2">
+                    {{ forloop.counter }}
+                  </span>
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">{{ rec.product.name|truncatechars:28 }}</div>
+                  <div class="text-muted" style="font-size: 11px;">{{ rec.warehouse.name }}</div>
+                </td>
+                <td class="text-center">{{ rec.quantity_on_hand|floatformat:0|intcomma }}</td>
+                <td class="text-center text-muted">{{ CURRENCY_SYMBOL }}{{ rec.average_cost|floatformat:2|intcomma }}</td>
+                <td class="text-end pe-4 fw-bold text-primary">{{ CURRENCY_SYMBOL }}{{ rec.value|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-5">
+                  <i class="fas fa-box-open fa-3x text-muted mb-3 d-block opacity-25"></i>
+                  <span class="text-muted">No stock records found.</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ RECENT MOVEMENTS FEED ════════════════════════ -->
+<div class="card glass-card border-0 mb-4">
+  <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-history me-2 text-info opacity-75"></i>Recent Stock Movements
+        </h6>
+        <p class="text-muted mb-0" style="font-size: 12px;">Latest 10 ledger entries</p>
+      </div>
+      <a href="{% url 'inventory:movements' %}" class="btn btn-outline-primary btn-sm">
+        View All <i class="fas fa-arrow-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Date</th>
+            <th>Product</th>
+            <th>Warehouse</th>
+            <th class="text-center">Type</th>
+            <th class="text-center">Quantity</th>
+            <th class="text-end pe-4">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mv in recent_movements %}
+          <tr>
+            <td class="ps-4 text-muted small">{{ mv.movement_date }}</td>
+            <td>
+              <span class="fw-semibold text-dark">{{ mv.product.name|truncatechars:30 }}</span>
+            </td>
+            <td class="text-muted">{{ mv.warehouse.name }}</td>
+            <td class="text-center">
+              {% if mv.movement_type == 'in' or mv.movement_type == 'purchase_receipt' or mv.movement_type == 'transfer_in' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size: 10px;">
+                  <i class="fas fa-arrow-down me-1"></i>{{ mv.get_movement_type_display|default:mv.movement_type }}
+                </span>
+              {% elif mv.movement_type == 'out' or mv.movement_type == 'sale' or mv.movement_type == 'transfer_out' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2" style="font-size: 10px;">
+                  <i class="fas fa-arrow-up me-1"></i>{{ mv.get_movement_type_display|default:mv.movement_type }}
+                </span>
+              {% else %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2" style="font-size: 10px;">
+                  {{ mv.get_movement_type_display|default:mv.movement_type }}
+                </span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <span class="fw-bold {% if mv.quantity >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {% if mv.quantity >= 0 %}+{% endif %}{{ mv.quantity|floatformat:2|intcomma }}
+              </span>
+            </td>
+            <td class="text-end pe-4 text-muted small">{{ mv.reference|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-5">
+              <i class="fas fa-history fa-3x text-muted mb-3 d-block opacity-25"></i>
+              <span class="text-muted">No stock movements recorded.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SCRIPTS ══════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Animate progress bars ────────────────────────────────────────────
+  document.querySelectorAll('.wh-bar-fill').forEach(function (bar) {
+    const target = bar.getAttribute('data-width') || 0;
+    setTimeout(function () {
+      bar.style.width = target + '%';
+    }, 200);
+  });
+
+  // ── Category donut chart using Canvas (no external lib) ──────────────
+  const canvas = document.getElementById('catChart');
+  if (canvas) {
+    const catData = [
+      {% for cat in category_breakdown %}
+      { label: "{{ cat.category__name|default:'Uncategorised'|escapejs }}", value: {{ cat.product_count }} },
+      {% endfor %}
+    ];
+
+    if (catData.length > 0) {
+      const palette = [
+        '#6366f1','#22c55e','#f59e0b','#3b82f6','#ec4899',
+        '#14b8a6','#f97316','#8b5cf6'
+      ];
+
+      // Paint legend dots
+      document.querySelectorAll('.cat-dot').forEach(function (dot) {
+        const idx = parseInt(dot.getAttribute('data-index'), 10);
+        dot.style.background = palette[idx % palette.length];
+      });
+
+      const ctx2d = canvas.getContext('2d');
+      const total = catData.reduce(function (s, d) { return s + d.value; }, 0);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const r = Math.min(cx, cy) - 16;
+      const innerR = r * 0.55;
+
+      let startAngle = -Math.PI / 2;
+      catData.forEach(function (d, i) {
+        const slice = (d.value / total) * 2 * Math.PI;
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx, cy);
+        ctx2d.arc(cx, cy, r, startAngle, startAngle + slice);
+        ctx2d.closePath();
+        ctx2d.fillStyle = palette[i % palette.length];
+        ctx2d.fill();
+        startAngle += slice;
+      });
+
+      // Cut inner circle (donut)
+      ctx2d.beginPath();
+      ctx2d.arc(cx, cy, innerR, 0, 2 * Math.PI);
+      ctx2d.fillStyle = getComputedStyle(document.body).getPropertyValue('--bs-body-bg') || '#fff';
+      ctx2d.fill();
+
+      // Centre text
+      ctx2d.fillStyle = '#374151';
+      ctx2d.font = 'bold 18px Inter, sans-serif';
+      ctx2d.textAlign = 'center';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.fillText(total, cx, cy - 8);
+      ctx2d.font = '11px Inter, sans-serif';
+      ctx2d.fillStyle = '#9ca3af';
+      ctx2d.fillText('products', cx, cy + 10);
+    }
+  }
+
+});
+</script>
+
+<style>
+  .report-kpi-card {
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+  .report-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+  }
+  .wh-progress {
+    background: rgba(0,0,0,0.06);
+  }
+  .glass-card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .stat-card-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff;
+  }
+  .stat-card-danger .stat-card-value,
+  .stat-card-danger .stat-card-label {
+    color: #fff !important;
+  }
+</style>
+
+{% endblock %}

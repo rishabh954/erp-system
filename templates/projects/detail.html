@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ project.name }}{% endblock %}
+{% block nav_projects %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'projects:list' %}">Projects</a></li>
+<li class="breadcrumb-item active">{{ project.name|truncatechars:30 }}</li>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-3 mb-1">
+      <h1 class="h3 text-dark mb-0">{{ project.name }}</h1>
+      {% if project.status == 'active' %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Active
+      {% elif project.status == 'planning' %}</span>
+        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3">Planning
+      {% elif project.status == 'on_hold' %}</span>
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">On Hold
+      {% elif project.status == 'completed' %}</span>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3">Completed
+      {% else %}</span>
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">Cancelled
+      {% endif %}
+      {% if project.priority == 'critical' %}</span>
+        <span class="badge bg-danger rounded-pill px-2" style="font-size: 10px;"><i class="fas fa-fire me-1"></i>Critical</span>
+      {% elif project.priority == 'high' %}
+        <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 10px;">High Priority
+      {% endif %}</span>
+    </div>
+    <p class="text-muted mb-0">
+      <span class="fw-semibold text-primary">{{ project.number }}</span>
+      {% if project.customer %} &nbsp;·&nbsp; <i class="fas fa-building me-1"></i>{{ project.customer.name }}{% endif %}
+      {% if project.is_billable %} &nbsp;·&nbsp; <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px;">Billable{% endif %}</span>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'projects:kanban' project.pk %}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-columns me-1"></i>Kanban Board
+    </a>
+    <a href="{% url 'projects:list' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>All Projects
+    </a>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ KPI CARDS ════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-tasks"></i></div>
+      <div class="stat-card-value">{{ tasks|length }}</div>
+      <div class="stat-card-label">Total Tasks</div>
+      <div class="stat-card-trend text-white-50">In this project</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-check-double"></i></div>
+      <div class="stat-card-value">{{ project.completion_percent }}%</div>
+      <div class="stat-card-label">Completion</div>
+      <div class="stat-card-trend text-white-50">Task progress</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+      <div class="stat-card-value">{{ total_hours|floatformat:1 }}</div>
+      <div class="stat-card-label">Hours Logged</div>
+      <div class="stat-card-trend text-white-50">Across all tasks</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card {% if budget_used_pct > 100 %}stat-card-danger{% elif budget_used_pct > 80 %}stat-card-warning{% else %}stat-card-success{% endif %} h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+      <div class="stat-card-value">{{ budget_used_pct }}%</div>
+      <div class="stat-card-label">Budget Used</div>
+      <div class="stat-card-trend text-white-50">{{ CURRENCY_SYMBOL }}{{ project.actual_cost|floatformat:0|intcomma }} of {{ CURRENCY_SYMBOL }}{{ project.budget|floatformat:0|intcomma }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MAIN CONTENT ROW ════════════════════════════════ -->
+<div class="row g-4">
+
+  <!-- Left — Tasks + Milestones -->
+  <div class="col-12 col-lg-8">
+
+    <!-- Overall progress bar -->
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-body px-4 py-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-semibold text-dark">Overall Progress</span>
+          <span class="fw-bold text-primary">{{ project.completion_percent }}%</span>
+        </div>
+        <div class="progress" style="height: 12px; border-radius: 10px;">
+          <div class="progress-bar {% if project.status == 'completed' %}bg-success{% elif project.status == 'on_hold' %}bg-warning{% else %}bg-primary{% endif %}"
+               id="overallBar" style="width: 0%; border-radius: 10px; transition: width 1.2s ease;"
+               data-width="{{ project.completion_percent }}"></div> 
+        </div>
+        {% if project.description %}
+        <p class="text-muted mt-3 mb-0" style="font-size: 13px;">{{ project.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Milestones -->
+    {% if milestones %}
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-flag me-2 text-warning opacity-75"></i>Milestones
+        </h6>
+      </div>
+      <div class="card-body px-4 pb-3">
+        <div class="timeline-milestones">
+          {% for ms in milestones %}
+          <div class="milestone-item {% if ms.is_completed %}completed{% elif ms.due_date < today %}overdue{% endif %}">
+            <div class="milestone-dot">
+              {% if ms.is_completed %}
+                <i class="fas fa-check" style="font-size: 9px;"></i>
+              {% else %}
+                <i class="fas fa-flag" style="font-size: 9px;"></i>
+              {% endif %}
+            </div>
+            <div class="milestone-content">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-semibold text-dark" style="font-size: 13px;">{{ ms.name }}</div>
+                  {% if ms.description %}<div class="text-muted" style="font-size: 12px;">{{ ms.description }}</div>{% endif %}
+                </div>
+                <div class="text-end ms-3">
+                  <div class="small {% if not ms.is_completed and ms.due_date < today %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                    {{ ms.due_date }}
+                  </div>
+                  {% if ms.is_completed %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px;">Done
+                  {% elif ms.due_date < today %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 10px;">Overdue
+                  {% else %}</span>
+                  <span class="badge bg-light text-muted border" style="font-size: 10px;">Pending
+                  {% endif %}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Tasks List -->
+    <div class="card glass-card border-0">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="fas fa-tasks me-2 text-primary opacity-75"></i>Tasks
+          </h6>
+          <a href="{% url 'projects:kanban' project.pk %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Add Task
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4">Task</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Priority</th>
+                <th>Assigned To</th>
+                <th>Due Date</th>
+                <th class="text-center">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for task in tasks %}
+              <tr>
+                <td class="ps-4">
+                  <a href="{% url 'projects:task_detail' task.pk %}" class="fw-semibold text-dark text-decoration-none hover-primary">
+                    {{ task.title|truncatechars:40 }}
+                  </a>
+                  {% if task.milestone %}
+                  <div class="text-muted" style="font-size: 11px;"><i class="fas fa-flag me-1"></i>{{ task.milestone.name|truncatechars:25 }}</div>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if task.status == 'done' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size: 10px;">Done
+                  {% elif task.status == 'in_progress' %}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2" style="font-size: 10px;">In Progress
+                  {% elif task.status == 'in_review' %}</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2" style="font-size: 10px;">In Review
+                  {% elif task.status == 'todo' %}</span>
+                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2" style="font-size: 10px;">To Do
+                  {% elif task.status == 'cancelled' %}</span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2" style="font-size: 10px;">Cancelled
+                  {% else %}</span>
+                    <span class="badge bg-light text-muted border rounded-pill px-2" style="font-size: 10px;">Backlog
+                  {% endif %}</span>
+                </td>
+                <td class="text-center">
+                  {% if task.priority == 'urgent' %}
+                    <span class="badge bg-danger rounded-pill px-2" style="font-size: 10px;">Urgent
+                  {% elif task.priority == 'high' %}</span>
+                    <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 10px;">High
+                  {% elif task.priority == 'medium' %}</span>
+                    <span class="badge bg-primary rounded-pill px-2" style="font-size: 10px;">Medium
+                  {% else %}</span>
+                    <span class="badge bg-secondary rounded-pill px-2" style="font-size: 10px;">Low
+                  {% endif %}</span>
+                </td>
+                <td>
+                  {% if task.assigned_to %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="manager-avatar-sm">{{ task.assigned_to.first_name|first|upper }}{{ task.assigned_to.last_name|first|upper }}</div>
+                    <span>{{ task.assigned_to.get_full_name|default:task.assigned_to.email|truncatechars:18 }}</span>
+                  </div>
+                  {% else %}
+                  <span class="text-muted">Unassigned
+                  {% endif %}</span>
+                </td>
+                <td class="small {% if task.due_date and task.due_date < today and task.status != 'done' %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                  {{ task.due_date|default:"—" }}
+                </td>
+                <td class="text-center text-muted small">
+                  {{ task.actual_hours|floatformat:1 }}/{{ task.estimated_hours|floatformat:1 }}h
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-5">
+                  <i class="fas fa-tasks fa-3x text-muted mb-3 d-block opacity-25"></i>
+                  <p class="text-muted mb-2">No tasks yet.</p>
+                  <a href="{% url 'projects:kanban' project.pk %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Add First Task
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-12 col-lg-4">
+
+    <!-- Project Info -->
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-info-circle me-2 text-primary opacity-75"></i>Project Info
+        </h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <dl class="project-info-dl">
+          <dt>Manager</dt>
+          <dd>
+            {% if project.manager %}
+            <div class="d-flex align-items-center gap-2">
+              <div class="manager-avatar-sm">{{ project.manager.first_name|first|upper }}{{ project.manager.last_name|first|upper }}</div>
+              {{ project.manager.get_full_name|default:project.manager.email }}
+            </div>
+            {% else %}—{% endif %}
+          </dd>
+          <dt>Start Date</dt>
+          <dd>{{ project.start_date|default:"—" }}</dd>
+          <dt>End Date</dt>
+          <dd class="{% if project.end_date and project.end_date < today and project.status != 'completed' %}text-danger fw-semibold{% endif %}">
+            {{ project.end_date|default:"—" }}
+          </dd>
+          <dt>Budget</dt>
+          <dd>{{ CURRENCY_SYMBOL }}{{ project.budget|floatformat:2|intcomma }}</dd>
+          <dt>Actual Cost</dt>
+          <dd>{{ CURRENCY_SYMBOL }}{{ project.actual_cost|floatformat:2|intcomma }}</dd>
+          <dt>Billable</dt>
+          <dd>
+            {% if project.is_billable %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Yes
+            {% else %}</span>
+            <span class="badge bg-light text-muted border">No
+            {% endif %}</span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Team Members -->
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-users me-2 text-success opacity-75"></i>Team Members
+          <span class="badge bg-light text-muted border ms-2">{{ members|length }}</span>
+        </h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% for member in members %}
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="manager-avatar">
+            {{ member.user.first_name|first|upper }}{{ member.user.last_name|first|upper }}
+          </div>
+          <div>
+            <div class="fw-semibold text-dark" style="font-size: 13px;">
+              {{ member.user.get_full_name|default:member.user.email }}
+            </div>
+            <div class="text-muted" style="font-size: 11px;">
+              {{ member.role|default:"Member" }}
+              {% if member.hours_allocated %} · {{ member.hours_allocated }}h allocated{% endif %}
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0" style="font-size: 13px;">No team members assigned yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recent Time Logs -->
+    {% if time_logs %}
+    <div class="card glass-card border-0">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-clock me-2 text-warning opacity-75"></i>Recent Time Logs
+        </h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% for log in time_logs %}
+        <div class="d-flex justify-content-between align-items-start mb-3 pb-3 border-bottom border-light">
+          <div>
+            <div class="fw-semibold text-dark" style="font-size: 12px;">{{ log.task.title|truncatechars:30 }}</div>
+            <div class="text-muted" style="font-size: 11px;">
+              {{ log.user.get_full_name|default:log.user.email|truncatechars:20 }} · {{ log.date }}
+            </div>
+            {% if log.description %}
+            <div class="text-muted" style="font-size: 11px; font-style: italic;">{{ log.description|truncatechars:40 }}</div>
+            {% endif %}
+          </div>
+          <div class="text-end">
+            <span class="fw-bold text-primary" style="font-size: 13px;">{{ log.hours }}h</span>
+            {% if log.is_billable %}
+            <div><span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 9px;">Billable</span></div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        <div class="text-end">
+          <span class="text-muted" style="font-size: 12px;">Total: <strong class="text-dark">{{ total_hours|floatformat:1 }}h</strong></span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Animate overall progress bar
+  const bar = document.getElementById('overallBar');
+  if (bar) {
+    setTimeout(function () {
+      bar.style.width = bar.getAttribute('data-width') + '%';
+    }, 300);
+  }
+});
+</script>
+
+<style>
+/* ── Milestone timeline ────────────────────────────────────────────── */
+.timeline-milestones { position: relative; }
+.milestone-item {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.milestone-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 28px;
+  bottom: -8px;
+  width: 2px;
+  background: rgba(0,0,0,0.08);
+}
+.milestone-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  border: 2px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #6b7280;
+  margin-top: 2px;
+}
+.milestone-item.completed .milestone-dot {
+  background: #22c55e;
+  border-color: #16a34a;
+  color: #fff;
+}
+.milestone-item.overdue .milestone-dot {
+  background: #ef4444;
+  border-color: #dc2626;
+  color: #fff;
+}
+.milestone-content { flex: 1; }
+
+/* ── Project info DL ───────────────────────────────────────────────── */
+.project-info-dl dt {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  margin-top: 14px;
+}
+.project-info-dl dt:first-child { margin-top: 0; }
+.project-info-dl dd {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 0;
+}
+
+/* ── Avatar ────────────────────────────────────────────────────────── */
+.manager-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4361ee, #7209b7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.manager-avatar-sm {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4361ee, #7209b7);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Budget stat-card (danger override) ───────────────────────────── */
+.stat-card-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #fff;
+}
+.stat-card-danger .stat-card-value,
+.stat-card-danger .stat-card-label { color: #fff !important; }
+
+.hover-primary:hover { color: #4361ee !important; }
+</style>
+
+{% endblock %}

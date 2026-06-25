@@ -1,0 +1,152 @@
+{% extends "administration/base_admin.html" %}
+{% block title %}Administration Center{% endblock %}
+{% block admin_content %}
+<div class="d-flex align-items-center mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-0" style="background:linear-gradient(135deg,#4361ee,#7209b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Administration Center</h1>
+    <p class="text-muted mb-0">Manage all system configurations and operations</p>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4361ee!important;">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;background:#e8edff;">
+            <i class="fas fa-users" style="color:#4361ee;"></i>
+          </div>
+          <div>
+            <div class="h4 fw-bold mb-0">{{ total_users }}</div>
+            <div class="text-muted small">Active Users</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #7209b7!important;">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;background:#f3e8ff;">
+            <i class="fas fa-key" style="color:#7209b7;"></i>
+          </div>
+          <div>
+            <div class="h4 fw-bold mb-0">{{ total_api_keys }}</div>
+            <div class="text-muted small">Active API Keys</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #10b981!important;">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;background:#d1fae5;">
+            <i class="fas fa-history" style="color:#10b981;"></i>
+          </div>
+          <div>
+            <div class="h4 fw-bold mb-0">{{ recent_audit_logs|length }}</div>
+            <div class="text-muted small">Recent Audit Events</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #f59e0b!important;">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;background:#fef3c7;">
+            <i class="fas fa-stream" style="color:#f59e0b;"></i>
+          </div>
+          <div>
+            <div class="h4 fw-bold mb-0">{{ recent_activity|length }}</div>
+            <div class="text-muted small">Activity Events</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Access Grid -->
+<div class="row g-3 mb-4">
+  {% for title, icon, url, color, desc in quick_links %}
+  <div class="col-md-4 col-lg-3">
+    <a href="{{ url }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 quick-card">
+        <div class="card-body text-center py-4">
+          <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3" style="width:56px;height:56px;background:{{ color }}20;">
+            <i class="{{ icon }} fa-lg" style="color:{{ color }};"></i>
+          </div>
+          <h6 class="fw-semibold mb-1">{{ title }}</h6>
+          <p class="text-muted small mb-0">{{ desc }}</p>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <!-- Static quick links -->
+  {% endfor %}
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fas fa-history me-2 text-primary"></i>Recent Audit Events</h6>
+        <a href="{% url 'administration:audit_logs' %}" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <tbody>
+              {% for log in recent_audit_logs %}
+              <tr>
+                <td class="px-4 py-2">
+                  <span class="badge bg-{% if log.action == 'create' %}success{% elif log.action == 'delete' %}danger{% else %}primary{% endif %} text-uppercase" style="font-size:.65rem;">{{ log.action }}</span>
+                </td>
+                <td class="py-2"><small class="text-muted">{{ log.model_name }}</small></td>
+                <td class="py-2"><small>{{ log.user }}</small></td>
+                <td class="py-2 text-end px-4"><small class="text-muted">{{ log.timestamp|timesince }} ago</small></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">No audit events yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fas fa-stream me-2 text-warning"></i>User Activity</h6>
+        <a href="{% url 'administration:activity_logs' %}" class="btn btn-sm btn-outline-warning">View All</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <tbody>
+              {% for act in recent_activity %}
+              <tr>
+                <td class="px-4 py-2"><small class="fw-medium">{{ act.user }}</small></td>
+                <td class="py-2"><small class="text-muted">{{ act.description|truncatechars:40 }}</small></td>
+                <td class="py-2 text-end px-4"><small class="text-muted">{{ act.timestamp|timesince }} ago</small></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-4">No activity yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>.quick-card{transition:transform .2s,box-shadow .2s;}.quick-card:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(67,97,238,.15)!important;}</style>
+{% endblock %}

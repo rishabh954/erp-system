@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Evaluate Vendor - {{ vendor.name }}{% endblock %}
+{% block nav_purchase %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Evaluate Vendor: {{ vendor.name }}</h1>
+    <a href="{% url 'purchase:vendor_detail' vendor.pk %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Vendor</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Performance Metrics</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>On-Time Delivery:</strong> 
+                    <span class="badge {% if vendor.on_time_delivery_pct >= 90 %}bg-success{% elif vendor.on_time_delivery_pct >= 70 %}bg-warning{% else %}bg-danger{% endif %} text-white fs-6">
+                        {{ vendor.on_time_delivery_pct|floatformat:2 }}%
+                    </span>
+                </p>
+                <p class="mb-4 text-muted small">Calculated automatically based on Goods Receipts and expected delivery dates.</p>
+                
+                <p class="mb-2"><strong>Defect Rate:</strong> 
+                    <span class="badge {% if vendor.defect_rate_pct <= 2 %}bg-success{% elif vendor.defect_rate_pct <= 5 %}bg-warning{% else %}bg-danger{% endif %} text-white fs-6">
+                        {{ vendor.defect_rate_pct|floatformat:2 }}%
+                    </span>
+                </p>
+                <p class="text-muted small">Calculated automatically based on rejected quantities during QC checks.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Manual Rating</h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4 text-center">
+                        <label class="form-label d-block text-start">Overall Rating (1 to 5 Stars)</label>
+                        <div class="fs-1 text-warning d-flex justify-content-center gap-2" id="star-rating">
+                            <i class="far fa-star cursor-pointer" data-rating="1"></i>
+                            <i class="far fa-star cursor-pointer" data-rating="2"></i>
+                            <i class="far fa-star cursor-pointer" data-rating="3"></i>
+                            <i class="far fa-star cursor-pointer" data-rating="4"></i>
+                            <i class="far fa-star cursor-pointer" data-rating="5"></i>
+                        </div>
+                        <input type="hidden" name="rating" id="rating-input" value="{{ vendor.rating }}">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> Save Evaluation</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const stars = document.querySelectorAll('#star-rating .fa-star');
+    const input = document.getElementById('rating-input');
+    
+    function updateStars(rating) {
+        stars.forEach(s => {
+            if (parseInt(s.dataset.rating) <= rating) {
+                s.classList.remove('far');
+                s.classList.add('fas');
+            } else {
+                s.classList.remove('fas');
+                s.classList.add('far');
+            }
+        });
+    }
+    
+    // Initial load
+    updateStars(input.value);
+    
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            input.value = rating;
+            updateStars(rating);
+        });
+        
+        star.addEventListener('mouseover', function() {
+            const rating = parseInt(this.dataset.rating);
+            updateStars(rating);
+        });
+        
+        star.addEventListener('mouseout', function() {
+            updateStars(input.value);
+        });
+    });
+});
+</script>
+<style>
+.cursor-pointer { cursor: pointer; transition: transform 0.1s; }
+.cursor-pointer:hover { transform: scale(1.1); }
+</style>
+{% endblock %}

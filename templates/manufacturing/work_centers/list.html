@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Work Centers{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Work Centers</h1>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table">
+            <thead><tr><th>Code</th><th>Name</th><th>Cost / Hr</th><th>Capacity</th></tr></thead>
+            <tbody>
+                {% for wc in work_centers %}
+                <tr><td>{{ wc.code }}</td><td>{{ wc.name }}</td><td>{{ wc.cost_per_hour }}</td><td>{{ wc.capacity }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

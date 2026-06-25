@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Today's Attendance — HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item active">Attendance
+{% endblock %}
+
+{% block content %}</li>
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-clock me-2 opacity-75"></i>Daily Attendance
+    </h1>
+    <p class="text-muted mb-0">Overview of employee attendance for {{ today|date:"l, F j, Y" }}</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <!-- User check in / out logic via JS -->
+    <button class="btn btn-success shadow-sm px-4" id="btnCheckIn" onclick="recordAttendance('check_in')">
+      <i class="fas fa-sign-in-alt me-2"></i>Check In
+    </button>
+    <button class="btn btn-warning shadow-sm px-4 text-dark" id="btnCheckOut" onclick="recordAttendance('check_out')">
+      <i class="fas fa-sign-out-alt me-2"></i>Check Out
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ KPI CARDS ════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <!-- Present -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-user-check"></i></div>
+      <div class="stat-card-value">{{ present }}</div>
+      <div class="stat-card-label">Present</div>
+      <div class="stat-card-trend text-white-50">Checked in today</div>
+    </div>
+  </div>
+  
+  <!-- Late -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-user-clock"></i></div>
+      <div class="stat-card-value">{{ late }}</div>
+      <div class="stat-card-label">Late</div>
+      <div class="stat-card-trend text-white-50">Arrived past schedule</div>
+    </div>
+  </div>
+  
+  <!-- On Leave -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-info h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-plane-departure"></i></div>
+      <div class="stat-card-value">{{ on_leave }}</div>
+      <div class="stat-card-label">On Leave</div>
+      <div class="stat-card-trend text-white-50">Approved absences</div>
+    </div>
+  </div>
+  
+  <!-- Absent -->
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-danger h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-user-xmark"></i></div>
+      <div class="stat-card-value">{{ absent }}</div>
+      <div class="stat-card-label">Absent</div>
+      <div class="stat-card-trend text-white-50">No-shows today</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ATTENDANCE TABLE ═════════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+    <h5 class="fw-bold text-dark mb-0">Today's Log</h5>
+    <div class="input-group" style="max-width: 250px;">
+      <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
+      <input type="text" class="form-control bg-light border-0" id="attSearch" placeholder="Search employees..." onkeyup="filterTable()">
+    </div>
+  </div>
+  
+  <div class="card-body p-0 mt-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="attTable">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Employee</th>
+            <th>Department</th>
+            <th>Status</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+            <th>Work Hours</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for att in attendance_today %}
+          <tr class="att-row">
+            <td class="ps-4">
+              <div class="d-flex align-items-center gap-3">
+                <div class="avatar-circle bg-primary-subtle text-primary fw-bold" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+                  {{ att.employee.first_name|first }}{{ att.employee.last_name|first }}
+                </div>
+                <div>
+                  <a href="{% url 'hrms:employee_detail' att.employee.pk %}" class="fw-bold text-dark text-decoration-none d-block">
+                    {{ att.employee.full_name }}
+                  </a>
+                  <span class="text-muted" style="font-size: 11.5px; font-family: monospace;">{{ att.employee.employee_id }}</span>
+                </div>
+              </div>
+            </td>
+            
+            <td>
+              <span class="text-muted" style="font-size: 13px;">{{ att.employee.department.name|default:"—" }}</span>
+            </td>
+            
+            <td>
+              {% if att.status == 'present' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Present
+              {% elif att.status == 'late' %}</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">Late
+              {% elif att.status == 'on_leave' %}</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3">On Leave
+              {% elif att.status == 'absent' %}</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">Absent
+              {% else %}</span>
+                <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3">{{ att.get_status_display }}</span>
+              {% endif %}
+            </td>
+            
+            <td class="fw-medium text-dark">
+              {% if att.check_in %}
+                {{ att.check_in|date:"h:i A" }}
+              {% else %}
+                <span class="text-muted opacity-50">—
+              {% endif %}</span>
+            </td>
+            
+            <td class="fw-medium text-dark">
+              {% if att.check_out %}
+                {{ att.check_out|date:"h:i A" }}
+              {% else %}
+                <span class="text-muted opacity-50">—
+              {% endif %}</span>
+            </td>
+            
+            <td>
+              {% if att.work_hours > 0 %}
+                <span class="fw-bold text-primary">{{ att.work_hours }}h</span>
+              {% else %}
+                <span class="text-muted opacity-50">—
+              {% endif %}</span>
+            </td>
+            
+            <td class="text-end pe-4">
+              <button class="btn btn-sm btn-light border shadow-sm text-primary" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="fas fa-calendar-times fa-3x mb-3 opacity-25 d-block"></i>
+              <p>No attendance records logged for today.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterTable() {
+  const input = document.getElementById("attSearch").value.toLowerCase();
+  const rows = document.querySelectorAll(".att-row");
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(input) ? "" : "none";
+  });
+}
+
+function getCSRFToken() {
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i].trim();
+    if (cookie.startsWith('csrftoken=')) {
+      return cookie.substring(10);
+    }
+  }
+  return '';
+}
+
+function recordAttendance(action) {
+  const url = action === 'check_in' ? "{% url 'hrms:check_in' %}" : "{% url 'hrms:check_out' %}";
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCSRFToken(),
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => {
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      response.json().then(data => {
+        alert("Error: " + (data.error || "Could not log attendance. Are you mapped as an Employee in the system?"));
+      }).catch(() => {
+        alert("Server error processing attendance request.");
+      });
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Network error processing attendance request.");
+  });
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.stat-card-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+.stat-card-danger .stat-card-value,
+.stat-card-danger .stat-card-label { color: #fff !important; }
+</style>
+{% endblock %}

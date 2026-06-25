@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{ subject|default:"Notification from ERP System" }}</title>
+    <style>
+        body {
+            background-color: #f6f9fc;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+        table {
+            border-collapse: separate;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+            width: 100%;
+        }
+        table td {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            vertical-align: top;
+        }
+        .body {
+            background-color: #f6f9fc;
+            width: 100%;
+        }
+        .container {
+            display: block;
+            margin: 0 auto !important;
+            max-width: 600px;
+            padding: 24px;
+            width: 600px;
+        }
+        .content {
+            box-sizing: border-box;
+            display: block;
+            margin: 0 auto;
+            max-width: 600px;
+            padding: 0;
+        }
+        .main {
+            background: #ffffff;
+            border-radius: 8px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            padding: 32px 32px 0;
+            text-align: center;
+        }
+        .header img {
+            max-width: 150px;
+            max-height: 50px;
+        }
+        .wrapper {
+            box-sizing: border-box;
+            padding: 32px;
+        }
+        .content-block {
+            padding-bottom: 24px;
+            padding-top: 24px;
+        }
+        .footer {
+            clear: both;
+            margin-top: 24px;
+            text-align: center;
+            width: 100%;
+        }
+        .footer td, .footer p, .footer span, .footer a {
+            color: #8898aa;
+            font-size: 12px;
+            text-align: center;
+        }
+        h1, h2, h3, h4 {
+            color: #32325d;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 600;
+            line-height: 1.4;
+            margin: 0;
+            margin-bottom: 16px;
+        }
+        h1 { font-size: 24px; }
+        p, ul, ol {
+            color: #525f7f;
+            font-size: 16px;
+            font-weight: normal;
+            margin: 0;
+            margin-bottom: 16px;
+        }
+        a {
+            color: #4361ee;
+            text-decoration: none;
+        }
+        .btn {
+            box-sizing: border-box;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+        .btn > tbody > tr > td {
+            padding-bottom: 15px;
+        }
+        .btn table {
+            width: auto;
+        }
+        .btn table td {
+            background-color: #ffffff;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .btn a {
+            background-color: #ffffff;
+            border: solid 1px #4361ee;
+            border-radius: 6px;
+            box-sizing: border-box;
+            color: #4361ee;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            padding: 12px 24px;
+            text-decoration: none;
+            text-transform: capitalize;
+        }
+        .btn-primary table td { background-color: #4361ee; }
+        .btn-primary a {
+            background-color: #4361ee;
+            border-color: #4361ee;
+            color: #ffffff;
+        }
+        .details-table {
+            width: 100%;
+            margin-bottom: 24px;
+            border-collapse: collapse;
+        }
+        .details-table th, .details-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .details-table th {
+            color: #8898aa;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .text-strong { font-weight: 600; color: #32325d; }
+    </style>
+</head>
+<body>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="body">
+        <tr>
+            <td>&nbsp;</td>
+            <td class="container">
+                <div class="content">
+                    <table role="presentation" class="main">
+                        <tr>
+                            <td class="header">
+                                {% if company_logo %}
+                                    <img src="{{ company_logo }}" alt="{{ company_name|default:'ERP System' }}">
+                                {% else %}
+                                    <h2 style="margin: 0; color: #4361ee;">{{ company_name|default:"ERP System" }}</h2>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="wrapper">
+                                <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td>
+                                            {% block content %}{% endblock %}
+                                            
+                                            <p style="margin-top: 32px;">
+                                                Best regards,<br>
+                                                The {{ company_name|default:"ERP System" }} Team
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="footer">
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="content-block">
+                                    <span class="apple-link">{{ company_name|default:"ERP System" }}</span>
+                                    {% if company_address %}<br>{{ company_address }}{% endif %}
+                                    <br> You are receiving this email because you are registered on our platform.
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </td>
+            <td>&nbsp;</td>
+        </tr>
+    </table>
+</body>
+</html>

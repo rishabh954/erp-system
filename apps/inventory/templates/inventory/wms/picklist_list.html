@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Pick Lists{% endblock %}
+{% block nav_inventory %}active{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Warehouse Pick Lists</h1>
+    </div>
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Number</th>
+                            <th>Delivery Order</th>
+                            <th>Warehouse</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pl in picklists %}
+                        <tr>
+                            <td><a href="{% url 'inventory:picklist_detail' pl.id %}">{{ pl.number }}</a></td>
+                            <td>{{ pl.delivery_order.number|default:"-" }}</td>
+                            <td>{{ pl.warehouse.name }}</td>
+                            <td>{{ pl.assigned_to.full_name|default:"Unassigned" }}</td>
+                            <td><span class="badge bg-primary">{{ pl.get_status_display }}</span></td>
+                            <td><a href="{% url 'inventory:picklist_detail' pl.id %}" class="btn btn-sm btn-info">View</a></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">No pick lists found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

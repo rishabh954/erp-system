@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create Customer{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Create Customer</h1>
+    <p class="text-muted mb-0">Add a new business or individual client to the system</p>
+  </div>
+  <div>
+    <a href="{% url 'crm:customers' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to Customers
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4">
+        <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-user-plus me-2"></i>Customer Information</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{% if customer %}{% url 'crm:customer_update' customer.pk %}{% else %}{% url 'crm:customer_create' %}{% endif %}" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <!-- Customer Name -->
+            <div class="col-12 col-md-6">
+              <label for="id_name" class="form-label fw-semibold">Customer Name <span class="text-danger">*</span></label>
+              <div style="position:relative">
+                <i class="fas fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="name" id="id_name" class="form-control" style="padding-left:36px" placeholder="e.g. Acme Corporation or John Doe" value="{{ customer.name|default:'' }}" required>
+              </div>
+            </div>
+
+            <!-- Customer Code -->
+            <div class="col-6 col-md-3">
+              <label for="id_customer_code" class="form-label fw-semibold">Customer Code</label>
+              <div style="position:relative">
+                <i class="fas fa-id-card" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="customer_code" id="id_customer_code" class="form-control bg-light" style="padding-left:36px" placeholder="Auto-generated upon save" value="{{ customer.customer_code|default:'' }}" readonly>
+              </div>
+            </div>
+
+            <!-- Customer Type -->
+            <div class="col-6 col-md-3">
+              <label for="id_customer_type" class="form-label fw-semibold">Customer Type</label>
+              <select name="customer_type" id="id_customer_type" class="form-select">
+                {% for val, label in customer_type_choices %}
+                <option value="{{ val }}" {% if val == 'business' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Email -->
+            <div class="col-12 col-md-6">
+              <label for="id_email" class="form-label fw-semibold">Email Address</label>
+              <div style="position:relative">
+                <i class="fas fa-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="email" name="email" id="id_email" class="form-control" style="padding-left:36px" placeholder="e.g. billing@company.com" value="{{ customer.email|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Phone -->
+            <div class="col-12 col-md-6">
+              <label for="id_phone" class="form-label fw-semibold">Phone Number</label>
+              <div style="position:relative">
+                <i class="fas fa-phone" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="phone" id="id_phone" class="form-control" style="padding-left:36px" placeholder="e.g. +1 555-0100" value="{{ customer.phone|default:'' }}">
+              </div>
+            </div>
+
+            <div class="col-12">
+              <hr class="my-2">
+              <h6 class="text-primary fw-bold mb-2"><i class="fas fa-map-marker-alt me-2"></i>Billing Address</h6>
+            </div>
+
+            <!-- Address Line 1 -->
+            <div class="col-12 col-md-6">
+              <label for="id_address_line1" class="form-label fw-semibold">Street Address</label>
+              <input type="text" name="address_line1" id="id_address_line1" class="form-control" placeholder="e.g. 123 Main St" value="{{ customer.address_line1|default:'' }}">
+            </div>
+
+            <!-- City -->
+            <div class="col-6 col-md-3">
+              <label for="id_city" class="form-label fw-semibold">City</label>
+              <input type="text" name="city" id="id_city" class="form-control" placeholder="e.g. Austin" value="{{ customer.city|default:'' }}">
+            </div>
+
+            <!-- Country -->
+            <div class="col-6 col-md-3">
+              <label for="id_country" class="form-label fw-semibold">Country</label>
+              <input type="text" name="country" id="id_country" class="form-control" placeholder="e.g. USA" value="{{ customer.country|default:'' }}">
+            </div>
+
+            <div class="col-12">
+              <hr class="my-2">
+              <h6 class="text-primary fw-bold mb-2"><i class="fas fa-shipping-fast me-2"></i>Shipping Address</h6>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="shipping_same_as_billing" id="id_shipping_same_as_billing" {% if customer.shipping_same_as_billing %}checked{% endif %}>
+                <label class="form-check-label" for="id_shipping_same_as_billing">
+                  Same as Billing Address
+                </label>
+              </div>
+            </div>
+
+            <!-- Shipping Address -->
+            <div class="col-12">
+              <textarea name="shipping_address" id="id_shipping_address" class="form-control" rows="3" placeholder="Enter full shipping address here...">{{ customer.shipping_address|default:'' }}</textarea>
+            </div>
+
+            <div class="col-12">
+              <hr class="my-2">
+              <h6 class="text-primary fw-bold mb-2"><i class="fas fa-coins me-2"></i>Financial & Tax Settings</h6>
+            </div>
+
+            <!-- Tax ID -->
+            <div class="col-12 col-md-4">
+              <label for="id_tax_id" class="form-label fw-semibold">Tax ID / VAT Number</label>
+              <div style="position:relative">
+                <i class="fas fa-percent" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="tax_id" id="id_tax_id" class="form-control" style="padding-left:36px" placeholder="e.g. US123456789" value="{{ customer.tax_id|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Credit Limit -->
+            <div class="col-6 col-md-4">
+              <label for="id_credit_limit" class="form-label fw-semibold">Credit Limit ($)</label>
+              <div style="position:relative">
+                <i class="fas fa-dollar-sign" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="number" name="credit_limit" id="id_credit_limit" class="form-control" style="padding-left:36px" placeholder="0.00" step="0.01" min="0" value="{{ customer.credit_limit|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Payment Terms -->
+            <div class="col-6 col-md-4">
+              <label for="id_payment_terms" class="form-label fw-semibold">Payment Terms (Days)</label>
+              <div style="position:relative">
+                <i class="fas fa-clock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="number" name="payment_terms" id="id_payment_terms" class="form-control" style="padding-left:36px" placeholder="30" min="0" value="{{ customer.payment_terms|default:'30' }}">
+              </div>
+            </div>
+
+            <!-- Currency -->
+            <div class="col-12 col-md-6">
+              <label for="id_currency" class="form-label fw-semibold">Preferred Currency</label>
+              <select name="currency" id="id_currency" class="form-select">
+                <option value="">Select Currency...</option>
+                {% for currency in currencies %}
+                <option value="{{ currency.id }}" {% if customer.currency_id == currency.id %}selected{% endif %}>{{ currency.name }} ({{ currency.code }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label for="id_notes" class="form-label fw-semibold">Notes / Remarks</label>
+              <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Enter custom instructions, shipping preferences, or generic remarks...">{{ customer.notes|default:'' }}</textarea>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'crm:customers' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-1"></i>Save Customer
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const checkbox = document.getElementById('id_shipping_same_as_billing');
+  const shippingField = document.getElementById('id_shipping_address');
+  const billFields = [
+    document.getElementById('id_address_line1'),
+    document.getElementById('id_city'),
+    document.getElementById('id_country')
+  ];
+
+  function updateShippingAddress() {
+    if (checkbox.checked) {
+      shippingField.readOnly = true;
+      shippingField.style.backgroundColor = '#e9ecef';
+      const parts = billFields.map(f => f.value.trim()).filter(v => v);
+      shippingField.value = parts.join(', ');
+    } else {
+      shippingField.readOnly = false;
+      shippingField.style.backgroundColor = '';
+    }
+  }
+
+  checkbox.addEventListener('change', updateShippingAddress);
+  billFields.forEach(f => f.addEventListener('input', () => {
+    if (checkbox.checked) updateShippingAddress();
+  }));
+  updateShippingAddress();
+});
+</script>
+{% endblock %}

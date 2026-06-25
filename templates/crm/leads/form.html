@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if lead %}Edit Lead{% else %}Create Lead{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">{% if lead %}Edit Lead{% else %}Create Lead{% endif %}</h1>
+    <p class="text-muted mb-0">Add a new opportunity to the sales pipeline</p>
+  </div>
+  <div>
+    <a href="{% url 'crm:leads' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back to Leads
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4">
+        <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-user-plus me-2"></i>Lead Information</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{% if lead %}{% url 'crm:lead_update' lead.pk %}{% else %}{% url 'crm:lead_create' %}{% endif %}" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <!-- Full Name -->
+            <div class="col-12 col-md-6">
+              <label for="id_name" class="form-label fw-semibold">Lead Name <span class="text-danger">*</span></label>
+              <div style="position:relative">
+                <i class="fas fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="name" id="id_name" class="form-control" style="padding-left:36px" placeholder="e.g. John Doe" value="{{ lead.name|default:'' }}" required>
+              </div>
+            </div>
+
+            <!-- Company Name -->
+            <div class="col-12 col-md-6">
+              <label for="id_company_name" class="form-label fw-semibold">Company Name</label>
+              <div style="position:relative">
+                <i class="fas fa-building" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="company_name" id="id_company_name" class="form-control" style="padding-left:36px" placeholder="e.g. Acme Corp" value="{{ lead.company_name|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="col-12 col-md-6">
+              <label for="id_email" class="form-label fw-semibold">Email Address</label>
+              <div style="position:relative">
+                <i class="fas fa-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="email" name="email" id="id_email" class="form-control" style="padding-left:36px" placeholder="e.g. john@company.com" value="{{ lead.email|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Phone -->
+            <div class="col-12 col-md-6">
+              <label for="id_phone" class="form-label fw-semibold">Phone Number</label>
+              <div style="position:relative">
+                <i class="fas fa-phone" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="text" name="phone" id="id_phone" class="form-control" style="padding-left:36px" placeholder="e.g. +1 555-0199" value="{{ lead.phone|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Source -->
+            <div class="col-6 col-md-4">
+              <label for="id_source" class="form-label fw-semibold">Lead Source</label>
+              <select name="source" id="id_source" class="form-select">
+                <option value="">Select Source...</option>
+                {% for val, label in source_choices %}
+                <option value="{{ val }}" {% if lead.source == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Status -->
+            <div class="col-6 col-md-4">
+              <label for="id_status" class="form-label fw-semibold">Initial Status</label>
+              <select name="status" id="id_status" class="form-select">
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if lead and lead.status == val %}selected{% elif not lead and val == 'new' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Assigned To -->
+            <div class="col-12 col-md-4">
+              <label for="id_assigned_to" class="form-label fw-semibold">Assigned To</label>
+              <select name="assigned_to" id="id_assigned_to" class="form-select">
+                <option value="">Unassigned</option>
+                {% for sales_user in sales_users %}
+                <option value="{{ sales_user.id }}" {% if lead.assigned_to_id == sales_user.id %}selected{% endif %}>{{ sales_user.full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Expected Revenue -->
+            <div class="col-6 col-md-4">
+              <label for="id_expected_revenue" class="form-label fw-semibold">Expected Revenue ($)</label>
+              <div style="position:relative">
+                <i class="fas fa-dollar-sign" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="number" name="expected_revenue" id="id_expected_revenue" class="form-control" style="padding-left:36px" placeholder="0.00" step="0.01" min="0" value="{{ lead.expected_revenue|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Probability -->
+            <div class="col-6 col-md-4">
+              <label for="id_probability" class="form-label fw-semibold">Probability (%)</label>
+              <div style="position:relative">
+                <i class="fas fa-percentage" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="number" name="probability" id="id_probability" class="form-control" style="padding-left:36px" placeholder="10" min="0" max="100" value="{{ lead.probability|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Expected Close Date -->
+            <div class="col-12 col-md-4">
+              <label for="id_expected_close_date" class="form-label fw-semibold">Expected Close Date</label>
+              <div style="position:relative">
+                <i class="fas fa-calendar" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="date" name="expected_close_date" id="id_expected_close_date" class="form-control" style="padding-left:36px" value="{{ lead.expected_close_date|date:'Y-m-d'|default:'' }}">
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label for="id_notes" class="form-label fw-semibold">Notes</label>
+              <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="Enter notes or communication log details...">{{ lead.notes|default:'' }}</textarea>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'crm:leads' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-1"></i>Save Lead
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

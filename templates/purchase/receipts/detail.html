@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Receipt {{ receipt.number }} | Purchase{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Receipt {{ receipt.number }}</h1>
+    <p class="text-muted mb-0">From PO {{ receipt.purchase_order.number }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'purchase:receipts' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold"><i class="fas fa-box-open me-2 text-primary"></i>Received Items</h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Product</th>
+                <th class="text-center">Received</th>
+                <th class="text-center">Accepted</th>
+                <th>Batch/Serial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in receipt.lines.all %}
+              <tr>
+                <td>
+                  <div class="fw-bold">{{ line.po_line.product.name }}</div>
+                  <div class="small text-muted">{{ line.po_line.product.sku }}</div>
+                </td>
+                <td class="text-center fw-semibold text-dark">{{ line.quantity_received|floatformat:2 }}</td>
+                <td class="text-center fw-semibold text-success">{{ line.quantity_accepted|floatformat:2 }}</td>
+                <td>{{ line.batch_number|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-muted">No items found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold"><i class="fas fa-info-circle me-2 text-primary"></i>Receipt Details</h6>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0">
+          <li class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Status:</span>
+            <span class="badge {% if receipt.status == 'completed' %}bg-success{% else %}bg-secondary{% endif %}">
+              {{ receipt.get_status_display }}
+            </span>
+          </li>
+          <li class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Date:</span>
+            <span class="fw-semibold text-dark">{{ receipt.receipt_date }}</span>
+          </li>
+          <li class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Vendor:</span>
+            <span class="fw-semibold text-dark">{{ receipt.purchase_order.vendor.name }}</span>
+          </li>
+          <li class="d-flex justify-content-between">
+            <span class="text-muted">Received By:</span>
+            <span class="fw-semibold text-dark">{{ receipt.received_by.get_full_name|default:receipt.received_by.username }}</span>
+          </li>
+        </ul>
+        {% if receipt.notes %}
+        <hr>
+        <div class="text-muted small fw-bold text-uppercase mb-1">Notes</div>
+        <div class="small">{{ receipt.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

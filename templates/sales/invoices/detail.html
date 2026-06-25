@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Invoice - {{ invoice.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h1 class="h3 text-primary mb-0">Invoice {{ invoice.number }}</h1>
+      <span class="badge 
+        {% if invoice.status == 'draft' %}bg-secondary
+        {% elif invoice.status == 'sent' %}bg-info
+        {% elif invoice.status == 'partial' %}bg-warning text-dark
+        {% elif invoice.status == 'paid' %}bg-success
+        {% elif invoice.status == 'cancelled' %}bg-danger
+        {% endif %}">
+        {{ invoice.get_status_display }}
+      </span>
+    </div>
+    <p class="text-muted mb-0">Invoiced on {{ invoice.invoice_date|date:"Y-m-d" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'sales:invoices' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+    
+    <!-- Action: Download PDF -->
+    <a href="{% url 'sales:invoice_pdf' invoice.pk %}" class="btn btn-outline-primary btn-sm" target="_blank">
+      <i class="fas fa-file-pdf me-1"></i>Download PDF
+    </a>
+
+    <!-- Action: Record Payment Trigger Modal -->
+    {% if invoice.status != 'paid' and invoice.balance_due > 0 %}
+      <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
+        <i class="fas fa-hand-holding-usd me-1"></i>Record Payment
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: Invoice Items & Billing -->
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <!-- Client / Company Head -->
+        <div class="row mb-4 border-bottom pb-3">
+          <div class="col-12 col-md-6 mb-3 mb-md-0">
+            <span class="text-muted small d-block">Client Bill-To</span>
+            <h5 class="fw-bold text-dark mb-1">{{ invoice.customer.name }}</h5>
+            {% if invoice.customer.email %}
+              <div class="small text-muted"><i class="fas fa-envelope me-1"></i>{{ invoice.customer.email }}</div>
+            {% endif %}
+            {% if invoice.customer.phone %}
+              <div class="small text-muted"><i class="fas fa-phone me-1"></i>{{ invoice.customer.phone }}</div>
+            {% endif %}
+          </div>
+          <div class="col-12 col-md-6 text-md-end">
+            <span class="text-muted small d-block">Company Vendor</span>
+            <h5 class="fw-bold text-primary mb-1">{{ invoice.company.name }}</h5>
+            <div class="small text-muted">{{ invoice.company.full_address|default:"" }}</div>
+          </div>
+        </div>
+
+        <!-- Line items table -->
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr class="small text-uppercase">
+                <th>Product</th>
+                <th>Description</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-end">Discount</th>
+                <th class="text-end">Tax</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in lines %}
+              <tr>
+                <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
+                <td class="small">{{ line.description }}</td>
+                <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
+                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end text-danger">
+                  {% if line.discount_percent > 0 %}
+                    -{{ line.discount_percent }}%
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end small">
+                  {% if line.tax %}
+                    {{ line.tax.name }} ({{ line.tax.rate }}%)
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.total|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">No items found in invoice.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Grand Total Breakdown -->
+        <div class="row justify-content-end mt-4">
+          <div class="col-12 col-md-5">
+            <ul class="list-group list-group-flush bg-transparent">
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Subtotal</span>
+                <span class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ invoice.subtotal|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Discount</span>
+                <span class="fw-semibold text-danger">-{{ CURRENCY_SYMBOL }}{{ invoice.discount_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Total Tax</span>
+                <span class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ invoice.tax_amount|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+                <span class="text-muted">Amount Invoiced</span>
+                <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ invoice.total|floatformat:2|intcomma }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+                <span class="fw-bold text-dark">Balance Due</span>
+                <span class="h4 mb-0 fw-bold text-danger">{{ CURRENCY_SYMBOL }}{{ invoice.balance_due|floatformat:2|intcomma }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Invoice Details & Payment Logs -->
+  <div class="col-12 col-lg-4">
+    <!-- Invoice details -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-info-circle me-2"></i>Invoice Details</h5>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-group list-group-flush bg-transparent">
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Due Date</span>
+            <span class="fw-semibold small"><i class="far fa-calendar-times me-1 text-muted"></i>{{ invoice.due_date|date:"Y-m-d" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Payment Terms</span>
+            <span class="fw-semibold small">Net {{ invoice.payment_terms }} Days</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small">Currency</span>
+            <span class="fw-semibold small">{{ invoice.currency|default:"USD" }}</span>
+          </li>
+          {% if invoice.sales_order %}
+          <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
+            <span class="text-muted small">Source Order</span>
+            <span class="fw-semibold small">
+              <a href="{% url 'sales:order_detail' invoice.sales_order.pk %}" class="fw-bold text-primary">
+                {{ invoice.sales_order.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
+              </a>
+            </span>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Payments history list -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-history me-2"></i>Payment History</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="timeline" style="position:relative; padding-left: 20px; border-left: 2px solid var(--border-color)">
+          {% for pay in payments %}
+          <div class="timeline-item mb-3" style="position:relative">
+            <span style="position:absolute; left:-31px; top:2px; background:var(--bg-body); border:2px solid var(--brand-success); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--brand-success)">
+              <i class="fas fa-check"></i>
+            </span>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-success small">{{ CURRENCY_SYMBOL }}{{ pay.amount|floatformat:2|intcomma }}</span>
+              <span class="text-muted" style="font-size:11px">{{ pay.payment_date|date:"Y-m-d" }}</span>
+            </div>
+            <div class="text-muted small my-1">{{ pay.get_method_display }}</div>
+            {% if pay.reference %}
+              <div class="text-muted small" style="font-size:11px;">Ref: {{ pay.reference }}</div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="text-center py-3 text-muted">
+            <i class="fas fa-info-circle fa-2x mb-2 opacity-50"></i>
+            <p class="small mb-0">No payments recorded yet.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dialog: Record Payment -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-primary fw-bold" id="paymentModalLabel"><i class="fas fa-hand-holding-usd me-2"></i>Record Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'sales:invoice_payment' invoice.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_amount" class="form-label small fw-semibold">Payment Amount ($) <span class="text-danger">*</span></label>
+            <div style="position:relative">
+              <i class="fas fa-dollar-sign" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+              <input type="number" name="amount" id="id_amount" class="form-control" style="padding-left:36px" value="{{ invoice.balance_due|stringformat:'.2f' }}" step="0.01" min="0.01" max="{{ invoice.balance_due|stringformat:'.2f' }}" required>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+              <span class="text-muted small align-self-center me-1">Quick Fill:</span>
+              <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" onclick="document.getElementById('id_amount').value = ({{ invoice.total|stringformat:'.2f' }} * 1.0).toFixed(2); if(parseFloat(document.getElementById('id_amount').value) > {{ invoice.balance_due|stringformat:'.2f' }}) document.getElementById('id_amount').value = '{{ invoice.balance_due|stringformat:'.2f' }}';">100%</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" onclick="document.getElementById('id_amount').value = ({{ invoice.total|stringformat:'.2f' }} * 0.75).toFixed(2); if(parseFloat(document.getElementById('id_amount').value) > {{ invoice.balance_due|stringformat:'.2f' }}) document.getElementById('id_amount').value = '{{ invoice.balance_due|stringformat:'.2f' }}';">75%</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" onclick="document.getElementById('id_amount').value = ({{ invoice.total|stringformat:'.2f' }} * 0.50).toFixed(2); if(parseFloat(document.getElementById('id_amount').value) > {{ invoice.balance_due|stringformat:'.2f' }}) document.getElementById('id_amount').value = '{{ invoice.balance_due|stringformat:'.2f' }}';">50%</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0" onclick="document.getElementById('id_amount').value = ({{ invoice.total|stringformat:'.2f' }} * 0.25).toFixed(2); if(parseFloat(document.getElementById('id_amount').value) > {{ invoice.balance_due|stringformat:'.2f' }}) document.getElementById('id_amount').value = '{{ invoice.balance_due|stringformat:'.2f' }}';">25%</button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="id_payment_date" class="form-label small fw-semibold">Payment Date</label>
+            <input type="date" name="payment_date" id="id_payment_date" class="form-control" value="{% now 'Y-m-d' %}" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_method" class="form-label small fw-semibold">Payment Method</label>
+            <select name="method" id="id_method" class="form-select" required>
+              <option value="bank_transfer" selected>Bank Transfer</option>
+              <option value="cash">Cash</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="check">Check</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="id_reference" class="form-label small fw-semibold">Reference / Tx ID</label>
+            <input type="text" name="reference" id="id_reference" class="form-control" placeholder="e.g. wire reference, check number">
+          </div>
+          <div class="mb-3">
+            <label for="id_notes" class="form-label small fw-semibold">Internal Notes</label>
+            <textarea name="notes" id="id_notes" class="form-control" rows="2" placeholder="Add optional remarks..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Record Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

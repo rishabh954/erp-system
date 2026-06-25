@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Create Campaign{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 text-primary mb-1">Create Campaign</h1>
+</div>
+<div class="card shadow-sm border-0">
+  <div class="card-body p-4">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label>Campaign Name</label>
+        <input type="text" name="name" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label>Status</label>
+        <select name="status" class="form-select">
+          {% for val, label in statuses %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label>Budget</label>
+        <input type="number" step="0.01" name="budget" class="form-control" value="0">
+      </div>
+      <div class="mb-3">
+        <label>Expected Revenue</label>
+        <input type="number" step="0.01" name="expected_revenue" class="form-control" value="0">
+      </div>
+      <button type="submit" class="btn btn-primary">Save Campaign</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

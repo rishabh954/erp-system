@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Pick List {{ picklist.number }}{% endblock %}
+{% block nav_inventory %}active{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Pick List: {{ picklist.number }}</h1>
+        <a href="{% url 'inventory:picklists' %}" class="btn btn-secondary shadow-sm text-dark bg-white border">Back to Lists</a>
+    </div>
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Items to Pick ({{ picklist.warehouse.name }})</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Bin Location</th>
+                            <th>Product</th>
+                            <th>To Pick</th>
+                            <th>Picked</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in picklist.lines.all %}
+                        <tr>
+                            <td><strong>{{ line.bin_location.code|default:"-" }}</strong></td>
+                            <td>{{ line.product.name }} ({{ line.product.sku }})</td>
+                            <td>{{ line.quantity_to_pick }}</td>
+                            <td>{{ line.quantity_picked }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

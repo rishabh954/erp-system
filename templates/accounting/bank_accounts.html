@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Bank Accounts{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Bank Accounts
+{% endblock %}
+
+{% block content %}</li>
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-building-columns me-2 opacity-75"></i>Bank Accounts
+    </h1>
+    <p class="text-muted mb-0">Manage your business bank & cash accounts</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'accounting:journals' %}" class="btn btn-outline-primary shadow-sm">
+      <i class="fas fa-book me-1"></i>Journal Entries
+    </a>
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addBankModal">
+      <i class="fas fa-plus me-1"></i>Add Bank Account
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ TOTAL BALANCE HERO CARD ═════════════════════════ -->
+<div class="bank-hero-card mb-4">
+  <div class="bank-hero-bg"></div>
+  <div class="bank-hero-content">
+    <div>
+      <div class="bank-hero-label">Total Cash Position</div>
+      <div class="bank-hero-amount">{{ CURRENCY_SYMBOL }}{{ total_balance|floatformat:2|intcomma }}</div>
+      <div class="bank-hero-sub">
+        <i class="fas fa-university me-1"></i>
+        Across {{ bank_accounts|length }} active bank account{{ bank_accounts|length|pluralize }}
+      </div>
+    </div>
+    <div class="bank-hero-icon">
+      <i class="fas fa-piggy-bank"></i>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ KPI STAT CARDS ══════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-building-columns"></i></div>
+      <div class="stat-card-value">{{ bank_accounts|length }}</div>
+      <div class="stat-card-label">Active Accounts</div>
+      <div class="stat-card-trend text-white-50">Linked to GL</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+      <div class="stat-card-value" id="kpi-positive">0</div>
+      <div class="stat-card-label">Positive Balances</div>
+      <div class="stat-card-trend text-white-50">Accounts in credit</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-arrows-rotate"></i></div>
+      <div class="stat-card-value" id="kpi-unreconciled">—</div>
+      <div class="stat-card-label">Unreconciled Txns</div>
+      <div class="stat-card-trend text-white-50">Needs matching</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-info h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-coins"></i></div>
+      <div class="stat-card-value" id="kpi-currencies">0</div>
+      <div class="stat-card-label">Currencies</div>
+      <div class="stat-card-trend text-white-50">Multi-currency</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BANK ACCOUNTS GRID ══════════════════════════════ -->
+{% if bank_accounts %}
+<div class="row g-4" id="bankAccountsGrid">
+  {% for account in bank_accounts %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="bank-card h-100"
+         style="--bank-color: {% cycle '#6366f1' '#22c55e' '#f59e0b' '#06b6d4' '#ef4444' '#8b5cf6' '#14b8a6' '#f97316' %};">
+
+      <!-- Card top strip -->
+      <div class="bank-card-strip"></div>
+
+      <div class="bank-card-body">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="bank-card-icon-wrap">
+            <i class="fas fa-building-columns"></i>
+          </div>
+          <span class="bank-currency-badge">{{ account.currency.code }}</span>
+        </div>
+
+        <!-- Bank name & account -->
+        <div class="bank-card-name mb-1">{{ account.name }}</div>
+        <div class="bank-card-bank-name mb-1">
+          <i class="fas fa-university me-1 opacity-50"></i>{{ account.bank_name }}
+        </div>
+        <div class="bank-card-number mb-3">
+          <i class="fas fa-hashtag me-1 opacity-40" style="font-size: 10px;"></i>
+          ●●●● ●●●● {{ account.account_number|slice:"-4:" }}
+        </div>
+
+        <!-- Balance -->
+        <div class="bank-balance-section mb-3">
+          <div class="bank-balance-label">Current Balance</div>
+          <div class="bank-balance-amount {% if account.current_balance < 0 %}text-danger{% endif %}">
+            {% if account.current_balance < 0 %}
+              <span class="text-danger">({{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
+            {% else %}
+              {{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|intcomma }}
+            {% endif %}
+          </div>
+          {% if account.opening_balance %}
+          <div class="bank-opening-balance">
+            Opening: {{ CURRENCY_SYMBOL }}{{ account.opening_balance|floatformat:2|intcomma }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Progress bar vs opening balance -->
+        {% if account.opening_balance and account.opening_balance > 0 %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1" style="font-size: 10px; color: #94a3b8;">
+            <span>vs Opening
+            {% widthratio account.current_balance account.opening_balance 100 as bal_pct %}</span>
+            <span>{{ bal_pct }}%</span>
+          </div>
+          <div class="progress" style="height: 4px; border-radius: 10px; background: rgba(0,0,0,0.08);">
+            <div class="progress-bar {% if account.current_balance < account.opening_balance %}bg-danger{% else %}bg-success{% endif %}"
+                 style="width: {% if bal_pct > 100 %}100{% elif bal_pct < 0 %}0{% else %}{{ bal_pct }}{% endif %}%; border-radius: 10px; transition: width 1.2s ease;"
+                 data-width="{{ bal_pct }}"></div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- GL Account -->
+        {% if account.gl_account %}
+        <div class="bank-gl-account mb-3">
+          <i class="fas fa-sitemap me-1 opacity-50"></i>
+          GL: <span class="fw-semibold">{{ account.gl_account.code }}</span> — {{ account.gl_account.name|truncatechars:28 }}
+        </div>
+        {% endif %}
+
+        <!-- Additional info chips -->
+        <div class="d-flex flex-wrap gap-1 mb-3">
+          {% if account.swift_code %}
+          <span class="bank-info-chip"><i class="fas fa-globe me-1"></i>{{ account.swift_code }}</span>
+          {% endif %}
+          {% if account.iban %}
+          <span class="bank-info-chip"><i class="fas fa-credit-card me-1"></i>IBAN</span>
+          {% endif %}
+          {% if account.routing_number %}
+          <span class="bank-info-chip"><i class="fas fa-route me-1"></i>Routing</span>
+          {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 pt-3 border-top" style="border-color: rgba(0,0,0,0.07) !important;">
+          <button class="btn btn-outline-primary btn-xs flex-fill"
+                  title="View Transactions"
+                  onclick="viewTransactions('{{ account.pk }}', '{{ account.name|escapejs }}')">
+            <i class="fas fa-list me-1"></i>Transactions
+          </button>
+          <button class="btn btn-outline-secondary btn-xs"
+                  title="Account Info"
+                  data-bs-toggle="modal" data-bs-target="#accountInfoModal"
+                  data-account-name="{{ account.name }}"
+                  data-bank-name="{{ account.bank_name }}"
+                  data-account-number="{{ account.account_number }}"
+                  data-swift="{{ account.swift_code }}"
+                  data-iban="{{ account.iban }}"
+                  data-routing="{{ account.routing_number }}"
+                  data-currency="{{ account.currency.code }}"
+                  data-gl="{{ account.gl_account.code|default:'—' }} — {{ account.gl_account.name|default:'' }}">
+            <i class="fas fa-info-circle"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Summary Table (below cards) ────────────────────────────────────────── -->
+<div class="card glass-card border-0 shadow-sm mt-4">
+  <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+    <h6 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-table me-2 text-primary opacity-75"></i>Account Summary
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Account Name</th>
+            <th>Bank</th>
+            <th>Account Number</th>
+            <th>Currency</th>
+            <th>GL Account</th>
+            <th class="text-end">Opening Balance</th>
+            <th class="text-end pe-4">Current Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in bank_accounts %}
+          <tr>
+            <td class="ps-4 fw-semibold text-dark">{{ account.name }}</td>
+            <td class="text-muted">{{ account.bank_name }}</td>
+            <td>
+              <span class="text-muted">●●●●</span>
+              <span class="fw-semibold ms-1">{{ account.account_number|slice:"-4:" }}</span>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border" style="font-size: 11px; font-weight: 700;">
+                {{ account.currency.code }}
+              </span>
+            </td>
+            <td>
+              {% if account.gl_account %}
+              <a href="{% url 'accounting:account_detail' account.gl_account.pk %}"
+                 class="text-primary text-decoration-none" style="font-family: monospace; font-size: 12px;">
+                {{ account.gl_account.code }}
+              </a>
+              <span class="text-muted ms-1" style="font-size: 11px;">{{ account.gl_account.name|truncatechars:20 }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ account.opening_balance|floatformat:2|intcomma }}</td>
+            <td class="text-end pe-4 fw-bold {% if account.current_balance < 0 %}text-danger{% else %}text-dark{% endif %}">
+              {% if account.current_balance < 0 %}
+                ({{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})
+              {% else %}
+                {{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|intcomma }}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light border-top border-2">
+          <tr>
+            <td colspan="6" class="ps-4 fw-bold text-dark py-3">Total Balance</td>
+            <td class="text-end pe-4 fw-bold text-primary py-3">
+              {{ CURRENCY_SYMBOL }}{{ total_balance|floatformat:2|intcomma }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- ── Empty State ─────────────────────────────────────────────────────────── -->
+<div class="card glass-card border-0">
+  <div class="card-body text-center py-6">
+    <div class="empty-bank-icon mb-4">
+      <i class="fas fa-building-columns fa-4x opacity-15 text-primary"></i>
+    </div>
+    <h5 class="fw-bold text-dark mb-2">No Bank Accounts Yet</h5>
+    <p class="text-muted mb-4 mx-auto" style="max-width: 380px;">
+      Connect your business bank accounts to track transactions,
+      reconcile statements, and maintain your GL in sync.
+    </p>
+    <button class="btn btn-primary px-5"
+            data-bs-toggle="modal" data-bs-target="#addBankModal">
+      <i class="fas fa-plus me-2"></i>Add First Bank Account
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════ ADD BANK ACCOUNT MODAL ═══════════════════════════ -->
+<div class="modal fade" id="addBankModal" tabindex="-1" aria-labelledby="addBankModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 24px 60px rgba(0,0,0,0.15);">
+      <div class="modal-header border-0 px-5 pt-4 pb-0">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="addBankModalLabel">
+            <i class="fas fa-plus-circle me-2 text-primary"></i>Add Bank Account
+          </h5>
+          <p class="text-muted mb-0" style="font-size: 12px;">Connect a new bank or cash account to your ledger</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post" action="{% url 'accounting:bank_accounts' %}">
+        {% csrf_token %}
+        <div class="modal-body px-5 py-4">
+          <div class="row g-3">
+
+            <!-- Account Name -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Account Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required
+                     placeholder="e.g. Business Checking Account">
+            </div>
+
+            <!-- Bank Name -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Bank Name <span class="text-danger">*</span></label>
+              <input type="text" name="bank_name" class="form-control" required
+                     placeholder="e.g. HDFC Bank, Chase, Barclays">
+            </div>
+
+            <!-- Account Number -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Account Number <span class="text-danger">*</span></label>
+              <input type="text" name="account_number" class="form-control font-monospace" required
+                     placeholder="Enter full account number">
+            </div>
+
+            <!-- Bank Code -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Bank Code / IFSC</label>
+              <input type="text" name="bank_code" class="form-control font-monospace"
+                     placeholder="e.g. HDFC0001234">
+            </div>
+
+            <!-- SWIFT -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">SWIFT / BIC Code</label>
+              <input type="text" name="swift_code" class="form-control font-monospace"
+                     placeholder="e.g. HDFCINBB" maxlength="20">
+            </div>
+
+            <!-- IBAN -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">IBAN</label>
+              <input type="text" name="iban" class="form-control font-monospace"
+                     placeholder="e.g. GB29NWBK60161331926819" maxlength="50">
+            </div>
+
+            <!-- Routing -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Routing Number</label>
+              <input type="text" name="routing_number" class="form-control font-monospace"
+                     placeholder="e.g. 021000021" maxlength="50">
+            </div>
+
+            <div class="col-12"><hr class="my-1 opacity-25"></div>
+
+            <!-- Opening Balance -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Opening Balance</label>
+              <div class="input-group">
+                <span class="input-group-text bg-transparent">$</span>
+                <input type="number" name="opening_balance" class="form-control"
+                       placeholder="0.00" step="0.01" min="0" value="0">
+              </div>
+            </div>
+
+            <!-- Currency (informational only — shown as read from Company) -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Currency <span class="text-danger">*</span></label>
+              <input type="text" name="currency_code" class="form-control"
+                     placeholder="e.g. USD, INR, GBP" required maxlength="10">
+              <div class="form-text">3-letter ISO currency code</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 px-5 pb-4 pt-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-save me-2"></i>Save Account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ACCOUNT INFO MODAL ═══════════════════════════════ -->
+<div class="modal fade" id="accountInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 24px 60px rgba(0,0,0,0.15);">
+      <div class="modal-header border-0 px-5 pt-4 pb-0">
+        <h5 class="modal-title fw-bold" id="infoModalTitle">
+          <i class="fas fa-info-circle me-2 text-primary"></i>Account Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-5 py-4">
+        <dl class="bank-info-dl" id="bankInfoContent"></dl>
+      </div>
+      <div class="modal-footer border-0 px-5 pb-4 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ TRANSACTIONS PANEL (offcanvas) ═══════════════════ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="transactionsPanel"
+     aria-labelledby="transactionsPanelLabel" style="width: 480px;">
+  <div class="offcanvas-header border-0 pb-0 pt-4 px-4">
+    <h5 class="offcanvas-title fw-bold" id="transactionsPanelLabel">
+      <i class="fas fa-list me-2 text-primary"></i>
+      <span id="txAccountName">Transactions</span>
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body px-4">
+    <div class="text-center py-5 text-muted" id="txPlaceholder">
+      <i class="fas fa-receipt fa-3x mb-3 d-block opacity-25"></i>
+      <p>Transaction history will appear here.</p>
+      <p class="small">Connect your bank feed or import statements to see transactions.</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Count KPIs ─────────────────────────────────────────────────────────────
+  const cards = document.querySelectorAll('.bank-card');
+  let positiveCount = 0;
+  const currencies = new Set();
+
+  cards.forEach(function (card) {
+    const balEl = card.querySelector('.bank-balance-amount');
+    if (balEl) {
+      const balText = balEl.textContent.trim();
+      if (!balText.startsWith('(')) positiveCount++;
+    }
+    const curEl = card.querySelector('.bank-currency-badge');
+    if (curEl) currencies.add(curEl.textContent.trim());
+  });
+
+  const el = id => document.getElementById(id);
+  if (el('kpi-positive'))   el('kpi-positive').textContent   = positiveCount;
+  if (el('kpi-currencies')) el('kpi-currencies').textContent = currencies.size;
+  if (el('kpi-unreconciled')) el('kpi-unreconciled').textContent = '—';
+
+  // ── Animate progress bars ─────────────────────────────────────────────────
+  setTimeout(function () {
+    document.querySelectorAll('.progress-bar[data-width]').forEach(function (bar) {
+      bar.style.width = bar.dataset.width + '%';
+    });
+  }, 300);
+
+  // ── Account info modal ─────────────────────────────────────────────────────
+  document.querySelectorAll('[data-bs-target="#accountInfoModal"]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const d = this.dataset;
+      document.getElementById('infoModalTitle').innerHTML =
+        '<i class="fas fa-info-circle me-2 text-primary"></i>' + d.accountName;
+
+      const rows = [
+        ['Bank Name',       d.bankName],
+        ['Account Number',  d.accountNumber],
+        ['SWIFT / BIC',     d.swift  || '—'],
+        ['IBAN',            d.iban   || '—'],
+        ['Routing Number',  d.routing|| '—'],
+        ['Currency',        d.currency],
+        ['GL Account',      d.gl],
+      ];
+      document.getElementById('bankInfoContent').innerHTML = rows.map(function (r) {
+        return `<dt>${r[0]}</dt><dd>${r[1]}</dd>`;
+      }).join('');
+    });
+  });
+
+  // ── Transactions panel ─────────────────────────────────────────────────────
+});
+
+function viewTransactions(accountId, accountName) {
+  document.getElementById('txAccountName').textContent = accountName;
+  new bootstrap.Offcanvas(document.getElementById('transactionsPanel')).show();
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Hero card ────────────────────────────────────────────────────── */
+.bank-hero-card {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 32px 36px;
+  background: linear-gradient(135deg, #4361ee, #7209b7);
+  box-shadow: 0 16px 48px rgba(67, 97, 238, 0.3);
+}
+.bank-hero-bg {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.bank-hero-content {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bank-hero-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.bank-hero-amount { font-size: 42px; font-weight: 900; color: #fff; line-height: 1; margin-bottom: 8px; }
+.bank-hero-sub { font-size: 13px; color: rgba(255,255,255,0.65); }
+.bank-hero-icon { font-size: 72px; color: rgba(255,255,255,0.12); }
+
+/* ── Stat card info ───────────────────────────────────────────────── */
+.stat-card-info {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+}
+.stat-card-info .stat-card-value,
+.stat-card-info .stat-card-label { color: #fff !important; }
+
+/* ── Bank cards ───────────────────────────────────────────────────── */
+.bank-card {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 18px;
+  border: 1.5px solid rgba(0,0,0,0.07);
+  overflow: hidden;
+  transition: transform 0.25s, box-shadow 0.25s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.bank-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.12);
+}
+
+/* Colour accent top strip */
+.bank-card-strip {
+  height: 4px;
+  background: var(--bank-color, #6366f1);
+}
+.bank-card-body { padding: 20px 22px 18px; }
+
+/* Icon */
+.bank-card-icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bank-color, #6366f1) 12%, white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  color: var(--bank-color, #6366f1);
+}
+
+/* Currency badge */
+.bank-currency-badge {
+  font-size: 10px; font-weight: 800;
+  padding: 3px 10px; border-radius: 20px;
+  background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+  letter-spacing: 0.5px;
+}
+
+.bank-card-name { font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.3; }
+.bank-card-bank-name { font-size: 11.5px; color: #64748b; }
+.bank-card-number { font-size: 11px; color: #94a3b8; font-family: 'Courier New', monospace; letter-spacing: 1px; }
+
+/* Balance */
+.bank-balance-section { padding: 12px 14px; background: rgba(0,0,0,0.025); border-radius: 12px; }
+.bank-balance-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.bank-balance-amount { font-size: 22px; font-weight: 900; color: #1e293b; line-height: 1.1; }
+.bank-opening-balance { font-size: 10.5px; color: #94a3b8; margin-top: 3px; }
+
+/* GL account line */
+.bank-gl-account { font-size: 11px; color: #64748b; }
+
+/* Info chips */
+.bank-info-chip {
+  display: inline-flex; align-items: center;
+  font-size: 9.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+  background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+}
+
+/* ── Bank info DL in modal ────────────────────────────────────────── */
+.bank-info-dl dt {
+  font-size: 10px; font-weight: 800; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-top: 12px; margin-bottom: 2px;
+}
+.bank-info-dl dt:first-child { margin-top: 0; }
+.bank-info-dl dd { font-size: 13px; color: #374151; margin-bottom: 0; font-family: 'Courier New', monospace; }
+
+/* ── Glass card ───────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.py-6 { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+.opacity-15 { opacity: 0.15 !important; }
+</style>
+{% endblock %}

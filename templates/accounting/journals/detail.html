@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ entry.number }} — Journal Entry{% endblock %}
+{% block nav_accounting %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'accounting:journals' %}">Journal Entries</a></li>
+<li class="breadcrumb-item active">{{ entry.number }}</li>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <div class="d-flex align-items-center gap-3 mb-1">
+      <h1 class="h3 fw-bold text-dark mb-0">{{ entry.number }}</h1>
+
+      {% if entry.status == 'posted' %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">
+          <i class="fas fa-check me-1"></i>Posted
+        </span>
+      {% elif entry.status == 'draft' %}
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">
+          <i class="fas fa-pen me-1"></i>Draft
+        </span>
+      {% elif entry.status == 'reversed' %}
+        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3">
+          <i class="fas fa-rotate-left me-1"></i>Reversed
+        </span>
+      {% else %}
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">Cancelled
+      {% endif %}
+
+      {% if entry.is_reversal %}</span>
+      <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3" style="font-size: 10px;">
+        <i class="fas fa-arrows-rotate me-1"></i>Reversal Entry
+      </span>
+      {% endif %}
+
+      {% if not entry.is_balanced %}
+      <span class="badge bg-danger rounded-pill px-3" style="font-size: 10px;">
+        <i class="fas fa-exclamation-triangle me-1"></i>Unbalanced!
+      </span>
+      {% endif %}
+    </div>
+
+    <p class="text-muted mb-0" style="font-size: 13px;">
+      <i class="fas fa-calendar me-1"></i>{{ entry.date|date:"d M Y" }}
+      &nbsp;·&nbsp;
+      <span class="fw-semibold">{{ entry.journal.name }}</span>
+      {% if entry.reference %}
+        &nbsp;·&nbsp; Ref: <strong>{{ entry.reference }}</strong>
+      {% endif %}
+      {% if entry.posted_by %}
+        &nbsp;·&nbsp; Posted by {{ entry.posted_by.get_full_name|default:entry.posted_by.email }}
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="d-flex gap-2">
+    {% if entry.status == 'draft' %}
+    <form method="post" action="{% url 'accounting:journal_post' entry.pk %}"
+          onsubmit="return confirm('Post this journal entry to the ledger? This cannot be undone.')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success">
+        <i class="fas fa-paper-plane me-1"></i>Post to Ledger
+      </button>
+    </form>
+    {% endif %}
+    <a href="{% url 'accounting:journals' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>All Entries
+    </a>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ BALANCE SUMMARY STRIP ════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-primary h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-arrow-down"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Total Debit</div>
+      <div class="stat-card-trend text-white-50">Dr side</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-success h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-arrow-up"></i></div>
+      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}</div>
+      <div class="stat-card-label">Total Credit</div>
+      <div class="stat-card-trend text-white-50">Cr side</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card {% if entry.is_balanced %}stat-card-success{% else %}stat-card-danger{% endif %} h-100 border-0">
+      <div class="stat-card-icon">
+        <i class="fas {% if entry.is_balanced %}fa-check-circle{% else %}fa-exclamation-circle{% endif %}"></i>
+      </div>
+      <div class="stat-card-value">{% if entry.is_balanced %}✓{% else %}✗{% endif %}</div>
+      <div class="stat-card-label">{% if entry.is_balanced %}Balanced{% else %}Unbalanced{% endif %}</div>
+      <div class="stat-card-trend text-white-50">Dr = Cr check</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-warning h-100 border-0">
+      <div class="stat-card-icon"><i class="fas fa-list-ol"></i></div>
+      <div class="stat-card-value">{{ items|length }}</div>
+      <div class="stat-card-label">Line Items</div>
+      <div class="stat-card-trend text-white-50">Accounts affected</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ MAIN CONTENT ════════════════════════════════════ -->
+<div class="row g-4">
+
+  <!-- LEFT — Journal Lines -->
+  <div class="col-12 col-lg-8">
+
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-3 px-4 pb-2">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-table-list me-2 text-primary opacity-75"></i>Journal Lines
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4" style="width: 20%;">Account Code</th>
+                <th style="width: 30%;">Account Name</th>
+                <th>Description</th>
+                <th class="text-end" style="width: 13%;">Debit</th>
+                <th class="text-end pe-4" style="width: 13%;">Credit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <!-- Account code -->
+                <td class="ps-4">
+                  <a href="{% url 'accounting:account_detail' item.account.pk %}"
+                     class="fw-bold text-decoration-none"
+                     style="font-family: 'Courier New', monospace; font-size: 12px; color: #6366f1;">
+                    {{ item.account.code }}
+                  </a>
+                </td>
+
+                <!-- Account name + type badge -->
+                <td>
+                  <div class="fw-semibold text-dark" style="font-size: 12.5px;">{{ item.account.name }}</div>
+                  <span class="detail-type-badge type-badge-{{ item.account.account_type }}">
+                    {{ item.account.get_account_type_display }}
+                  </span>
+                </td>
+
+                <!-- Description -->
+                <td class="text-muted" style="font-size: 12px;">
+                  {{ item.description|default:"—" }}
+                </td>
+
+                <!-- Debit -->
+                <td class="text-end">
+                  {% if item.debit %}
+                  <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ item.debit|floatformat:2|intcomma }}</span>
+                  {% else %}
+                  <span class="text-muted">—
+                  {% endif %}</span>
+                </td>
+
+                <!-- Credit -->
+                <td class="text-end pe-4">
+                  {% if item.credit %}
+                  <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ item.credit|floatformat:2|intcomma }}</span>
+                  {% else %}
+                  <span class="text-muted">—
+                  {% endif %}</span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                  <i class="fas fa-inbox me-2 opacity-30"></i>No line items found.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+
+            <!-- Totals -->
+            <tfoot class="table-light border-top border-2">
+              <tr>
+                <td colspan="3" class="ps-4 fw-bold text-dark py-3">Totals</td>
+                <td class="text-end fw-bold py-3 text-primary">
+                  {{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}
+                </td>
+                <td class="text-end fw-bold py-3 pe-4 text-primary">
+                  {{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}
+                </td>
+              </tr>
+              <!-- Balance check row -->
+              <tr>
+                <td colspan="5" class="px-4 pb-3 pt-0">
+                  {% if entry.is_balanced %}
+                  <div class="d-flex align-items-center gap-2 rounded-3 px-3 py-2"
+                       style="background: #f0fdf4; font-size: 12px; font-weight: 600; color: #15803d;">
+                    <i class="fas fa-check-circle"></i>
+                    Entry is balanced — Total Debit = Total Credit
+                  </div>
+                  {% else %}
+                  <div class="d-flex align-items-center gap-2 rounded-3 px-3 py-2"
+                       style="background: #fef2f2; font-size: 12px; font-weight: 600; color: #b91c1c;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Entry is NOT balanced — difference of
+                    ${% widthratio entry.total_debit entry.total_credit 1 %}
+                  </div>
+                  {% endif %}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT — Entry Info -->
+  <div class="col-12 col-lg-4">
+
+    <!-- Entry details -->
+    <div class="card glass-card border-0 mb-4">
+      <div class="card-header bg-transparent border-0 pb-0 pt-3 px-4">
+        <h6 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-info-circle me-2 text-primary opacity-75"></i>Entry Details
+        </h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <dl class="entry-info-dl">
+          <dt>Entry Number</dt>
+          <dd class="fw-bold text-primary">{{ entry.number }}</dd>
+
+          <dt>Journal</dt>
+          <dd>
+            <span class="journal-type-badge jtype-{{ entry.journal.journal_type }}">
+              {{ entry.journal.name }} ({{ entry.journal.code }})
+            </span>
+          </dd>
+
+          <dt>Date</dt>
+          <dd>{{ entry.date|date:"d M Y" }}</dd>
+
+          <dt>Status</dt>
+          <dd>
+            {% if entry.status == 'posted' %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">Posted
+            {% elif entry.status == 'draft' %}</span>
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Draft
+            {% else %}</span>
+              <span class="badge bg-secondary-subtle text-muted border">{{ entry.get_status_display }}</span>
+            {% endif %}
+          </dd>
+
+          {% if entry.reference %}
+          <dt>Reference</dt>
+          <dd>{{ entry.reference }}</dd>
+          {% endif %}
+
+          {% if entry.notes %}
+          <dt>Notes</dt>
+          <dd class="text-muted">{{ entry.notes }}</dd>
+          {% endif %}
+
+          {% if entry.fiscal_year %}
+          <dt>Fiscal Year</dt>
+          <dd>{{ entry.fiscal_year }}</dd>
+          {% endif %}
+
+          {% if entry.source_type %}
+          <dt>Source</dt>
+          <dd>{{ entry.source_type|capfirst }}{% if entry.source_id %} #{{ entry.source_id }}{% endif %}</dd>
+          {% endif %}
+
+          {% if entry.posted_at %}
+          <dt>Posted At</dt>
+          <dd>{{ entry.posted_at|date:"d M Y H:i" }}</dd>
+          {% endif %}
+
+          {% if entry.posted_by %}
+          <dt>Posted By</dt>
+          <dd>{{ entry.posted_by.get_full_name|default:entry.posted_by.email }}</dd>
+          {% endif %}
+
+          <dt>Created</dt>
+          <dd>{{ entry.created_at|date:"d M Y H:i" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Reversal info -->
+    {% if entry.reversal_of %}
+    <div class="card border-0 mb-4"
+         style="background: linear-gradient(135deg,#ecfeff,#cffafe); border-radius:14px; border:1px solid #a5f3fc;">
+      <div class="card-body px-4 py-3">
+        <h6 class="fw-bold text-info mb-2"><i class="fas fa-arrows-rotate me-2"></i>Reversal Of</h6>
+        <a href="{% url 'accounting:journal_detail' entry.reversal_of.pk %}" class="fw-bold text-primary">
+          {{ entry.reversal_of.number }}
+        </a>
+        <div class="text-muted" style="font-size: 11px;">{{ entry.reversal_of.date|date:"d M Y" }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Post action card (only for drafts) -->
+    {% if entry.status == 'draft' %}
+    <div class="card border-0"
+         style="background: linear-gradient(135deg,#fefce8,#fef9c3); border-radius:14px; border:1px solid #fde047;">
+      <div class="card-body px-4 py-3">
+        <h6 class="fw-bold text-warning mb-2">
+          <i class="fas fa-paper-plane me-2"></i>Ready to Post?
+        </h6>
+        <p class="mb-3" style="font-size: 12px; color: #374151;">
+          Posting will update all account balances and record this entry permanently in the general ledger.
+          {% if not entry.is_balanced %}
+          <strong class="text-danger">This entry is currently unbalanced and cannot be posted.</strong>
+          {% endif %}
+        </p>
+        {% if entry.is_balanced %}
+        <form method="post" action="{% url 'accounting:journal_post' entry.pk %}"
+              onsubmit="return confirm('Post this entry to the ledger? This action cannot be undone.')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success btn-sm w-100">
+            <i class="fas fa-check-circle me-2"></i>Post to Ledger
+          </button>
+        </form>
+        {% else %}
+        <button class="btn btn-secondary btn-sm w-100" disabled>
+          <i class="fas fa-ban me-2"></i>Cannot Post (Unbalanced)
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.stat-card-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+.stat-card-danger .stat-card-value,
+.stat-card-danger .stat-card-label { color: #fff !important; }
+
+/* Detail DL */
+.entry-info-dl dt {
+  font-size: 10px; font-weight: 800; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-top: 14px; margin-bottom: 2px;
+}
+.entry-info-dl dt:first-child { margin-top: 0; }
+.entry-info-dl dd { font-size: 13px; color: #374151; margin-bottom: 0; }
+
+/* Type badges */
+.detail-type-badge {
+  display: inline-block; font-size: 9.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; margin-top: 2px;
+}
+.type-badge-asset     { background: #dbeafe; color: #1d4ed8; }
+.type-badge-liability { background: #fee2e2; color: #b91c1c; }
+.type-badge-equity    { background: #ede9fe; color: #6d28d9; }
+.type-badge-revenue   { background: #dcfce7; color: #15803d; }
+.type-badge-expense   { background: #fef3c7; color: #b45309; }
+.type-badge-cogs      { background: #ffedd5; color: #c2410c; }
+.type-badge-bank      { background: #cffafe; color: #0e7490; }
+
+/* Journal type badges */
+.journal-type-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+}
+.jtype-sales    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.jtype-purchase { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.jtype-bank     { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.jtype-cash     { background: #cffafe; color: #0e7490; border: 1px solid #67e8f9; }
+.jtype-payroll  { background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; }
+.jtype-general  { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+</style>
+{% endblock %}

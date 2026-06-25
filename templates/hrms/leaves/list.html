@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Leave Management — HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item active">Leave Requests
+{% endblock %}
+
+{% block content %}</li>
+<!-- ═══════════════════════ PAGE HEADER ══════════════════════════════════════ -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-calendar-minus me-2 opacity-75"></i>Leave Management
+    </h1>
+    <p class="text-muted mb-0">Track and manage employee time-off requests</p>
+  </div>
+  
+  <div class="d-flex gap-2">
+    <a href="{% url 'hrms:attendance' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-clock me-1"></i>Daily Attendance
+    </a>
+    <a href="{% url 'hrms:leave_request_create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus me-2"></i>Apply for Leave
+    </a>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════ FILTER & STATS ═══════════════════════════════════ -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-md-4 col-xl-3">
+    <div class="card stat-card h-100 border-0" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+      <div class="stat-card-icon text-white opacity-50"><i class="fas fa-hourglass-half"></i></div>
+      <div class="stat-card-value text-white">{{ pending_count }}</div>
+      <div class="stat-card-label text-white">Pending Approvals</div>
+      <div class="stat-card-trend text-white-50">Requires attention</div>
+    </div>
+  </div>
+  
+  <div class="col-12 col-md-8 col-xl-9">
+    <div class="card glass-card border-0 h-100">
+      <div class="card-body d-flex align-items-center px-4">
+        <form method="get" class="w-100 d-flex gap-3 align-items-center">
+          <div class="flex-grow-1">
+            <label class="form-label text-muted small fw-semibold mb-1">Status Filter</label>
+            <select name="status" class="form-select border-0 bg-light" onchange="this.form.submit()">
+              <option value="">All Leave Requests</option>
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="pt-4">
+            {% if request.GET.status %}
+            <a href="{% url 'hrms:leaves' %}" class="btn btn-link text-muted text-decoration-none px-0">Clear</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ LEAVE REQUESTS TABLE ═════════════════════════════ -->
+<div class="card glass-card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Request #</th>
+            <th>Employee</th>
+            <th>Leave Type</th>
+            <th>Duration</th>
+            <th>Days</th>
+            <th>Status</th>
+            <th>Applied On</th>
+            <th class="text-end pe-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leave in leaves %}
+          <tr>
+            <td class="ps-4 fw-bold text-primary font-monospace" style="font-size: 12px;">{{ leave.number }}</td>
+            
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-circle bg-light text-dark fw-bold" style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                  {{ leave.employee.first_name|first }}{{ leave.employee.last_name|first }}
+                </div>
+                <div class="fw-semibold text-dark">{{ leave.employee.full_name }}</div>
+              </div>
+            </td>
+            
+            <td>
+              <span class="badge bg-secondary-subtle text-dark border">{{ leave.leave_type.name }}</span>
+            </td>
+            
+            <td>
+              <div class="text-dark fw-medium">{{ leave.start_date|date:"d M" }} — {{ leave.end_date|date:"d M Y" }}</div>
+              <div class="text-muted" style="font-size: 11px;">{{ leave.get_day_type_display }}</div>
+            </td>
+            
+            <td class="fw-bold">{{ leave.total_days|floatformat:1 }}</td>
+            
+            <td>
+              {% if leave.status == 'approved' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill"><i class="fas fa-check me-1"></i>Approved</span>
+              {% elif leave.status == 'rejected' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill"><i class="fas fa-xmark me-1"></i>Rejected</span>
+              {% elif leave.status == 'pending' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill"><i class="fas fa-clock me-1"></i>Pending</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary border rounded-pill">{{ leave.get_status_display }}</span>
+              {% endif %}
+            </td>
+            
+            <td class="text-muted" style="font-size: 12px;">{{ leave.created_at|date:"d M Y" }}</td>
+            
+            <td class="text-end pe-4">
+              {% if leave.status == 'pending' and request.user.role in 'hr_manager,company_admin,super_admin' %}
+              <div class="btn-group shadow-sm">
+                <form method="post" action="{% url 'hrms:leave_approve' leave.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="approve">
+                  <button type="submit" class="btn btn-success btn-sm border-0" title="Approve">
+                    <i class="fas fa-check"></i>
+                  </button>
+                </form>
+                <form method="post" action="{% url 'hrms:leave_approve' leave.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reject">
+                  <button type="submit" class="btn btn-danger btn-sm border-0" title="Reject">
+                    <i class="fas fa-xmark"></i>
+                  </button>
+                </form>
+              </div>
+              {% else %}
+              <button class="btn btn-sm btn-light border" title="View details" disabled><i class="fas fa-eye"></i></button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="fas fa-calendar-check fa-3x mb-3 opacity-25 d-block"></i>
+              <p>No leave requests found.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer bg-transparent border-top-0 px-4 py-3">
+      <ul class="pagination pagination-sm mb-0 justify-content-end">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Previous</a></li>
+        {% endif %}
+        
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Next</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+    
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+.btn-group .btn { border-radius: 6px; margin: 0 1px; }
+.btn-group .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.btn-group .btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+</style>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Submit Ticket — Help Desk{% endblock %}
+{% block nav_helpdesk %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'helpdesk:tickets' %}">Help Desk</a></li>
+<li class="breadcrumb-item active">New Ticket
+{% endblock %}
+
+{% block content %}</li>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">
+      <i class="fas fa-ticket-alt me-2 opacity-75"></i>Submit a Ticket
+    </h1>
+    <p class="text-muted mb-0">Describe your issue and our support team will help you shortly</p>
+  </div>
+  <a href="{% url 'helpdesk:tickets' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Cancel
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+        <h5 class="fw-bold text-dark mb-0">Ticket Details</h5>
+      </div>
+      
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'helpdesk:ticket_create' %}">
+          {% csrf_token %}
+          
+          <div class="row g-4">
+            <!-- Subject -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
+              <input type="text" name="title" class="form-control form-control-lg" required placeholder="A brief summary of your issue">
+            </div>
+            
+            <!-- Category -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+              <select name="category" class="form-select" required>
+                <option value="">— Select Category —</option>
+                {% for cat in categories %}
+                <option value="{{ cat.pk }}">{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Priority -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Priority <span class="text-danger">*</span></label>
+              <select name="priority" class="form-select" required>
+                {% for val, label in priority_choices %}
+                <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+              <textarea name="description" class="form-control" rows="6" required placeholder="Please provide as much detail as possible to help us resolve the issue quickly..."></textarea>
+            </div>
+            
+            <!-- Hidden Source (Defaults to portal for web submissions) -->
+            <input type="hidden" name="source" value="portal">
+          </div>
+          
+          <div class="mt-5 d-flex gap-3">
+            <button type="submit" class="btn btn-primary btn-lg px-5">
+              <i class="fas fa-paper-plane me-2"></i>Submit Ticket
+            </button>
+          </div>
+          
+        </form>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 14px;">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-lightbulb me-2 text-warning"></i>Tips for a quick resolution</h6>
+        <ul class="text-primary-emphasis ps-3 mb-0" style="font-size: 13px; line-height: 1.8;">
+          <li>Include specific error messages or screenshots if applicable.</li>
+          <li>Mention the steps to reproduce the problem.</li>
+          <li>Set the correct priority (only use "Urgent" for critical system blockages).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+}
+</style>
+{% endblock %}

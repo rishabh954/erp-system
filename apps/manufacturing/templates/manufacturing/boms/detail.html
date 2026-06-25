@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}BOM: {{ bom.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Bill of Material: {{ bom.product.name }}</h1>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Details</h6>
+            <span class="badge bg-info">Produces: {{ bom.quantity }} {{ bom.product.uom.code }}</span>
+        </div>
+        <div class="card-body">
+            <h5 class="fw-bold">Components</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Quantity Required</th>
+                        <th>Scrap %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in bom.lines.all %}
+                    <tr>
+                        <td>{{ line.component.name }}</td>
+                        <td>{{ line.quantity }}</td>
+                        <td>{{ line.scrap_percentage }}%</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">No components defined.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

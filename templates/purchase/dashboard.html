@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Purchase Dashboard{% endblock %}
+{% block nav_purchase %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Purchase Dashboard</h1>
+    <a href="{% url 'purchase:vendor_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Vendor</a>
+</div>
+
+<div class="row">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Expenses (Paid)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_expenses|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-money-bill-wave fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Outstanding Payables</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ outstanding_payables|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Pending Purchase Orders</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_pos_count }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-shopping-bag fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Expense Overview</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area" style="height: 300px;">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Purchase Orders</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for po in recent_pos %}
+                    <a href="{% url 'purchase:order_detail' po.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <h6 class="mb-0 fw-bold">{{ po.number }}</h6>
+                            <small class="text-muted">{{ po.vendor.name }}</small>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill px-3 py-2">${{ po.total|floatformat:2 }}</span>
+                    </a>
+                    {% empty %}
+                    <div class="p-4 text-center text-muted">No recent purchase orders.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var ctx = document.getElementById("expenseChart");
+    if (ctx) {
+        var myLineChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [{
+                    label: "Expenses",
+                    backgroundColor: "#e74a3b",
+                    hoverBackgroundColor: "#e02d1b",
+                    borderColor: "#e74a3b",
+                    data: [0, 4000, 3000, 8000, 5000, {{ total_expenses }}],
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false, drawBorder: false } },
+                    y: {
+                        ticks: {
+                            callback: function(value, index, values) {
+                                return '$' + value;
+                            }
+                        },
+                        grid: {
+                            color: "rgb(234, 236, 244)",
+                            zeroLineColor: "rgb(234, 236, 244)",
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

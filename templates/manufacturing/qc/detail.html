@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Quality Check: {{ quality_check.number }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">{{ quality_check.number }}</h1></div>
+<div class="card shadow-sm border-0 p-4 mb-4">
+<p><strong>MO:</strong> {{ quality_check.manufacturing_order.number }}</p>
+<p><strong>Inspector:</strong> {{ quality_check.inspector.get_full_name|default:"-" }}</p>
+<p><strong>Date:</strong> {{ quality_check.inspection_date }}</p>
+<p><strong>Status:</strong> {{ quality_check.get_status_display }}</p>
+<h6>Parameters Checked</h6>
+<p>{{ quality_check.parameters_checked|linebreaks }}</p>
+</div>
+{% endblock %}

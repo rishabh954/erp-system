@@ -1,0 +1,59 @@
+{% extends "administration/base_admin.html" %}
+{% block title %}Notification Templates{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-0"><i class="fas fa-bell me-2 text-primary"></i>Notification Templates</h1>
+    <p class="text-muted mb-0">Manage notification templates for your organization</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Create Template</h6></div>
+      <div class="card-body px-4">
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create">
+          <div class="mb-3"><label class="form-label fw-medium">Template Name</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-medium">Channel</label>
+            <select name="channel" class="form-select">{% for v,l in channels %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+          </div>
+          <div class="mb-3"><label class="form-label fw-medium">Trigger Event</label>
+            <select name="trigger_event" class="form-select">{% for v,l in events %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+          </div>
+          <div class="mb-3"><label class="form-label fw-medium">Subject (Email)</label><input type="text" name="subject" class="form-control" placeholder="e.g. Invoice {{invoice.number}} Ready"></div>
+          <div class="mb-3"><label class="form-label fw-medium">Message Body</label><textarea name="body" class="form-control" rows="5" placeholder="Dear {{customer.name}}, ..."></textarea></div>
+          <button class="btn btn-primary w-100"><i class="fas fa-plus me-2"></i>Save Template</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th class="px-4">Name</th><th>Channel</th><th>Event</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {% for t in templates %}
+              <tr>
+                <td class="px-4 fw-medium">{{ t.name }}</td>
+                <td><span class="badge bg-info">{{ t.get_channel_display }}</span></td>
+                <td class="small text-muted">{{ t.get_trigger_event_display }}</td>
+                <td><span class="badge {% if t.is_active %}bg-success{% else %}bg-secondary{% endif %}">{% if t.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+                <td>
+                  <form method="post" class="d-inline" onsubmit="return confirm('Delete?')">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="pk" value="{{ t.pk }}">
+                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i></button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}<tr><td colspan="5" class="text-center text-muted py-5">No templates yet.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Vendor Bids{% endblock %}
+{% block content %}
+<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Vendor Bids</h1></div>
+<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
+<thead class="table-light"><tr><th>RFQ</th><th>Vendor</th><th>Total Amount</th><th>Status</th></tr></thead>
+<tbody>
+{% for bid in bids %}<tr><td>{{ bid.rfq.title }}</td><td><a href="{% url 'purchase:bid_detail' bid.pk %}">{{ bid.vendor.name }}</a></td><td>{{ bid.total_amount }}</td><td>{{ bid.get_status_display }}</td></tr>
+{% empty %}<tr><td colspan="4" class="text-center py-4">No bids found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

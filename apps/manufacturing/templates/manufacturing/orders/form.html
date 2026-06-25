@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Create Manufacturing Order{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Create Manufacturing Order</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Bill of Material</label>
+                        <select name="bom" class="form-select" required>
+                            <option value="">-- Select BOM --</option>
+                            {% for bom in boms %}
+                            <option value="{{ bom.id }}">{{ bom.product.name }} (BOM: {{ bom.number }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Quantity to Produce</label>
+                        <input type="number" step="0.01" name="quantity_to_produce" class="form-control" value="1" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Planned Start Date</label>
+                        <input type="date" name="planned_start_date" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Planned End Date</label>
+                        <input type="date" name="planned_end_date" class="form-control">
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Create Order</button>
+                    <a href="{% url 'manufacturing:orders' %}" class="btn btn-light">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

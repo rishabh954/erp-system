@@ -1,0 +1,27 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+    <h1 style="color: #fb6340;">Your Trial is Expiring Soon</h1>
+    <p>Hi {{ company_name }},</p>
+    <p>We hope you are enjoying your experience with our platform. This is a reminder that your free trial will expire in <strong>{{ days_left }} days</strong>.</p>
+    
+    <p>To ensure uninterrupted access to all features and your data, please upgrade your account before the trial period ends.</p>
+    
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+        <tbody>
+            <tr>
+                <td align="center">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <td> <a href="{{ upgrade_url|default:'#' }}" target="_blank" style="background-color: #fb6340; border-color: #fb6340;">Upgrade Now</a> </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <p>If you have any questions or need help choosing the right plan, our sales team is here to assist you.</p>
+{% endblock %}
