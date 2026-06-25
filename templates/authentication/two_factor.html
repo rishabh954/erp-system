@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Two-Factor Authentication{% endblock %}
+{% block body_class %}{% endblock %}
+
+{% block full_page %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <h1 class="auth-title">Security Check</h1>
+      <p class="auth-subtitle">Enter the 6-digit code sent to your authenticator app</p>
+    </div>
+
+    {% include 'partials/messages.html' %}
+
+    <form method="post" action="" data-loading>
+      {% csrf_token %}
+
+      <div class="mb-4">
+        <label class="form-label" for="id_token">Authentication Code</label>
+        <div style="position:relative">
+          <i class="fas fa-key" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="token" id="id_token"
+            class="form-control form-control-lg text-center fw-bold letter-spacing-2 {% if form.token.errors %}is-invalid{% endif %}"
+            style="padding-left:36px; letter-spacing: 4px;"
+            placeholder="000000"
+            maxlength="6"
+            value="{{ form.token.value|default:'' }}"
+            autocomplete="one-time-code"
+            required autofocus>
+        </div>
+        {% if form.token.errors %}<div class="invalid-feedback d-block">{{ form.token.errors.0 }}</div>{% endif %}
+        {% if form.non_field_errors %}<div class="text-danger mt-1" style="font-size:12.5px">{{ form.non_field_errors.0 }}</div>{% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 mb-3" data-loading-text="Verifying...">
+        <i class="fas fa-check-circle me-2"></i>Verify & Proceed
+      </button>
+
+    </form>
+
+    <div class="text-center mt-3">
+      <a href="{% url 'auth:login' %}" class="text-muted" style="font-size:13px">Back to Login</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

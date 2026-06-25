@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Work Order - {{ work_order.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:work_orders' %}">Work Orders</a></li>
+                    <li class="breadcrumb-item active">{{ work_order.number }}</li>
+                </ol>
+            </nav>
+            <h1 class="h3 text-primary mb-1">
+                {{ work_order.number }}
+                {% if work_order.status == 'pending' %}
+                    <span class="badge bg-secondary ms-2 fs-6">Pending</span>
+                {% elif work_order.status == 'ready' %}
+                    <span class="badge bg-info text-dark ms-2 fs-6">Ready</span>
+                {% elif work_order.status == 'in_progress' %}
+                    <span class="badge bg-warning text-dark ms-2 fs-6">In Progress</span>
+                {% elif work_order.status == 'done' %}
+                    <span class="badge bg-success ms-2 fs-6">Done</span>
+                {% elif work_order.status == 'cancel' %}
+                    <span class="badge bg-danger ms-2 fs-6">Cancelled</span>
+                {% endif %}
+            </h1>
+        </div>
+        <div>
+            {% if work_order.status == 'pending' or work_order.status == 'ready' %}
+            <form method="post" action="{% url 'manufacturing:work_order_start' work_order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary"><i class="fas fa-play me-2"></i>Start Work</button>
+            </form>
+            {% elif work_order.status == 'in_progress' %}
+            <form method="post" action="{% url 'manufacturing:work_order_complete' work_order.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success"><i class="fas fa-check me-2"></i>Complete Work</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fs-6"><i class="fas fa-info-circle me-2"></i>Work Order Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">Manufacturing Order</div>
+                    <div class="col-sm-8 fw-bold">
+                        <a href="{% url 'manufacturing:mo_detail' work_order.manufacturing_order.pk %}">
+                            {{ work_order.manufacturing_order.number }}
+                        </a>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">Work Center</div>
+                    <div class="col-sm-8">{{ work_order.work_center.name }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">Expected Duration</div>
+                    <div class="col-sm-8">{{ work_order.duration_expected|default:"0.0" }} hours</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">Actual Duration</div>
+                    <div class="col-sm-8">{{ work_order.duration_actual|default:"0.0" }} hours</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fs-6"><i class="fas fa-calendar-alt me-2"></i>Schedule</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">Scheduled Start Time</div>
+                    <div>{{ work_order.start_time|date:"M d, Y H:i"|default:"Not Scheduled" }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">Scheduled End Time</div>
+                    <div>{{ work_order.end_time|date:"M d, Y H:i"|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

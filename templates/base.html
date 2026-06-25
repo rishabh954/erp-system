@@ -339,6 +339,23 @@
         </ul>
       </li>
 
+      <li class="nav-item nav-has-children {% block nav_sysadmin %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-cogs nav-icon"></i>
+          <span class="nav-label">System Config</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'administration:number_series' %}" class="nav-link nav-child"><i class="fas fa-sort-numeric-up"></i> Number Series</a></li>
+          <li><a href="{% url 'administration:approval_matrix' %}" class="nav-link nav-child"><i class="fas fa-sitemap"></i> Approval Matrix</a></li>
+          <li><a href="{% url 'administration:email_config' %}" class="nav-link nav-child"><i class="fas fa-envelope"></i> Email Config</a></li>
+          <li><a href="{% url 'administration:sms_config' %}" class="nav-link nav-child"><i class="fas fa-sms"></i> SMS Config</a></li>
+          <li><a href="{% url 'administration:whatsapp_config' %}" class="nav-link nav-child"><i class="fab fa-whatsapp"></i> WhatsApp Config</a></li>
+          <li><a href="{% url 'administration:system_settings' %}" class="nav-link nav-child"><i class="fas fa-sliders-h"></i> System Settings</a></li>
+          <li><a href="{% url 'administration:audit_logs' %}" class="nav-link nav-child"><i class="fas fa-history"></i> Audit Logs</a></li>
+        </ul>
+      </li>
+
     </ul>
   </nav>
 

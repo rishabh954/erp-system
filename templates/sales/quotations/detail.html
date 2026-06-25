@@ -36,7 +36,7 @@
 
     <!-- Action: Approve Quotation -->
     {% if quotation.status == 'sent' or quotation.status == 'draft' %}
-    <form method="post" action="{% url 'workflow:action' %}" class="d-inline">
+    <form method="post" action="{% url 'workflow:action_api' quotation.pk %}" class="d-inline">
       {% csrf_token %}
       <input type="hidden" name="app_label" value="sales">
       <input type="hidden" name="model_name" value="Quotation">

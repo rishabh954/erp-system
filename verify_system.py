@@ -11,7 +11,7 @@ import re
 # 1. Find all `template_name` in views.py
 print("=== CHECKING MISSING TEMPLATES FROM VIEWS ===")
 missing_templates = []
-apps_dir = r"c:\Users\OM\erp_system\erp_system\apps"
+apps_dir = os.path.join(settings.BASE_DIR, "apps")
 
 pattern = re.compile(r"template_name\s*=\s*['\"]([^'\"]+)['\"]")
 
@@ -36,7 +36,7 @@ else:
 
 # 2. Check for missing {% url %} definitions in templates
 print("\n=== CHECKING MISSING URLS FROM TEMPLATES ===")
-templates_dir = r"c:\Users\OM\erp_system\erp_system\templates"
+templates_dir = os.path.join(settings.BASE_DIR, "templates")
 url_pattern = re.compile(r"\{%\s*url\s+['\"]([^'\"]+)['\"]")
 
 from django.urls import resolve, reverse

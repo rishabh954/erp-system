@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Task Details - {{ task.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'projects:list' %}">Projects</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'projects:detail' task.project.pk %}">{{ task.project.name }}</a></li>
+                    <li class="breadcrumb-item active">{{ task.title }}</li>
+                </ol>
+            </nav>
+            <h1 class="h3 text-primary mb-1">
+                {{ task.title }}
+                <span class="badge bg-secondary ms-2 fs-6">{{ task.get_status_display }}</span>
+                <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning text-dark{% else %}bg-info{% endif %} ms-1 fs-6">
+                    {{ task.get_priority_display }}
+                </span>
+            </h1>
+        </div>
+        <div>
+            <!-- Additional action buttons can go here -->
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Task Details -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fs-6"><i class="fas fa-align-left me-2"></i>Description</h5>
+            </div>
+            <div class="card-body">
+                {% if task.description %}
+                    <p>{{ task.description|linebreaksbr }}</p>
+                {% else %}
+                    <p class="text-muted fst-italic mb-0">No description provided.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Subtasks -->
+        <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs-6"><i class="fas fa-tasks me-2"></i>Subtasks</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for subtask in subtasks %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" disabled {% if subtask.is_completed %}checked{% endif %}>
+                            <label class="form-check-label {% if subtask.is_completed %}text-decoration-line-through text-muted{% endif %}">
+                                {{ subtask.title }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted py-3">
+                    No subtasks added yet.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Comments -->
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fs-6"><i class="fas fa-comments me-2"></i>Comments</h5>
+            </div>
+            <div class="card-body">
+                {% for comment in comments %}
+                <div class="d-flex mb-4">
+                    <div class="me-3">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:40px;height:40px;">
+                            {{ comment.author.first_name|first|default:comment.author.email|first|upper }}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mb-1">
+                            <strong>{{ comment.author.get_full_name|default:comment.author.email }}</strong>
+                            <span class="text-muted small ms-2">{{ comment.created_at|timesince }} ago</span>
+                        </div>
+                        <div class="bg-light p-3 rounded text-dark">
+                            {{ comment.text|linebreaksbr }}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-3 mb-0">No comments yet. Be the first to start the discussion!</p>
+                {% endfor %}
+            </div>
+            <div class="card-footer bg-white border-top-0 pt-0">
+                <form method="post" action="{% url 'projects:task_comment' task.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <textarea name="text" class="form-control" rows="2" placeholder="Write a comment..." required></textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane me-1"></i>Post Comment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Sidebar Info -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fs-6"><i class="fas fa-info-circle me-2"></i>Task Info</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">Assigned To</div>
+                    <div>
+                        {% for user in task.assigned_to.all %}
+                            <span class="badge bg-secondary mb-1">{{ user.get_full_name|default:user.email }}</span>
+                        {% empty %}
+                            <span class="text-muted">Unassigned</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">Due Date</div>
+                    <div class="{% if task.due_date < today and task.status != 'done' %}text-danger fw-bold{% endif %}">
+                        <i class="far fa-calendar-alt me-1"></i>{{ task.due_date|date:"M d, Y"|default:"No due date" }}
+                    </div>
+                </div>
+                <div class="mb-0">
+                    <div class="text-muted small mb-1">Milestone</div>
+                    <div>{{ task.milestone.name|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Tracking -->
+        <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs-6"><i class="fas fa-clock me-2"></i>Time Tracking</h5>
+                <span class="badge bg-primary">{{ total_logged }} / {{ task.estimated_hours|default:"0" }} hrs</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for log in time_logs %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold fs-7">{{ log.user.get_full_name|default:log.user.email }}</div>
+                            <div class="text-muted small">{{ log.date|date:"M d, Y" }}</div>
+                        </div>
+                        <div class="fw-bold text-success">{{ log.hours }} h</div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-muted text-center py-3">No time logged yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -26,7 +26,7 @@
     </a>
     
     <!-- Action: Download PDF -->
-    <a href="{% url 'purchase:bill_pdf' bill.pk %}" class="btn btn-outline-primary btn-sm" target="_blank">
+    <a href="{% url 'purchase:bill_detail' bill.pk %}" class="btn btn-outline-primary btn-sm" target="_blank">
       <i class="fas fa-file-pdf me-1"></i>Download PDF
     </a>
 
@@ -216,7 +216,7 @@
         <h5 class="modal-title text-primary fw-bold" id="paymentModalLabel"><i class="fas fa-hand-holding-usd me-2"></i>Record Payment</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form method="post" action="{% url 'purchase:bill_payment' bill.pk %}">
+      <form method="post" action="{% url 'purchase:bill_record_payment' bill.pk %}">
         {% csrf_token %}
         <div class="modal-body">
           <div class="mb-3">
