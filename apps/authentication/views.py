@@ -51,6 +51,15 @@ class LoginView(View):
         password = form.cleaned_data['password']
         remember_me = form.cleaned_data.get('remember_me', False)
 
+        # Check if user exists and is inactive before attempting authentication
+        try:
+            user_check = User.objects.get(email=email)
+            if not user_check.is_active:
+                messages.error(request, 'Your account is currently inactive or pending administrator approval.')
+                return render(request, self.template_name, {'form': form})
+        except User.DoesNotExist:
+            pass
+
         user = authenticate(request, username=email, password=password)
 
         if user is None:
@@ -72,9 +81,7 @@ class LoginView(View):
             messages.error(request, _('Your account is temporarily locked. Please try again later.'))
             return render(request, self.template_name, {'form': form})
 
-        if not user.is_active:
-            messages.error(request, 'Your account is currently inactive or pending administrator approval.')
-            return render(request, self.template_name, {'form': form})
+
 
         # 2FA check
         if user.two_factor_enabled:

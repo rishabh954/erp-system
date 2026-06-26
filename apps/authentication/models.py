@@ -86,7 +86,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     two_factor_enabled = models.BooleanField(default=False)
     two_factor_method = models.CharField(
         max_length=10,
-        choices=[('totp', 'Authenticator App'), ('email', 'Email'), ('sms', 'SMS')],
+        choices=[('totp', 'Authenticator App')],
         default='totp',
     )
 

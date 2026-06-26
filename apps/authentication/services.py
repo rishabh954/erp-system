@@ -15,22 +15,20 @@ from .models import User, PasswordResetToken, EmailVerificationToken
 class AuthService:
 
     def verify_2fa_code(self, user: User, code: str) -> bool:
-        """Verify TOTP or static 2FA code."""
+        """Verify TOTP code with replay protection."""
         if user.two_factor_method == 'totp':
             try:
                 import pyotp
-                # Retrieve the TOTP secret from django-otp device
                 from django_otp.plugins.otp_totp.models import TOTPDevice
                 device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
                 if not device:
                     return False
-                totp = pyotp.TOTP(device.key)
-                return totp.verify(code, valid_window=1)
+                
+                # Check for replay using django-otp's verify_token method,
+                # which automatically updates the device's counter to prevent replay
+                return device.verify_token(code)
             except Exception:
                 return False
-        elif user.two_factor_method == 'email':
-            # Session-stored OTP (set at login time)
-            return False  # implement via session OTP
         return False
 
     def send_email_verification(self, user: User, request=None):

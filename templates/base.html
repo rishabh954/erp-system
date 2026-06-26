@@ -346,6 +346,7 @@
           <i class="fas fa-chevron-right nav-arrow"></i>
         </a>
         <ul class="nav-children">
+          <li><a href="{% url 'administration:pending_approvals' %}" class="nav-link nav-child"><i class="fas fa-user-clock"></i> Pending Users</a></li>
           <li><a href="{% url 'administration:number_series' %}" class="nav-link nav-child"><i class="fas fa-sort-numeric-up"></i> Number Series</a></li>
           <li><a href="{% url 'administration:approval_matrix' %}" class="nav-link nav-child"><i class="fas fa-sitemap"></i> Approval Matrix</a></li>
           <li><a href="{% url 'administration:email_config' %}" class="nav-link nav-child"><i class="fas fa-envelope"></i> Email Config</a></li>

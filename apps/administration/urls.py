@@ -13,6 +13,10 @@ urlpatterns = [
     path('number-series/', views.NumberSeriesListView.as_view(), name='number_series'),
     path('approval-matrix/', views.ApprovalMatrixListView.as_view(), name='approval_matrix'),
     path('approval-matrix/<uuid:pk>/delete/', views.ApprovalMatrixDeleteView.as_view(), name='approval_matrix_delete'),
+    
+    # Users
+    path('pending-approvals/', views.PendingUserApprovalListView.as_view(), name='pending_approvals'),
+    path('pending-approvals/<uuid:pk>/action/', views.PendingUserApprovalActionView.as_view(), name='pending_approvals_action'),
 
     # Communication
     path('email-config/', views.EmailConfigView.as_view(), name='email_config'),

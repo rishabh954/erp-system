@@ -613,3 +613,52 @@ class AuditLogDetailView(AdminRequiredMixin, View):
             'timestamp': log.timestamp.isoformat(),
             'ip_address': log.ip_address,
         })
+
+# ── Users ──────────────────────────────────────────────────────────────
+
+class PendingUserApprovalListView(AdminRequiredMixin, View):
+    template_name = 'administration/pending_users.html'
+
+    def get(self, request):
+        from apps.authentication.models import User
+        if request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser:
+            pending_users = User.objects.filter(is_active=False).order_by('-date_joined')
+        else:
+            pending_users = User.objects.filter(is_active=False, companies=self.company).order_by('-date_joined')
+        return render(request, self.template_name, {'pending_users': pending_users})
+
+
+class PendingUserApprovalActionView(AdminRequiredMixin, View):
+    def post(self, request, pk):
+        from apps.authentication.models import User
+        if request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser:
+            user = get_object_or_404(User, pk=pk, is_active=False)
+        else:
+            user = get_object_or_404(User, pk=pk, companies=self.company, is_active=False)
+            
+        action = request.POST.get('action')
+        
+        if action == 'approve':
+            user.is_active = True
+            # Auto-assign to admin's company if they have none
+            if not user.companies.exists() and self.company:
+                user.companies.add(self.company)
+                user.primary_company = self.company
+            user.save()
+            ActivityLog.objects.create(
+                user=request.user, company=self.company,
+                activity_type=ActivityLog.ActivityType.SETTINGS_CHANGE, module='auth',
+                description=f'Approved pending user: {user.email}'
+            )
+            messages.success(request, f'User {user.email} approved successfully.')
+        elif action == 'reject':
+            email = user.email
+            user.delete()
+            ActivityLog.objects.create(
+                user=request.user, company=self.company,
+                activity_type=ActivityLog.ActivityType.SETTINGS_CHANGE, module='auth',
+                description=f'Rejected and deleted pending user: {email}'
+            )
+            messages.success(request, f'User {email} rejected and removed.')
+            
+        return redirect('administration:pending_approvals')

@@ -54,4 +54,9 @@ app.conf.beat_schedule = {
         'task': 'apps.authentication.tasks.cleanup_old_audit_logs',
         'schedule': crontab(hour=3, minute=0),
     },
+    # Daily: Clean up expired password reset / email tokens
+    'cleanup-expired-tokens': {
+        'task': 'apps.authentication.tasks.cleanup_expired_tokens',
+        'schedule': crontab(hour=4, minute=0),
+    },
 }
