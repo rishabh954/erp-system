@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models import CompanyScoped, AddressMixin, ContactMixin, NotesMixin, SequenceMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.contenttypes.fields import GenericRelation
 
 class Campaign(CompanyScoped, NotesMixin):
     class Status(models.TextChoices):
@@ -66,6 +67,10 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
     is_opportunity = models.BooleanField(default=False, help_text='If True, this is considered a qualified deal/opportunity.')
     lead_score = models.IntegerField(default=0)
     campaign = models.ForeignKey(Campaign, null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
+    territory = models.ForeignKey('Territory', null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
+    
+    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'crm_leads'
@@ -112,13 +117,41 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
         self.lead_score = min(score, 100)
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        
         # Only auto-calculate if we're not explicitly updating specific fields that exclude lead_score
         update_fields = kwargs.get('update_fields')
         if not update_fields or 'lead_score' in update_fields or 'status' in update_fields:
             self.calculate_score()
             if update_fields and 'lead_score' not in update_fields:
                 kwargs['update_fields'] = list(update_fields) + ['lead_score']
+                
         super().save(*args, **kwargs)
+        
+        # Apply assignment rules if this is a new, unassigned lead
+        if is_new and not self.assigned_to:
+            self._apply_assignment_rules()
+
+    def _apply_assignment_rules(self):
+        """Internal method to auto-assign lead based on active LeadAssignmentRules."""
+        rules = LeadAssignmentRule.objects.filter(company=self.company, is_active=True).order_by('priority')
+        
+        for rule in rules:
+            if rule.source_criteria and rule.source_criteria != self.source:
+                continue
+            if rule.min_revenue and self.expected_revenue < rule.min_revenue:
+                continue
+                
+            # Rule matches, apply assignment method
+            if rule.assignment_method == LeadAssignmentRule.AssignmentMethod.TERRITORY_BASED and rule.target_territory:
+                self.territory = rule.target_territory
+                reps = rule.target_territory.sales_reps.all()
+                if reps.exists():
+                    self.assigned_to = reps.first() # Simple assignment for now, could be improved to round robin
+            
+            if self.assigned_to or self.territory:
+                self.save(update_fields=['assigned_to', 'territory'])
+                break
 
 
 class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
@@ -141,6 +174,13 @@ class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
     shipping_same_as_billing = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     portal_user = models.OneToOneField('authentication.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='customer_profile')
+    
+    # CRM Additions
+    tags = models.JSONField(default=list, blank=True)
+    segment = models.CharField(max_length=50, blank=True, help_text='Customer Segment (e.g., Enterprise, SMB)')
+
+    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'crm_customers'
@@ -200,6 +240,9 @@ class Contract(CompanyScoped, NotesMixin):
     document = models.FileField(upload_to='contracts/', null=True, blank=True)
     signed_by_customer = models.BooleanField(default=False)
     signed_date = models.DateField(null=True, blank=True)
+    
+    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'crm_contracts'
@@ -207,3 +250,58 @@ class Contract(CompanyScoped, NotesMixin):
 
     def __str__(self):
         return f"{self.contract_number} | {self.title}"
+
+# ════════════════════════ SALES TEAM MANAGEMENT ══════════════════════════════
+
+class Territory(CompanyScoped, NotesMixin):
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=50, blank=True)
+    manager = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_territories')
+    sales_reps = models.ManyToManyField('authentication.User', blank=True, related_name='territories')
+    
+    class Meta:
+        db_table = 'crm_territories'
+        verbose_name_plural = 'Territories'
+        
+    def __str__(self):
+        return self.name
+
+class LeadAssignmentRule(CompanyScoped):
+    class AssignmentMethod(models.TextChoices):
+        ROUND_ROBIN = 'round_robin', _('Round Robin')
+        LOAD_BALANCED = 'load_balanced', _('Load Balanced')
+        TERRITORY_BASED = 'territory', _('Territory Based')
+
+    name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    source_criteria = models.CharField(max_length=50, choices=Lead.Source.choices, blank=True, help_text='Apply to leads from this source')
+    min_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    assignment_method = models.CharField(max_length=20, choices=AssignmentMethod.choices, default=AssignmentMethod.ROUND_ROBIN)
+    target_territory = models.ForeignKey(Territory, null=True, blank=True, on_delete=models.SET_NULL)
+    priority = models.IntegerField(default=0, help_text='Lower number means higher priority')
+
+    class Meta:
+        db_table = 'crm_lead_assignment_rules'
+        ordering = ['priority']
+        
+    def __str__(self):
+        return self.name
+
+class SalesTarget(CompanyScoped):
+    class Period(models.TextChoices):
+        MONTHLY = 'monthly', _('Monthly')
+        QUARTERLY = 'quarterly', _('Quarterly')
+        YEARLY = 'yearly', _('Yearly')
+
+    sales_rep = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='sales_targets')
+    period = models.CharField(max_length=15, choices=Period.choices, default=Period.MONTHLY)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    target_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    target_deals = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'crm_sales_targets'
+        
+    def __str__(self):
+        return f"{self.sales_rep.get_full_name()} - {self.get_period_display()} Target"

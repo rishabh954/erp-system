@@ -2,9 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from core.services import StandardResultsSetPagination
-from apps.crm.models import Lead, Customer, LeadActivity
+from apps.crm.models import Lead, Customer, LeadActivity, Contract
 from apps.crm.api.serializers import (
-    LeadSerializer, CustomerSerializer, LeadActivitySerializer
+    LeadSerializer, CustomerSerializer, LeadActivitySerializer, ContractSerializer
 )
 
 class LeadViewSet(viewsets.ModelViewSet):
@@ -110,3 +110,14 @@ class LeadActivityViewSet(viewsets.ModelViewSet):
         lead_id = self.request.data.get('lead')
         # Ensure lead is passed and valid in serializer
         serializer.save(company=getattr(self.request, 'company', None))
+
+class ContractViewSet(viewsets.ModelViewSet):
+    queryset = Contract.objects.all()
+    serializer_class = ContractSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if hasattr(self.request, 'company') and self.request.company:
+            qs = qs.filter(company=self.request.company)
+        return qs

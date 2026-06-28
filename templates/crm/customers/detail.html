@@ -99,6 +99,25 @@
             <span class="text-muted small d-block">Tax ID / VAT Registration</span>
             <span class="fw-semibold text-dark">{{ customer.tax_id|default:"-" }}</span>
           </li>
+          <!-- CRM Additions -->
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block">Customer Segment</span>
+            {% if customer.segment %}
+              <span class="badge bg-primary">{{ customer.segment }}</span>
+            {% else %}
+              <span class="text-muted small italic">-</span>
+            {% endif %}
+          </li>
+          <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
+            <span class="text-muted small d-block mb-1">Tags</span>
+            {% if customer.tags %}
+              {% for tag in customer.tags %}
+                <span class="badge bg-light text-dark border">{{ tag }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted small italic">-</span>
+            {% endif %}
+          </li>
           <li class="list-group-item px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small d-block">Payment Terms</span>
             <span class="fw-semibold text-dark"><i class="fas fa-clock me-1 small text-muted"></i>Net {{ customer.payment_terms }} Days</span>

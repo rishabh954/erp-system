@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Sales Territories{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 text-primary mb-1">Territories</h1>
+  <a href="{% url 'crm:territory_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Territory</a>
+</div>
+<div class="card shadow-sm border-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Manager</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for territory in territories %}
+        <tr>
+          <td>{{ territory.name }}</td><td>{{ territory.code }}</td><td>{{ territory.manager|default:"-" }}</td>
+          <td>
+            <a href="{% url 'crm:territory_update' territory.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+            <form method="post" action="{% url 'crm:territory_delete' territory.pk %}" class="d-inline">
+              {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center py-3">No territories found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

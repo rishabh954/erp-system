@@ -1,4 +1,5 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
     LeadListView, LeadDetailView, LeadCreateView, LeadUpdateView, LeadDeleteView,
     LeadUpdateStatusView, LeadConvertView, LeadToggleOpportunityView, AddActivityView, PipelineView,
@@ -7,10 +8,22 @@ from .views import (
     MeetingSchedulerView, OpportunityListView, InteractionListView,
     ContractListView, ContractDetailView, ContractCreateView, ContractUpdateView, ContractDeleteView, CRMDashboardView
 )
+from .views_setup import (
+    TerritoryListView, TerritoryCreateView, TerritoryUpdateView, TerritoryDeleteView,
+    LeadAssignmentRuleListView, LeadAssignmentRuleCreateView, LeadAssignmentRuleUpdateView, LeadAssignmentRuleDeleteView,
+    SalesTargetListView, SalesTargetCreateView, SalesTargetUpdateView, SalesTargetDeleteView
+)
+from .api.views import LeadViewSet, CustomerViewSet, ContractViewSet
+
+router = DefaultRouter()
+router.register(r'leads', LeadViewSet, basename='api-leads')
+router.register(r'customers', CustomerViewSet, basename='api-customers')
+router.register(r'contracts', ContractViewSet, basename='api-contracts')
 
 app_name = 'crm'
 
 urlpatterns = [
+    path('api/', include(router.urls)),
     path('dashboard/', CRMDashboardView.as_view(), name='dashboard'),
     
     path('leads/', LeadListView.as_view(), name='leads'),
@@ -44,4 +57,20 @@ urlpatterns = [
     
     path('interactions/', InteractionListView.as_view(), name='interactions'),
     path('meetings/', MeetingSchedulerView.as_view(), name='meeting_scheduler'),
+    
+    # Setup - Sales Team Management
+    path('setup/territories/', TerritoryListView.as_view(), name='territory_list'),
+    path('setup/territories/create/', TerritoryCreateView.as_view(), name='territory_create'),
+    path('setup/territories/<uuid:pk>/edit/', TerritoryUpdateView.as_view(), name='territory_update'),
+    path('setup/territories/<uuid:pk>/delete/', TerritoryDeleteView.as_view(), name='territory_delete'),
+    
+    path('setup/rules/', LeadAssignmentRuleListView.as_view(), name='rule_list'),
+    path('setup/rules/create/', LeadAssignmentRuleCreateView.as_view(), name='rule_create'),
+    path('setup/rules/<uuid:pk>/edit/', LeadAssignmentRuleUpdateView.as_view(), name='rule_update'),
+    path('setup/rules/<uuid:pk>/delete/', LeadAssignmentRuleDeleteView.as_view(), name='rule_delete'),
+    
+    path('setup/targets/', SalesTargetListView.as_view(), name='target_list'),
+    path('setup/targets/create/', SalesTargetCreateView.as_view(), name='target_create'),
+    path('setup/targets/<uuid:pk>/edit/', SalesTargetUpdateView.as_view(), name='target_update'),
+    path('setup/targets/<uuid:pk>/delete/', SalesTargetDeleteView.as_view(), name='target_delete'),
 ]

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.crm.models import Lead, Customer, LeadActivity
+from apps.crm.models import Lead, Customer, LeadActivity, Contract
 
 class LeadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,5 +18,11 @@ class CustomerSerializer(serializers.ModelSerializer):
 class LeadActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model = LeadActivity
+        fields = '__all__'
+        read_only_fields = ['company', 'created_by', 'updated_by', 'created_at', 'updated_at']
+
+class ContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contract
         fields = '__all__'
         read_only_fields = ['company', 'created_by', 'updated_by', 'created_at', 'updated_at']

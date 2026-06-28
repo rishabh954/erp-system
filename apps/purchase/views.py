@@ -3,12 +3,13 @@ Purchase Management Views
 Vendors, Purchase Requests, Purchase Orders, Goods Receipts
 """
 
-from django.views.generic import ListView, DetailView, View, TemplateView
+from django.views.generic import ListView, DetailView, View, TemplateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib import messages
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.urls import reverse_lazy
 
 from .models import (
     Vendor, PurchaseRequest, PurchaseRequestLine,
