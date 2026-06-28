@@ -1,11 +1,11 @@
 from django.urls import path
 from .views import (
     LeadListView, LeadDetailView, LeadCreateView, LeadUpdateView, LeadDeleteView,
-    LeadUpdateStatusView, LeadConvertView, AddActivityView, PipelineView,
+    LeadUpdateStatusView, LeadConvertView, LeadToggleOpportunityView, AddActivityView, PipelineView,
     CustomerListView, CustomerDetailView, CustomerCreateView, CustomerUpdateView, CustomerDeleteView,
     CampaignListView, CampaignCreateView, CampaignDetailView,
     MeetingSchedulerView, OpportunityListView, InteractionListView,
-    ContractListView, ContractDetailView, ContractCreateView, CRMDashboardView
+    ContractListView, ContractDetailView, ContractCreateView, ContractUpdateView, ContractDeleteView, CRMDashboardView
 )
 
 app_name = 'crm'
@@ -20,6 +20,7 @@ urlpatterns = [
     path('leads/<uuid:pk>/delete/', LeadDeleteView.as_view(), name='lead_delete'),
     path('leads/<uuid:pk>/status/', LeadUpdateStatusView.as_view(), name='lead_update_status'),
     path('leads/<uuid:pk>/convert/', LeadConvertView.as_view(), name='lead_convert'),
+    path('leads/<uuid:pk>/toggle-opportunity/', LeadToggleOpportunityView.as_view(), name='lead_toggle_opportunity'),
     path('leads/<uuid:pk>/activity/', AddActivityView.as_view(), name='lead_add_activity'),
     
     path('opportunities/', OpportunityListView.as_view(), name='opportunities'),
@@ -38,6 +39,8 @@ urlpatterns = [
     path('contracts/', ContractListView.as_view(), name='contracts'),
     path('contracts/create/', ContractCreateView.as_view(), name='contract_create'),
     path('contracts/<uuid:pk>/', ContractDetailView.as_view(), name='contract_detail'),
+    path('contracts/<uuid:pk>/edit/', ContractUpdateView.as_view(), name='contract_update'),
+    path('contracts/<uuid:pk>/delete/', ContractDeleteView.as_view(), name='contract_delete'),
     
     path('interactions/', InteractionListView.as_view(), name='interactions'),
     path('meetings/', MeetingSchedulerView.as_view(), name='meeting_scheduler'),

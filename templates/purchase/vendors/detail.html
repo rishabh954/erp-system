@@ -24,6 +24,15 @@
     <a href="{% url 'purchase:vendors' %}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-arrow-left me-1"></i>Back
     </a>
+    <a href="{% url 'purchase:vendor_update' vendor.pk %}" class="btn btn-warning btn-sm text-white">
+      <i class="fas fa-edit me-1"></i>Edit
+    </a>
+    <form method="post" action="{% url 'purchase:vendor_delete' vendor.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm" data-confirm-delete="Delete this vendor?">
+        <i class="fas fa-trash me-1"></i>Delete
+      </button>
+    </form>
   </div>
 </div>
 

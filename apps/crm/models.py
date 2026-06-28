@@ -74,6 +74,52 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
     def __str__(self):
         return f"{self.number} | {self.name}"
 
+    def calculate_score(self):
+        """Calculate lead score based on probability, revenue, source, and data completeness."""
+        score = 0
+        
+        # 1. Probability (up to 50 pts)
+        if self.probability:
+            score += int(self.probability / 2)
+            
+        # 2. Expected Revenue (up to 20 pts)
+        if self.expected_revenue:
+            if self.expected_revenue >= 10000:
+                score += 20
+            elif self.expected_revenue >= 1000:
+                score += 10
+            elif self.expected_revenue > 0:
+                score += 5
+                
+        # 3. Source (up to 15 pts)
+        if self.source:
+            if self.source == self.Source.REFERRAL:
+                score += 15
+            elif self.source in [self.Source.WEB, self.Source.EVENT]:
+                score += 10
+            elif self.source in [self.Source.EMAIL, self.Source.SOCIAL]:
+                score += 5
+                
+        # 4. Data Completeness (up to 15 pts)
+        if self.email:
+            score += 5
+        if self.phone:
+            score += 5
+        if self.campaign_id:
+            score += 5
+            
+        # Cap at 100
+        self.lead_score = min(score, 100)
+
+    def save(self, *args, **kwargs):
+        # Only auto-calculate if we're not explicitly updating specific fields that exclude lead_score
+        update_fields = kwargs.get('update_fields')
+        if not update_fields or 'lead_score' in update_fields or 'status' in update_fields:
+            self.calculate_score()
+            if update_fields and 'lead_score' not in update_fields:
+                kwargs['update_fields'] = list(update_fields) + ['lead_score']
+        super().save(*args, **kwargs)
+
 
 class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
     class CustomerType(models.TextChoices):

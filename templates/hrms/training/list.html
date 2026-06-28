@@ -1,11 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Training Programs{% endblock %}
+{% block title %}Training Programs | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item active">Training Programs</li>
+{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Training Programs</h1></div>
-<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
-<thead class="table-light"><tr><th>Name</th><th>Trainer</th><th>Start Date</th><th>Location</th></tr></thead>
-<tbody>
-{% for t in programs %}<tr><td><a href="{% url 'hrms:training_program_detail' t.pk %}">{{ t.name }}</a></td><td>{{ t.trainer_name }}</td><td>{{ t.start_date }}</td><td>{{ t.location }}</td></tr>
-{% empty %}<tr><td colspan="4" class="text-center py-4">No training programs found.</td></tr>{% endfor %}
-</tbody></table></div>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Training & Development</h1>
+    <p class="text-muted mb-0">Manage internal and external training programs</p>
+  </div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTrainingModal">
+    <i class="fas fa-plus me-1"></i>New Program
+  </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Program Name</th>
+          <th>Trainer</th>
+          <th>Location</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Attendees</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for program in programs %}
+        <tr>
+          <td><strong><a href="{% url 'hrms:training_program_detail' program.pk %}">{{ program.name }}</a></strong></td>
+          <td>{{ program.trainer_name|default:"TBD" }}</td>
+          <td>{{ program.location|default:"TBD" }}</td>
+          <td>{{ program.start_date|date:"M j, Y" }}</td>
+          <td>{{ program.end_date|date:"M j, Y" }}</td>
+          <td><span class="badge bg-info text-dark">{{ program.attendees.count }}</span></td>
+          <td>
+            <a href="{% url 'hrms:training_program_detail' program.pk %}" class="btn btn-sm btn-outline-primary">Manage</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No training programs scheduled.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Training Modal -->
+<div class="modal fade" id="addTrainingModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:training_programs' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Create Training Program</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Program Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Trainer Name</label>
+              <input type="text" name="trainer_name" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Location / Platform</label>
+              <input type="text" name="location" class="form-control">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Start Date <span class="text-danger">*</span></label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">End Date <span class="text-danger">*</span></label>
+              <input type="date" name="end_date" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Cost per head (optional)</label>
+              <input type="number" step="0.01" name="cost" class="form-control" value="0.00">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description / Syllabus</label>
+            <textarea name="description" class="form-control" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Program</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

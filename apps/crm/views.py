@@ -99,6 +99,7 @@ class LeadCreateView(CompanyMixin, View):
                 companies=c, is_active=True,
                 role__in=['sales_manager', 'employee', 'company_admin']
             ).order_by('first_name'),
+            'campaigns': Campaign.objects.filter(company=c, is_deleted=False),
         })
 
     def post(self, request):
@@ -118,6 +119,7 @@ class LeadCreateView(CompanyMixin, View):
                 probability=int(data.get('probability', 10)),
                 expected_close_date=data.get('expected_close_date') or None,
                 notes=data.get('notes', ''),
+                campaign_id=data.get('campaign') or None,
             )
             lead.number = BaseService.generate_sequence_number('LD', Lead, company.pk)
             lead.save()
@@ -143,6 +145,7 @@ class LeadUpdateView(CompanyMixin, View):
                 companies=c, is_active=True,
                 role__in=['sales_manager', 'employee', 'company_admin']
             ).order_by('first_name'),
+            'campaigns': Campaign.objects.filter(company=c, is_deleted=False),
         })
 
     def post(self, request, pk):
@@ -169,6 +172,8 @@ class LeadUpdateView(CompanyMixin, View):
             lead.expected_close_date = data.get('expected_close_date') or None
             if data.get('notes'):
                 lead.notes = data.get('notes')
+            lead.campaign_id = data.get('campaign') or None
+            
             lead.save()
             messages.success(request, f'Lead {lead.number} updated successfully.')
             return redirect('crm:lead_detail', pk=lead.pk)
@@ -212,7 +217,19 @@ class LeadUpdateStatusView(CompanyMixin, View):
             lead.status = new_status
             if new_status == 'won':
                 lead.converted_to_customer = True
-            lead.save(update_fields=['status', 'converted_to_customer'])
+                if not lead.customer:
+                    # Create Customer
+                    from core.services import BaseService
+                    cust = Customer(
+                        company=lead.company,
+                        name=lead.company_name if lead.company_name else lead.name,
+                        email=lead.email,
+                        phone=lead.phone
+                    )
+                    cust.customer_code = BaseService.generate_sequence_number('CUST', Customer, lead.company.pk, field_name='customer_code')
+                    cust.save()
+                    lead.customer = cust
+            lead.save(update_fields=['status', 'converted_to_customer', 'customer'])
             return JsonResponse({'ok': True, 'status': new_status, 'label': lead.get_status_display()})
         return JsonResponse({'ok': False, 'error': 'Invalid status'}, status=400)
 
@@ -221,9 +238,25 @@ class LeadUpdateStatusView(CompanyMixin, View):
 class CampaignListView(CompanyMixin, ListView):
     template_name = 'crm/campaigns/list.html'
     context_object_name = 'campaigns'
+    paginate_by = 25
     
     def get_queryset(self):
-        return Campaign.objects.filter(company=self.company())
+        qs = Campaign.objects.filter(company=self.company()).order_by('-created_at')
+        q = self.request.GET.get('q', '').strip()
+        status = self.request.GET.get('status', '').strip()
+        
+        if q:
+            qs = qs.filter(name__icontains=q)
+        if status:
+            qs = qs.filter(status=status)
+            
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        context['status_choices'] = Campaign.Status.choices
+        return context
 
 class CampaignDetailView(CompanyMixin, DetailView):
     template_name = 'crm/campaigns/detail.html'
@@ -291,6 +324,19 @@ class LeadConvertView(CompanyMixin, View):
         return redirect('crm:customer_detail', pk=customer.pk)
 
 
+class LeadToggleOpportunityView(CompanyMixin, View):
+    """Toggle a lead's status as an Opportunity."""
+    def post(self, request, pk):
+        lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
+        lead.is_opportunity = not lead.is_opportunity
+        lead.save(update_fields=['is_opportunity'])
+        if lead.is_opportunity:
+            messages.success(request, f'{lead.name} is now marked as an Opportunity.')
+        else:
+            messages.success(request, f'{lead.name} is now marked as a standard Lead.')
+        return redirect('crm:lead_detail', pk=lead.pk)
+
+
 class AddActivityView(CompanyMixin, View):
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
@@ -323,7 +369,7 @@ class PipelineView(CompanyMixin, TemplateView):
         columns = {}
         for val, label in stages:
             qs = Lead.objects.filter(
-                company=c, status=val, is_deleted=False, is_opportunity=True
+                company=c, status=val, is_deleted=False
             ).select_related('assigned_to').order_by('-expected_revenue')
             columns[val] = {
                 'label': label,
@@ -520,8 +566,18 @@ class OpportunityListView(CompanyMixin, ListView):
         ).select_related('assigned_to', 'customer').order_by('-expected_revenue')
         
         status = self.request.GET.get('status', '')
+        q = self.request.GET.get('q', '').strip()
+        
         if status:
             qs = qs.filter(status=status)
+            
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q) |
+                Q(customer__name__icontains=q) |
+                Q(email__icontains=q) |
+                Q(phone__icontains=q)
+            )
             
         if self.request.user.role not in ('sales_manager', 'company_admin', 'super_admin'):
             qs = qs.filter(assigned_to=self.request.user)
@@ -532,6 +588,7 @@ class OpportunityListView(CompanyMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx['total_value'] = self.get_queryset().aggregate(t=Sum('expected_revenue'))['t'] or 0
         ctx['status_choices'] = Lead.Status.choices
+        ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
 
 # ════════════════════════ CONTRACTS ══════════════════════════════════════════
@@ -542,7 +599,26 @@ class ContractListView(CompanyMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        return Contract.objects.filter(company=self.company()).select_related('customer').order_by('-created_at')
+        qs = Contract.objects.filter(company=self.company()).select_related('customer').order_by('-created_at')
+        q = self.request.GET.get('q', '').strip()
+        status = self.request.GET.get('status', '').strip()
+        
+        if q:
+            qs = qs.filter(
+                Q(title__icontains=q) |
+                Q(contract_number__icontains=q) |
+                Q(customer__name__icontains=q)
+            )
+        if status:
+            qs = qs.filter(status=status)
+            
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        context['status_choices'] = Contract.Status.choices
+        return context
 
 class ContractDetailView(CompanyMixin, DetailView):
     template_name = 'crm/contracts/detail.html'
@@ -581,6 +657,47 @@ class ContractCreateView(CompanyMixin, View):
             messages.error(request, f'Error creating contract: {e}')
             return redirect('crm:contracts')
 
+class ContractUpdateView(CompanyMixin, View):
+    def get(self, request, pk):
+        contract = get_object_or_404(Contract, pk=pk, company=self.company())
+        return render(request, 'crm/contracts/form.html', {
+            'contract': contract,
+            'customers': Customer.objects.filter(company=self.company(), is_deleted=False).order_by('name'),
+            'statuses': Contract.Status.choices
+        })
+        
+    def post(self, request, pk):
+        contract = get_object_or_404(Contract, pk=pk, company=self.company())
+        try:
+            customer = get_object_or_404(Customer, pk=request.POST.get('customer'), company=self.company())
+            contract.customer = customer
+            contract.title = request.POST.get('title')
+            contract.contract_number = request.POST.get('contract_number', '')
+            contract.status = request.POST.get('status', 'draft')
+            contract.start_date = request.POST.get('start_date')
+            contract.end_date = request.POST.get('end_date') or None
+            contract.value = request.POST.get('value') or 0
+            if request.POST.get('notes') is not None:
+                contract.notes = request.POST.get('notes')
+                
+            if request.FILES.get('document'):
+                contract.document = request.FILES['document']
+                
+            contract.save()
+            messages.success(request, 'Contract updated successfully.')
+            return redirect('crm:contract_detail', pk=contract.pk)
+        except Exception as e:
+            messages.error(request, f'Error updating contract: {e}')
+            return redirect('crm:contract_detail', pk=contract.pk)
+
+class ContractDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        contract = get_object_or_404(Contract, pk=pk, company=self.company())
+        title = contract.title
+        contract.delete()
+        messages.success(request, f'Contract "{title}" has been deleted.')
+        return redirect('crm:contracts')
+
 # ════════════════════════ INTERACTIONS ═══════════════════════════════════════
 
 class InteractionListView(CompanyMixin, ListView):
@@ -592,7 +709,26 @@ class InteractionListView(CompanyMixin, ListView):
         qs = LeadActivity.objects.filter(company=self.company()).select_related('lead', 'assigned_to').order_by('-created_at')
         if self.request.user.role not in ('sales_manager', 'company_admin', 'super_admin'):
             qs = qs.filter(assigned_to=self.request.user)
+            
+        q = self.request.GET.get('q', '').strip()
+        activity_type = self.request.GET.get('activity_type', '').strip()
+        
+        if q:
+            qs = qs.filter(
+                Q(subject__icontains=q) |
+                Q(description__icontains=q) |
+                Q(lead__name__icontains=q)
+            )
+        if activity_type:
+            qs = qs.filter(activity_type=activity_type)
+            
         return qs
+        
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        context['activity_type_choices'] = LeadActivity.ActivityType.choices
+        return context
 
 # ════════════════════════ CRM DASHBOARD ══════════════════════════════════════
 

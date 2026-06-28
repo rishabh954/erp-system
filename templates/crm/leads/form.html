@@ -122,6 +122,26 @@
               </div>
             </div>
 
+            <!-- Lead Score -->
+            <div class="col-6 col-md-6">
+              <label for="id_lead_score" class="form-label fw-semibold">Lead Score</label>
+              <div style="position:relative">
+                <i class="fas fa-star-half-alt" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+                <input type="number" name="lead_score" id="id_lead_score" class="form-control" style="padding-left:36px; background-color: var(--bs-gray-200)" placeholder="Auto-calculated" value="{{ lead.lead_score|default:'0' }}" readonly title="Score is automatically calculated on save">
+              </div>
+            </div>
+
+            <!-- Campaign -->
+            <div class="col-6 col-md-6">
+              <label for="id_campaign" class="form-label fw-semibold">Campaign</label>
+              <select name="campaign" id="id_campaign" class="form-select">
+                <option value="">None</option>
+                {% for camp in campaigns %}
+                <option value="{{ camp.id }}" {% if lead.campaign_id == camp.id %}selected{% endif %}>{{ camp.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
             <!-- Notes -->
             <div class="col-12">
               <label for="id_notes" class="form-label fw-semibold">Notes</label>

@@ -1,10 +1,106 @@
 {% extends "base.html" %}
-{% block title %}Bid Details{% endblock %}
+{% load static %}
+
+{% block title %}Bid from {{ bid.vendor.name }}{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Bid from {{ bid.vendor.name }}</h1></div>
-<div class="card shadow-sm border-0 p-4 mb-4">
-<p><strong>RFQ:</strong> {{ bid.rfq.title }}</p>
-<p><strong>Total Amount:</strong> {{ bid.total_amount }}</p>
-<p><strong>Status:</strong> {{ bid.get_status_display }}</p>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Bid from {{ bid.vendor.name }}</h1>
+    <p class="text-muted mb-0">For RFQ: <a href="{% url 'purchase:rfq_detail' bid.rfq.pk %}">{{ bid.rfq.number }}</a></p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'purchase:bids' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    
+    {% if bid.status == 'pending' %}
+    <form method="post" action="{% url 'purchase:bid_action' bid.pk %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="accept">
+      <button type="submit" class="btn btn-success btn-sm" data-confirm-delete="Accept this bid? This will generate a Purchase Order.">
+        <i class="fas fa-check me-1"></i>Accept Bid
+      </button>
+    </form>
+    <form method="post" action="{% url 'purchase:bid_action' bid.pk %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reject">
+      <button type="submit" class="btn btn-danger btn-sm" data-confirm-delete="Reject this bid?">
+        <i class="fas fa-times me-1"></i>Reject Bid
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-8">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold"><i class="fas fa-list me-2 text-primary"></i>Quoted Items</h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Product / Description</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in bid.lines.all %}
+              <tr>
+                <td>
+                  {% if line.rfq_line.product %}{{ line.rfq_line.product.name }}{% else %}<em>Custom Item</em>{% endif %}
+                  <div class="small text-muted">{{ line.rfq_line.description }}</div>
+                </td>
+                <td>{{ line.rfq_line.quantity|floatformat:2 }}</td>
+                <td>{{ line.unit_price|floatformat:2 }}</td>
+                <td><strong>{{ line.subtotal|floatformat:2 }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="3" class="text-end fw-bold">Total:</td>
+                <td class="fw-bold">{{ bid.total_amount|floatformat:2 }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-4">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Bid Overview</h6>
+        <div class="mb-3">
+          <span class="text-muted d-block small">Status</span>
+          <span class="badge 
+            {% if bid.status == 'pending' %}bg-secondary
+            {% elif bid.status == 'accepted' %}bg-success
+            {% elif bid.status == 'rejected' %}bg-danger
+            {% endif %}">{{ bid.get_status_display }}</span>
+        </div>
+        <div class="mb-3">
+          <span class="text-muted d-block small">Bid Date</span>
+          <span class="fw-semibold">{{ bid.bid_date|date:"Y-m-d" }}</span>
+        </div>
+        <div class="mb-3">
+          <span class="text-muted d-block small">Valid Until</span>
+          <span class="fw-semibold">{{ bid.valid_until|date:"Y-m-d"|default:"-" }}</span>
+        </div>
+        {% if bid.notes %}
+        <div class="mb-3">
+          <span class="text-muted d-block small">Notes / Terms</span>
+          <span class="small">{{ bid.notes|linebreaksbr }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -1,11 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Subscription - {{ subscription.customer.name }}{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Subscription: {{ subscription.customer.name }}</h1></div>
-<div class="card shadow-sm border-0 p-4">
-<p><strong>Product:</strong> {{ subscription.product.name }}</p>
-<p><strong>Status:</strong> {{ subscription.get_status_display }}</p>
-<p><strong>Recurring Amount:</strong> {{ subscription.recurring_amount }}</p>
-<p><strong>Next Billing Date:</strong> {{ subscription.next_billing_date }}</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-primary mb-0">Subscription: {{ subscription.customer.name }}</h1>
+    <div class="btn-group">
+        <a href="{% url 'sales:subscription_update' subscription.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+        {% if subscription.status == 'active' %}
+        <form action="{% url 'sales:subscription_invoice' subscription.pk %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success" onclick="return confirm('This will generate an invoice and advance the next billing date. Proceed?');">
+                <i class="fas fa-file-invoice-dollar"></i> Generate Invoice
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Subscription Details</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr><th style="width: 40%">Customer:</th><td>{{ subscription.customer.name }}</td></tr>
+                    <tr><th>Product:</th><td>{{ subscription.product.name }}</td></tr>
+                    <tr><th>Status:</th>
+                        <td>
+                            {% if subscription.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif subscription.status == 'paused' %}
+                            <span class="badge bg-warning text-dark">Paused</span>
+                            {% else %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr><th>Billing Cycle:</th><td>{{ subscription.get_billing_cycle_display }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Billing Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr><th style="width: 40%">Recurring Amount:</th><td class="fw-bold">Rs. {{ subscription.recurring_amount }}</td></tr>
+                    <tr><th>Start Date:</th><td>{{ subscription.start_date|date:"M d, Y" }}</td></tr>
+                    <tr><th>Next Billing Date:</th><td class="text-primary fw-bold">{{ subscription.next_billing_date|date:"M d, Y" }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

@@ -34,7 +34,7 @@
               <select name="customer" id="id_customer" class="form-select" required>
                 <option value="">Select Customer...</option>
                 {% for cust in customers %}
-                  <option value="{{ cust.id }}" {% if quotation.customer_id == cust.id %}selected{% endif %}>{{ cust.name }}</option>
+                  <option value="{{ cust.id }}" {% if quotation.customer_id == cust.id or selected_customer|stringformat:"s" == cust.id|stringformat:"s" %}selected{% endif %}>{{ cust.name }}</option>
                 {% endfor %}
               </select>
             </div>

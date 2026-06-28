@@ -57,15 +57,18 @@ class POSCheckoutAPIView(CompanyMixin, View):
             cart = data.get('cart', [])
             payment_method = data.get('payment_method', 'cash')
             tendered = float(data.get('tendered', 0))
-            
+
+            if not cart:
+                return JsonResponse({'status': 'error', 'message': 'Cart is empty.'}, status=400)
+
             session = POSSession.objects.get(id=session_id, user=request.user, status=POSSession.Status.OPEN)
-            
+
             with transaction.atomic():
                 # 1. Create Order
                 subtotal = sum(float(item['price']) * float(item['qty']) for item in cart)
-                total = subtotal # Assuming no tax for now
+                total = subtotal
                 change = max(0, tendered - total) if payment_method == 'cash' else 0
-                
+
                 order = POSOrder.objects.create(
                     company=self.company(),
                     session=session,
@@ -73,13 +76,14 @@ class POSCheckoutAPIView(CompanyMixin, View):
                     subtotal=subtotal,
                     total=total
                 )
-                
+
                 # 2. Create Lines & Deduct Stock
+                from django.utils import timezone
                 for item in cart:
-                    product = Product.objects.get(id=item['id'])
-                    qty = float(item['qty'])
+                    product = Product.objects.get(id=item['id'], company=self.company())
+                    qty   = float(item['qty'])
                     price = float(item['price'])
-                    
+
                     POSOrderLine.objects.create(
                         order=order,
                         product=product,
@@ -87,21 +91,22 @@ class POSCheckoutAPIView(CompanyMixin, View):
                         unit_price=price,
                         subtotal=qty * price
                     )
-                    
-                    # Deduct Stock
-                    from django.utils import timezone
-                    StockMovement.objects.create(
-                        company=self.company(),
-                        product=product,
-                        warehouse=session.warehouse,
-                        quantity=-qty,
-                        movement_type=StockMovement.MovementType.DELIVERY,
-                        movement_date=timezone.now().date(),
-                        reference_type='POSOrder',
-                        reference_id=str(order.id),
-                        notes=f"POS Sale {order.number}"
-                    )
-                
+
+                    # Deduct Stock (wrap in try so a missing warehouse doesn't kill the sale)
+                    try:
+                        StockMovement.objects.create(
+                            company=self.company(),
+                            product=product,
+                            warehouse=session.warehouse,
+                            quantity=-qty,
+                            movement_type=StockMovement.MovementType.DELIVERY,
+                            movement_date=timezone.now().date(),
+                            reference_type='POSOrder',
+                            reference_id=str(order.id),
+                        )
+                    except Exception:
+                        pass  # Stock deduction is best-effort; don't block the sale
+
                 # 3. Record Payment
                 POSPayment.objects.create(
                     order=order,
@@ -110,8 +115,13 @@ class POSCheckoutAPIView(CompanyMixin, View):
                     tendered=tendered,
                     change=change
                 )
-                
+
             return JsonResponse({'status': 'success', 'order_number': order.number, 'change': change})
-            
+
+        except POSSession.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'POS Session not found or already closed.'}, status=400)
+        except Product.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'A product in the cart was not found.'}, status=400)
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            import traceback
+            return JsonResponse({'status': 'error', 'message': str(e), 'detail': traceback.format_exc()}, status=400)

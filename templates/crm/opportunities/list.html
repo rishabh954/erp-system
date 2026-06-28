@@ -5,10 +5,12 @@
 {% block nav_crm %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Opportunities</h1>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header-title">
+        <h1 class="h3 text-primary mb-0">Opportunities</h1>
+    </div>
     <div>
-        <a href="{% url 'crm:pipeline' %}" class="btn btn-outline-primary shadow-sm"><i class="fas fa-stream fa-sm text-white-50"></i> View Pipeline</a>
+        <a href="{% url 'crm:pipeline' %}" class="btn btn-outline-primary shadow-sm"><i class="fas fa-stream me-1"></i>View Pipeline</a>
     </div>
 </div>
 
@@ -30,10 +32,44 @@
     </div>
 </div>
 
-<div class="card shadow mb-4">
-    <div class="card-body p-0">
+<!-- Search & Filters -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+          <input type="text" name="q" class="form-control" style="padding-left:36px"
+            placeholder="Search opportunities by name, company, email, phone..." value="{{ request.GET.q|default:'' }}">
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <select name="status" class="form-select">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if request.GET.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        {% if request.GET.q or request.GET.status %}
+        <a href="{% url 'crm:opportunities' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Opportunities List Table -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
                 <thead class="table-light">
                     <tr>
                         <th>Lead/Opp</th>
@@ -41,6 +77,7 @@
                         <th>Score</th>
                         <th>Value</th>
                         <th>Assigned To</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,7 +85,7 @@
                     <tr>
                         <td>
                             <a href="{% url 'crm:lead_detail' opp.pk %}" class="fw-bold">{{ opp.name }}</a>
-                            <br><small class="text-muted">{{ opp.company_name }}</small>
+                            <br><small class="text-muted">{{ opp.customer.name|default:opp.name }}</small>
                         </td>
                         <td><span class="badge bg-primary">{{ opp.get_status_display }}</span></td>
                         <td>
@@ -57,15 +94,15 @@
                             </span>
                         </td>
                         <td>${{ opp.expected_revenue|floatformat:2 }}</td>
-                        <td>{{ opp.assigned_to.get_full_name|default:"Unassigned" }}</td>
+                        <td>{{ opp.assigned_to.full_name|default:"Unassigned" }}</td>
+                        <td class="text-center">
+                            <a href="{% url 'crm:lead_detail' opp.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+                        </td>
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="text-center py-4">No opportunities found. Keep working those leads!</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-{% include 'partials/pagination.html' %}
 {% endblock %}

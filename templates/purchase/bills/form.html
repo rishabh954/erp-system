@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Bill {{ form.instance.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Edit Bill: {{ form.instance.number }}</h1>
+    <p class="text-muted mb-0">Update draft bill details</p>
+  </div>
+  <div>
+    <a href="{% url 'purchase:bill_detail' form.instance.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label for="id_bill_date" class="form-label fw-semibold">Bill Date</label>
+              <input type="date" name="bill_date" id="id_bill_date" class="form-control" value="{{ form.instance.bill_date|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="id_due_date" class="form-label fw-semibold">Due Date</label>
+              <input type="date" name="due_date" id="id_due_date" class="form-control" value="{{ form.instance.due_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-12">
+              <label for="id_terms_conditions" class="form-label fw-semibold">Terms & Conditions</label>
+              <textarea name="terms_conditions" id="id_terms_conditions" class="form-control" rows="3">{{ form.instance.terms_conditions }}</textarea>
+            </div>
+            <div class="col-12">
+              <label for="id_notes" class="form-label fw-semibold">Internal Notes</label>
+              <textarea name="notes" id="id_notes" class="form-control" rows="3">{{ form.instance.notes }}</textarea>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'purchase:bill_detail' form.instance.pk %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-1"></i>Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

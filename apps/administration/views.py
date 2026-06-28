@@ -53,9 +53,24 @@ class AdminDashboardView(AdminRequiredMixin, TemplateView):
         return ctx
 
 
-# ── 2. Designation Management ─────────────────────────────────────────────────
+class HRManagerOrAdminMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        role = getattr(request.user, 'role', '')
+        if role not in ('super_admin', 'company_admin', 'hr_manager') and not request.user.is_superuser:
+            messages.error(request, 'You do not have permission to access Job Titles.')
+            return redirect('dashboard:index')
+        return super().dispatch(request, *args, **kwargs)
 
-class DesignationListView(AdminRequiredMixin, View):
+    @property
+    def company(self):
+        return self.request.user.primary_company
+
+
+# ── 2. Designation Management (Job Titles) ────────────────────────────────────
+
+class DesignationListView(HRManagerOrAdminMixin, View):
     template_name = 'administration/designations.html'
 
     def get(self, request):
@@ -73,7 +88,7 @@ class DesignationListView(AdminRequiredMixin, View):
         return redirect('administration:designations')
 
 
-class DesignationDeleteView(AdminRequiredMixin, View):
+class DesignationDeleteView(HRManagerOrAdminMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Designation, pk=pk, company=self.company)
         obj.delete()

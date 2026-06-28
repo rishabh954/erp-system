@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Create Contract</h1>
+    <h1 class="h3 mb-0 text-gray-800">{% if contract %}Edit Contract{% else %}Create Contract{% endif %}</h1>
 </div>
 
 <div class="row">
@@ -20,24 +20,24 @@
                         <select name="customer" class="form-select" required>
                             <option value="">Select Customer...</option>
                             {% for c in customers %}
-                            <option value="{{ c.pk }}">{{ c.name }}</option>
+                            <option value="{{ c.pk }}" {% if contract and contract.customer.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Contract Title *</label>
-                        <input type="text" name="title" class="form-control" required placeholder="e.g. Master Service Agreement">
+                        <input type="text" name="title" class="form-control" required placeholder="e.g. Master Service Agreement" value="{{ contract.title|default:'' }}">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Contract Number</label>
-                            <input type="text" name="contract_number" class="form-control">
+                            <input type="text" name="contract_number" class="form-control" value="{{ contract.contract_number|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 {% for val, label in statuses %}
-                                <option value="{{ val }}">{{ label }}</option>
+                                <option value="{{ val }}" {% if contract and contract.status == val %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -45,18 +45,18 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Start Date *</label>
-                            <input type="date" name="start_date" class="form-control" required>
+                            <input type="date" name="start_date" class="form-control" required value="{{ contract.start_date|date:'Y-m-d'|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">End Date</label>
-                            <input type="date" name="end_date" class="form-control">
+                            <input type="date" name="end_date" class="form-control" value="{{ contract.end_date|date:'Y-m-d'|default:'' }}">
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Contract Value</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" step="0.01" name="value" class="form-control" value="0">
+                            <input type="number" step="0.01" name="value" class="form-control" value="{{ contract.value|default:'0' }}">
                         </div>
                     </div>
                     <div class="mb-3">
@@ -65,7 +65,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Notes</label>
-                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                        <textarea name="notes" class="form-control" rows="3">{{ contract.notes|default:'' }}</textarea>
                     </div>
                     
                     <button type="submit" class="btn btn-primary">Save Contract</button>

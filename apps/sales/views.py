@@ -63,7 +63,9 @@ class QuotationCreateView(CompanyScopedMixin, View):
     template_name = 'sales/quotations/form.html'
 
     def get(self, request):
-        return render(request, self.template_name, self._ctx())
+        ctx = self._ctx()
+        ctx['selected_customer'] = request.GET.get('customer_id')
+        return render(request, self.template_name, ctx)
 
     def post(self, request):
         data = request.POST
@@ -234,8 +236,23 @@ class QuotationRejectView(CompanyScopedMixin, View):
             return redirect('sales:quotation_detail', pk=pk)
         
         quot.status = Quotation.Status.REJECTED
-        quot.save(update_fields=['status'])
+        reject_reason = request.POST.get('reject_reason', '').strip()
+        if reject_reason:
+            quot.reject_reason = reject_reason
+        quot.save(update_fields=['status', 'reject_reason'])
         messages.success(request, f'Quotation {quot.number} marked as Rejected.')
+        return redirect('sales:quotation_detail', pk=pk)
+
+class QuotationApproveView(CompanyScopedMixin, View):
+    def post(self, request, pk):
+        quot = get_object_or_404(Quotation, pk=pk, company=self.get_company(), is_deleted=False)
+        if quot.status in (Quotation.Status.CONVERTED, Quotation.Status.REJECTED):
+            messages.error(request, 'Converted or rejected quotations cannot be approved.')
+            return redirect('sales:quotation_detail', pk=pk)
+        
+        quot.status = Quotation.Status.APPROVED
+        quot.save(update_fields=['status'])
+        messages.success(request, f'Quotation {quot.number} approved successfully.')
         return redirect('sales:quotation_detail', pk=pk)
 
 class QuotationConvertToSOView(CompanyScopedMixin, View):
@@ -449,7 +466,10 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
             return redirect('sales:order_detail', pk=pk)
             
         order.status = SalesOrder.Status.CANCELLED
-        order.save(update_fields=['status'])
+        cancel_reason = request.POST.get('cancel_reason', '').strip()
+        if cancel_reason:
+            order.cancel_reason = cancel_reason
+        order.save(update_fields=['status', 'cancel_reason'])
         
         for delivery in order.delivery_orders.filter(status__in=['draft', 'ready']):
             delivery.status = 'cancelled'
@@ -886,7 +906,28 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
     context_object_name = 'subscriptions'
     
     def get_queryset(self):
-        return self.get_base_qs(Subscription).select_related('customer', 'product')
+        from django.db.models import Q
+        qs = self.get_base_qs(Subscription).select_related('customer', 'product').order_by('-created_at')
+        
+        q = self.request.GET.get('q', '').strip()
+        status = self.request.GET.get('status', '').strip()
+        
+        if q:
+            qs = qs.filter(
+                Q(customer__name__icontains=q) |
+                Q(product__name__icontains=q)
+            )
+        if status:
+            qs = qs.filter(status=status)
+            
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['current_status'] = self.request.GET.get('status', '')
+        ctx['status_choices'] = Subscription.Status.choices
+        return ctx
 
 class SubscriptionDetailView(CompanyScopedMixin, DetailView):
     template_name = 'sales/subscriptions/detail.html'
@@ -914,10 +955,48 @@ class SalesCommissionListView(CompanyScopedMixin, ListView):
     context_object_name = 'commissions'
     
     def get_queryset(self):
-        qs = self.get_base_qs(SalesCommission).select_related('sales_rep', 'invoice')
+        from django.db.models import Q
+        qs = self.get_base_qs(SalesCommission).select_related('sales_rep', 'invoice').order_by('-created_at')
         if not self.request.user.is_superuser and self.request.user.role != 'company_admin':
             qs = qs.filter(sales_rep=self.request.user)
+            
+        q = self.request.GET.get('q', '').strip()
+        status = self.request.GET.get('status', '').strip()
+        
+        if q:
+            qs = qs.filter(
+                Q(sales_rep__first_name__icontains=q) |
+                Q(sales_rep__last_name__icontains=q) |
+                Q(invoice__number__icontains=q)
+            )
+        if status:
+            qs = qs.filter(status=status)
+            
         return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['current_status'] = self.request.GET.get('status', '')
+        ctx['status_choices'] = SalesCommission.Status.choices
+        return ctx
+
+class SalesCommissionPayView(CompanyScopedMixin, View):
+    def post(self, request, pk):
+        if not (request.user.is_superuser or request.user.role in ['company_admin', 'super_admin']):
+            messages.error(request, 'Only administrators can mark commissions as paid.')
+            return redirect('sales:commissions')
+            
+        commission = get_object_or_404(SalesCommission, pk=pk, company=self.get_company())
+        if commission.status == SalesCommission.Status.PENDING:
+            commission.status = SalesCommission.Status.PAID
+            commission.save(update_fields=['status'])
+            messages.success(request, f'Commission for {commission.sales_rep.full_name} marked as paid.')
+        else:
+            messages.info(request, 'Commission is already paid.')
+            
+        return redirect('sales:commissions')
+
 
 class SubscriptionCreateView(CompanyScopedMixin, View):
     def get(self, request):
@@ -972,6 +1051,61 @@ class SubscriptionUpdateView(CompanyScopedMixin, View):
         messages.success(request, 'Subscription updated.')
         return redirect('sales:subscriptions')
 
+class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
+    def post(self, request, pk):
+        from datetime import timedelta
+        import calendar
+        from core.services import BaseService
+        
+        sub = get_object_or_404(Subscription, pk=pk, company=self.get_company())
+        
+        if sub.status != Subscription.Status.ACTIVE:
+            messages.error(request, 'Cannot generate invoice for inactive subscription.')
+            return redirect('sales:subscription_detail', pk=sub.pk)
+            
+        inv = Invoice(
+            company=sub.company,
+            customer=sub.customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date() + timedelta(days=30), # Default 30 days term
+            subtotal=sub.recurring_amount,
+            tax_amount=0,
+            discount_amount=0,
+            total=sub.recurring_amount,
+            balance_due=sub.recurring_amount,
+        )
+        inv.number = BaseService.generate_sequence_number('INV', Invoice, sub.company_id)
+        inv.save()
+        
+        InvoiceLine.objects.create(
+            invoice=inv,
+            product=sub.product,
+            description=f"Subscription: {sub.get_billing_cycle_display()} billing",
+            quantity=1,
+            unit_price=sub.recurring_amount,
+            subtotal=sub.recurring_amount,
+            total=sub.recurring_amount,
+        )
+        
+        def add_months(sourcedate, months):
+            month = sourcedate.month - 1 + months
+            year = sourcedate.year + month // 12
+            month = month % 12 + 1
+            day = min(sourcedate.day, calendar.monthrange(year,month)[1])
+            return sourcedate.replace(year=year, month=month, day=day)
+            
+        if sub.billing_cycle == 'monthly':
+            sub.next_billing_date = add_months(sub.next_billing_date, 1)
+        elif sub.billing_cycle == 'quarterly':
+            sub.next_billing_date = add_months(sub.next_billing_date, 3)
+        elif sub.billing_cycle == 'yearly':
+            sub.next_billing_date = sub.next_billing_date.replace(year=sub.next_billing_date.year + 1)
+            
+        sub.save(update_fields=['next_billing_date'])
+        
+        messages.success(request, f'Invoice {inv.number} generated successfully. Next billing date advanced.')
+        return redirect('sales:invoice_detail', pk=inv.pk)
+
 # ════════════════════════ DASHBOARD & POS ════════════════════════════════════
 
 class SalesDashboardView(CompanyScopedMixin, TemplateView):
@@ -1019,58 +1153,102 @@ class POSAPIView(CompanyScopedMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            customer_id = data.get('customer_id')
-            items = data.get('items', [])
-            total = data.get('total', 0)
-            amount_paid = data.get('amount_paid', 0)
+            customer_id  = data.get('customer_id') or ''
+            items        = data.get('items', [])
+            amount_paid  = float(data.get('amount_paid', 0))
             payment_method = data.get('payment_method', 'cash')
-            
+
+            if not items:
+                return JsonResponse({'success': False, 'error': 'Cart is empty.'}, status=400)
+
             from apps.crm.models import Customer
             from apps.inventory.models import Product
             from apps.company.models import Currency
-            
-            customer = Customer.objects.get(pk=customer_id, company=self.get_company())
-            currency = Currency.objects.filter(is_active=True).first()
-            
-            # Create Invoice directly
+            from decimal import Decimal
             from datetime import date
+
+            company = self.get_company()
+
+            # ── Customer ─────────────────────────────────────────────────────
+            if customer_id:
+                customer = Customer.objects.get(pk=customer_id, company=company)
+            else:
+                customer, _ = Customer.objects.get_or_create(
+                    company=company,
+                    name='Walk-in Customer',
+                    defaults={'phone': '0000000000'}
+                )
+
+            # ── Currency (required FK on Payment) ────────────────────────────
+            currency = Currency.objects.filter(is_active=True).first()
+            if not currency:
+                currency = Currency.objects.first()
+            if not currency:
+                return JsonResponse({'success': False, 'error': 'No currency configured. Please add a currency in company settings.'}, status=400)
+
+            # ── Create Invoice ────────────────────────────────────────────────
             invoice = Invoice.objects.create(
-                company=self.get_company(),
+                company=company,
                 customer=customer,
                 invoice_date=date.today(),
                 due_date=date.today(),
-                status='draft',
-                total=total,
-                balance_due=total
+                status=Invoice.Status.DRAFT,
             )
-            
+
+            # ── Create Invoice Lines ──────────────────────────────────────────
             for item in items:
-                prod = Product.objects.get(pk=item['product_id'])
+                prod = Product.objects.get(pk=item['product_id'], company=company)
+                qty  = Decimal(str(item['quantity']))
+                price = Decimal(str(item['price']))
+                subtotal = qty * price
                 InvoiceLine.objects.create(
                     invoice=invoice,
                     product=prod,
                     description=prod.name,
-                    quantity=item['quantity'],
-                    unit_price=item['price'],
-                    subtotal=item['quantity'] * item['price'],
-                    total=item['quantity'] * item['price']
+                    quantity=qty,
+                    unit_price=price,
+                    subtotal=subtotal,
+                    tax_amount=Decimal('0'),
+                    discount_amount=Decimal('0'),
+                    total=subtotal,
                 )
-                
+
+            # Recalculate totals from lines
             invoice.recalculate_totals()
-            
-            # Record Payment if amount_paid > 0
-            if float(amount_paid) > 0:
+            # Refresh from DB after recalculate
+            invoice.refresh_from_db()
+
+            # ── Record Payment ────────────────────────────────────────────────
+            if amount_paid > 0:
                 Payment.objects.create(
-                    company=self.get_company(),
+                    company=company,
                     invoice=invoice,
                     customer=customer,
-                    amount=amount_paid,
+                    amount=Decimal(str(amount_paid)),
                     currency=currency,
                     payment_date=date.today(),
                     method=payment_method,
-                    status='completed'
+                    status=Payment.Status.COMPLETED,
                 )
-                
-            return JsonResponse({'success': True, 'invoice_id': str(invoice.pk), 'invoice_number': invoice.number})
+                # This triggers update_balance → marks invoice paid/partial
+                invoice.refresh_from_db()
+                invoice.update_balance()
+
+            change_due = max(0, amount_paid - float(invoice.total))
+
+            return JsonResponse({
+                'success': True,
+                'invoice_id': str(invoice.pk),
+                'invoice_number': invoice.number,
+                'invoice_total': float(invoice.total),
+                'amount_paid': amount_paid,
+                'change_due': round(change_due, 2),
+            })
+
+        except Product.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'One or more products not found.'}, status=400)
+        except Customer.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Customer not found.'}, status=400)
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            import traceback
+            return JsonResponse({'success': False, 'error': str(e), 'detail': traceback.format_exc()}, status=400)

@@ -106,6 +106,54 @@ class VendorCreateView(CompanyMixin, View):
             return redirect('purchase:vendors')
 
 
+class VendorUpdateView(CompanyMixin, View):
+    template_name = 'purchase/vendors/form.html'
+
+    def get(self, request, pk):
+        from apps.company.models import Currency
+        vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
+        return render(request, self.template_name, {
+            'vendor': vendor,
+            'vendor_type_choices': Vendor.VendorType.choices,
+            'currencies': Currency.objects.filter(is_active=True),
+        })
+
+    def post(self, request, pk):
+        vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
+        data = request.POST
+        try:
+            vendor.name = data['name']
+            vendor.vendor_code = data.get('vendor_code', '')
+            vendor.vendor_type = data.get('vendor_type', 'supplier')
+            vendor.email = data.get('email', '')
+            vendor.phone = data.get('phone', '')
+            vendor.address_line1 = data.get('address_line1', '')
+            vendor.city = data.get('city', '')
+            vendor.country = data.get('country', '')
+            vendor.tax_id = data.get('tax_id', '')
+            vendor.payment_terms = int(data.get('payment_terms', 30))
+            vendor.currency_id = data.get('currency') or None
+            vendor.notes = data.get('notes', '')
+            vendor.save()
+            messages.success(request, f'Vendor {vendor.name} updated.')
+            return redirect('purchase:vendor_detail', pk=vendor.pk)
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+            return redirect('purchase:vendor_update', pk=vendor.pk)
+
+
+class VendorDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
+        name = vendor.name
+        try:
+            vendor.delete()
+            messages.success(request, f'Vendor {name} deleted.')
+        except Exception as e:
+            messages.error(request, f'Could not delete vendor {name}. It might be linked to other records. {e}')
+        return redirect('purchase:vendors')
+
+
 # ════════════════════════ PURCHASE REQUESTS ═══════════════════════════════════
 
 class PurchaseRequestListView(CompanyMixin, ListView):
@@ -198,6 +246,92 @@ class PurchaseRequestCreateView(CompanyMixin, View):
         except Exception as e:
             messages.error(request, f'Error: {e}')
             return redirect('purchase:requests')
+
+
+class PurchaseRequestUpdateView(CompanyMixin, View):
+    template_name = 'purchase/requests/form.html'
+
+    def get(self, request, pk):
+        from apps.inventory.models import Product, UnitOfMeasure
+        from apps.company.models import Department
+        c = self.company()
+        pr = get_object_or_404(PurchaseRequest, pk=pk, company=c, is_deleted=False)
+        
+        if pr.status != 'draft':
+            messages.error(request, 'Only draft purchase requests can be edited.')
+            return redirect('purchase:request_detail', pk=pr.pk)
+            
+        return render(request, self.template_name, {
+            'pr': pr,
+            'departments': Department.objects.filter(company=c, is_active=True, is_deleted=False),
+            'products': Product.objects.filter(company=c, is_active=True, is_deleted=False).order_by('name'),
+            'uoms': UnitOfMeasure.objects.filter(company=c, is_active=True, is_deleted=False),
+            'priority_choices': PurchaseRequest.Priority.choices,
+        })
+
+    def post(self, request, pk):
+        c = self.company()
+        pr = get_object_or_404(PurchaseRequest, pk=pk, company=c, is_deleted=False)
+        
+        if pr.status != 'draft':
+            messages.error(request, 'Only draft purchase requests can be edited.')
+            return redirect('purchase:request_detail', pk=pr.pk)
+            
+        data = request.POST
+        try:
+            pr.title = data['title']
+            pr.department_id = data.get('department') or None
+            pr.required_by = data.get('required_by') or None
+            pr.priority = data.get('priority', 'medium')
+            pr.notes = data.get('notes', '')
+            pr.save()
+
+            # Process lines (delete old and recreate)
+            pr.lines.all().delete()
+            products     = data.getlist('product[]')
+            descriptions = data.getlist('description[]')
+            quantities   = data.getlist('quantity[]')
+            est_prices   = data.getlist('estimated_unit_price[]')
+
+            total = 0
+            for i, desc in enumerate(descriptions):
+                if not desc.strip():
+                    continue
+                qty   = float(quantities[i] or 1)
+                price = float(est_prices[i] or 0)
+                line_total = qty * price
+                PurchaseRequestLine.objects.create(
+                    request=pr,
+                    product_id=products[i] if products[i] else None,
+                    description=desc,
+                    quantity=qty,
+                    estimated_unit_price=price,
+                    estimated_total=line_total,
+                )
+                total += line_total
+
+            pr.estimated_cost = total
+            pr.save(update_fields=['estimated_cost'])
+
+            messages.success(request, f'Purchase Request {pr.number} updated.')
+            return redirect('purchase:request_detail', pk=pr.pk)
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+            return redirect('purchase:request_update', pk=pr.pk)
+
+
+class PurchaseRequestDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        pr = get_object_or_404(PurchaseRequest, pk=pk, company=self.company(), is_deleted=False)
+        if pr.status != 'draft':
+            messages.error(request, 'Only draft purchase requests can be deleted.')
+            return redirect('purchase:request_detail', pk=pr.pk)
+            
+        number = pr.number
+        pr.is_deleted = True
+        pr.save(update_fields=['is_deleted'])
+        messages.success(request, f'Purchase Request {number} deleted.')
+        return redirect('purchase:requests')
 
 
 class PurchaseRequestDetailView(CompanyMixin, DetailView):
@@ -360,6 +494,125 @@ class PurchaseOrderCreateView(CompanyMixin, View):
             return redirect('purchase:orders')
 
 
+class PurchaseOrderUpdateView(CompanyMixin, View):
+    template_name = 'purchase/orders/form.html'
+
+    def get(self, request, pk):
+        from apps.inventory.models import Product, UnitOfMeasure, Warehouse
+        from apps.company.models import Currency, Tax
+        c = self.company()
+        po = get_object_or_404(PurchaseOrder, pk=pk, company=c, is_deleted=False)
+        
+        if po.status != 'draft':
+            messages.error(request, 'Only draft purchase orders can be edited.')
+            return redirect('purchase:order_detail', pk=po.pk)
+            
+        return render(request, self.template_name, {
+            'po': po,
+            'vendors': Vendor.objects.filter(company=c, status='active', is_deleted=False).order_by('name'),
+            'products': Product.objects.filter(company=c, is_active=True, is_deleted=False).order_by('name'),
+            'warehouses': Warehouse.objects.filter(company=c, is_active=True, is_deleted=False),
+            'currencies': Currency.objects.filter(is_active=True),
+            'taxes': Tax.objects.filter(company=c, is_active=True),
+            'uoms': UnitOfMeasure.objects.filter(company=c, is_active=True, is_deleted=False),
+            'purchase_requests': PurchaseRequest.objects.filter(
+                company=c, status='approved', is_deleted=False
+            ).order_by('-created_at'),
+        })
+
+    def post(self, request, pk):
+        c = self.company()
+        po = get_object_or_404(PurchaseOrder, pk=pk, company=c, is_deleted=False)
+        
+        if po.status != 'draft':
+            messages.error(request, 'Only draft purchase orders can be edited.')
+            return redirect('purchase:order_detail', pk=po.pk)
+            
+        data = request.POST
+        try:
+            from decimal import Decimal
+            po.vendor_id = data['vendor']
+            po.purchase_request_id = data.get('purchase_request') or None
+            po.warehouse_id = data.get('warehouse') or None
+            po.order_date = data['order_date']
+            po.expected_delivery = data.get('expected_delivery') or None
+            po.payment_terms = int(data.get('payment_terms', 30))
+            po.currency_id = data.get('currency') or None
+            po.notes = data.get('notes', '')
+            po.terms_conditions = data.get('terms_conditions', '')
+            po.save()
+
+            po.lines.all().delete()
+            products     = data.getlist('product[]')
+            descriptions = data.getlist('description[]')
+            quantities   = data.getlist('quantity[]')
+            prices       = data.getlist('unit_price[]')
+            discounts    = data.getlist('discount_percent[]')
+            taxes        = data.getlist('tax[]')
+
+            subtotal = Decimal('0')
+            tax_total = Decimal('0')
+
+            for i, desc in enumerate(descriptions):
+                if not desc.strip():
+                    continue
+                qty  = Decimal(quantities[i] or '1')
+                price = Decimal(prices[i] or '0')
+                disc  = Decimal(discounts[i] or '0')
+                sub   = qty * price
+                disc_amt = sub * disc / 100
+                taxable  = sub - disc_amt
+                tax_amt  = Decimal('0')
+                if taxes[i]:
+                    from apps.company.models import Tax
+                    try:
+                        t = Tax.objects.get(pk=taxes[i])
+                        tax_amt = t.compute(taxable)
+                    except Exception:
+                        pass
+                total = taxable + tax_amt
+                PurchaseOrderLine.objects.create(
+                    purchase_order=po,
+                    product_id=products[i] if products[i] else None,
+                    description=desc,
+                    quantity=qty,
+                    unit_price=price,
+                    discount_percent=disc,
+                    tax_id=taxes[i] if taxes[i] else None,
+                    subtotal=sub,
+                    tax_amount=tax_amt,
+                    total=total,
+                )
+                subtotal += sub
+                tax_total += tax_amt
+
+            po.subtotal = subtotal
+            po.tax_amount = tax_total
+            po.total = subtotal + tax_total
+            po.balance_due = po.total
+            po.save(update_fields=['subtotal', 'tax_amount', 'total', 'balance_due'])
+
+            messages.success(request, f'Purchase Order {po.number} updated.')
+            return redirect('purchase:order_detail', pk=po.pk)
+        except Exception as e:
+            messages.error(request, f'Error updating PO: {e}')
+            return redirect('purchase:order_update', pk=po.pk)
+
+
+class PurchaseOrderDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        po = get_object_or_404(PurchaseOrder, pk=pk, company=self.company(), is_deleted=False)
+        if po.status != 'draft':
+            messages.error(request, 'Only draft purchase orders can be deleted.')
+            return redirect('purchase:order_detail', pk=po.pk)
+            
+        number = po.number
+        po.is_deleted = True
+        po.save(update_fields=['is_deleted'])
+        messages.success(request, f'Purchase Order {number} deleted.')
+        return redirect('purchase:orders')
+
+
 class PurchaseOrderDetailView(CompanyMixin, DetailView):
     template_name = 'purchase/orders/detail.html'
     context_object_name = 'order'
@@ -442,6 +695,36 @@ class CreateBillFromPOView(CompanyMixin, View):
         return redirect('purchase:bill_detail', pk=bill.pk)
 
 
+class BillUpdateView(CompanyMixin, UpdateView):
+    model = Bill
+    fields = ['bill_date', 'due_date', 'terms_conditions', 'notes']
+    template_name = 'purchase/bills/form.html'
+    
+    def get_success_url(self):
+        return reverse_lazy('purchase:bill_detail', kwargs={'pk': self.object.pk})
+        
+    def get_queryset(self):
+        return super().get_queryset().filter(company=self.company(), is_deleted=False)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Bill updated successfully.')
+        return super().form_valid(form)
+
+
+class BillDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        bill = get_object_or_404(Bill, pk=pk, company=self.company(), is_deleted=False)
+        if bill.status != Bill.Status.DRAFT:
+            messages.error(request, 'Only draft bills can be deleted.')
+            return redirect('purchase:bill_detail', pk=pk)
+            
+        number = bill.number
+        bill.is_deleted = True
+        bill.save(update_fields=['is_deleted'])
+        messages.success(request, f'Bill {number} deleted.')
+        return redirect('purchase:bills')
+
+
 class BillListView(CompanyMixin, ListView):
     model = Bill
     template_name = 'purchase/bills/list.html'
@@ -518,6 +801,62 @@ class GoodsReceiptListView(CompanyMixin, ListView):
         if status:
             qs = qs.filter(status=status)
         return qs.order_by('-created_at')
+
+class GoodsReceiptUpdateView(CompanyMixin, UpdateView):
+    model = GoodsReceipt
+    fields = ['receipt_date', 'quality_check', 'qc_notes', 'notes']
+    template_name = 'purchase/receipts/form_update.html'
+    
+    def get_success_url(self):
+        return reverse_lazy('purchase:receipt_detail', kwargs={'pk': self.object.pk})
+        
+    def get_queryset(self):
+        return super().get_queryset().filter(company=self.company(), is_deleted=False)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Goods Receipt updated successfully.')
+        return super().form_valid(form)
+
+
+class GoodsReceiptDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        receipt = get_object_or_404(GoodsReceipt, pk=pk, company=self.company(), is_deleted=False)
+        
+        if receipt.status == GoodsReceipt.Status.COMPLETED:
+            # Reverse stock movements
+            for line in receipt.lines.all():
+                if line.po_line:
+                    line.po_line.qty_received -= line.quantity_accepted
+                    line.po_line.save(update_fields=['qty_received'])
+                    
+                from apps.inventory.models import StockRecord, StockMovement
+                if line.po_line.product and receipt.warehouse:
+                    stock_record, _ = StockRecord.objects.get_or_create(
+                        company=self.company(),
+                        product=line.po_line.product,
+                        warehouse=receipt.warehouse,
+                        defaults={'quantity_on_hand': 0}
+                    )
+                    stock_record.quantity_on_hand -= line.quantity_accepted
+                    stock_record.save(update_fields=['quantity_on_hand'])
+                    
+                    StockMovement.objects.create(
+                        company=self.company(),
+                        product=line.po_line.product,
+                        warehouse=receipt.warehouse,
+                        movement_type=StockMovement.MovementType.ADJUSTMENT,
+                        quantity=-line.quantity_accepted,
+                        movement_date=timezone.now().date(),
+                        reference_type='Receipt Cancelled',
+                        reference_id=str(receipt.pk),
+                        stock_after=stock_record.quantity_on_hand
+                    )
+                    
+        receipt.is_deleted = True
+        receipt.status = GoodsReceipt.Status.CANCELLED
+        receipt.save(update_fields=['is_deleted', 'status'])
+        messages.success(request, f'Receipt {receipt.number} deleted and stock reversed.')
+        return redirect('purchase:receipts')
 
 class GoodsReceiptDetailView(CompanyMixin, DetailView):
     model = GoodsReceipt
@@ -606,7 +945,7 @@ class GoodsReceiptCreateView(CompanyMixin, View):
 
 # ════════════════════════ ENTERPRISE PURCHASE VIEWS ═══════════════════════════
 
-from .models import RequestForQuotation, VendorBid
+from .models import RequestForQuotation, RFQLine, VendorBid, VendorBidLine
 
 class RFQListView(CompanyMixin, ListView):
     template_name = 'purchase/rfqs/list.html'
@@ -622,6 +961,103 @@ class RFQDetailView(CompanyMixin, DetailView):
     def get_queryset(self):
         return RequestForQuotation.objects.filter(company=self.company()).prefetch_related('lines', 'bids')
 
+
+class RFQCreateView(CompanyMixin, View):
+    def get(self, request):
+        from apps.inventory.models import Product
+        return render(request, 'purchase/rfqs/form.html', {
+            'products': Product.objects.filter(company=self.company(), is_active=True, is_deleted=False)
+        })
+
+    def post(self, request):
+        try:
+            rfq = RequestForQuotation(
+                company=self.company(),
+                title=request.POST.get('title'),
+                deadline=request.POST.get('deadline'),
+                delivery_date=request.POST.get('delivery_date') or None,
+                created_by=request.user,
+                status=RequestForQuotation.Status.DRAFT
+            )
+            rfq.number = BaseService.generate_sequence_number('RFQ', RequestForQuotation, self.company().pk)
+            rfq.save()
+            
+            products = request.POST.getlist('product[]')
+            quantities = request.POST.getlist('quantity[]')
+            descriptions = request.POST.getlist('description[]')
+            
+            for i, prod_id in enumerate(products):
+                if prod_id or descriptions[i]:
+                    RFQLine.objects.create(
+                        rfq=rfq,
+                        product_id=prod_id if prod_id else None,
+                        quantity=quantities[i] or 1,
+                        description=descriptions[i]
+                    )
+            messages.success(request, f'RFQ {rfq.number} created.')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+            return redirect('purchase:rfqs')
+
+
+class RFQUpdateView(CompanyMixin, View):
+    def get(self, request, pk):
+        from apps.inventory.models import Product
+        rfq = get_object_or_404(RequestForQuotation, pk=pk, company=self.company())
+        if rfq.status != 'draft':
+            messages.error(request, 'Only draft RFQs can be edited.')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+            
+        return render(request, 'purchase/rfqs/form.html', {
+            'rfq': rfq,
+            'products': Product.objects.filter(company=self.company(), is_active=True, is_deleted=False)
+        })
+
+    def post(self, request, pk):
+        rfq = get_object_or_404(RequestForQuotation, pk=pk, company=self.company())
+        if rfq.status != 'draft':
+            messages.error(request, 'Only draft RFQs can be edited.')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+            
+        try:
+            rfq.title = request.POST.get('title')
+            rfq.deadline = request.POST.get('deadline')
+            rfq.delivery_date = request.POST.get('delivery_date') or None
+            rfq.save()
+            
+            rfq.lines.all().delete()
+            products = request.POST.getlist('product[]')
+            quantities = request.POST.getlist('quantity[]')
+            descriptions = request.POST.getlist('description[]')
+            
+            for i, prod_id in enumerate(products):
+                if prod_id or descriptions[i]:
+                    RFQLine.objects.create(
+                        rfq=rfq,
+                        product_id=prod_id if prod_id else None,
+                        quantity=quantities[i] or 1,
+                        description=descriptions[i]
+                    )
+            messages.success(request, f'RFQ {rfq.number} updated.')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+
+
+class RFQDeleteView(CompanyMixin, View):
+    def post(self, request, pk):
+        rfq = get_object_or_404(RequestForQuotation, pk=pk, company=self.company())
+        if rfq.status != 'draft':
+            messages.error(request, 'Only draft RFQs can be deleted.')
+            return redirect('purchase:rfq_detail', pk=rfq.pk)
+        rfq.status = RequestForQuotation.Status.CANCELLED
+        rfq.save(update_fields=['status'])
+        messages.success(request, f'RFQ {rfq.number} deleted.')
+        return redirect('purchase:rfqs')
+
+
 class VendorBidListView(CompanyMixin, ListView):
     template_name = 'purchase/bids/list.html'
     context_object_name = 'bids'
@@ -635,6 +1071,113 @@ class VendorBidDetailView(CompanyMixin, DetailView):
     
     def get_queryset(self):
         return VendorBid.objects.filter(company=self.company()).select_related('rfq', 'vendor').prefetch_related('lines')
+
+
+class VendorBidCreateView(CompanyMixin, View):
+    def get(self, request):
+        rfq_id = request.GET.get('rfq')
+        rfq = get_object_or_404(RequestForQuotation, pk=rfq_id, company=self.company()) if rfq_id else None
+        
+        return render(request, 'purchase/bids/form.html', {
+            'rfq': rfq,
+            'vendors': Vendor.objects.filter(company=self.company(), status='active', is_deleted=False)
+        })
+
+    def post(self, request):
+        try:
+            rfq = get_object_or_404(RequestForQuotation, pk=request.POST.get('rfq'), company=self.company())
+            vendor = get_object_or_404(Vendor, pk=request.POST.get('vendor'), company=self.company())
+            
+            bid, created = VendorBid.objects.get_or_create(
+                company=self.company(),
+                rfq=rfq,
+                vendor=vendor,
+                defaults={
+                    'valid_until': request.POST.get('valid_until') or None,
+                    'notes': request.POST.get('notes', ''),
+                    'status': VendorBid.Status.PENDING
+                }
+            )
+            
+            if not created:
+                bid.lines.all().delete()
+                bid.valid_until = request.POST.get('valid_until') or None
+                bid.notes = request.POST.get('notes', '')
+                bid.status = VendorBid.Status.PENDING
+                bid.save()
+
+            from decimal import Decimal
+            total = Decimal('0')
+            
+            prices = request.POST.getlist('price[]')
+            for i, line in enumerate(rfq.lines.all()):
+                price = Decimal(prices[i] or '0')
+                VendorBidLine.objects.create(
+                    bid=bid,
+                    rfq_line=line,
+                    unit_price=price,
+                    subtotal=price * line.quantity
+                )
+                total += price * line.quantity
+                
+            bid.total_amount = total
+            bid.save(update_fields=['total_amount'])
+            
+            messages.success(request, f'Bid from {vendor.name} recorded.')
+            return redirect('purchase:bid_detail', pk=bid.pk)
+        except Exception as e:
+            messages.error(request, f'Error recording bid: {e}')
+            return redirect('purchase:bids')
+
+
+class VendorBidActionView(CompanyMixin, View):
+    def post(self, request, pk):
+        bid = get_object_or_404(VendorBid, pk=pk, company=self.company())
+        action = request.POST.get('action')
+        
+        if action == 'accept':
+            bid.status = VendorBid.Status.ACCEPTED
+            bid.save(update_fields=['status'])
+            
+            # Auto-generate PO
+            po = PurchaseOrder.objects.create(
+                company=self.company(),
+                vendor=bid.vendor,
+                order_date=timezone.now().date(),
+                status=PurchaseOrder.Status.DRAFT,
+                notes=f"Generated from RFQ {bid.rfq.number}"
+            )
+            po.number = BaseService.generate_sequence_number('PO', PurchaseOrder, self.company().pk)
+            po.save(update_fields=['number'])
+            
+            from decimal import Decimal
+            total = Decimal('0')
+            for b_line in bid.lines.all():
+                PurchaseOrderLine.objects.create(
+                    purchase_order=po,
+                    product=b_line.rfq_line.product,
+                    description=b_line.rfq_line.description,
+                    quantity=b_line.rfq_line.quantity,
+                    unit_price=b_line.unit_price,
+                    subtotal=b_line.subtotal,
+                    total=b_line.subtotal
+                )
+                total += b_line.subtotal
+            
+            po.subtotal = total
+            po.total = total
+            po.balance_due = total
+            po.save(update_fields=['subtotal', 'total', 'balance_due'])
+            
+            messages.success(request, f'Bid accepted and Draft PO {po.number} generated.')
+            return redirect('purchase:order_detail', pk=po.pk)
+            
+        elif action == 'reject':
+            bid.status = VendorBid.Status.REJECTED
+            bid.save(update_fields=['status'])
+            messages.warning(request, 'Bid rejected.')
+            
+        return redirect('purchase:bid_detail', pk=bid.pk)
 
 # ════════════════════════ DASHBOARD & VENDOR EVAL ════════════════════════════
 

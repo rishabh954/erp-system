@@ -21,7 +21,7 @@ class PortalMixin(LoginRequiredMixin):
             return self.handle_no_permission()
         if not self.get_customer():
             messages.error(request, "No customer account is linked to this login.")
-            return redirect('authentication:login')
+            return redirect('auth:login')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

@@ -36,10 +36,19 @@
 
     <!-- Action Forms for submit/approve/reject -->
     {% if pr.status == 'draft' and pr.requested_by == request.user %}
+      <a href="{% url 'purchase:request_update' pr.pk %}" class="btn btn-warning btn-sm text-white">
+        <i class="fas fa-edit me-1"></i>Edit
+      </a>
+      <form method="post" action="{% url 'purchase:request_delete' pr.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm" data-confirm-delete="Delete this draft request?">
+          <i class="fas fa-trash me-1"></i>Delete
+        </button>
+      </form>
       <form method="post" action="{% url 'purchase:request_action' pr.pk %}" class="d-inline">
         {% csrf_token %}
         <input type="hidden" name="action" value="submit">
-        <button type="submit" class="btn btn-warning btn-sm">
+        <button type="submit" class="btn btn-success btn-sm">
           <i class="fas fa-paper-plane me-1"></i>Submit for Approval
         </button>
       </form>

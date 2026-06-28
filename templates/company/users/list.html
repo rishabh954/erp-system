@@ -72,7 +72,7 @@
                     <div class="avatar-circle bg-primary-subtle text-primary fw-bold" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
                       {{ user.first_name|first|default:"?" }}{{ user.last_name|first|default:"" }}
                     </div>
-                    <div class="fw-bold text-dark">{{ user.get_full_name|default:"-" }}</div>
+                    <div class="fw-bold text-dark">{{ user.full_name|default:"-" }}</div>
                   </div>
                 </td>
                 <td class="text-muted">{{ user.email }}</td>
@@ -94,8 +94,12 @@
                     <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2">Inactive
                   {% endif %}</span>
                 </td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-light border text-primary"><i class="fas fa-edit"></i></button>
+                <td class="text-end text-nowrap">
+                  <a href="{% url 'company:user_update' user.pk %}" class="btn btn-sm btn-dark text-primary shadow-sm" style="border-radius: 8px;" title="Edit Role"><i class="fas fa-edit"></i></a>
+                  <form method="post" action="{% url 'company:user_remove' user.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to remove {{ user.email }} from this company?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-dark text-danger shadow-sm" style="border-radius: 8px;" title="Remove User"><i class="fas fa-trash"></i></button>
+                  </form>
                 </td>
               </tr>
               {% empty %}

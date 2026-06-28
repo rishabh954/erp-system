@@ -182,21 +182,25 @@ class UserManagementView(CompanyMixin, ListView):
 
 class InviteUserView(CompanyMixin, View):
     def post(self, request):
-        data = request.POST
+        email = request.POST.get('email')
+        role = request.POST.get('role', 'employee')
         company = self.company()
-        email = data.get('email', '').strip()
-        role  = data.get('role', 'employee')
+        
+        if not company:
+            messages.error(request, 'You must have a primary company set to invite users.')
+            return redirect('company:users')
 
         from apps.authentication.models import User, UserCompany
+        
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
-                'first_name': data.get('first_name', ''),
-                'last_name': data.get('last_name', ''),
+                'first_name': email.split('@')[0],
                 'role': role,
                 'is_active': True,
             }
         )
+        
         if created:
             temp_pass = User.objects.make_random_password()
             user.set_password(temp_pass)
@@ -212,6 +216,59 @@ class InviteUserView(CompanyMixin, View):
             user.save(update_fields=['primary_company'])
 
         messages.success(request, f'User {email} added to {company.name}.')
+        return redirect('company:users')
+
+
+class UserUpdateView(CompanyMixin, View):
+    template_name = 'company/users/form.html'
+
+    def get(self, request, pk):
+        from apps.authentication.models import User, UserCompany
+        user = get_object_or_404(User, pk=pk, companies=self.company())
+        user_company = get_object_or_404(UserCompany, user=user, company=self.company())
+        return render(request, self.template_name, {'user_obj': user, 'user_company': user_company})
+
+    def post(self, request, pk):
+        from apps.authentication.models import User, UserCompany
+        user = get_object_or_404(User, pk=pk, companies=self.company())
+        user_company = get_object_or_404(UserCompany, user=user, company=self.company())
+        
+        role = request.POST.get('role')
+        is_active = request.POST.get('is_active') == 'on'
+
+        if role:
+            user_company.role_override = role
+            user_company.is_active = is_active
+            user_company.save()
+            
+            # Optionally update user's global role if they only have one company or it makes sense
+            if user.primary_company == self.company():
+                user.role = role
+                user.is_active = is_active
+                user.save(update_fields=['role', 'is_active'])
+
+            messages.success(request, f'Updated {user.email} successfully.')
+        return redirect('company:users')
+
+
+class UserRemoveView(CompanyMixin, View):
+    def post(self, request, pk):
+        from apps.authentication.models import User, UserCompany
+        user = get_object_or_404(User, pk=pk, companies=self.company())
+        
+        # Don't let users remove themselves
+        if user == request.user:
+            messages.error(request, 'You cannot remove yourself from the company.')
+            return redirect('company:users')
+            
+        UserCompany.objects.filter(user=user, company=self.company()).delete()
+        
+        # Clear primary company if it was this company
+        if user.primary_company == self.company():
+            user.primary_company = user.companies.first()
+            user.save(update_fields=['primary_company'])
+            
+        messages.success(request, f'Removed {user.email} from the company.')
         return redirect('company:users')
 
 

@@ -1,11 +1,131 @@
 {% extends "base.html" %}
-{% block title %}Performance Appraisals{% endblock %}
+{% block title %}Performance Appraisals | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item active">Performance Appraisals</li>
+{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Performance Appraisals</h1></div>
-<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
-<thead class="table-light"><tr><th>Employee</th><th>Period</th><th>Manager</th><th>Rating</th><th>Status</th></tr></thead>
-<tbody>
-{% for ap in appraisals %}<tr><td><a href="{% url 'hrms:appraisal_detail' ap.pk %}">{{ ap.employee.full_name }}</a></td><td>{{ ap.period_start }} to {{ ap.period_end }}</td><td>{{ ap.manager.full_name|default:"-" }}</td><td>{{ ap.rating }}</td><td>{{ ap.get_status_display }}</td></tr>
-{% empty %}<tr><td colspan="5" class="text-center py-4">No appraisals found.</td></tr>{% endfor %}
-</tbody></table></div>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Performance Appraisals</h1>
+    <p class="text-muted mb-0">Track and evaluate employee performance goals</p>
+  </div>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAppraisalModal">
+    <i class="fas fa-plus me-1"></i>New Appraisal
+  </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Employee</th>
+          <th>Manager</th>
+          <th>Evaluation Period</th>
+          <th>Rating</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for appraisal in appraisals %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center">
+              {% if appraisal.employee.profile_picture %}
+              <img src="{{ appraisal.employee.profile_picture.url }}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+              {% else %}
+              <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                {{ appraisal.employee.first_name|first }}{{ appraisal.employee.last_name|first }}
+              </div>
+              {% endif %}
+              <div>
+                <strong><a href="{% url 'hrms:employee_detail' appraisal.employee.pk %}">{{ appraisal.employee.full_name }}</a></strong>
+                <div class="small text-muted">{{ appraisal.employee.job_title.title|default:"No Title" }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ appraisal.manager.full_name|default:"Not Assigned" }}</td>
+          <td>{{ appraisal.period_start|date:"M j, Y" }} - {{ appraisal.period_end|date:"M j, Y" }}</td>
+          <td>
+            {% if appraisal.rating > 0 %}
+            <span class="badge bg-info text-dark fs-6">{{ appraisal.rating }} / 5.0</span>
+            {% else %}
+            <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if appraisal.status == 'completed' %}<span class="badge bg-success">Completed</span>
+            {% elif appraisal.status == 'in_progress' %}<span class="badge bg-warning text-dark">In Progress</span>
+            {% else %}<span class="badge bg-secondary">Draft</span>{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'hrms:appraisal_detail' appraisal.pk %}" class="btn btn-sm btn-outline-primary">View / Evaluate</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No appraisals found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Appraisal Modal -->
+<div class="modal fade" id="addAppraisalModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:appraisals' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Create New Appraisal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Employee <span class="text-danger">*</span></label>
+            <select name="employee" class="form-select" required>
+              <option value="">-- Select Employee --</option>
+              {% for emp in employees %}
+              <option value="{{ emp.pk }}">{{ emp.full_name }} ({{ emp.employee_id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Manager / Evaluator</label>
+            <select name="manager" class="form-select">
+              <option value="">-- Select Manager --</option>
+              {% for emp in employees %}
+              <option value="{{ emp.pk }}">{{ emp.full_name }} ({{ emp.employee_id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Period Start <span class="text-danger">*</span></label>
+              <input type="date" name="period_start" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Period End <span class="text-danger">*</span></label>
+              <input type="date" name="period_end" class="form-control" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Agreed Goals / Objectives</label>
+            <textarea name="goals_agreed" class="form-control" rows="3" placeholder="Define the goals for this evaluation period..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Create Appraisal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

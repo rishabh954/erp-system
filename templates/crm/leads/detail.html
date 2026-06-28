@@ -34,6 +34,9 @@
       <a href="{% url 'crm:customer_detail' lead.customer.pk %}" class="btn btn-success btn-sm">
         <i class="fas fa-check-double me-1"></i>View Customer
       </a>
+      <a href="{% url 'sales:quotation_create' %}?customer_id={{ lead.customer.pk }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-file-invoice-dollar me-1"></i>Create Quotation
+      </a>
     {% else %}
       <form method="post" action="{% url 'crm:lead_convert' lead.pk %}" class="d-inline">
         {% csrf_token %}
@@ -43,9 +46,33 @@
       </form>
     {% endif %}
 
+    <!-- Toggle Opportunity Button -->
+    <form method="post" action="{% url 'crm:lead_toggle_opportunity' lead.pk %}" class="d-inline">
+      {% csrf_token %}
+      {% if lead.is_opportunity %}
+        <button type="submit" class="btn btn-outline-warning btn-sm">
+          <i class="fas fa-undo me-1"></i>Revert to Lead
+        </button>
+      {% else %}
+        <button type="submit" class="btn btn-outline-info btn-sm">
+          <i class="fas fa-star me-1"></i>Mark as Opportunity
+        </button>
+      {% endif %}
+    </form>
+    
+    <!-- Log Interaction Button -->
+    <button type="button" class="btn btn-outline-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#logActivityModal">
+      <i class="fas fa-plus-circle me-1"></i>Log Interaction
+    </button>
+
     <!-- Status Dropdown (with AJAX handler) -->
+    {% if lead.status == 'won' %}
+      <span class="btn btn-success btn-sm fw-semibold disabled">
+        <i class="fas fa-check me-1"></i>{{ lead.get_status_display }}
+      </span>
+    {% else %}
     <div class="dropdown d-inline-block">
-      <button class="btn {% if lead.status == 'won' %}btn-success{% elif lead.status == 'lost' %}btn-danger{% elif lead.status == 'qualified' %}btn-warning text-dark{% elif lead.status == 'new' %}btn-primary{% else %}btn-info text-white{% endif %} btn-sm dropdown-toggle fw-semibold" type="button" id="leadStatusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+      <button class="btn {% if lead.status == 'lost' %}btn-danger{% elif lead.status == 'qualified' %}btn-warning text-dark{% elif lead.status == 'new' %}btn-primary{% else %}btn-info text-white{% endif %} btn-sm dropdown-toggle fw-semibold" type="button" id="leadStatusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
         {{ lead.get_status_display }}
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="leadStatusDropdown">
@@ -61,6 +88,7 @@
         {% endfor %}
       </ul>
     </div>
+    {% endif %}
   </div>
 </div>
 
@@ -177,44 +205,6 @@
 
   <!-- Right Column: Log Activity & Timeline -->
   <div class="col-12 col-lg-5">
-    <!-- Log Activity Form -->
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-        <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-pen-square me-2"></i>Log New Activity</h5>
-      </div>
-      <div class="card-body p-4">
-        <form method="post" action="{% url 'crm:lead_add_activity' lead.pk %}">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label for="id_activity_type" class="form-label small fw-semibold">Activity Type</label>
-            <select name="activity_type" id="id_activity_type" class="form-select form-select-sm" required>
-              {% for val, label in activity_type_choices %}
-                <option value="{{ val }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="id_subject" class="form-label small fw-semibold">Subject / Title</label>
-            <input type="text" name="subject" id="id_subject" class="form-control form-control-sm" placeholder="e.g. Call to discuss proposal" required>
-          </div>
-          <div class="mb-3">
-            <label for="id_scheduled_at" class="form-label small fw-semibold">Scheduled Date/Time</label>
-            <input type="datetime-local" name="scheduled_at" id="id_scheduled_at" class="form-control form-control-sm">
-          </div>
-          <div class="mb-3">
-            <label for="id_duration" class="form-label small fw-semibold">Duration (Minutes)</label>
-            <input type="number" name="duration_minutes" id="id_duration" class="form-control form-control-sm" placeholder="e.g. 30">
-          </div>
-          <div class="mb-3">
-            <label for="id_description" class="form-label small fw-semibold">Details</label>
-            <textarea name="description" id="id_description" class="form-control form-control-sm" rows="3" placeholder="Enter details of the conversation or meeting..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm w-100">
-            <i class="fas fa-check me-1"></i>Log Activity
-          </button>
-        </form>
-      </div>
-    </div>
 
     <!-- Timeline of Activities -->
     <div class="card shadow-sm border-0">
@@ -254,6 +244,50 @@
     </div>
   </div>
 </div>
+<!-- Log Activity Modal -->
+<div class="modal fade" id="logActivityModal" tabindex="-1" aria-labelledby="logActivityModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-primary fw-bold" id="logActivityModalLabel"><i class="fas fa-pen-square me-2"></i>Log New Interaction</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'crm:lead_add_activity' lead.pk %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_modal_activity_type" class="form-label small fw-semibold">Activity Type</label>
+            <select name="activity_type" id="id_modal_activity_type" class="form-select" required>
+              {% for val, label in activity_type_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="id_modal_subject" class="form-label small fw-semibold">Subject / Title</label>
+            <input type="text" name="subject" id="id_modal_subject" class="form-control" placeholder="e.g. Call to discuss proposal" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_modal_scheduled_at" class="form-label small fw-semibold">Scheduled Date/Time</label>
+            <input type="datetime-local" name="scheduled_at" id="id_modal_scheduled_at" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label for="id_modal_duration" class="form-label small fw-semibold">Duration (Minutes)</label>
+            <input type="number" name="duration_minutes" id="id_modal_duration" class="form-control" placeholder="e.g. 30">
+          </div>
+          <div class="mb-3">
+            <label for="id_modal_description" class="form-label small fw-semibold">Details</label>
+            <textarea name="description" id="id_modal_description" class="form-control" rows="4" placeholder="Enter details of the conversation or meeting..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-2">
+            <i class="fas fa-check me-1"></i>Log Interaction
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}

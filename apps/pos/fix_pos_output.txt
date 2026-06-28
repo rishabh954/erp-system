@@ -1,0 +1,18 @@
+﻿File length: 24796
+First </html> at char: 22827
+Last </script> before </html> at: 22809
+Last renderProducts() at: 22787
+Context around renderProducts:
+venv\Scripts\python.exe : Traceback (most recent call last):
+At line:1 char:1
++ venv\Scripts\python.exe -u apps\pos\fix_pos.py 2>&1 | Out-File -Encod ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\OM\Documents\GitHub\erp-system\apps\pos\fix_pos.py", line 33, in <module>
+    print(repr(content[render_call-20:render_call+30]))
+  File "C:\Users\OM\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 1-11: character maps to <undefined>

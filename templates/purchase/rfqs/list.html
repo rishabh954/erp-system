@@ -1,11 +1,74 @@
 {% extends "base.html" %}
-{% block title %}RFQs{% endblock %}
+{% load static %}
+
+{% block title %}Requests for Quotation (RFQs){% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Requests for Quotation</h1></div>
-<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
-<thead class="table-light"><tr><th>Number</th><th>Title</th><th>Deadline</th><th>Status</th></tr></thead>
-<tbody>
-{% for rfq in rfqs %}<tr><td><a href="{% url 'purchase:rfq_detail' rfq.pk %}">{{ rfq.number }}</a></td><td>{{ rfq.title }}</td><td>{{ rfq.deadline }}</td><td>{{ rfq.get_status_display }}</td></tr>
-{% empty %}<tr><td colspan="4" class="text-center py-4">No RFQs found.</td></tr>{% endfor %}
-</tbody></table></div>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Requests for Quotation</h1>
+    <p class="text-muted mb-0">Manage quotes requested from vendors</p>
+  </div>
+  <div>
+    <a href="{% url 'purchase:rfq_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>New RFQ
+    </a>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>RFQ Number</th>
+            <th>Title</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rfq in rfqs %}
+          <tr>
+            <td><a href="{% url 'purchase:rfq_detail' rfq.pk %}" class="fw-bold">{{ rfq.number }}</a></td>
+            <td>{{ rfq.title }}</td>
+            <td class="small">{{ rfq.deadline|date:"Y-m-d" }}</td>
+            <td>
+              <span class="badge 
+                {% if rfq.status == 'draft' %}bg-secondary
+                {% elif rfq.status == 'published' %}bg-info
+                {% elif rfq.status == 'closed' %}bg-success
+                {% elif rfq.status == 'cancelled' %}bg-danger
+                {% endif %}">
+                {{ rfq.get_status_display }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="btn-group">
+                <a href="{% url 'purchase:rfq_detail' rfq.pk %}" class="btn btn-outline-primary btn-sm" title="View details"><i class="fas fa-eye"></i></a>
+                {% if rfq.status == 'draft' %}
+                <a href="{% url 'purchase:rfq_update' rfq.pk %}" class="btn btn-outline-warning btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+                <form method="post" action="{% url 'purchase:rfq_delete' rfq.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete" data-confirm-delete="Delete this RFQ?"><i class="fas fa-trash"></i></button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center py-5">
+              <i class="fas fa-file-invoice fa-3x text-muted opacity-25 mb-3 d-block"></i>
+              <span class="text-muted">No RFQs found.</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {% endblock %}

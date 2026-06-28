@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Create Salary Structure | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:salary_structures' %}">Salary Structures</a></li>
+<li class="breadcrumb-item active">Create</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 text-primary mb-1">Create Salary Structure</h1>
+  <a href="{% url 'hrms:salary_structures' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'hrms:salary_structure_create' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Executive Package, Standard Operations..." required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Description</label>
+            <textarea name="description" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-4 form-check">
+            <input type="checkbox" name="is_active" class="form-check-input" id="is_active" checked>
+            <label class="form-check-label fw-bold" for="is_active">Active (Available for use)</label>
+          </div>
+          <button type="submit" class="btn btn-primary">Create Structure</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

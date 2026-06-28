@@ -1,15 +1,157 @@
 {% extends "base.html" %}
-{% block title %}Appraisal: {{ appraisal.employee.full_name }}{% endblock %}
+{% block title %}Appraisal Details | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:appraisals' %}">Performance Appraisals</a></li>
+<li class="breadcrumb-item active">{{ appraisal.employee.full_name }}</li>
+{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Appraisal: {{ appraisal.employee.full_name }}</h1></div>
-<div class="card shadow-sm border-0 p-4 mb-4">
-<p><strong>Period:</strong> {{ appraisal.period_start }} to {{ appraisal.period_end }}</p>
-<p><strong>Manager:</strong> {{ appraisal.manager.full_name|default:"N/A" }}</p>
-<p><strong>Rating:</strong> {{ appraisal.rating }} / 5.0</p>
-<p><strong>Status:</strong> {{ appraisal.get_status_display }}</p>
-<hr>
-<h6>Goals Agreed</h6><p>{{ appraisal.goals_agreed|linebreaks }}</p>
-<h6>Manager Feedback</h6><p>{{ appraisal.manager_feedback|linebreaks }}</p>
-<h6>Employee Feedback</h6><p>{{ appraisal.employee_feedback|linebreaks }}</p>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Appraisal: {{ appraisal.employee.full_name }}</h1>
+    <p class="text-muted mb-0">Evaluation Period: {{ appraisal.period_start|date:"M j, Y" }} to {{ appraisal.period_end|date:"M j, Y" }}</p>
+  </div>
+  <a href="{% url 'hrms:appraisals' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body text-center pt-4">
+        {% if appraisal.employee.profile_picture %}
+        <img src="{{ appraisal.employee.profile_picture.url }}" class="rounded-circle mb-3 border p-1" width="100" height="100" style="object-fit: cover;">
+        {% else %}
+        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 fs-2 shadow-sm" style="width: 100px; height: 100px;">
+          {{ appraisal.employee.first_name|first }}{{ appraisal.employee.last_name|first }}
+        </div>
+        {% endif %}
+        <h5 class="fw-bold mb-1">{{ appraisal.employee.full_name }}</h5>
+        <p class="text-muted mb-3">{{ appraisal.employee.job_title.title|default:"No Title" }}</p>
+        
+        <div class="d-flex justify-content-center gap-2 mb-4">
+          <a href="{% url 'hrms:employee_detail' appraisal.employee.pk %}" class="btn btn-sm btn-outline-primary">View Profile</a>
+        </div>
+        
+        <hr>
+        
+        <div class="text-start">
+          <p class="mb-2"><small class="text-muted fw-bold">MANAGER / EVALUATOR</small><br>{{ appraisal.manager.full_name|default:"-" }}</p>
+          <p class="mb-2"><small class="text-muted fw-bold">CURRENT STATUS</small><br>
+            {% if appraisal.status == 'completed' %}<span class="badge bg-success">Completed</span>
+            {% elif appraisal.status == 'in_progress' %}<span class="badge bg-warning text-dark">In Progress</span>
+            {% else %}<span class="badge bg-secondary">Draft</span>{% endif %}
+          </p>
+          <p class="mb-2"><small class="text-muted fw-bold">FINAL RATING</small><br>
+            <span class="fs-4 fw-bold {% if appraisal.rating >= 4 %}text-success{% elif appraisal.rating >= 3 %}text-primary{% elif appraisal.rating > 0 %}text-danger{% else %}text-muted{% endif %}">
+              {{ appraisal.rating }} / 5.0
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white pt-4 px-4 pb-0 border-0">
+        <h5 class="fw-bold text-primary mb-0"><i class="fas fa-bullseye me-2"></i>Goals & Objectives</h5>
+      </div>
+      <div class="card-body p-4">
+        {% if appraisal.goals_agreed %}
+        <p style="white-space: pre-wrap;">{{ appraisal.goals_agreed }}</p>
+        {% else %}
+        <p class="text-muted fst-italic">No goals defined.</p>
+        {% endif %}
+      </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white pt-4 px-4 pb-0 border-0 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-primary mb-0"><i class="fas fa-comments me-2"></i>Feedback & Evaluation</h5>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#evaluateModal">
+          <i class="fas fa-edit me-1"></i>Update Evaluation
+        </button>
+      </div>
+      <div class="card-body p-4">
+        
+        <div class="mb-4">
+          <h6 class="fw-bold">Employee Self-Evaluation / Comments</h6>
+          <div class="p-3 bg-light rounded border">
+            {% if appraisal.employee_feedback %}
+            <p class="mb-0" style="white-space: pre-wrap;">{{ appraisal.employee_feedback }}</p>
+            {% else %}
+            <p class="text-muted fst-italic mb-0">No self-evaluation provided.</p>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div>
+          <h6 class="fw-bold">Manager Feedback</h6>
+          <div class="p-3 bg-light rounded border">
+            {% if appraisal.manager_feedback %}
+            <p class="mb-0" style="white-space: pre-wrap;">{{ appraisal.manager_feedback }}</p>
+            {% else %}
+            <p class="text-muted fst-italic mb-0">No manager feedback provided.</p>
+            {% endif %}
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Evaluate Modal -->
+<div class="modal fade" id="evaluateModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:appraisal_detail' appraisal.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_appraisal">
+        
+        <div class="modal-header">
+          <h5 class="modal-title">Update Evaluation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Employee Self-Evaluation</label>
+            <textarea name="employee_feedback" class="form-control" rows="4">{{ appraisal.employee_feedback }}</textarea>
+          </div>
+          
+          <div class="mb-3 border-top pt-3">
+            <label class="form-label text-primary fw-bold">Manager Feedback</label>
+            <textarea name="manager_feedback" class="form-control" rows="5">{{ appraisal.manager_feedback }}</textarea>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Final Rating (1.0 to 5.0)</label>
+              <input type="number" step="0.1" min="0" max="5" name="rating" class="form-control" value="{{ appraisal.rating }}">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Appraisal Status</label>
+              <select name="status" class="form-select">
+                <option value="draft" {% if appraisal.status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="in_progress" {% if appraisal.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="completed" {% if appraisal.status == 'completed' %}selected{% endif %}>Completed</option>
+              </select>
+            </div>
+          </div>
+          
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

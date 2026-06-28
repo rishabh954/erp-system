@@ -6,11 +6,11 @@
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center mb-4">
   <div class="page-header-title">
-    <h1 class="h3 text-primary mb-1">Create Purchase Request</h1>
-    <p class="text-muted mb-0">Initiate a request for materials, products, or services</p>
+    <h1 class="h3 text-primary mb-1">{% if pr %}Edit Purchase Request: {{ pr.number }}{% else %}Create Purchase Request{% endif %}</h1>
+    <p class="text-muted mb-0">{% if pr %}Update requisition details{% else %}Submit a new requisition for approval{% endif %}</p>
   </div>
   <div>
-    <a href="{% url 'purchase:requests' %}" class="btn btn-outline-secondary btn-sm">
+    <a href="{% if pr %}{% url 'purchase:request_detail' pr.pk %}{% else %}{% url 'purchase:requests' %}{% endif %}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-arrow-left me-1"></i>Back
     </a>
   </div>
@@ -20,34 +20,34 @@
   <div class="col-12">
     <div class="card shadow-sm border-0">
       <div class="card-body p-4">
-        <form method="post" action="{% url 'purchase:request_create' %}" id="prForm">
+        <form method="post" action="{% if pr %}{% url 'purchase:request_update' pr.pk %}{% else %}{% url 'purchase:request_create' %}{% endif %}" id="prForm">
           {% csrf_token %}
 
-          <!-- Section 1: Header Info -->
-          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-file-alt me-2"></i>Request Details</h5>
+          <!-- Section 1: Basic Details -->
+          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-info-circle me-2"></i>General Details</h5>
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_title" class="form-label small fw-semibold">Request Title <span class="text-danger">*</span></label>
-              <input type="text" name="title" id="id_title" class="form-control" required placeholder="e.g. Office Stationery / Dev Server Upgrade">
+              <input type="text" name="title" id="id_title" class="form-control" required placeholder="e.g. Office Supplies for Q3" value="{{ pr.title|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_department" class="form-label small fw-semibold">Department</label>
               <select name="department" id="id_department" class="form-select">
-                <option value="">Select Department</option>
+                <option value="">-- Select Department --</option>
                 {% for dept in departments %}
-                  <option value="{{ dept.id }}">{{ dept.name }}</option>
+                  <option value="{{ dept.id }}" {% if pr and pr.department_id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="col-12 col-md-6">
               <label for="id_required_by" class="form-label small fw-semibold">Required By Date</label>
-              <input type="date" name="required_by" id="id_required_by" class="form-control" required value="{% now 'Y-m-d' %}">
+              <input type="date" name="required_by" id="id_required_by" class="form-control" value="{% if pr and pr.required_by %}{{ pr.required_by|date:'Y-m-d' }}{% endif %}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_priority" class="form-label small fw-semibold">Priority</label>
               <select name="priority" id="id_priority" class="form-select">
                 {% for val, label in priority_choices %}
-                  <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ label }}</option>
+                  <option value="{{ val }}" {% if pr and pr.priority == val %}selected{% endif %}{% if not pr and val == 'medium' %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -73,31 +73,59 @@
                 </tr>
               </thead>
               <tbody id="itemsBody">
-                <!-- Template row -->
-                <tr class="item-row">
-                  <td>
-                    <select name="product[]" class="form-select product-select select2-basic">
-                      <option value="">-- Custom Item --</option>
-                      {% for prod in products %}
-                        <option value="{{ prod.id }}" data-price="{{ prod.sale_price }}">{{ prod.name }} ({{ prod.sku }})</option>
-                      {% endfor %}
-                    </select>
-                  </td>
-                  <td>
-                    <input type="text" name="description[]" class="form-control desc-input" required placeholder="Item description/specification...">
-                  </td>
-                  <td>
-                    <input type="number" name="quantity[]" class="form-control text-end qty-input" value="1" min="1" step="any" required>
-                  </td>
-                  <td>
-                    <input type="number" name="estimated_unit_price[]" class="form-control text-end price-input" value="0.00" min="0" step="0.01" required>
-                  </td>
-                  <td class="text-center">
-                    <button type="button" class="btn btn-outline-danger btn-xs remove-row-btn" style="padding: 4px 8px">
-                      <i class="fas fa-trash-alt"></i>
-                    </button>
-                  </td>
-                </tr>
+                {% if pr %}
+                  {% for line in pr.lines.all %}
+                  <tr class="item-row">
+                    <td>
+                      <select name="product[]" class="form-select product-select">
+                        <option value="">-- Custom Item --</option>
+                        {% for prod in products %}
+                          <option value="{{ prod.id }}" data-price="{{ prod.sale_price }}" {% if line.product_id == prod.id %}selected{% endif %}>{{ prod.name }} ({{ prod.sku }})</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input type="text" name="description[]" class="form-control desc-input" required placeholder="Item description/specification..." value="{{ line.description }}">
+                    </td>
+                    <td>
+                      <input type="number" name="quantity[]" class="form-control text-end qty-input" value="{{ line.quantity }}" min="1" step="any" required>
+                    </td>
+                    <td>
+                      <input type="number" name="estimated_unit_price[]" class="form-control text-end price-input" value="{{ line.estimated_unit_price }}" min="0" step="0.01" required>
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-xs remove-row-btn" style="padding: 4px 8px">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr class="item-row">
+                    <td>
+                      <select name="product[]" class="form-select product-select">
+                        <option value="">-- Custom Item --</option>
+                        {% for prod in products %}
+                          <option value="{{ prod.id }}" data-price="{{ prod.sale_price }}">{{ prod.name }} ({{ prod.sku }})</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input type="text" name="description[]" class="form-control desc-input" required placeholder="Item description/specification...">
+                    </td>
+                    <td>
+                      <input type="number" name="quantity[]" class="form-control text-end qty-input" value="1" min="1" step="any" required>
+                    </td>
+                    <td>
+                      <input type="number" name="estimated_unit_price[]" class="form-control text-end price-input" value="0.00" min="0" step="0.01" required>
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-xs remove-row-btn" style="padding: 4px 8px">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                {% endif %}
               </tbody>
             </table>
           </div>
@@ -106,14 +134,14 @@
           <div class="row g-4 mb-4">
             <div class="col-12 col-md-7">
               <label for="id_notes" class="form-label small fw-semibold">Internal Remarks / Justification</label>
-              <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Add justification or special notes for approvers..."></textarea>
+              <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Add justification or special notes for approvers...">{{ pr.notes|default:'' }}</textarea>
             </div>
             <div class="col-12 col-md-5">
               <div class="card bg-light border-0 shadow-none">
                 <div class="card-body p-3">
                   <div class="d-flex justify-content-between align-items-center">
                     <span class="text-muted fw-bold">Estimated Cost Summary:</span>
-                    <span class="h4 mb-0 fw-bold text-primary" id="totalCost">{{ CURRENCY_SYMBOL }}0.00</span>
+                    <span class="h4 mb-0 fw-bold text-primary" id="totalCost">{{ CURRENCY_SYMBOL }}{{ pr.estimated_cost|default:'0.00' }}</span>
                   </div>
                 </div>
               </div>
@@ -122,8 +150,10 @@
 
           <!-- Actions -->
           <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-            <a href="{% url 'purchase:requests' %}" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Save Request</button>
+            <a href="{% if pr %}{% url 'purchase:request_detail' pr.pk %}{% else %}{% url 'purchase:requests' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-1"></i>{% if pr %}Save Changes{% else %}Save Request{% endif %}
+            </button>
           </div>
         </form>
       </div>

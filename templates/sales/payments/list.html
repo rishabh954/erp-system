@@ -148,12 +148,6 @@
                 {{ payment.get_status_display }}
               </span>
             </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="8" class="text-center py-5">
-              <i class="fas fa-credit-card fa-3x text-muted mb-3 d-block opacity-25"></i>
-              <span class="text-muted">No payments found matching current criteria.</span>
             </td>
           </tr>
           {% endfor %}

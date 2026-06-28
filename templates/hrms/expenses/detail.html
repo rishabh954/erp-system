@@ -1,13 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Expense Claim: {{ claim.number }}{% endblock %}
+{% block title %}Claim Details | HRMS{% endblock %}
+{% block nav_hrms %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:employees' %}">HRMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'hrms:expense_claims' %}">Expense Claims</a></li>
+<li class="breadcrumb-item active">{{ claim.number }}</li>
+{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Claim: {{ claim.number }}</h1></div>
-<div class="card shadow-sm border-0 p-4 mb-4">
-<p><strong>Employee:</strong> {{ claim.employee.full_name }}</p>
-<p><strong>Date:</strong> {{ claim.expense_date }}</p>
-<p><strong>Category:</strong> {{ claim.category }}</p>
-<p><strong>Amount:</strong> {{ claim.amount }}</p>
-<p><strong>Description:</strong> {{ claim.description }}</p>
-<p><strong>Status:</strong> {{ claim.get_status_display }}</p>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Claim {{ claim.number }}</h1>
+    <p class="text-muted mb-0">Submitted by: <a href="{% url 'hrms:employee_detail' claim.employee.pk %}">{{ claim.employee.full_name }}</a></p>
+  </div>
+  <a href="{% url 'hrms:expense_claims' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h6 class="fw-bold text-primary mb-3">Claim Information</h6>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+          <div>
+            <div class="text-muted small fw-bold">TOTAL AMOUNT</div>
+            <div class="fs-3 fw-bold text-dark">{{ claim.currency.symbol|default:"$" }}{{ claim.amount }}</div>
+          </div>
+          <div class="text-end">
+            <div class="text-muted small fw-bold">STATUS</div>
+            <div>
+              {% if claim.status == 'approved' %}<span class="badge bg-success fs-6">Approved</span>
+              {% elif claim.status == 'submitted' %}<span class="badge bg-warning text-dark fs-6">Pending Approval</span>
+              {% elif claim.status == 'paid' %}<span class="badge bg-info text-dark fs-6">Paid</span>
+              {% elif claim.status == 'rejected' %}<span class="badge bg-danger fs-6">Rejected</span>
+              {% else %}<span class="badge bg-secondary fs-6">Draft</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <table class="table table-sm table-borderless">
+          <tr><th class="w-35 text-muted">Expense Date</th><td>{{ claim.expense_date|date:"M j, Y" }}</td></tr>
+          <tr><th class="text-muted">Category</th><td>{{ claim.category }}</td></tr>
+          <tr><th class="text-muted">Description</th><td>{{ claim.description }}</td></tr>
+        </table>
+        
+        {% if claim.approved_by %}
+        <div class="alert alert-success mt-3 mb-0">
+          <i class="fas fa-check-circle me-1"></i>Approved by <strong>{{ claim.approved_by.get_full_name }}</strong>
+        </div>
+        {% elif claim.status == 'rejected' %}
+        <div class="alert alert-danger mt-3 mb-0">
+          <i class="fas fa-times-circle me-1"></i>Claim was rejected.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    
+    {% if claim.status == 'submitted' or claim.status == 'approved' %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white pt-3 px-3 pb-0 border-0">
+        <h6 class="fw-bold text-primary mb-0">Manager Actions</h6>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'hrms:expense_claim_detail' claim.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_status">
+          
+          {% if claim.status == 'submitted' %}
+          <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            <button type="submit" name="status" value="approved" class="btn btn-success me-md-2"><i class="fas fa-check me-1"></i>Approve Claim</button>
+            <button type="submit" name="status" value="rejected" class="btn btn-outline-danger"><i class="fas fa-times me-1"></i>Reject Claim</button>
+          </div>
+          {% elif claim.status == 'approved' %}
+          <div class="d-grid gap-2">
+            <button type="submit" name="status" value="paid" class="btn btn-info text-white"><i class="fas fa-money-bill-wave me-1"></i>Mark as Paid</button>
+          </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    
+  </div>
+  
+  <div class="col-md-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white pt-4 px-4 pb-0 border-0">
+        <h5 class="fw-bold text-primary mb-0"><i class="fas fa-paperclip me-2"></i>Receipt / Attachment</h5>
+      </div>
+      <div class="card-body p-4 d-flex align-items-center justify-content-center bg-light m-3 rounded" style="min-height: 400px;">
+        {% if claim.attachment %}
+          {% if claim.attachment.url|lower|slice:"-4:" == ".pdf" %}
+            <embed src="{{ claim.attachment.url }}" type="application/pdf" width="100%" height="500px" />
+          {% else %}
+            <img src="{{ claim.attachment.url }}" class="img-fluid rounded shadow-sm" alt="Receipt Attachment" style="max-height: 500px;">
+          {% endif %}
+        {% else %}
+          <div class="text-center text-muted">
+            <i class="fas fa-file-invoice fa-4x mb-3 text-secondary opacity-50"></i>
+            <p>No receipt or attachment provided for this claim.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

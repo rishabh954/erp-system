@@ -36,13 +36,8 @@
 
     <!-- Action: Approve Quotation -->
     {% if quotation.status == 'sent' or quotation.status == 'draft' %}
-    <form method="post" action="{% url 'workflow:action_api' quotation.pk %}" class="d-inline">
+    <form method="post" action="{% url 'sales:quotation_approve' quotation.pk %}" class="d-inline">
       {% csrf_token %}
-      <input type="hidden" name="app_label" value="sales">
-      <input type="hidden" name="model_name" value="Quotation">
-      <input type="hidden" name="obj_id" value="{{ quotation.pk }}">
-      <input type="hidden" name="action" value="approve">
-      <input type="hidden" name="next" value="{{ request.path }}">
       <button type="submit" class="btn btn-warning btn-sm">
         <i class="fas fa-check-circle me-1"></i>Approve
       </button>
@@ -50,7 +45,7 @@
     {% endif %}
 
     <!-- Action: Convert to Sales Order -->
-    {% if quotation.status == 'sent' or quotation.status == 'approved' %}
+    {% if quotation.status == 'approved' %}
     <form method="post" action="{% url 'sales:quotation_convert' quotation.pk %}" class="d-inline">
       {% csrf_token %}
       <button type="submit" class="btn btn-success btn-sm">
@@ -60,16 +55,20 @@
     {% endif %}
 
     <!-- Action: Reject Quotation -->
-    {% if quotation.status == 'draft' or quotation.status == 'sent' or quotation.status == 'approved' %}
-    <form method="post" action="{% url 'sales:quotation_reject' quotation.pk %}" class="d-inline">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger btn-sm ms-1" onclick="return confirm('Are you sure you want to mark this quotation as rejected?');">
+    {% if quotation.status == 'draft' or quotation.status == 'sent'%}
+      <button type="button" class="btn btn-danger btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#rejectQuotationModal">
         <i class="fas fa-times-circle me-1"></i>Reject
       </button>
-    </form>
     {% endif %}
   </div>
 </div>
+
+{% if quotation.status == 'rejected' and quotation.reject_reason %}
+<div class="alert alert-danger mb-4 shadow-sm border-0">
+  <h6 class="alert-heading fw-bold mb-1"><i class="fas fa-exclamation-circle me-1"></i>Rejection Reason:</h6>
+  <p class="mb-0 ms-4">{{ quotation.reject_reason }}</p>
+</div>
+{% endif %}
 
 <div class="row g-4">
   <!-- Left Side: quotation Items & Billing -->
@@ -209,6 +208,33 @@
 
   </div>
 </div>
+
+<!-- Reject Quotation Modal -->
+<div class="modal fade" id="rejectQuotationModal" tabindex="-1" aria-labelledby="rejectQuotationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="rejectQuotationModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Reject Quotation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'sales:quotation_reject' quotation.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p>Are you sure you want to reject Quotation <strong>{{ quotation.number }}</strong>?</p>
+          <div class="mb-3">
+            <label for="rejectReason" class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="rejectReason" name="reject_reason" rows="3" placeholder="Please provide a reason for rejecting this quotation..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Quotation</button>
+          <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 

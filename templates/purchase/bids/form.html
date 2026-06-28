@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Record Vendor Bid{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div class="page-header-title">
+    <h1 class="h3 text-primary mb-1">Record Vendor Bid</h1>
+    <p class="text-muted mb-0">Enter quote details received from a vendor {% if rfq %}for {{ rfq.number }}{% endif %}</p>
+  </div>
+  <div>
+    <a href="{% if rfq %}{% url 'purchase:rfq_detail' rfq.pk %}{% else %}{% url 'purchase:bids' %}{% endif %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Cancel
+    </a>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  {% if rfq %}
+  <input type="hidden" name="rfq" value="{{ rfq.pk }}">
+  {% endif %}
+  
+  <div class="row g-4">
+    <div class="col-12 col-xl-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h6 class="mb-0 fw-bold"><i class="fas fa-file-invoice-dollar me-2 text-primary"></i>Bid Details</h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            {% if not rfq %}
+            <div class="col-12">
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>Please select an RFQ from the RFQ list to record a bid.
+              </div>
+            </div>
+            {% else %}
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Vendor</label>
+              <select name="vendor" class="form-select" required>
+                <option value="">Select Vendor...</option>
+                {% for vendor in vendors %}
+                <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Valid Until</label>
+              <input type="date" name="valid_until" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes / Terms</label>
+              <textarea name="notes" class="form-control" rows="3"></textarea>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if rfq %}
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h6 class="mb-0 fw-bold"><i class="fas fa-list me-2 text-primary"></i>Quoted Prices</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Product</th>
+                  <th>Quantity Requested</th>
+                  <th>Unit Price Quoted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in rfq.lines.all %}
+                <tr>
+                  <td>
+                    {% if line.product %}
+                      <strong>{{ line.product.name }}</strong>
+                    {% else %}
+                      <em>Custom Item</em>
+                    {% endif %}
+                    <br><small class="text-muted">{{ line.description }}</small>
+                  </td>
+                  <td>{{ line.quantity|floatformat:2 }}</td>
+                  <td>
+                    <div class="input-group">
+                      <span class="input-group-text">$</span>
+                      <input type="number" name="price[]" class="form-control" step="0.01" min="0" value="0.00" required>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">No lines found in RFQ.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div class="col-12 col-xl-4">
+      <div class="card shadow-sm border-0 mb-4 sticky-top" style="top: 100px;">
+        <div class="card-body p-4">
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg" {% if not rfq %}disabled{% endif %}>
+              <i class="fas fa-save me-1"></i>Record Bid
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

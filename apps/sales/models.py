@@ -37,6 +37,7 @@ class Quotation(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         'authentication.User', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='approved_quotations',
     )
+    reject_reason = models.TextField(blank=True, help_text=_("Reason for rejection"))
 
     class Meta:
         db_table = 'sales_quotations'
@@ -113,6 +114,7 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         'authentication.User', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='sales_orders',
     )
+    cancel_reason = models.TextField(blank=True, help_text=_("Reason for cancellation"))
     price_list = models.ForeignKey('PriceList', null=True, blank=True, on_delete=models.SET_NULL)
     discount_rule = models.ForeignKey('DiscountRule', null=True, blank=True, on_delete=models.SET_NULL)
 

@@ -120,9 +120,22 @@
               </span>
             </td>
             <td class="text-center">
-              <a href="{% url 'purchase:request_detail' pr.pk %}" class="btn btn-outline-primary btn-xs" title="View details">
-                <i class="fas fa-eye"></i> View
-              </a>
+              <div class="btn-group">
+                <a href="{% url 'purchase:request_detail' pr.pk %}" class="btn btn-outline-primary btn-sm" title="View details" data-bs-toggle="tooltip">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if pr.status == 'draft' %}
+                <a href="{% url 'purchase:request_update' pr.pk %}" class="btn btn-outline-warning btn-sm" title="Edit Request" data-bs-toggle="tooltip">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form method="post" action="{% url 'purchase:request_delete' pr.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Request" data-bs-toggle="tooltip" data-confirm-delete="Delete this draft request?">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% empty %}

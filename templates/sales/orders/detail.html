@@ -49,15 +49,19 @@
 
     <!-- Action: Cancel Order -->
     {% if order.status == 'draft' or order.status == 'confirmed' or order.status == 'processing' %}
-      <form method="post" action="{% url 'sales:order_cancel' order.pk %}" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger btn-sm ms-1" onclick="return confirm('Are you sure you want to cancel this Sales Order? This will also cancel any pending deliveries.');">
-          <i class="fas fa-times-circle me-1"></i>Cancel Order
-        </button>
-      </form>
+      <button type="button" class="btn btn-danger btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
+        <i class="fas fa-times-circle me-1"></i>Cancel Order
+      </button>
     {% endif %}
   </div>
 </div>
+
+{% if order.status == 'cancelled' and order.cancel_reason %}
+<div class="alert alert-danger mb-4 shadow-sm border-0">
+  <h6 class="alert-heading fw-bold mb-1"><i class="fas fa-exclamation-circle me-1"></i>Cancellation Reason:</h6>
+  <p class="mb-0 ms-4">{{ order.cancel_reason }}</p>
+</div>
+{% endif %}
 
 <div class="row g-4">
   <!-- Left Side: Transaction lines -->
@@ -215,4 +219,32 @@
     </div>
   </div>
 </div>
+
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="cancelOrderModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Cancel Order</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'sales:order_cancel' order.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p>Are you sure you want to cancel Sales Order <strong>{{ order.number }}</strong>?</p>
+          <p class="small text-muted">This will also cancel any pending deliveries associated with this order. This action cannot be undone.</p>
+          <div class="mb-3">
+            <label for="cancelReason" class="form-label fw-bold">Reason for Cancellation <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="cancelReason" name="cancel_reason" rows="3" placeholder="Please provide a reason for cancelling this order..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Order</button>
+          <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

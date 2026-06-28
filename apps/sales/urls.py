@@ -3,7 +3,7 @@ from django.urls import path
 from .views import (
     QuotationListView, QuotationDetailView, QuotationCreateView,
     QuotationUpdateView, QuotationDeleteView,
-    QuotationSendView, QuotationConvertToSOView, QuotationRejectView,
+    QuotationSendView, QuotationConvertToSOView, QuotationRejectView, QuotationApproveView,
     SalesOrderListView, SalesOrderDetailView,
     SalesOrderCreateView, SalesOrderUpdateView, SalesOrderDeleteView, SalesOrderCancelView,
     CreateInvoiceFromSOView, CreateDeliveryFromSOView,
@@ -12,9 +12,9 @@ from .views import (
     InvoicePDFView, RecordPaymentView,
     PaymentListView,
     PriceListListView, PriceListDetailView,
-    SubscriptionListView, SubscriptionDetailView, SubscriptionCreateView, SubscriptionUpdateView,
+    SubscriptionListView, SubscriptionDetailView, SubscriptionCreateView, SubscriptionUpdateView, SubscriptionGenerateInvoiceView,
     CreditNoteListView, CreditNoteDetailView,
-    SalesCommissionListView,
+    SalesCommissionListView, SalesCommissionPayView,
     SalesDashboardView, POSView, POSAPIView
 )
 app_name = 'sales'
@@ -25,6 +25,7 @@ urlpatterns = [
     path('quotations/<uuid:pk>/edit/', QuotationUpdateView.as_view(), name='quotation_update'),
     path('quotations/<uuid:pk>/delete/', QuotationDeleteView.as_view(), name='quotation_delete'),
     path('quotations/<uuid:pk>/send/', QuotationSendView.as_view(), name='quotation_send'),
+    path('quotations/<uuid:pk>/approve/', QuotationApproveView.as_view(), name='quotation_approve'),
     path('quotations/<uuid:pk>/convert/', QuotationConvertToSOView.as_view(), name='quotation_convert'),
     path('quotations/<uuid:pk>/reject/', QuotationRejectView.as_view(), name='quotation_reject'),
     path('orders/', SalesOrderListView.as_view(), name='orders'),
@@ -42,10 +43,12 @@ urlpatterns = [
     path('subscriptions/create/', SubscriptionCreateView.as_view(), name='subscription_create'),
     path('subscriptions/<uuid:pk>/', SubscriptionDetailView.as_view(), name='subscription_detail'),
     path('subscriptions/<uuid:pk>/edit/', SubscriptionUpdateView.as_view(), name='subscription_update'),
+    path('subscriptions/<uuid:pk>/invoice/', SubscriptionGenerateInvoiceView.as_view(), name='subscription_invoice'),
     
     path('credit-notes/', CreditNoteListView.as_view(), name='credit_notes'),
     path('credit-notes/<uuid:pk>/', CreditNoteDetailView.as_view(), name='credit_note_detail'),
     path('commissions/', SalesCommissionListView.as_view(), name='commissions'),
+    path('commissions/<uuid:pk>/pay/', SalesCommissionPayView.as_view(), name='commission_pay'),
     path('orders/<uuid:pk>/', SalesOrderDetailView.as_view(), name='order_detail'),
     path('orders/<uuid:pk>/edit/', SalesOrderUpdateView.as_view(), name='order_update'),
     path('orders/<uuid:pk>/delete/', SalesOrderDeleteView.as_view(), name='order_delete'),

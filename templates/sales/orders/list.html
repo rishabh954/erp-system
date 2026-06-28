@@ -95,27 +95,23 @@
               </span>
             </td>
             <td class="text-center">
-              <a href="{% url 'sales:order_detail' order.pk %}" class="btn btn-outline-primary btn-xs" title="View details">
-                <i class="fas fa-eye"></i> View
-              </a>
-              {% if order.status == 'draft' %}
-              <a href="{% url 'sales:order_update' order.pk %}" class="btn btn-outline-warning btn-xs" title="Edit Order">
-                <i class="fas fa-edit"></i>
-              </a>
-              <form method="post" action="{% url 'sales:order_delete' order.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-xs" data-confirm-delete="Delete this order?">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </form>
-              {% endif %}
+              <div class="d-flex justify-content-center gap-1">
+                <a href="{% url 'sales:order_detail' order.pk %}" class="btn btn-outline-primary btn-sm" title="View details">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if order.status == 'draft' %}
+                <a href="{% url 'sales:order_update' order.pk %}" class="btn btn-outline-warning btn-sm" title="Edit Order">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form method="post" action="{% url 'sales:order_delete' order.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm-delete="Delete this order?">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
             </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="text-center py-5">
-              <i class="fas fa-shopping-bag fa-3x text-muted mb-3 d-block opacity-25"></i>
-              <span class="text-muted">No sales orders found matching current criteria.</span>
             </td>
           </tr>
           {% endfor %}

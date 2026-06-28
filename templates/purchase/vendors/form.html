@@ -6,21 +6,21 @@
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center mb-4">
   <div class="page-header-title">
-    <h1 class="h3 text-primary mb-1">Create Vendor</h1>
-    <p class="text-muted mb-0">Register a new supplier or service provider</p>
-  </div>
-  <div>
-    <a href="{% url 'purchase:vendors' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-arrow-left me-1"></i>Back to list
-    </a>
-  </div>
-</div>
-
-<div class="row justify-content-center">
-  <div class="col-12 col-xl-10">
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-4">
-        <form method="post" action="{% url 'purchase:vendor_create' %}">
+          <h1 class="h3 text-primary mb-1">{% if vendor %}Edit Vendor: {{ vendor.name }}{% else %}Create Vendor{% endif %}</h1>
+          <p class="text-muted mb-0">{% if vendor %}Update vendor details{% else %}Register a new supplier or service provider{% endif %}</p>
+        </div>
+        <div>
+          <a href="{% if vendor %}{% url 'purchase:vendor_detail' vendor.pk %}{% else %}{% url 'purchase:vendors' %}{% endif %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back
+          </a>
+        </div>
+      </div>
+      
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+              <form method="post" action="{% if vendor %}{% url 'purchase:vendor_update' vendor.pk %}{% else %}{% url 'purchase:vendor_create' %}{% endif %}">
           {% csrf_token %}
 
           <!-- Section 1: Basic Profile -->
@@ -28,23 +28,23 @@
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_name" class="form-label small fw-semibold">Vendor Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Acme Parts Supplies">
+              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Acme Parts Supplies" value="{{ vendor.name|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_vendor_code" class="form-label small fw-semibold">Vendor Code / SKU Prefix</label>
-              <input type="text" name="vendor_code" id="id_vendor_code" class="form-control" placeholder="e.g. VEN-001">
+              <input type="text" name="vendor_code" id="id_vendor_code" class="form-control" placeholder="e.g. VEN-001" value="{{ vendor.vendor_code|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_vendor_type" class="form-label small fw-semibold">Vendor Type</label>
               <select name="vendor_type" id="id_vendor_type" class="form-select">
                 {% for val, label in vendor_type_choices %}
-                  <option value="{{ val }}">{{ label }}</option>
+                  <option value="{{ val }}" {% if vendor and vendor.vendor_type == val %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="col-12 col-md-6">
               <label for="id_tax_id" class="form-label small fw-semibold">Tax ID / Business Reg No</label>
-              <input type="text" name="tax_id" id="id_tax_id" class="form-control" placeholder="e.g. Tax-12345">
+              <input type="text" name="tax_id" id="id_tax_id" class="form-control" placeholder="e.g. Tax-12345" value="{{ vendor.tax_id|default:'' }}">
             </div>
           </div>
 
@@ -53,23 +53,23 @@
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_email" class="form-label small fw-semibold">Contact Email</label>
-              <input type="email" name="email" id="id_email" class="form-control" placeholder="e.g. contact@vendor.com">
+              <input type="email" name="email" id="id_email" class="form-control" placeholder="e.g. contact@vendor.com" value="{{ vendor.email|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_phone" class="form-label small fw-semibold">Phone Number</label>
-              <input type="text" name="phone" id="id_phone" class="form-control" placeholder="e.g. +1 555-0199">
+              <input type="text" name="phone" id="id_phone" class="form-control" placeholder="e.g. +1 555-0199" value="{{ vendor.phone|default:'' }}">
             </div>
             <div class="col-12">
-              <label for="id_address_line1" class="form-label small fw-semibold">Address Line 1</label>
-              <input type="text" name="address_line1" id="id_address_line1" class="form-control" placeholder="e.g. 123 Industrial Way">
+              <label for="id_address_line1" class="form-label small fw-semibold">Street Address</label>
+              <input type="text" name="address_line1" id="id_address_line1" class="form-control" placeholder="123 Main St" value="{{ vendor.address_line1|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_city" class="form-label small fw-semibold">City</label>
-              <input type="text" name="city" id="id_city" class="form-control" placeholder="e.g. Seattle">
+              <input type="text" name="city" id="id_city" class="form-control" value="{{ vendor.city|default:'' }}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_country" class="form-label small fw-semibold">Country</label>
-              <input type="text" name="country" id="id_country" class="form-control" placeholder="e.g. United States">
+              <input type="text" name="country" id="id_country" class="form-control" value="{{ vendor.country|default:'' }}">
             </div>
           </div>
 
@@ -78,30 +78,33 @@
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_payment_terms" class="form-label small fw-semibold">Payment Terms (Days)</label>
-              <input type="number" name="payment_terms" id="id_payment_terms" class="form-control" value="30" min="0">
+              <div class="input-group">
+                <input type="number" name="payment_terms" id="id_payment_terms" class="form-control" value="{{ vendor.payment_terms|default:30 }}">
+                <span class="input-group-text">Days</span>
+              </div>
             </div>
             <div class="col-12 col-md-6">
               <label for="id_currency" class="form-label small fw-semibold">Preferred Currency</label>
               <select name="currency" id="id_currency" class="form-select">
-                <option value="">Select Currency</option>
+                <option value="">-- System Default --</option>
                 {% for curr in currencies %}
-                  <option value="{{ curr.id }}">{{ curr.code }} - {{ curr.name }}</option>
+                  <option value="{{ curr.id }}" {% if vendor and vendor.currency_id == curr.id %}selected{% endif %}>{{ curr.code }} - {{ curr.name }}</option>
                 {% endfor %}
               </select>
             </div>
-          </div>
-
-          <!-- Section 4: Notes -->
-          <h5 class="fw-bold text-primary mb-3"><i class="fas fa-sticky-note me-2"></i>Remarks</h5>
-          <div class="mb-4">
-            <textarea name="notes" id="id_notes" class="form-control" rows="3" placeholder="Add optional remarks or supplier capabilities..."></textarea>
+            <div class="col-12">
+              <label for="id_notes" class="form-label small fw-semibold">Internal Notes</label>
+              <textarea name="notes" id="id_notes" rows="3" class="form-control" placeholder="Any internal notes or vendor policies...">{{ vendor.notes|default:'' }}</textarea>
+            </div>
           </div>
 
           <!-- Actions -->
-          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-            <a href="{% url 'purchase:vendors' %}" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Create Vendor</button>
-          </div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <a href="{% if vendor %}{% url 'purchase:vendor_detail' vendor.pk %}{% else %}{% url 'purchase:vendors' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>{% if vendor %}Save Changes{% else %}Create Vendor{% endif %}
+              </button>
+            </div>
         </form>
       </div>
     </div>

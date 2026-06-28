@@ -103,6 +103,11 @@
           <i class="fas fa-star me-1"></i>Skills
         </button>
       </li>
+      <li class="nav-item">
+        <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tab-experience">
+          <i class="fas fa-briefcase me-1"></i>Experience
+        </button>
+      </li>
     </ul>
   </div>
   <div class="tab-content p-4">
@@ -186,14 +191,39 @@
     </div>
 
     <div class="tab-pane fade" id="tab-payroll">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card bg-light border-0">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold mb-1">Current Compensation</h6>
+                {% if current_salary %}
+                <p class="mb-0 fs-5">
+                  <strong>{{ current_salary.currency.code }} {{ current_salary.basic_salary }}</strong>
+                  <span class="text-muted fs-6 ms-2">({{ current_salary.salary_structure.name }})</span>
+                </p>
+                <small class="text-muted">Effective from: {{ current_salary.effective_from|date:"M j, Y" }}</small>
+                {% else %}
+                <p class="text-muted mb-0">No salary structure assigned.</p>
+                {% endif %}
+              </div>
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignSalaryModal">
+                <i class="fas fa-coins me-1"></i>Configure Salary
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <h6 class="fw-bold mb-3">Recent Payslips</h6>
       <table class="table table-hover">
         <thead class="table-light"><tr><th>Period</th><th>Gross Pay</th><th>Net Pay</th><th>Status</th><th>Action</th></tr></thead>
         <tbody>
           {% for slip in recent_payslips %}
           <tr>
-            <td>{{ slip.payroll.period_name }}</td>
-            <td>{{ CURRENCY_SYMBOL }}{{ slip.gross_pay }}</td>
-            <td class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ slip.net_pay }}</td>
+            <td>{{ slip.payroll_period.name }}</td>
+            <td>{{ slip.employee_salary.currency.symbol }}{{ slip.gross_salary }}</td>
+            <td class="fw-bold text-success">{{ slip.employee_salary.currency.symbol }}{{ slip.net_salary }}</td>
             <td><span class="badge badge-{{ slip.status }}">{{ slip.get_status_display }}</span></td>
             <td><a href="#" class="btn btn-outline-secondary btn-sm"><i class="fas fa-file-pdf"></i> PDF</a></td>
           </tr>
@@ -204,18 +234,267 @@
       </table>
     </div>
     
+    <!-- Documents Tab -->
     <div class="tab-pane fade" id="tab-documents">
-      <p class="text-muted">Documents section</p>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Documents</h6>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add Document</button>
+      </div>
+      <table class="table table-hover">
+        <thead class="table-light"><tr><th>Type</th><th>Title</th><th>Expiry Date</th><th>Notes</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for doc in documents %}
+          <tr>
+            <td>{{ doc.get_document_type_display }}</td>
+            <td><a href="{{ doc.file.url }}" target="_blank">{{ doc.title }}</a></td>
+            <td>{{ doc.expiry_date|date:"M j, Y"|default:"-" }}</td>
+            <td>{{ doc.notes|truncatechars:30 }}</td>
+            <td>
+              <form method="post" action="{% url 'hrms:employee_document_delete' employee.pk doc.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm text-danger" onclick="return confirm('Delete document?')"><i class="fas fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted">No documents uploaded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     
+    <!-- Skills Tab -->
     <div class="tab-pane fade" id="tab-skills">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Skills</h6>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSkillModal">Add Skill</button>
+      </div>
       <div class="d-flex flex-wrap gap-2">
         {% for skill in skills %}
-        <span class="badge bg-light text-dark border p-2"><i class="fas fa-star text-warning me-1"></i>{{ skill.name }} ({{ skill.get_proficiency_display }})</span>
+        <div class="badge bg-light text-dark border p-2 d-flex align-items-center gap-2">
+          <i class="fas fa-star text-warning"></i>
+          <div>
+            <strong>{{ skill.skill_name }}</strong> ({{ skill.get_proficiency_display }})<br>
+            <small class="text-muted">{{ skill.years_experience }} years</small>
+          </div>
+          <form method="post" action="{% url 'hrms:employee_skill_delete' employee.pk skill.pk %}" class="ms-2">
+            {% csrf_token %}
+            <button type="submit" class="btn-close" style="font-size: 0.5rem;" onclick="return confirm('Remove skill?')"></button>
+          </form>
+        </div>
         {% empty %}
         <span class="text-muted">No skills recorded.</span>
         {% endfor %}
       </div>
+    </div>
+
+    <!-- Experience Tab -->
+    <div class="tab-pane fade" id="tab-experience">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Experience</h6>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addExperienceModal">Add Experience</button>
+      </div>
+      <div class="timeline">
+        {% for exp in experience %}
+        <div class="card mb-3 border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <h5 class="card-title fw-bold">{{ exp.job_title }} <span class="text-primary">@ {{ exp.company_name }}</span></h5>
+              <form method="post" action="{% url 'hrms:experience_record_delete' employee.pk exp.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm text-danger" onclick="return confirm('Delete record?')"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+            <h6 class="card-subtitle mb-2 text-muted">
+              {{ exp.start_date|date:"M Y" }} - {% if exp.is_current %}Present{% else %}{{ exp.end_date|date:"M Y" }}{% endif %}
+            </h6>
+            <p class="card-text">{{ exp.description }}</p>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted text-center">No experience records found.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal fade" id="addDocumentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:employee_document_create' employee.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Document</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Type</label>
+            <select name="document_type" class="form-select" required>
+              <option value="contract">Employment Contract</option>
+              <option value="id_proof">ID Proof</option>
+              <option value="passport">Passport</option>
+              <option value="education">Education Certificate</option>
+              <option value="experience">Experience Letter</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" name="title" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">File</label>
+            <input type="file" name="file" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Expiry Date (Optional)</label>
+            <input type="date" name="expiry_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Document</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Skill Modal -->
+<div class="modal fade" id="addSkillModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:employee_skill_create' employee.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Skill</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Skill Name</label>
+            <input type="text" name="skill_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Proficiency</label>
+            <select name="proficiency" class="form-select" required>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate" selected>Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Years of Experience</label>
+            <input type="number" name="years_experience" class="form-control" value="0" min="0" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Skill</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Experience Modal -->
+<div class="modal fade" id="addExperienceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:experience_record_create' employee.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Experience Record</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Company Name</label>
+            <input type="text" name="company_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Job Title</label>
+            <input type="text" name="job_title" class="form-control" required>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Start Date</label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">End Date</label>
+              <input type="date" name="end_date" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="is_current" name="is_current">
+            <label class="form-check-label" for="is_current">I currently work here</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Salary Modal -->
+<div class="modal fade" id="assignSalaryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'hrms:employee_salary_create' employee.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Configure Salary</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Salary Structure <span class="text-danger">*</span></label>
+            <select name="salary_structure" class="form-select" required>
+              {% for struct in salary_structures %}
+              <option value="{{ struct.pk }}">{{ struct.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Basic Salary <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" name="basic_salary" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Currency <span class="text-danger">*</span></label>
+              <select name="currency" class="form-select" required>
+                {% for curr in currencies %}
+                <option value="{{ curr.pk }}">{{ curr.code }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Effective From Date <span class="text-danger">*</span></label>
+            <input type="date" name="effective_from" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Configuration</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

@@ -218,33 +218,39 @@
         let tendered = 0;
         let isTypingTendered = false;
 
-        // Render Products
+        // â”€â”€ Render Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function renderProducts(categoryId = 'all') {
             const grid = document.getElementById('productsGrid');
             grid.innerHTML = '';
             
-            const filtered = categoryId === 'all' ? products : products.filter(p => p.category_id === categoryId);
+            const filtered = categoryId === 'all'
+                ? products
+                : products.filter(p => p.category_id === categoryId);
             
             if (filtered.length === 0) {
-                grid.innerHTML = '<div class="col-12 text-center text-muted p-5">No products found.</div>';
+                grid.innerHTML = '<div class="col-12 text-center text-muted p-5"><i class="fas fa-box-open fa-3x mb-3 d-block"></i>No products found.</div>';
                 return;
             }
             
             filtered.forEach(p => {
-                const imgHtml = p.image_url ? <img src="" class="product-img"> : <i class="fas fa-box product-icon"></i>;
-                grid.innerHTML += 
-                    <div class="product-card" onclick="addToCart('')">
-                        <div></div>
-                        <div>
-                            <div class="product-name"></div>
-                            <div class="product-price">{p.price.toFixed(2)}</div>
-                        </div>
-                    </div>
-                ;
+                const imgHtml = p.image_url
+                    ? `<img src="${p.image_url}" class="product-img">`
+                    : `<i class="fas fa-box product-icon"></i>`;
+
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.onclick = () => addToCart(p.id);
+                card.innerHTML = `
+                    <div>${imgHtml}</div>
+                    <div>
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-price">Rs. ${parseFloat(p.price).toFixed(2)}</div>
+                    </div>`;
+                grid.appendChild(card);
             });
         }
 
-        // Category Filter
+        // â”€â”€ Category Filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
@@ -253,7 +259,7 @@
             });
         });
 
-        // Cart Functions
+        // â”€â”€ Cart Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -280,49 +286,50 @@
             const emptyMsg = document.getElementById('emptyCartMsg');
             const btnCheckout = document.getElementById('btnCheckout');
             
+            list.innerHTML = '';
+
             if (cart.length === 0) {
-                list.innerHTML = '';
                 list.appendChild(emptyMsg);
                 emptyMsg.style.display = 'block';
                 btnCheckout.disabled = true;
                 total = 0;
             } else {
                 emptyMsg.style.display = 'none';
-                list.innerHTML = '';
-                
                 total = 0;
+
                 cart.forEach((item, index) => {
                     const itemTotal = item.price * item.qty;
                     total += itemTotal;
-                    
-                    list.innerHTML += 
-                        <li class="cart-item">
-                            <div class="cart-item-details">
-                                <div class="cart-item-name"></div>
-                                <div class="cart-item-price">{item.price.toFixed(2)}</div>
-                            </div>
-                            <div class="cart-item-controls">
-                                <button class="qty-btn" onclick="updateCartQty(, -1)">-</button>
-                                <span class="qty-input"></span>
-                                <button class="qty-btn" onclick="updateCartQty(, 1)">+</button>
-                            </div>
-                            <div class="item-total">{itemTotal.toFixed(2)}</div>
-                        </li>
-                    ;
+
+                    const li = document.createElement('li');
+                    li.className = 'cart-item';
+                    li.innerHTML = `
+                        <div class="cart-item-details">
+                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-price">Rs. ${parseFloat(item.price).toFixed(2)} each</div>
+                        </div>
+                        <div class="cart-item-controls">
+                            <button class="qty-btn" onclick="updateCartQty(${index}, -1)">&minus;</button>
+                            <span class="qty-input">${item.qty}</span>
+                            <button class="qty-btn" onclick="updateCartQty(${index}, 1)">+</button>
+                        </div>
+                        <div class="item-total">Rs. ${itemTotal.toFixed(2)}</div>`;
+                    list.appendChild(li);
                 });
+
                 btnCheckout.disabled = false;
             }
             
-            document.getElementById('summarySubtotal').innerText = '$' + total.toFixed(2);
-            document.getElementById('summaryTotal').innerText = '$' + total.toFixed(2);
+            document.getElementById('summarySubtotal').innerText = 'Rs. ' + total.toFixed(2);
+            document.getElementById('summaryTotal').innerText = 'Rs. ' + total.toFixed(2);
         }
 
-        // Checkout & Numpad
+        // â”€â”€ Checkout & Numpad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-        const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+        const receiptModal  = new bootstrap.Modal(document.getElementById('receiptModal'));
         
         document.getElementById('btnCheckout').addEventListener('click', () => {
-            document.getElementById('modalTotalDue').innerText = '$' + total.toFixed(2);
+            document.getElementById('modalTotalDue').innerText = 'Rs. ' + total.toFixed(2);
             tendered = 0;
             isTypingTendered = false;
             updateTenderedUI();
@@ -332,14 +339,8 @@
         function updateTenderedUI() {
             document.getElementById('tenderedAmount').value = tendered.toFixed(2);
             const change = Math.max(0, tendered - total);
-            document.getElementById('modalChange').innerText = '$' + change.toFixed(2);
-            
-            const btnComplete = document.getElementById('btnCompleteSale');
-            if (tendered >= total) {
-                btnComplete.disabled = false;
-            } else {
-                btnComplete.disabled = true;
-            }
+            document.getElementById('modalChange').innerText = 'Rs. ' + change.toFixed(2);
+            document.getElementById('btnCompleteSale').disabled = tendered < total;
         }
 
         function setExact() { tendered = total; updateTenderedUI(); }
@@ -360,50 +361,53 @@
             updateTenderedUI();
         }
 
-        // Process API
+        // ── Process Sale API ─────────────────────────────────────────────
+        let saleCompleted = false;
+
         document.getElementById('btnCompleteSale').addEventListener('click', async () => {
             const btnComplete = document.getElementById('btnCompleteSale');
+            saleCompleted = false;
             btnComplete.disabled = true;
             btnComplete.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
-            
             try {
                 const response = await fetch("{% url 'pos:api_checkout' %}", {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
                     body: JSON.stringify({
-                        session_id: sessionId,
-                        cart: cart,
-                        payment_method: 'cash',
-                        tendered: tendered
+                        session_id: sessionId, cart: cart,
+                        payment_method: 'cash', tendered: tendered
                     })
                 });
-                
                 const data = await response.json();
                 if (data.status === 'success') {
+                    saleCompleted = true;
+                    document.getElementById('receiptOrderNum').innerText = 'Order #' + data.order_number;
+                    document.getElementById('receiptTotal').innerText    = 'Rs. ' + total.toFixed(2);
+                    document.getElementById('receiptChange').innerText   = 'Rs. ' + parseFloat(data.change).toFixed(2);
                     checkoutModal.hide();
-                    
-                    document.getElementById('receiptOrderNum').innerText = data.order_number;
-                    document.getElementById('receiptTotal').innerText = '$' + total.toFixed(2);
-                    document.getElementById('receiptChange').innerText = '$' + data.change.toFixed(2);
-                    
-                    receiptModal.show();
+                    setTimeout(() => receiptModal.show(), 350);
                 } else {
-                    alert('Error: ' + data.message);
+                    console.error('POS Error:', data);
+                    alert('Error: ' + (data.message || 'Unknown error'));
                 }
-            } catch (error) {
-                alert('Connection error');
+            } catch(e) {
+                console.error(e);
+                alert('Network error. Try again.');
             } finally {
-                btnComplete.innerHTML = '<i class="fas fa-check-circle me-2"></i> Complete Sale';
+                if (!saleCompleted) {
+                    btnComplete.disabled = (tendered < total);
+                    btnComplete.innerHTML = '<i class="fas fa-check-circle me-2"></i> Complete Sale';
+                }
             }
         });
 
         function startNewSale() {
-            cart = [];
-            updateCartUI();
+            cart = []; total = 0; tendered = 0;
+            isTypingTendered = false; saleCompleted = false;
+            document.getElementById('btnCompleteSale').disabled = true;
+            document.getElementById('btnCompleteSale').innerHTML = '<i class="fas fa-check-circle me-2"></i> Complete Sale';
             receiptModal.hide();
+            updateCartUI();
         }
 
         // Init
