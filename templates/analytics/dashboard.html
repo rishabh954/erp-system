@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reports &amp; Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Page chrome ─────────────────────────────────────────── */
+  .page-header-bar {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, #3a0ca3 100%);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    color: #fff;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header-bar::after {
+    content: '\f080';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 9rem;
+    opacity: .06;
+    position: absolute;
+    right: 2rem;
+    top: -1rem;
+    color: #fff;
+  }
+
+  /* ── Stat cards ──────────────────────────────────────────── */
+  .stat-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 1.5rem;
+    border: 1px solid rgba(var(--border-rgb), .12);
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+  .stat-card .icon-wrap {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; margin-bottom: 1rem;
+  }
+  .stat-card .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .stat-card .stat-label { font-size: .8rem; color: var(--text-muted); margin-top: .3rem; text-transform: uppercase; letter-spacing: .05em; }
+  .stat-card .stat-delta { font-size: .78rem; margin-top: .5rem; }
+
+  /* ── Report cards ─────────────────────────────────────────── */
+  .report-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--border-rgb), .12);
+    padding: 1.4rem 1.5rem;
+    transition: transform .2s, box-shadow .2s;
+    height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .report-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+  .report-card .chart-thumb {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: rgba(67,97,238,.12); color: var(--brand-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
+  }
+  .report-card .report-name { font-weight: 600; font-size: .97rem; margin-bottom: .25rem; }
+  .report-card .report-meta { font-size: .78rem; color: var(--text-muted); }
+  .report-card .report-actions { margin-top: auto; padding-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+  .report-card .ribbon {
+    position: absolute; top: 12px; right: -1px;
+    font-size: .65rem; padding: .2rem .55rem; border-radius: 6px 0 0 6px;
+    font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  }
+
+  /* ── Module badge colors ──────────────────────────────────── */
+  .badge-sales       { background: rgba(67,97,238,.15);  color: #4361ee; }
+  .badge-finance     { background: rgba(16,185,129,.15); color: #10b981; }
+  .badge-hr          { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .badge-purchase    { background: rgba(239,68,68,.15);  color: #ef4444; }
+  .badge-inventory   { background: rgba(168,85,247,.15); color: #a855f7; }
+  .badge-manufacturing { background: rgba(20,184,166,.15); color: #14b8a6; }
+  .badge-projects    { background: rgba(249,115,22,.15); color: #f97316; }
+  .badge-helpdesk    { background: rgba(236,72,153,.15); color: #ec4899; }
+  .badge-crm         { background: rgba(59,130,246,.15); color: #3b82f6; }
+  .badge-assets      { background: rgba(107,114,128,.15);color: #6b7280; }
+
+  /* ── Recent executions table ─────────────────────────────── */
+  .exec-table thead th {
+    font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); border-bottom: 2px solid rgba(var(--border-rgb),.15);
+    font-weight: 600; padding: .85rem 1rem;
+  }
+  .exec-table tbody tr { cursor: pointer; transition: background .15s; }
+  .exec-table tbody tr:hover { background: rgba(67,97,238,.04); }
+  .exec-table td { vertical-align: middle; padding: .85rem 1rem; font-size: .87rem; border-color: rgba(var(--border-rgb),.08); }
+
+  /* ── Quick export panel ──────────────────────────────────── */
+  .quick-export-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--border-rgb), .12);
+    padding: 1.75rem;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty-state {
+    text-align: center; padding: 4rem 2rem;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(67,97,238,.08);
+    color: var(--brand-primary);
+    font-size: 2rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+  .empty-state h5 { font-weight: 700; color: var(--text-primary, #1e293b); margin-bottom: .5rem; }
+  .empty-state p  { font-size: .9rem; max-width: 360px; margin: 0 auto 1.5rem; }
+
+  /* Status badges */
+  .status-badge { font-size: .7rem; padding: .28rem .65rem; border-radius: 20px; font-weight: 600; letter-spacing: .03em; }
+  .status-success { background: rgba(16,185,129,.15); color: #059669; }
+  .status-running  { background: rgba(59,130,246,.15);  color: #2563eb; }
+  .status-failed   { background: rgba(239,68,68,.15);   color: #dc2626; }
+  .status-queued   { background: rgba(245,158,11,.15);  color: #d97706; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE HEADER
+═══════════════════════════════════════════════════════════ -->
+<div class="page-header-bar d-flex align-items-center justify-content-between flex-wrap gap-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1 text-white">
+      <i class="fa-solid fa-chart-mixed me-2 opacity-75"></i> Reports &amp; Analytics
+    </h1>
+    <p class="mb-0 opacity-75" style="font-size:.9rem;">
+      Build, schedule, and export reports across every module.
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'analytics:saved_reports' %}" class="btn btn-light btn-sm fw-semibold px-3">
+      <i class="fa-solid fa-bookmark me-1"></i> Saved Reports
+    </a>
+    <a href="{% url 'analytics:report_builder' %}" class="btn btn-warning btn-sm fw-bold px-4">
+      <i class="fa-solid fa-plus me-1"></i> New Report
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATS ROW
+═══════════════════════════════════════════════════════════ -->
+<div class="row g-4 mb-4">
+  <!-- Saved reports -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:rgba(67,97,238,.12); color:var(--brand-primary);">
+        <i class="fa-solid fa-file-chart-column"></i>
+      </div>
+      <div class="stat-value">{{ saved_reports_count|default:"0" }}</div>
+      <div class="stat-label">Saved Reports</div>
+      <div class="stat-delta text-success"><i class="fa-solid fa-arrow-up fa-xs me-1"></i>{{ new_reports_this_week|default:"0" }} this week</div>
+    </div>
+  </div>
+
+  <!-- Scheduled -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:rgba(16,185,129,.12); color:#10b981;">
+        <i class="fa-solid fa-calendar-check"></i>
+      </div>
+      <div class="stat-value">{{ scheduled_count|default:"0" }}</div>
+      <div class="stat-label">Scheduled Reports</div>
+      <div class="stat-delta text-muted"><i class="fa-solid fa-clock fa-xs me-1"></i>Next run: {{ next_run|default:"—" }}</div>
+    </div>
+  </div>
+
+  <!-- Executions today -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:rgba(245,158,11,.12); color:#f59e0b;">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <div class="stat-value">{{ executions_today|default:"0" }}</div>
+      <div class="stat-label">Executions Today</div>
+      <div class="stat-delta text-muted"><i class="fa-solid fa-chart-bar fa-xs me-1"></i>{{ total_executions|default:"0" }} total all-time</div>
+    </div>
+  </div>
+
+  <!-- Recent exports -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:rgba(168,85,247,.12); color:#a855f7;">
+        <i class="fa-solid fa-file-export"></i>
+      </div>
+      <div class="stat-value">{{ recent_exports|default:"0" }}</div>
+      <div class="stat-label">Exports (7 days)</div>
+      <div class="stat-delta text-muted"><i class="fa-solid fa-users fa-xs me-1"></i>{{ export_users|default:"0" }} unique users</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SAVED REPORT CARDS  /  EMPTY STATE
+═══════════════════════════════════════════════════════════ -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h5 class="fw-bold mb-0">
+    <i class="fa-solid fa-layer-group me-2 text-primary"></i>Saved Reports
+  </h5>
+  <a href="{% url 'analytics:saved_reports' %}" class="btn btn-link btn-sm text-decoration-none fw-semibold">
+    View All <i class="fa-solid fa-chevron-right fa-xs ms-1"></i>
+  </a>
+</div>
+
+{% if saved_reports %}
+<div class="row g-4 mb-5" id="reportCardsGrid">
+  {% for report in saved_reports %}
+  <div class="col-12 col-sm-6 col-lg-4 col-xl-3 report-card-col"
+       data-module="{{ report.module|lower }}"
+       data-name="{{ report.name|lower }}">
+    <div class="report-card">
+      <!-- Scheduled ribbon -->
+      {% if report.is_scheduled %}
+      <span class="ribbon" style="background:rgba(16,185,129,.15); color:#059669;">
+        <i class="fa-solid fa-clock fa-xs me-1"></i>Scheduled
+      </span>
+      {% endif %}
+
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="chart-thumb">
+          {% if report.chart_type == 'bar' %}
+            <i class="fa-solid fa-chart-bar"></i>
+          {% elif report.chart_type == 'line' %}
+            <i class="fa-solid fa-chart-line"></i>
+          {% elif report.chart_type == 'doughnut' or report.chart_type == 'pie' %}
+            <i class="fa-solid fa-chart-pie"></i>
+          {% elif report.chart_type == 'area' %}
+            <i class="fa-solid fa-chart-area"></i>
+          {% else %}
+            <i class="fa-solid fa-table"></i>
+          {% endif %}
+        </div>
+        <div class="flex-grow-1 min-w-0">
+          <div class="report-name text-truncate">{{ report.name }}</div>
+          <span class="badge badge-{{ report.module|lower }} rounded-pill px-2 py-1" style="font-size:.68rem;">
+            {{ report.get_module_display }}
+          </span>
+        </div>
+      </div>
+
+      <p class="text-muted mb-2" style="font-size:.82rem; line-height:1.4;">
+        {{ report.description|default:"No description provided."|truncatechars:80 }}
+      </p>
+
+      <div class="report-meta d-flex flex-column gap-1">
+        <span><i class="fa-solid fa-user fa-xs me-1"></i>{{ report.created_by.get_full_name|default:report.created_by.username }}</span>
+        <span>
+          <i class="fa-solid fa-clock fa-xs me-1"></i>
+          Last run: {{ report.last_run|default:"Never"|timesince }}{% if report.last_run %} ago{% endif %}
+        </span>
+        {% if report.is_pivot %}
+        <span class="text-info"><i class="fa-solid fa-table-pivot fa-xs me-1"></i>Pivot enabled</span>
+        {% endif %}
+      </div>
+
+      <div class="report-actions">
+        <a href="{% url 'analytics:report_detail' report.pk %}"
+           class="btn btn-primary btn-sm fw-semibold flex-grow-1">
+          <i class="fa-solid fa-play fa-xs me-1"></i>View
+        </a>
+        <div class="btn-group btn-group-sm">
+          <a href="{% url 'analytics:export_report' report.pk 'csv' %}"
+             class="btn btn-outline-secondary" title="Export CSV">
+            <i class="fa-solid fa-file-csv"></i>
+          </a>
+          <a href="{% url 'analytics:export_report' report.pk 'xlsx' %}"
+             class="btn btn-outline-secondary" title="Export Excel">
+            <i class="fa-solid fa-file-excel"></i>
+          </a>
+          <a href="{% url 'analytics:export_report' report.pk 'pdf' %}"
+             class="btn btn-outline-secondary" title="Export PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+          </a>
+        </div>
+        <button class="btn btn-outline-danger btn-sm"
+                title="Delete"
+                onclick="confirmDelete('{{ report.pk }}', '{{ report.name|escapejs }}')">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="card border-0 shadow-sm rounded-4 mb-5" style="background:var(--card-bg);">
+  <div class="card-body empty-state">
+    <div class="empty-icon">
+      <i class="fa-solid fa-chart-column"></i>
+    </div>
+    <h5>No reports yet</h5>
+    <p>Start by creating your first report with the drag-and-drop Report Builder. Choose a module, pick columns, add filters and generate beautiful charts or pivot tables.</p>
+    <a href="{% url 'analytics:report_builder' %}" class="btn btn-primary fw-semibold px-4">
+      <i class="fa-solid fa-plus me-2"></i>Create First Report
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     BOTTOM SPLIT: RECENT EXECUTIONS  +  QUICK EXPORT
+═══════════════════════════════════════════════════════════ -->
+<div class="row g-4">
+
+  <!-- Recent Executions -->
+  <div class="col-12 col-xl-8">
+    <div class="card border-0 shadow-sm rounded-4 h-100" style="background:var(--card-bg);">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold mb-0">
+          <i class="fa-solid fa-list-check me-2 text-primary"></i>Recent Executions
+        </h6>
+        <a href="{% url 'analytics:execution_log' %}" class="btn btn-link btn-sm text-decoration-none fw-semibold p-0">
+          Full Log <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_executions %}
+        <div class="table-responsive">
+          <table class="table exec-table mb-0">
+            <thead>
+              <tr>
+                <th>Report Name</th>
+                <th>Module</th>
+                <th>Format</th>
+                <th>Rows</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th>User</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for exec in recent_executions %}
+              <tr onclick="window.location='{% url 'analytics:report_detail' exec.report.pk %}'">
+                <td class="fw-semibold">{{ exec.report.name }}</td>
+                <td>
+                  <span class="badge badge-{{ exec.report.module|lower }} rounded-pill px-2" style="font-size:.68rem;">
+                    {{ exec.report.get_module_display }}
+                  </span>
+                </td>
+                <td>
+                  <span class="text-uppercase fw-semibold" style="font-size:.75rem; color:var(--text-muted);">
+                    {{ exec.format|upper }}
+                  </span>
+                </td>
+                <td>{{ exec.row_count|default:"—" }}</td>
+                <td>
+                  <span class="status-badge status-{{ exec.status }}">
+                    {% if exec.status == 'success' %}
+                      <i class="fa-solid fa-check fa-xs me-1"></i>Success
+                    {% elif exec.status == 'running' %}
+                      <i class="fa-solid fa-spinner fa-spin fa-xs me-1"></i>Running
+                    {% elif exec.status == 'failed' %}
+                      <i class="fa-solid fa-xmark fa-xs me-1"></i>Failed
+                    {% else %}
+                      <i class="fa-solid fa-hourglass fa-xs me-1"></i>Queued
+                    {% endif %}
+                  </span>
+                </td>
+                <td class="text-muted" style="font-size:.8rem; white-space:nowrap;">
+                  {{ exec.created_at|date:"M d, H:i" }}
+                </td>
+                <td class="text-muted" style="font-size:.8rem;">
+                  {{ exec.triggered_by.get_full_name|default:exec.triggered_by.username|truncatechars:14 }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-4">
+          <div class="empty-icon" style="width:56px;height:56px;font-size:1.4rem;">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <p class="mb-0">No executions yet. Run a report to see history here.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Export -->
+  <div class="col-12 col-xl-4">
+    <div class="quick-export-card h-100">
+      <h6 class="fw-bold mb-3">
+        <i class="fa-solid fa-bolt me-2 text-warning"></i>Quick Export
+      </h6>
+      <p class="text-muted mb-3" style="font-size:.85rem;">
+        Instantly export data from any module without saving a report.
+      </p>
+
+      <!-- Module -->
+      <label class="form-label fw-semibold" style="font-size:.8rem;">Select Module</label>
+      <select id="qeModule" class="form-select form-select-sm mb-3">
+        <option value="">— Choose module —</option>
+        <option value="sales">Sales &amp; Orders</option>
+        <option value="finance">Finance &amp; Accounting</option>
+        <option value="hr">Human Resources</option>
+        <option value="purchase">Purchase</option>
+        <option value="inventory">Inventory</option>
+        <option value="manufacturing">Manufacturing</option>
+        <option value="projects">Projects</option>
+        <option value="helpdesk">Helpdesk</option>
+        <option value="crm">CRM</option>
+        <option value="assets">Assets</option>
+      </select>
+
+      <!-- Date range -->
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-semibold" style="font-size:.8rem;">From</label>
+          <input type="date" id="qeDateFrom" class="form-control form-control-sm">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-semibold" style="font-size:.8rem;">To</label>
+          <input type="date" id="qeDateTo" class="form-control form-control-sm">
+        </div>
+      </div>
+
+      <!-- Columns (loaded dynamically) -->
+      <label class="form-label fw-semibold" style="font-size:.8rem;">
+        Columns <span class="text-muted fw-normal">(optional)</span>
+      </label>
+      <div id="qeColumnsList" class="mb-3" style="font-size:.82rem; max-height:120px; overflow-y:auto; border:1px solid rgba(var(--border-rgb),.2); border-radius:8px; padding:.5rem .75rem; display:none;">
+        <!-- populated by JS -->
+      </div>
+      <div id="qeColumnsPlaceholder" class="text-muted mb-3" style="font-size:.8rem;">
+        Select a module to see available columns.
+      </div>
+
+      <!-- Export buttons -->
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-success fw-semibold flex-grow-1" id="qeCSV" disabled>
+          <i class="fa-solid fa-file-csv me-1"></i>CSV
+        </button>
+        <button class="btn btn-sm btn-outline-primary fw-semibold flex-grow-1" id="qeExcel" disabled>
+          <i class="fa-solid fa-file-excel me-1"></i>Excel
+        </button>
+        <button class="btn btn-sm btn-outline-danger fw-semibold flex-grow-1" id="qePDF" disabled>
+          <i class="fa-solid fa-file-pdf me-1"></i>PDF
+        </button>
+      </div>
+
+      <hr class="my-3">
+      <p class="text-muted mb-0" style="font-size:.78rem;">
+        <i class="fa-solid fa-circle-info me-1 text-info"></i>
+        Quick exports use default columns. Use the <a href="{% url 'analytics:report_builder' %}" class="fw-semibold">Report Builder</a> for full customization.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DELETE CONFIRM MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4" style="background:var(--card-bg);">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-danger" id="deleteModalLabel">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>Delete Report
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="mb-0" style="font-size:.92rem;">
+          Are you sure you want to delete <strong id="deleteReportName"></strong>? 
+          This will also remove all schedules and execution history.
+        </p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="_method" value="delete">
+          <button type="submit" class="btn btn-danger btn-sm fw-semibold">
+            <i class="fa-solid fa-trash-can me-1"></i>Yes, Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+'use strict';
+
+/* ── Quick Export Logic ───────────────────────────────────── */
+const qeModule  = document.getElementById('qeModule');
+const qeCSV     = document.getElementById('qeCSV');
+const qeExcel   = document.getElementById('qeExcel');
+const qePDF     = document.getElementById('qePDF');
+const qeDateFrom = document.getElementById('qeDateFrom');
+const qeDateTo   = document.getElementById('qeDateTo');
+const qeColList  = document.getElementById('qeColumnsList');
+const qeColPlach = document.getElementById('qeColumnsPlaceholder');
+
+// Default: today
+const today = new Date().toISOString().slice(0,10);
+qeDateTo.value = today;
+qeDateFrom.value = new Date(Date.now() - 30*86400*1000).toISOString().slice(0,10);
+
+qeModule.addEventListener('change', async () => {
+  const mod = qeModule.value;
+  if (!mod) {
+    qeCSV.disabled = qeExcel.disabled = qePDF.disabled = true;
+    qeColList.style.display = 'none';
+    qeColPlach.style.display = '';
+    return;
+  }
+
+  qeColPlach.style.display = 'none';
+  qeColList.style.display = '';
+  qeColList.innerHTML = '<div class="text-muted py-1"><i class="fa-solid fa-spinner fa-spin me-1"></i>Loading columns…</div>';
+
+  try {
+    const res  = await fetch(`/analytics/api/fields/?module=${mod}`);
+    const data = await res.json();
+    qeColList.innerHTML = data.fields.map(f => `
+      <div class="form-check form-check-sm mb-1">
+        <input class="form-check-input qe-col" type="checkbox" value="${f.key}" id="qe_${f.key}" checked>
+        <label class="form-check-label" for="qe_${f.key}" style="font-size:.8rem;">${f.label}</label>
+      </div>`).join('');
+  } catch (e) {
+    qeColList.innerHTML = '<span class="text-danger">Failed to load columns.</span>';
+  }
+
+  qeCSV.disabled = qeExcel.disabled = qePDF.disabled = false;
+});
+
+function buildQEUrl(format) {
+  const mod = qeModule.value;
+  if (!mod) return '#';
+  const cols = [...document.querySelectorAll('.qe-col:checked')].map(c=>c.value).join(',');
+  const from = qeDateFrom.value;
+  const to   = qeDateTo.value;
+  return `/analytics/export/${format}/?module=${mod}&columns=${cols}&date_from=${from}&date_to=${to}`;
+}
+
+qeCSV.addEventListener('click',   () => { window.location = buildQEUrl('csv');  });
+qeExcel.addEventListener('click', () => { window.location = buildQEUrl('xlsx'); });
+qePDF.addEventListener('click',   () => { window.location = buildQEUrl('pdf');  });
+
+/* ── Delete confirm ───────────────────────────────────────── */
+function confirmDelete(pk, name) {
+  document.getElementById('deleteReportName').textContent = name;
+  document.getElementById('deleteForm').action = `/analytics/reports/${pk}/delete/`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+/* ── Card search (inline) ─────────────────────────────────── */
+const searchInput = document.createElement('input');
+searchInput.type = 'search';
+searchInput.className = 'form-control form-control-sm';
+searchInput.placeholder = 'Filter reports…';
+searchInput.style.cssText = 'max-width:220px;';
+
+const headerRow = document.querySelector('.d-flex.align-items-center.justify-content-between.mb-3');
+if (headerRow) headerRow.prepend(searchInput);
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase();
+  document.querySelectorAll('.report-card-col').forEach(col => {
+    const name = col.dataset.name || '';
+    const mod  = col.dataset.module || '';
+    col.style.display = (name.includes(q) || mod.includes(q)) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

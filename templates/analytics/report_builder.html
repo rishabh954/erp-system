@@ -1,0 +1,1083 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Report Builder{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout ─────────────────────────────────────────────── */
+.builder-wrapper {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+.builder-sidebar {
+  width: 420px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--border-rgb),.3) transparent;
+}
+.builder-preview {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 991.98px) {
+  .builder-wrapper { flex-direction: column; }
+  .builder-sidebar { width: 100%; position: static; max-height: none; }
+}
+
+/* ── Steps ──────────────────────────────────────────────── */
+.step-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  transition: box-shadow .2s;
+}
+.step-card.active { box-shadow: 0 0 0 2px var(--brand-primary); }
+.step-header {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+.step-header:hover { background: rgba(67,97,238,.04); }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(67,97,238,.12); color: var(--brand-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700; flex-shrink: 0;
+}
+.step-num.done { background: #10b981; color: #fff; }
+.step-title { font-weight: 600; font-size: .9rem; flex-grow: 1; }
+.step-subtitle { font-size: .75rem; color: var(--text-muted); }
+.step-body { padding: 0 1.25rem 1.25rem; display: none; }
+.step-body.open { display: block; }
+.step-chevron { transition: transform .25s; color: var(--text-muted); font-size: .75rem; }
+.step-card.open .step-chevron { transform: rotate(180deg); }
+
+/* ── Module grid ─────────────────────────────────────────── */
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .6rem;
+}
+.module-card {
+  border: 2px solid rgba(var(--border-rgb),.15);
+  border-radius: 10px;
+  padding: .75rem .9rem;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; gap: .6rem;
+  font-size: .82rem; font-weight: 500;
+}
+.module-card:hover { border-color: var(--brand-primary); background: rgba(67,97,238,.04); }
+.module-card.selected { border-color: var(--brand-primary); background: rgba(67,97,238,.08); color: var(--brand-primary); }
+.module-card .mod-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; flex-shrink: 0;
+  background: rgba(67,97,238,.1); color: var(--brand-primary);
+}
+.module-card.selected .mod-icon { background: var(--brand-primary); color: #fff; }
+
+/* ── Column picker ───────────────────────────────────────── */
+.col-search { margin-bottom: .6rem; }
+.field-list {
+  max-height: 200px; overflow-y: auto;
+  border: 1px solid rgba(var(--border-rgb),.15);
+  border-radius: 8px; padding: .4rem;
+}
+.field-item {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .3rem .5rem; border-radius: 6px;
+  cursor: pointer; font-size: .82rem;
+}
+.field-item:hover { background: rgba(67,97,238,.06); }
+.field-item input[type=checkbox] { accent-color: var(--brand-primary); }
+.field-item .field-type {
+  margin-left: auto; font-size: .65rem; color: var(--text-muted);
+  background: rgba(var(--border-rgb),.15); padding: .1rem .35rem; border-radius: 4px;
+}
+.select-all-bar {
+  display: flex; justify-content: space-between; margin-bottom: .4rem;
+  font-size: .75rem;
+}
+
+/* ── Filter rows ─────────────────────────────────────────── */
+.filter-row {
+  display: grid; grid-template-columns: 1fr 110px 1fr auto;
+  gap: .4rem; align-items: center; margin-bottom: .5rem;
+}
+.filter-row select, .filter-row input {
+  font-size: .8rem;
+}
+.add-filter-btn {
+  font-size: .8rem; padding: .3rem .7rem;
+  border-style: dashed;
+}
+
+/* ── Chart type selector ─────────────────────────────────── */
+.chart-type-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem;
+}
+.ct-card {
+  border: 2px solid rgba(var(--border-rgb),.15);
+  border-radius: 8px; padding: .6rem;
+  cursor: pointer; text-align: center;
+  font-size: .75rem; transition: all .2s;
+}
+.ct-card:hover { border-color: var(--brand-primary); }
+.ct-card.selected { border-color: var(--brand-primary); background: rgba(67,97,238,.08); color: var(--brand-primary); }
+.ct-card i { font-size: 1.2rem; display: block; margin-bottom: .3rem; }
+
+/* ── Preview panel ───────────────────────────────────────── */
+.preview-panel {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.preview-toolbar {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(var(--border-rgb),.1);
+}
+.preview-body {
+  padding: 1.5rem;
+  min-height: 400px;
+}
+.preview-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 300px; text-align: center; color: var(--text-muted);
+}
+.preview-placeholder i { font-size: 2.5rem; margin-bottom: 1rem; opacity: .4; }
+
+/* Save panel */
+.save-panel {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Progress tracker */
+.builder-progress {
+  display: flex; gap: 0; margin-bottom: 1.5rem; overflow: hidden; border-radius: 10px;
+}
+.bp-step {
+  flex: 1; padding: .5rem .3rem; text-align: center;
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(var(--border-rgb),.08); color: var(--text-muted);
+  border-right: 1px solid rgba(var(--border-rgb),.12);
+  transition: background .3s, color .3s;
+}
+.bp-step:last-child { border-right: none; }
+.bp-step.done { background: rgba(16,185,129,.12); color: #059669; }
+.bp-step.active { background: rgba(67,97,238,.15); color: var(--brand-primary); }
+
+/* Preview table */
+.prev-table th { font-size: .72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+.prev-table td { font-size: .82rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <nav aria-label="breadcrumb" class="mb-1">
+      <ol class="breadcrumb mb-0" style="font-size:.8rem;">
+        <li class="breadcrumb-item"><a href="{% url 'analytics:dashboard' %}">Analytics</a></li>
+        <li class="breadcrumb-item active">Report Builder</li>
+      </ol>
+    </nav>
+    <h1 class="h4 fw-bold mb-0">
+      <i class="fa-solid fa-hammer me-2 text-primary"></i>Report Builder
+    </h1>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'analytics:saved_reports' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-bookmark me-1"></i>My Reports
+    </a>
+    <button class="btn btn-primary btn-sm fw-semibold" id="btnRunPreview">
+      <i class="fa-solid fa-play me-1"></i>Preview
+    </button>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div class="builder-progress mb-4">
+  <div class="bp-step active" data-step="1">1. Module</div>
+  <div class="bp-step" data-step="2">2. Columns</div>
+  <div class="bp-step" data-step="3">3. Filters</div>
+  <div class="bp-step" data-step="4">4. Sort/Limit</div>
+  <div class="bp-step" data-step="5">5. Chart</div>
+  <div class="bp-step" data-step="6">6. Pivot</div>
+</div>
+
+<div class="builder-wrapper">
+  <!-- ═══════════════════════════════════════════════════════
+       LEFT SIDEBAR — STEPS
+  ═══════════════════════════════════════════════════════ -->
+  <div class="builder-sidebar">
+
+    <!-- STEP 1: Module -->
+    <div class="step-card active open" id="step1Card">
+      <div class="step-header" onclick="toggleStep(1)">
+        <div class="step-num" id="snum1">1</div>
+        <div>
+          <div class="step-title">Select Module</div>
+          <div class="step-subtitle" id="ssub1">Choose a data source</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body open" id="step1Body">
+        <div class="module-grid" id="moduleGrid">
+          <div class="module-card" data-module="sales" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-chart-line"></i></div>Sales
+          </div>
+          <div class="module-card" data-module="finance" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-coins"></i></div>Finance
+          </div>
+          <div class="module-card" data-module="hr" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-users"></i></div>HR
+          </div>
+          <div class="module-card" data-module="purchase" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-shopping-bag"></i></div>Purchase
+          </div>
+          <div class="module-card" data-module="inventory" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-boxes-stacked"></i></div>Inventory
+          </div>
+          <div class="module-card" data-module="manufacturing" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-industry"></i></div>Manufacturing
+          </div>
+          <div class="module-card" data-module="projects" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-diagram-project"></i></div>Projects
+          </div>
+          <div class="module-card" data-module="helpdesk" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-headset"></i></div>Helpdesk
+          </div>
+          <div class="module-card" data-module="crm" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-handshake"></i></div>CRM
+          </div>
+          <div class="module-card" data-module="assets" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-building"></i></div>Assets
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Columns -->
+    <div class="step-card" id="step2Card">
+      <div class="step-header" onclick="toggleStep(2)">
+        <div class="step-num" id="snum2">2</div>
+        <div>
+          <div class="step-title">Pick Columns</div>
+          <div class="step-subtitle" id="ssub2">Select fields to include</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body" id="step2Body">
+        <div class="col-search">
+          <input type="search" class="form-control form-control-sm" id="fieldSearch"
+                 placeholder="Search fields…" oninput="filterFields()">
+        </div>
+        <div class="select-all-bar">
+          <a href="#" onclick="selectAllFields(true); return false;" style="font-size:.78rem;">Select all</a>
+          <span class="text-muted">|</span>
+          <a href="#" onclick="selectAllFields(false); return false;" style="font-size:.78rem;">Deselect all</a>
+          <span class="text-muted ms-auto" id="selectedCount">0 selected</span>
+        </div>
+        <div class="field-list" id="fieldList">
+          <div class="text-muted text-center py-3" style="font-size:.82rem;">
+            <i class="fa-solid fa-arrow-up fa-xs me-1"></i>Select a module first
+          </div>
+        </div>
+        <div class="mt-2 text-end">
+          <button class="btn btn-primary btn-sm" onclick="moveStep(3)">
+            Next <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Filters -->
+    <div class="step-card" id="step3Card">
+      <div class="step-header" onclick="toggleStep(3)">
+        <div class="step-num" id="snum3">3</div>
+        <div>
+          <div class="step-title">Add Filters</div>
+          <div class="step-subtitle" id="ssub3">Narrow down the data</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body" id="step3Body">
+        <div id="filterRows"></div>
+        <button class="btn btn-outline-primary add-filter-btn w-100 mt-1" onclick="addFilter()">
+          <i class="fa-solid fa-plus me-1"></i>Add Filter
+        </button>
+        <div class="mt-2 text-end">
+          <button class="btn btn-primary btn-sm" onclick="moveStep(4)">
+            Next <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: Sort + Limit -->
+    <div class="step-card" id="step4Card">
+      <div class="step-header" onclick="toggleStep(4)">
+        <div class="step-num" id="snum4">4</div>
+        <div>
+          <div class="step-title">Sort &amp; Limit</div>
+          <div class="step-subtitle" id="ssub4">Order and cap results</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body" id="step4Body">
+        <div class="row g-2 mb-2">
+          <div class="col-8">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Sort By</label>
+            <select class="form-select form-select-sm" id="sortField">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Order</label>
+            <select class="form-select form-select-sm" id="sortOrder">
+              <option value="asc">↑ Asc</option>
+              <option value="desc">↓ Desc</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Row Limit</label>
+            <select class="form-select form-select-sm" id="rowLimit">
+              <option value="">No limit</option>
+              <option value="100">100 rows</option>
+              <option value="500">500 rows</option>
+              <option value="1000">1,000 rows</option>
+              <option value="5000">5,000 rows</option>
+              <option value="10000">10,000 rows</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Date Field</label>
+            <select class="form-select form-select-sm" id="dateField">
+              <option value="">— Auto —</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Date From</label>
+            <input type="date" class="form-control form-control-sm" id="dateFrom">
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Date To</label>
+            <input type="date" class="form-control form-control-sm" id="dateTo">
+          </div>
+        </div>
+        <div class="mt-2 text-end">
+          <button class="btn btn-primary btn-sm" onclick="moveStep(5)">
+            Next <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: Chart -->
+    <div class="step-card" id="step5Card">
+      <div class="step-header" onclick="toggleStep(5)">
+        <div class="step-num" id="snum5">5</div>
+        <div>
+          <div class="step-title">Chart Configuration</div>
+          <div class="step-subtitle" id="ssub5">Visualise your data</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body" id="step5Body">
+        <label class="form-label mb-2" style="font-size:.78rem; font-weight:600;">Chart Type</label>
+        <div class="chart-type-grid mb-3">
+          <div class="ct-card" data-chart="none" onclick="selectChart(this)">
+            <i class="fa-solid fa-ban"></i>None
+          </div>
+          <div class="ct-card" data-chart="bar" onclick="selectChart(this)">
+            <i class="fa-solid fa-chart-bar"></i>Bar
+          </div>
+          <div class="ct-card" data-chart="line" onclick="selectChart(this)">
+            <i class="fa-solid fa-chart-line"></i>Line
+          </div>
+          <div class="ct-card" data-chart="area" onclick="selectChart(this)">
+            <i class="fa-solid fa-chart-area"></i>Area
+          </div>
+          <div class="ct-card" data-chart="pie" onclick="selectChart(this)">
+            <i class="fa-solid fa-chart-pie"></i>Pie
+          </div>
+          <div class="ct-card" data-chart="doughnut" onclick="selectChart(this)">
+            <i class="fa-regular fa-circle-dot"></i>Doughnut
+          </div>
+        </div>
+        <div id="chartFieldsSection" style="display:none;">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Group By (X axis)</label>
+              <select class="form-select form-select-sm" id="groupByField">
+                <option value="">— Select field —</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Value (Y axis)</label>
+              <select class="form-select form-select-sm" id="valueField">
+                <option value="">— Select field —</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-2">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Aggregation</label>
+            <select class="form-select form-select-sm" id="aggregation">
+              <option value="sum">Sum</option>
+              <option value="count">Count</option>
+              <option value="avg">Average</option>
+              <option value="max">Max</option>
+              <option value="min">Min</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-2 text-end">
+          <button class="btn btn-primary btn-sm" onclick="moveStep(6)">
+            Next <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6: Pivot -->
+    <div class="step-card" id="step6Card">
+      <div class="step-header" onclick="toggleStep(6)">
+        <div class="step-num" id="snum6">6</div>
+        <div>
+          <div class="step-title">Pivot Table</div>
+          <div class="step-subtitle" id="ssub6">Cross-tabulation (optional)</div>
+        </div>
+        <i class="fa-solid fa-chevron-down step-chevron ms-auto"></i>
+      </div>
+      <div class="step-body" id="step6Body">
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="pivotToggle" onchange="togglePivot()">
+          <label class="form-check-label fw-semibold" for="pivotToggle" style="font-size:.85rem;">
+            Enable Pivot Table
+          </label>
+        </div>
+        <div id="pivotFields" style="display:none;">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">
+                <i class="fa-solid fa-grip-lines-vertical me-1"></i>Row Field
+              </label>
+              <select class="form-select form-select-sm" id="pivotRowField">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">
+                <i class="fa-solid fa-grip-lines me-1"></i>Column Field
+              </label>
+              <select class="form-select form-select-sm" id="pivotColField">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-2">
+            <label class="form-label mb-1" style="font-size:.78rem; font-weight:600;">Value Field + Aggregation</label>
+            <div class="input-group input-group-sm">
+              <select class="form-select" id="pivotValueField">
+                <option value="">— Select —</option>
+              </select>
+              <select class="form-select" id="pivotAgg">
+                <option value="sum">Sum</option>
+                <option value="count">Count</option>
+                <option value="avg">Avg</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVE REPORT FORM -->
+    <div class="save-panel">
+      <h6 class="fw-bold mb-3">
+        <i class="fa-solid fa-floppy-disk me-2 text-primary"></i>Save Report
+      </h6>
+      <form id="saveReportForm" method="post" action="{% url 'analytics:report_builder' %}">
+        {% csrf_token %}
+        <input type="hidden" name="builder_payload" id="builderPayload">
+
+        <div class="mb-2">
+          <label class="form-label mb-1 fw-semibold" style="font-size:.8rem;">Report Name <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="reportName" class="form-control form-control-sm"
+                 placeholder="e.g. Monthly Sales Summary" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label mb-1 fw-semibold" style="font-size:.8rem;">Description</label>
+          <textarea name="description" id="reportDesc" class="form-control form-control-sm" rows="2"
+                    placeholder="What does this report show?"></textarea>
+        </div>
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="is_public" id="isPublic">
+          <label class="form-check-label" for="isPublic" style="font-size:.82rem;">
+            Make public (visible to all users)
+          </label>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm fw-semibold flex-grow-1">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save Report
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="runPreview()">
+            <i class="fa-solid fa-play me-1"></i>Preview
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       RIGHT PANEL — LIVE PREVIEW
+  ═══════════════════════════════════════════════════════ -->
+  <div class="builder-preview">
+    <div class="preview-panel">
+      <div class="preview-toolbar">
+        <span class="fw-bold" style="font-size:.9rem;">
+          <i class="fa-solid fa-eye me-2 text-primary"></i>Live Preview
+        </span>
+        <span class="text-muted ms-1" style="font-size:.78rem;" id="previewModuleBadge"></span>
+        <div class="ms-auto d-flex gap-2">
+          <select class="form-select form-select-sm" id="previewLimit" style="width:120px;">
+            <option value="10">10 rows</option>
+            <option value="25" selected>25 rows</option>
+            <option value="50">50 rows</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="runPreview()" id="btnRunPreview2">
+            <i class="fa-solid fa-rotate me-1"></i>Run Preview
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart canvas -->
+      <div id="previewChartWrapper" style="display:none; padding:1.5rem 1.5rem 0;">
+        <canvas id="previewChart" style="max-height:280px;"></canvas>
+      </div>
+
+      <!-- Pivot preview -->
+      <div id="previewPivotWrapper" style="display:none; padding:1.5rem 1.5rem 0;">
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm prev-table" id="previewPivotTable"></table>
+        </div>
+      </div>
+
+      <div class="preview-body">
+        <div class="preview-placeholder" id="previewPlaceholder">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <p class="mb-1 fw-semibold" style="font-size:.9rem;">No preview yet</p>
+          <p class="text-muted" style="font-size:.82rem; max-width:280px;">
+            Select a module and columns, then click <strong>Run Preview</strong> to see sample data.
+          </p>
+        </div>
+
+        <div id="previewContent" style="display:none;">
+          <!-- Stats bar -->
+          <div class="d-flex gap-3 mb-3 flex-wrap" id="previewStats" style="font-size:.8rem; color:var(--text-muted);"></div>
+
+          <!-- Data table -->
+          <div class="table-responsive">
+            <table class="table table-hover table-sm prev-table mb-0" id="previewTable">
+              <thead id="previewThead"></thead>
+              <tbody id="previewTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="previewLoading" style="display:none;" class="preview-placeholder">
+          <i class="fa-solid fa-spinner fa-spin text-primary" style="font-size:2rem; margin-bottom:1rem; opacity:1;"></i>
+          <p class="mb-0 fw-semibold">Fetching preview data…</p>
+        </div>
+
+        <div id="previewError" style="display:none;" class="preview-placeholder">
+          <i class="fa-solid fa-circle-exclamation text-danger" style="font-size:2rem; margin-bottom:1rem; opacity:1;"></i>
+          <p class="mb-0 text-danger fw-semibold" id="previewErrorMsg">An error occurred.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column ordering (drag handles) -->
+    <div class="mt-3" id="colOrderPanel" style="display:none;">
+      <div class="card border-0 shadow-sm rounded-4" style="background:var(--card-bg);">
+        <div class="card-body py-3 px-4">
+          <h6 class="fw-bold mb-2" style="font-size:.85rem;">
+            <i class="fa-solid fa-grip-dots-vertical me-2 text-primary"></i>Column Order
+            <span class="text-muted fw-normal" style="font-size:.75rem;">(drag to reorder)</span>
+          </h6>
+          <div id="colOrderList" class="d-flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────── */
+const state = {
+  module: null,
+  fields: [],          // all fields from API
+  selected: [],        // selected field keys
+  filters: [],
+  sortField: '',
+  sortOrder: 'asc',
+  rowLimit: '',
+  chartType: 'none',
+  groupBy: '',
+  valueField: '',
+  aggregation: 'sum',
+  pivot: false,
+  pivotRow: '',
+  pivotCol: '',
+  pivotValue: '',
+  pivotAgg: 'sum',
+  dateFrom: '',
+  dateTo: '',
+  dateField: '',
+};
+
+/* ─────────────────────────────────────────────────────────
+   STEP NAVIGATION
+───────────────────────────────────────────────────────── */
+function toggleStep(n) {
+  const card = document.getElementById(`step${n}Card`);
+  const body = document.getElementById(`step${n}Body`);
+  const isOpen = body.classList.contains('open');
+  // close all
+  for (let i = 1; i <= 6; i++) {
+    document.getElementById(`step${i}Card`).classList.remove('active', 'open');
+    document.getElementById(`step${i}Body`).classList.remove('open');
+  }
+  if (!isOpen) {
+    card.classList.add('active', 'open');
+    body.classList.add('open');
+  }
+}
+
+function moveStep(n) {
+  toggleStep(n);
+  updateProgress(n);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateProgress(current) {
+  document.querySelectorAll('.bp-step').forEach(el => {
+    const s = parseInt(el.dataset.step);
+    el.classList.remove('active', 'done');
+    if (s < current) el.classList.add('done');
+    else if (s === current) el.classList.add('active');
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   MODULE SELECTION
+───────────────────────────────────────────────────────── */
+async function selectModule(el) {
+  document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.module = el.dataset.module;
+
+  // Update step 1 subtitle
+  document.getElementById('ssub1').textContent = el.textContent.trim();
+  markDone(1);
+
+  // Load fields
+  await loadFields(state.module);
+  moveStep(2);
+}
+
+async function loadFields(module) {
+  document.getElementById('fieldList').innerHTML =
+    '<div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin me-1"></i>Loading…</div>';
+
+  try {
+    const res  = await fetch(`/analytics/api/fields/?module=${module}`);
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    state.fields = data.fields || [];
+    renderFieldList();
+    populateDynamicSelects();
+    updatePreviewBadge();
+  } catch (e) {
+    state.fields = [];
+    document.getElementById('fieldList').innerHTML =
+      '<div class="text-danger text-center py-3"><i class="fa-solid fa-circle-exclamation me-1"></i>Failed to load fields.</div>';
+  }
+}
+
+function renderFieldList() {
+  const q = (document.getElementById('fieldSearch').value || '').toLowerCase();
+  const filtered = state.fields.filter(f =>
+    f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q));
+
+  document.getElementById('fieldList').innerHTML = filtered.map(f => `
+    <div class="field-item" onclick="toggleField('${f.key}', this)">
+      <input type="checkbox" ${state.selected.includes(f.key) ? 'checked' : ''}
+             id="fld_${f.key}" class="field-cb" data-key="${f.key}">
+      <label for="fld_${f.key}" style="cursor:pointer;flex-grow:1;">${f.label}</label>
+      <span class="field-type">${f.type || 'text'}</span>
+    </div>`).join('') || '<div class="text-muted text-center py-2">No fields found.</div>';
+
+  updateSelectedCount();
+}
+
+function filterFields() { renderFieldList(); }
+
+function toggleField(key, row) {
+  const cb = row.querySelector('input');
+  cb.checked = !cb.checked;
+  if (cb.checked) {
+    if (!state.selected.includes(key)) state.selected.push(key);
+  } else {
+    state.selected = state.selected.filter(k => k !== key);
+  }
+  updateSelectedCount();
+  updateColOrder();
+}
+
+function selectAllFields(val) {
+  state.selected = val ? state.fields.map(f => f.key) : [];
+  renderFieldList();
+  updateColOrder();
+}
+
+function updateSelectedCount() {
+  const cbs = document.querySelectorAll('.field-cb:checked');
+  state.selected = [...cbs].map(c => c.dataset.key);
+  document.getElementById('selectedCount').textContent = `${state.selected.length} selected`;
+  if (state.selected.length) {
+    document.getElementById('ssub2').textContent = `${state.selected.length} column(s) selected`;
+    markDone(2);
+  }
+  updateColOrder();
+}
+
+/* Column order chips */
+function updateColOrder() {
+  const panel = document.getElementById('colOrderPanel');
+  const list  = document.getElementById('colOrderList');
+  if (!state.selected.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  list.innerHTML = state.selected.map(k => {
+    const f = state.fields.find(x => x.key === k);
+    return `<span class="badge rounded-pill px-3 py-2 fw-semibold"
+              style="background:rgba(67,97,238,.1);color:var(--brand-primary);font-size:.78rem;cursor:grab;">
+              <i class="fa-solid fa-grip-dots-vertical me-1 opacity-50"></i>${f ? f.label : k}
+            </span>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────────
+   POPULATE DYNAMIC SELECTS (sort, date, chart fields, pivot)
+───────────────────────────────────────────────────────── */
+function populateDynamicSelects() {
+  const fields = state.fields;
+  const opts = '<option value="">— Select —</option>' +
+    fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+
+  document.getElementById('sortField').innerHTML = '<option value="">— None —</option>' +
+    fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+
+  const dateFields = fields.filter(f => ['date','datetime'].includes(f.type));
+  document.getElementById('dateField').innerHTML = '<option value="">— Auto —</option>' +
+    dateFields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+
+  ['groupByField','valueField','pivotRowField','pivotColField','pivotValueField'].forEach(id => {
+    document.getElementById(id).innerHTML = opts;
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   FILTERS
+───────────────────────────────────────────────────────── */
+let filterCount = 0;
+function addFilter() {
+  filterCount++;
+  const id = `fr${filterCount}`;
+  const fields = state.fields;
+  const fieldOpts = fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+
+  const row = document.createElement('div');
+  row.className = 'filter-row';
+  row.id = id;
+  row.innerHTML = `
+    <select class="form-select form-select-sm filter-field">${fieldOpts}</select>
+    <select class="form-select form-select-sm filter-op">
+      <option value="eq">= equals</option>
+      <option value="ne">≠ not eq</option>
+      <option value="gt">&gt; greater</option>
+      <option value="lt">&lt; less</option>
+      <option value="gte">≥ ≥</option>
+      <option value="lte">≤ ≤</option>
+      <option value="contains">contains</option>
+      <option value="startswith">starts with</option>
+      <option value="isnull">is empty</option>
+    </select>
+    <input type="text" class="form-control form-control-sm filter-val" placeholder="Value…">
+    <button class="btn btn-sm btn-outline-danger" onclick="removeFilter('${id}')">
+      <i class="fa-solid fa-xmark"></i>
+    </button>`;
+  document.getElementById('filterRows').appendChild(row);
+  markDone(3);
+}
+
+function removeFilter(id) {
+  document.getElementById(id).remove();
+}
+
+function collectFilters() {
+  const filters = [];
+  document.querySelectorAll('.filter-row').forEach(row => {
+    const field = row.querySelector('.filter-field').value;
+    const op    = row.querySelector('.filter-op').value;
+    const val   = row.querySelector('.filter-val').value;
+    if (field) filters.push({ field, op, value: val });
+  });
+  return filters;
+}
+
+/* ─────────────────────────────────────────────────────────
+   CHART TYPE
+───────────────────────────────────────────────────────── */
+function selectChart(el) {
+  document.querySelectorAll('.ct-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.chartType = el.dataset.chart;
+  const showFields = state.chartType !== 'none';
+  document.getElementById('chartFieldsSection').style.display = showFields ? '' : 'none';
+  document.getElementById('ssub5').textContent = el.textContent.trim();
+  markDone(5);
+}
+
+/* ─────────────────────────────────────────────────────────
+   PIVOT
+───────────────────────────────────────────────────────── */
+function togglePivot() {
+  state.pivot = document.getElementById('pivotToggle').checked;
+  document.getElementById('pivotFields').style.display = state.pivot ? '' : 'none';
+  document.getElementById('ssub6').textContent = state.pivot ? 'Enabled' : 'Cross-tabulation (optional)';
+}
+
+/* ─────────────────────────────────────────────────────────
+   STEP DONE MARKERS
+───────────────────────────────────────────────────────── */
+function markDone(n) {
+  const el = document.getElementById(`snum${n}`);
+  el.classList.add('done');
+  el.innerHTML = '<i class="fa-solid fa-check fa-xs"></i>';
+  document.querySelector(`[data-step="${n}"]`).classList.add('done');
+}
+
+/* ─────────────────────────────────────────────────────────
+   COLLECT PAYLOAD
+───────────────────────────────────────────────────────── */
+function collectPayload() {
+  return {
+    module:      state.module,
+    columns:     state.selected,
+    filters:     collectFilters(),
+    sort_field:  document.getElementById('sortField').value,
+    sort_order:  document.getElementById('sortOrder').value,
+    row_limit:   document.getElementById('rowLimit').value,
+    date_field:  document.getElementById('dateField').value,
+    date_from:   document.getElementById('dateFrom').value,
+    date_to:     document.getElementById('dateTo').value,
+    chart_type:  state.chartType,
+    group_by:    document.getElementById('groupByField').value,
+    value_field: document.getElementById('valueField').value,
+    aggregation: document.getElementById('aggregation').value,
+    is_pivot:    document.getElementById('pivotToggle').checked,
+    pivot_row:   document.getElementById('pivotRowField').value,
+    pivot_col:   document.getElementById('pivotColField').value,
+    pivot_value: document.getElementById('pivotValueField').value,
+    pivot_agg:   document.getElementById('pivotAgg').value,
+    preview_limit: parseInt(document.getElementById('previewLimit').value),
+  };
+}
+
+/* ─────────────────────────────────────────────────────────
+   LIVE PREVIEW
+───────────────────────────────────────────────────────── */
+let previewChartInstance = null;
+
+async function runPreview() {
+  if (!state.module) {
+    alert('Please select a module first.');
+    return;
+  }
+  if (!state.selected.length) {
+    alert('Please select at least one column.');
+    return;
+  }
+
+  const payload = collectPayload();
+  document.getElementById('builderPayload').value = JSON.stringify(payload);
+
+  // Show loading
+  document.getElementById('previewPlaceholder').style.display = 'none';
+  document.getElementById('previewContent').style.display = 'none';
+  document.getElementById('previewError').style.display = 'none';
+  document.getElementById('previewLoading').style.display = 'flex';
+  document.getElementById('previewChartWrapper').style.display = 'none';
+  document.getElementById('previewPivotWrapper').style.display = 'none';
+
+  try {
+    const res  = await fetch('/analytics/api/preview/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const data = await res.json();
+
+    renderPreview(data);
+  } catch (e) {
+    document.getElementById('previewLoading').style.display = 'none';
+    document.getElementById('previewError').style.display = 'flex';
+    document.getElementById('previewErrorMsg').textContent = e.message || 'Failed to load preview.';
+  }
+}
+
+function renderPreview(data) {
+  document.getElementById('previewLoading').style.display = 'none';
+
+  // Chart
+  if (data.chart && data.chart.type !== 'none' && data.chart.labels) {
+    document.getElementById('previewChartWrapper').style.display = '';
+    if (previewChartInstance) previewChartInstance.destroy();
+    const ctx = document.getElementById('previewChart').getContext('2d');
+    const palette = ['#4361ee','#10b981','#f59e0b','#ef4444','#a855f7','#14b8a6','#f97316','#ec4899'];
+    const isCircle = ['pie','doughnut'].includes(data.chart.type);
+    previewChartInstance = new Chart(ctx, {
+      type: data.chart.type === 'area' ? 'line' : data.chart.type,
+      data: {
+        labels: data.chart.labels,
+        datasets: [{
+          label: data.chart.value_label || 'Value',
+          data: data.chart.values,
+          backgroundColor: isCircle ? palette : 'rgba(67,97,238,.2)',
+          borderColor:     isCircle ? palette : '#4361ee',
+          borderWidth: 2,
+          fill: data.chart.type === 'area',
+          tension: .4,
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: isCircle, position:'right' },
+          tooltip: { mode: 'index' },
+        },
+        scales: isCircle ? {} : {
+          y: { beginAtZero: true, grid: { color:'rgba(var(--border-rgb),.1)' } },
+          x: { grid: { display: false } },
+        }
+      }
+    });
+  }
+
+  // Pivot
+  if (data.pivot) {
+    document.getElementById('previewPivotWrapper').style.display = '';
+    renderPivotTable(data.pivot, document.getElementById('previewPivotTable'));
+  }
+
+  // Data table
+  const headers = data.headers || [];
+  const rows    = data.rows    || [];
+
+  document.getElementById('previewStats').innerHTML = `
+    <span><i class="fa-solid fa-database fa-xs me-1"></i>${rows.length.toLocaleString()} rows</span>
+    <span><i class="fa-solid fa-table-columns fa-xs me-1"></i>${headers.length} columns</span>
+    ${data.truncated ? '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>Preview truncated</span>' : ''}`;
+
+  document.getElementById('previewThead').innerHTML =
+    `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+  document.getElementById('previewTbody').innerHTML =
+    rows.map(row => `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`).join('');
+
+  document.getElementById('previewContent').style.display = '';
+}
+
+function renderPivotTable(pivot, table) {
+  const { col_headers, row_headers, cells, totals } = pivot;
+  let html = '<thead><tr><th></th>';
+  col_headers.forEach(c => { html += `<th class="text-center">${c}</th>`; });
+  html += '<th class="text-center fw-bold">Total</th></tr></thead><tbody>';
+  row_headers.forEach((row, ri) => {
+    html += `<tr><td class="fw-semibold">${row}</td>`;
+    col_headers.forEach((_, ci) => {
+      const val = cells[ri]?.[ci];
+      html += `<td class="text-end">${val !== undefined ? val.toLocaleString() : '—'}</td>`;
+    });
+    html += `<td class="text-end fw-bold">${(totals?.rows?.[ri] ?? '').toLocaleString()}</td></tr>`;
+  });
+  // Total row
+  html += '<tr class="table-active fw-bold"><td>Total</td>';
+  col_headers.forEach((_, ci) => {
+    html += `<td class="text-end">${(totals?.cols?.[ci] ?? '').toLocaleString()}</td>`;
+  });
+  html += `<td class="text-end">${(totals?.grand ?? '').toLocaleString()}</td></tr>`;
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ─────────────────────────────────────────────────────────
+   FORM SUBMIT
+───────────────────────────────────────────────────────── */
+document.getElementById('saveReportForm').addEventListener('submit', function(e) {
+  const payload = collectPayload();
+  document.getElementById('builderPayload').value = JSON.stringify(payload);
+});
+
+/* ─────────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────────── */
+function updatePreviewBadge() {
+  const badge = document.getElementById('previewModuleBadge');
+  badge.textContent = state.module ? `— ${state.module.charAt(0).toUpperCase() + state.module.slice(1)}` : '';
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+
+/* ─────────────────────────────────────────────────────────
+   PREVIEW BUTTON (header)
+───────────────────────────────────────────────────────── */
+document.getElementById('btnRunPreview').addEventListener('click', runPreview);
+</script>
+{% endblock %}

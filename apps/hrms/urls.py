@@ -10,6 +10,8 @@ from .views import (
     SalaryComponentCreateView, SalaryComponentDeleteView, EmployeeSalaryCreateView,
     PayrollListView, PayrollDetailView, PayrollProcessView,
 )
+from .api_views import BiometricSyncAPIView
+
 app_name = 'hrms'
 urlpatterns = [
     path('employees/', EmployeeListView.as_view(), name='employees'),
@@ -51,4 +53,7 @@ urlpatterns = [
     path('training/<uuid:pk>/', __import__('apps.hrms.views', fromlist=['TrainingProgramDetailView']).TrainingProgramDetailView.as_view(), name='training_program_detail'),
     path('expenses/', __import__('apps.hrms.views', fromlist=['ExpenseClaimListView']).ExpenseClaimListView.as_view(), name='expense_claims'),
     path('expenses/<uuid:pk>/', __import__('apps.hrms.views', fromlist=['ExpenseClaimDetailView']).ExpenseClaimDetailView.as_view(), name='expense_claim_detail'),
+    
+    # APIs
+    path('api/biometric/sync/', BiometricSyncAPIView.as_view(), name='api_biometric_sync'),
 ]

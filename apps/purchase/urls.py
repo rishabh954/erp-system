@@ -12,6 +12,9 @@ from .views import (
     RFQListView, RFQDetailView, RFQCreateView, RFQUpdateView, RFQDeleteView,
     VendorBidListView, VendorBidDetailView, VendorBidCreateView, VendorBidActionView
 )
+from .portal_views import (
+    VendorPortalDashboardView, VendorPortalRFQListView, VendorPortalRFQDetailView, VendorPortalBidCreateView
+)
 
 app_name = 'purchase'
 
@@ -67,4 +70,10 @@ urlpatterns = [
     path('bids/create/', VendorBidCreateView.as_view(), name='bid_create'),
     path('bids/<uuid:pk>/', VendorBidDetailView.as_view(), name='bid_detail'),
     path('bids/<uuid:pk>/action/', VendorBidActionView.as_view(), name='bid_action'),
+    
+    # Vendor Portal
+    path('portal/', VendorPortalDashboardView.as_view(), name='portal_dashboard'),
+    path('portal/rfqs/', VendorPortalRFQListView.as_view(), name='portal_rfqs'),
+    path('portal/rfqs/<uuid:pk>/', VendorPortalRFQDetailView.as_view(), name='portal_rfq_detail'),
+    path('portal/rfqs/<uuid:rfq_pk>/bid/', VendorPortalBidCreateView.as_view(), name='portal_bid_create'),
 ]

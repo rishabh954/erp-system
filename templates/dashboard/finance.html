@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Finance Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div class="page-header-title">
+    <h1>Finance Dashboard</h1>
+    <p>Track cash flow, receivables, and payables</p>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
+      <option value="month" selected>This Month</option>
+      <option value="quarter">This Quarter</option>
+      <option value="year">This Year</option>
+    </select>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-success hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-hand-holding-usd"></i></div>
+      <div class="stat-card-value" id="val-receivables">
+        <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Receivables (Expected)</div>
+    </div>
+  </div>
+  
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-danger hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+      <div class="stat-card-value" id="val-payables">
+        <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Payables (Due)</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-primary hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-money-bill-wave"></i></div>
+      <div class="stat-card-value" id="val-cash">
+        <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Cash Balance</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-warning hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-chart-pie"></i></div>
+      <div class="stat-card-value" id="val-working-capital">
+        <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Working Capital</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadFinanceDashboard(period = 'month') {
+  try {
+    const data = await ERP.request(`/api/v1/dashboard/finance/?period=${period}`);
+    const fmt = (v) => ERP.formatCurrency(v, '{{ current_company.default_currency.code|default:"USD" }}');
+    document.getElementById('val-receivables').textContent = fmt(data.kpis.receivables || 0);
+    document.getElementById('val-payables').textContent = fmt(data.kpis.payables || 0);
+    document.getElementById('val-cash').textContent = fmt(data.kpis.cash_balance || 0);
+    document.getElementById('val-working-capital').textContent = fmt(data.kpis.working_capital || 0);
+  } catch(e) {
+    console.error('Dashboard load error', e);
+  }
+}
+
+document.getElementById('periodFilter')?.addEventListener('change', (e) => loadFinanceDashboard(e.target.value));
+document.addEventListener('DOMContentLoaded', () => loadFinanceDashboard('month'));
+</script>
+{% endblock %}

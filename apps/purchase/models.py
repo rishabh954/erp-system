@@ -4,6 +4,7 @@ Vendors, Requisitions, Purchase Orders
 """
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.contrib.contenttypes.fields import GenericRelation
 from core.models import CompanyScoped, AddressMixin, ContactMixin, NotesMixin, SequenceMixin, CurrencyMixin
 
 
@@ -39,6 +40,8 @@ class Vendor(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
     on_time_delivery_pct = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
     defect_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     portal_user = models.OneToOneField('authentication.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='vendor_profile')
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'purchase_vendors'
@@ -53,6 +56,33 @@ class Vendor(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
         return PurchaseOrder.objects.filter(
             vendor=self, status__in=['approved', 'partial']
         ).aggregate(total=Sum('balance_due'))['total'] or 0
+
+    def update_scorecard(self):
+        from django.db.models import Sum, F
+        from decimal import Decimal
+        receipts = GoodsReceipt.objects.filter(purchase_order__vendor=self, status='completed')
+        total_receipts = receipts.count()
+        if total_receipts == 0:
+            return
+
+        # On-time delivery %
+        on_time = 0
+        for r in receipts:
+            if r.purchase_order.expected_delivery and r.receipt_date <= r.purchase_order.expected_delivery:
+                on_time += 1
+            elif not r.purchase_order.expected_delivery:
+                on_time += 1
+        self.on_time_delivery_pct = Decimal((on_time / total_receipts) * 100).quantize(Decimal('0.01'))
+
+        # Defect rate %
+        lines = GoodsReceiptLine.objects.filter(goods_receipt__purchase_order__vendor=self)
+        total_qty = lines.aggregate(t=Sum('quantity_received'))['t'] or Decimal('0')
+        rejected_qty = lines.aggregate(t=Sum('quantity_rejected'))['t'] or Decimal('0')
+        
+        if total_qty > 0:
+            self.defect_rate_pct = Decimal((rejected_qty / total_qty) * 100).quantize(Decimal('0.01'))
+        
+        self.save(update_fields=['on_time_delivery_pct', 'defect_rate_pct'])
 
 
 class PurchaseRequest(CompanyScoped, SequenceMixin, NotesMixin):
@@ -86,6 +116,8 @@ class PurchaseRequest(CompanyScoped, SequenceMixin, NotesMixin):
     approved_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True)
     estimated_cost = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'purchase_requests'
@@ -143,6 +175,9 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         'authentication.User', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='approved_pos',
     )
+    purchase_contract = models.ForeignKey('PurchaseContract', null=True, blank=True, on_delete=models.SET_NULL, related_name='purchase_orders')
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'purchase_orders'
@@ -194,6 +229,12 @@ class GoodsReceipt(CompanyScoped, SequenceMixin, NotesMixin):
 
     def __str__(self):
         return f"{self.number} | {self.purchase_order.number}"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if self.status == self.Status.COMPLETED:
+            self.purchase_order.vendor.update_scorecard()
 
 
 class GoodsReceiptLine(models.Model):
@@ -390,6 +431,8 @@ class VendorBid(CompanyScoped):
     bid_date = models.DateField(auto_now_add=True)
     valid_until = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    
+    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'purchase_vendor_bids'
@@ -412,3 +455,51 @@ class VendorBidLine(models.Model):
     def save(self, *args, **kwargs):
         self.subtotal = self.unit_price * self.rfq_line.quantity
         super().save(*args, **kwargs)
+
+class PurchaseContract(CompanyScoped, SequenceMixin, NotesMixin):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('Draft')
+        ACTIVE = 'active', _('Active')
+        CLOSED = 'closed', _('Closed')
+        CANCELLED = 'cancelled', _('Cancelled')
+
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name='contracts')
+    title = models.CharField(max_length=255)
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    total_value = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+
+    class Meta:
+        db_table = 'purchase_contracts'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.number} | {self.vendor.name}"
+
+class PurchaseContractLine(models.Model):
+    import uuid as _uuid
+    id = models.UUIDField(primary_key=True, default=_uuid.uuid4, editable=False)
+    contract = models.ForeignKey(PurchaseContract, on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    unit_price = models.DecimalField(max_digits=15, decimal_places=4)
+    quantity_ordered = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+
+    class Meta:
+        db_table = 'purchase_contract_lines'
+
+class AutoPurchaseRule(CompanyScoped):
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE, related_name='auto_purchase_rules')
+    preferred_vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
+    min_stock_threshold = models.DecimalField(max_digits=15, decimal_places=4, default=0, help_text="Trigger reorder when stock falls below this level")
+    reorder_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=1)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'purchase_auto_rules'
+
+    def __str__(self):
+        return f"Rule for {self.product.name} with {self.preferred_vendor.name}"

@@ -15,13 +15,11 @@
     <h1>Employees</h1>
     <p>{{ total_count }} total · {{ active_count }} active</p>
   </div>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap align-items-center">
+    {% include 'analytics/includes/export_toolbar.html' with module='employees' columns='employee_id,first_name,last_name,department__name,designation,status,date_joined' %}
     <a href="{% url 'hrms:employee_create' %}" class="btn btn-primary btn-sm">
       <i class="fas fa-user-plus me-1"></i>Add Employee
     </a>
-    <button class="btn btn-outline-primary btn-sm" onclick="exportEmployees()">
-      <i class="fas fa-download me-1"></i>Export
-    </button>
   </div>
 </div>
 

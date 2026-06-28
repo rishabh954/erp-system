@@ -146,6 +146,11 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
 
     def post(self, user=None):
         from django.utils import timezone
+        
+        # Check financial close lock date
+        if self.company.accounting_lock_date and self.date <= self.company.accounting_lock_date:
+            raise ValueError(f"Cannot post entry before lock date: {self.company.accounting_lock_date}")
+            
         if not self.is_balanced():
             raise ValueError(f"Journal entry {self.number} is not balanced")
         self.status = self.Status.POSTED
@@ -359,4 +364,91 @@ class BudgetLine(models.Model):
     @property
     def variance(self):
         return self.planned_amount - self.actual_amount
+
+# ════════════════════════ ENTERPRISE ACCOUNTING ═════════════════════════════
+
+class FixedAsset(CompanyScoped, SequenceMixin, NotesMixin):
+    class DepreciationMethod(models.TextChoices):
+        STRAIGHT_LINE = 'straight_line', _('Straight Line')
+        DECLINING_BALANCE = 'declining_balance', _('Declining Balance')
+
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=100, blank=True)
+    purchase_date = models.DateField()
+    purchase_price = models.DecimalField(max_digits=20, decimal_places=2)
+    salvage_value = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    useful_life_years = models.PositiveIntegerField(default=1)
+    depreciation_method = models.CharField(max_length=20, choices=DepreciationMethod.choices, default=DepreciationMethod.STRAIGHT_LINE)
+    
+    asset_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='asset_records')
+    depreciation_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='depreciation_records')
+    expense_account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='expense_records')
+
+    class Meta:
+        db_table = 'accounting_fixed_asset'
+
+    def __str__(self):
+        return f"{self.number} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('FA', self.__class__)
+        super().save(*args, **kwargs)
+
+class DepreciationSchedule(CompanyScoped):
+    asset = models.ForeignKey(FixedAsset, on_delete=models.CASCADE, related_name='schedules')
+    date = models.DateField()
+    depreciation_amount = models.DecimalField(max_digits=20, decimal_places=2)
+    cumulative_depreciation = models.DecimalField(max_digits=20, decimal_places=2)
+    book_value = models.DecimalField(max_digits=20, decimal_places=2)
+    journal_entry = models.ForeignKey(JournalEntry, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        db_table = 'accounting_depreciation_schedule'
+        ordering = ['date']
+
+class RecurringJournalEntry(CompanyScoped):
+    class Frequency(models.TextChoices):
+        DAILY = 'daily', _('Daily')
+        WEEKLY = 'weekly', _('Weekly')
+        MONTHLY = 'monthly', _('Monthly')
+        YEARLY = 'yearly', _('Yearly')
+
+    name = models.CharField(max_length=200)
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT)
+    frequency = models.CharField(max_length=15, choices=Frequency.choices, default=Frequency.MONTHLY)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    last_run_date = models.DateField(null=True, blank=True)
+    next_run_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+    
+    # Template Data
+    template_data = models.JSONField(default=dict)
+
+    class Meta:
+        db_table = 'accounting_recurring_journal'
+
+    def __str__(self):
+        return self.name
+
+class AuditLog(CompanyScoped):
+    class Action(models.TextChoices):
+        CREATED = 'created', _('Created')
+        POSTED = 'posted', _('Posted')
+        REVERSED = 'reversed', _('Reversed')
+        CANCELLED = 'cancelled', _('Cancelled')
+
+    journal_entry = models.ForeignKey(JournalEntry, on_delete=models.CASCADE, related_name='audit_logs')
+    action = models.CharField(max_length=15, choices=Action.choices)
+    user = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'accounting_audit_log'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.journal_entry.number} - {self.action} by {self.user}"
 

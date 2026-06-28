@@ -83,6 +83,32 @@ class Milestone(CompanyScoped):
         ordering = ['due_date']
 
 
+class Sprint(CompanyScoped, SequenceMixin):
+    class Status(models.TextChoices):
+        PLANNING = 'planning', _('Planning')
+        ACTIVE = 'active', _('Active')
+        COMPLETED = 'completed', _('Completed')
+        CANCELLED = 'cancelled', _('Cancelled')
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='sprints')
+    name = models.CharField(max_length=200)
+    goal = models.TextField(blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNING)
+
+    class Meta:
+        db_table = 'projects_sprints'
+        ordering = ['-start_date']
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('SPR', self.__class__)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.project.number} | {self.name}"
+
 class Task(CompanyScoped, NotesMixin):
 
     class Status(models.TextChoices):
@@ -100,6 +126,7 @@ class Task(CompanyScoped, NotesMixin):
         URGENT = 'urgent', _('Urgent')
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
+    sprint = models.ForeignKey(Sprint, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
     milestone = models.ForeignKey(Milestone, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
     parent_task = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subtasks')
     title = models.CharField(max_length=500)
@@ -151,3 +178,38 @@ class TimeLog(CompanyScoped):
 
     class Meta:
         db_table = 'projects_time_logs'
+
+class ProjectRisk(CompanyScoped, SequenceMixin):
+    class Status(models.TextChoices):
+        IDENTIFIED = 'identified', _('Identified')
+        ASSESSED = 'assessed', _('Assessed')
+        MITIGATED = 'mitigated', _('Mitigated')
+        CLOSED = 'closed', _('Closed')
+        REALIZED = 'realized', _('Realized')
+
+    class Level(models.TextChoices):
+        LOW = 'low', _('Low')
+        MEDIUM = 'medium', _('Medium')
+        HIGH = 'high', _('High')
+        CRITICAL = 'critical', _('Critical')
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='risks')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    probability = models.CharField(max_length=15, choices=Level.choices, default=Level.MEDIUM)
+    impact = models.CharField(max_length=15, choices=Level.choices, default=Level.MEDIUM)
+    mitigation_plan = models.TextField(blank=True)
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.IDENTIFIED)
+    owner = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        db_table = 'projects_risks'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('RSK', self.__class__)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.number} | {self.title}"

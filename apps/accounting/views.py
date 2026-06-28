@@ -454,24 +454,14 @@ class AccountingDashboardView(CompanyMixin, TemplateView):
         ytd_start = date.today().replace(month=1, day=1)
         ytd_end = date.today()
         
-        def get_type_total(account_type):
-            items = JournalItem.objects.filter(
-                account__company=company,
-                account__account_type=account_type,
-                journal_entry__status='posted',
-                journal_entry__date__range=(ytd_start, ytd_end)
-            ).aggregate(dr=Sum('debit'), cr=Sum('credit'))
-            return items
-            
-        rev = get_type_total('revenue')
-        cogs = get_type_total('cogs')
-        exp = get_type_total('expense')
+        from .services import FinancialReportingService
+        pl = FinancialReportingService.get_profit_and_loss(company, start_date=ytd_start, end_date=ytd_end)
+        ctx['net_profit_ytd'] = pl['net_profit']
         
-        revenue_val = (rev['cr'] or Decimal('0')) - (rev['dr'] or Decimal('0'))
-        cogs_val = (cogs['dr'] or Decimal('0')) - (cogs['cr'] or Decimal('0'))
-        exp_val = (exp['dr'] or Decimal('0')) - (exp['cr'] or Decimal('0'))
-        
-        ctx['net_profit_ytd'] = revenue_val - cogs_val - exp_val
+        bs = FinancialReportingService.get_balance_sheet(company, as_of_date=ytd_end)
+        ctx['total_assets'] = bs['total_assets']
+        ctx['total_liabilities'] = bs['total_liabilities']
+        ctx['total_equity'] = bs['total_equity']
         ctx['total_cash'] = total_cash
         ctx['bank_accounts'] = bank_accounts
         

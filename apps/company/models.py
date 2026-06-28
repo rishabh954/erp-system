@@ -75,6 +75,7 @@ class Company(SoftDeleteModel, AddressMixin, ContactMixin):
         choices=[('FIFO', 'FIFO'), ('LIFO', 'LIFO'), ('AVERAGE', 'Weighted Average')],
         default='FIFO'
     )
+    accounting_lock_date = models.DateField(null=True, blank=True, help_text="Journal Entries before this date cannot be modified or posted.")
 
     # Trial / subscription
     trial_ends_at = models.DateTimeField(null=True, blank=True)

@@ -292,21 +292,52 @@ class LogTimeView(CompanyMixin, View):
         return redirect('projects:task_detail', pk=pk)
 
 
-# ════════════════════════ URL PATTERNS ════════════════════════════════════════
+# ════════════════════════ AGILE & RISK VIEWS ══════════════════════════════════
 
-from django.urls import path
+from .models import Sprint, ProjectRisk
+from .services import ProjectTrackingService
 
-app_name = 'projects'
+class AgileBoardView(CompanyMixin, DetailView):
+    template_name = 'projects/agile_board.html'
+    context_object_name = 'sprint'
 
-urlpatterns = [
-    path('', ProjectListView.as_view(), name='list'),
-    path('create/', ProjectCreateView.as_view(), name='create'),
-    path('<uuid:pk>/', ProjectDetailView.as_view(), name='detail'),
-    path('<uuid:pk>/kanban/', KanbanBoardView.as_view(), name='kanban'),
-    path('my-tasks/', MyTasksView.as_view(), name='my_tasks'),
-    path('tasks/create/', TaskCreateView.as_view(), name='task_create'),
-    path('tasks/<uuid:pk>/', TaskDetailView.as_view(), name='task_detail'),
-    path('tasks/<uuid:pk>/move/', TaskMoveView.as_view(), name='task_move'),
-    path('tasks/<uuid:pk>/comment/', AddCommentView.as_view(), name='task_comment'),
-    path('tasks/<uuid:pk>/log-time/', LogTimeView.as_view(), name='task_log_time'),
-]
+    def get_queryset(self):
+        return Sprint.objects.filter(project__company=self.company())
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        sprint = self.object
+        ctx['tasks'] = sprint.tasks.filter(is_deleted=False).order_by('position', '-created_at')
+        ctx['burndown'] = ProjectTrackingService.get_sprint_burndown(sprint.id)
+        return ctx
+
+class ProjectGanttDataView(CompanyMixin, View):
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, company=self.company())
+        tasks = project.tasks.filter(is_deleted=False).exclude(start_date__isnull=True).exclude(due_date__isnull=True)
+        data = []
+        for t in tasks:
+            data.append({
+                'id': str(t.id),
+                'text': t.title,
+                'start_date': t.start_date.strftime('%Y-%m-%d'),
+                'end_date': t.due_date.strftime('%Y-%m-%d'),
+                'progress': 1 if t.status == 'done' else 0.5 if t.status in ['in_progress', 'in_review'] else 0,
+                'parent': str(t.parent_task_id) if t.parent_task_id else None
+            })
+        return JsonResponse({'data': data})
+
+class ProjectRiskListView(CompanyMixin, ListView):
+    template_name = 'projects/risks/list.html'
+    context_object_name = 'risks'
+    
+    def get_queryset(self):
+        project_id = self.kwargs.get('pk')
+        return ProjectRisk.objects.filter(project_id=project_id, project__company=self.company())
+
+class ProjectRiskDetailView(CompanyMixin, DetailView):
+    template_name = 'projects/risks/detail.html'
+    context_object_name = 'risk'
+    
+    def get_queryset(self):
+        return ProjectRisk.objects.filter(project__company=self.company())

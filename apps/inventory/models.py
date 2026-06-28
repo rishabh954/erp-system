@@ -116,6 +116,13 @@ class Product(CompanyScoped, NotesMixin):
     is_active = models.BooleanField(default=True, db_index=True)
     is_purchasable = models.BooleanField(default=True)
     is_sellable = models.BooleanField(default=True)
+    
+    # QA and ABC
+    abc_classification = models.CharField(
+        max_length=1, choices=[('A', 'A-Class'), ('B', 'B-Class'), ('C', 'C-Class')], 
+        null=True, blank=True, help_text="A: Top 80%, B: Next 15%, C: Bottom 5% value"
+    )
+    needs_qa = models.BooleanField(default=False, help_text="Requires Quality Inspection on receipt")
 
     class Meta:
         db_table = 'inventory_products'
@@ -287,6 +294,8 @@ class InventoryTransfer(CompanyScoped, SequenceMixin, NotesMixin):
         'authentication.User', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='approved_transfers',
     )
+    
+    workflows = __import__('django.contrib.contenttypes.fields', fromlist=['GenericRelation']).GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'inventory_transfers'
@@ -614,5 +623,73 @@ class LandedCostAllocation(models.Model):
     class Meta:
         db_table = 'inventory_landed_cost_allocation'
 
+class CycleCount(CompanyScoped, SequenceMixin, NotesMixin):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('Draft')
+        IN_PROGRESS = 'in_progress', _('In Progress')
+        COUNTED = 'counted', _('Counted / Pending Review')
+        COMPLETED = 'completed', _('Completed / Adjusted')
+        CANCELLED = 'cancelled', _('Cancelled')
 
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.CASCADE, related_name='cycle_counts')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    scheduled_date = models.DateField()
+    counted_by = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    workflows = __import__('django.contrib.contenttypes.fields', fromlist=['GenericRelation']).GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
+    class Meta:
+        db_table = 'inventory_cycle_count'
+
+    def __str__(self):
+        return f"{self.number} - {self.warehouse.name}"
+        
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('CC', self.__class__)
+        super().save(*args, **kwargs)
+
+class CycleCountLine(models.Model):
+    import uuid as _uuid
+    id = models.UUIDField(primary_key=True, default=_uuid.uuid4, editable=False)
+    cycle_count = models.ForeignKey(CycleCount, on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE)
+    bin_location = models.ForeignKey('inventory.BinLocation', null=True, blank=True, on_delete=models.SET_NULL)
+    system_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    counted_quantity = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    variance = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+
+    class Meta:
+        db_table = 'inventory_cycle_count_line'
+        
+    def save(self, *args, **kwargs):
+        if self.counted_quantity is not None:
+            self.variance = self.counted_quantity - self.system_quantity
+        super().save(*args, **kwargs)
+
+class QualityInspection(CompanyScoped, SequenceMixin, NotesMixin):
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pending Inspection')
+        PASSED = 'passed', _('Passed')
+        FAILED = 'failed', _('Failed')
+        PARTIAL = 'partial', _('Partially Passed')
+
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE)
+    receipt = models.ForeignKey('purchase.GoodsReceipt', null=True, blank=True, on_delete=models.CASCADE, related_name='inspections')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    inspector = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+    inspection_date = models.DateTimeField(null=True, blank=True)
+    quantity_inspected = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    quantity_passed = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    quantity_failed = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+
+    class Meta:
+        db_table = 'inventory_quality_inspection'
+
+    def __str__(self):
+        return f"{self.number} - {self.product.sku}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('QA', self.__class__)
+        super().save(*args, **kwargs)

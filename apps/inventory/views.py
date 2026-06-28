@@ -677,6 +677,31 @@ class InventoryReportsView(CompanyMixin, TemplateView):
         # Compute max_value for chart scaling in template
         wv = list(ctx['warehouse_valuations'])
         ctx['warehouse_max_value'] = max((w['total_value'] or 0 for w in wv), default=1) or 1
+        
+        # ── Dead Stock (>180 days no outbound) ─────────────────────────────
+        one_eighty_days_ago = timezone.now().date() - timedelta(days=180)
+        # Find products with stock but no recent movements
+        active_product_ids = StockMovement.objects.filter(
+            company=company,
+            movement_date__gte=one_eighty_days_ago,
+            movement_type__in=[StockMovement.MovementType.DELIVERY, StockMovement.MovementType.PRODUCTION_OUT]
+        ).values_list('product_id', flat=True)
+        
+        dead_stock = StockRecord.objects.filter(
+            company=company, quantity_on_hand__gt=0
+        ).exclude(product_id__in=active_product_ids).aggregate(
+            val=Sum(F('quantity_on_hand') * F('average_cost'))
+        )['val'] or 0
+        ctx['dead_stock_value'] = dead_stock
+        
+        # ── Cycle Counts & QA Pending ──────────────────────────────────────
+        from .models import CycleCount, QualityInspection
+        ctx['pending_cycle_counts'] = CycleCount.objects.filter(
+            company=company, status__in=['draft', 'in_progress', 'counted']
+        ).count()
+        ctx['pending_qa'] = QualityInspection.objects.filter(
+            company=company, status='pending'
+        ).count()
 
         # ── Category Breakdown ────────────────────────────────────────────
         ctx['category_breakdown'] = Product.objects.filter(

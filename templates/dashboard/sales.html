@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Sales Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div class="page-header-title">
+    <h1>Sales Analytics Dashboard</h1>
+    <p>Track leads, conversions, and revenue</p>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+      <option value="month" selected>This Month</option>
+      <option value="quarter">This Quarter</option>
+      <option value="year">This Year</option>
+    </select>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Clickable KPI: Revenue -> Invoices List -->
+  <div class="col-6 col-md-3">
+    <a href="{% url 'sales:invoices' %}" class="text-decoration-none">
+      <div class="stat-card stat-card-primary hover-lift">
+        <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-card-value" id="val-revenue">
+          <span class="skeleton" style="height:32px;width:120px;display:block"></span>
+        </div>
+        <div class="stat-card-label">Total Revenue</div>
+      </div>
+    </a>
+  </div>
+  
+  <!-- Clickable KPI: Leads -> Leads List -->
+  <div class="col-6 col-md-3">
+    <a href="{% url 'crm:leads' %}" class="text-decoration-none">
+      <div class="stat-card stat-card-success hover-lift">
+        <div class="stat-card-icon"><i class="fas fa-user-plus"></i></div>
+        <div class="stat-card-value" id="val-leads">
+          <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+        </div>
+        <div class="stat-card-label">Total Leads</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-warning hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-percent"></i></div>
+      <div class="stat-card-value" id="val-conversion">
+        <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Conversion Rate</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <a href="{% url 'sales:orders' %}" class="text-decoration-none">
+      <div class="stat-card stat-card-info hover-lift">
+        <div class="stat-card-icon"><i class="fas fa-shopping-cart"></i></div>
+        <div class="stat-card-value" id="val-orders">
+          <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+        </div>
+        <div class="stat-card-label">Open Orders</div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadSalesDashboard(period = 'month') {
+  try {
+    const data = await ERP.request(`/api/v1/dashboard/sales/?period=${period}`);
+    const fmt = (v) => ERP.formatCurrency(v, '{{ current_company.default_currency.code|default:"USD" }}');
+    document.getElementById('val-revenue').textContent = fmt(data.kpis.revenue || 0);
+    document.getElementById('val-leads').textContent = data.kpis.total_leads || 0;
+    document.getElementById('val-conversion').textContent = (data.kpis.conversion_rate || 0) + '%';
+    document.getElementById('val-orders').textContent = data.kpis.open_orders || 0;
+  } catch(e) {
+    console.error('Dashboard load error', e);
+  }
+}
+
+document.getElementById('periodFilter')?.addEventListener('change', (e) => loadSalesDashboard(e.target.value));
+document.addEventListener('DOMContentLoaded', () => loadSalesDashboard('month'));
+</script>
+{% endblock %}

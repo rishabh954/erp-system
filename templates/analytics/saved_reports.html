@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Saved Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page header ─────────────────────────────────────────── */
+.page-hero {
+  background: linear-gradient(135deg, #3a0ca3 0%, var(--brand-primary) 100%);
+  border-radius: 16px; padding: 2rem 2.5rem; color: #fff;
+  margin-bottom: 2rem; position: relative; overflow: hidden;
+}
+.page-hero::after {
+  content: '\f0c5';
+  font-family: 'Font Awesome 6 Free'; font-weight: 900;
+  font-size: 8rem; opacity: .06;
+  position: absolute; right: 2rem; top: -1rem; color: #fff;
+}
+
+/* ── Module badge colors ──────────────────────────────────── */
+.badge-sales         { background: rgba(67,97,238,.15);  color: #4361ee; }
+.badge-finance       { background: rgba(16,185,129,.15); color: #10b981; }
+.badge-hr            { background: rgba(245,158,11,.15); color: #f59e0b; }
+.badge-purchase      { background: rgba(239,68,68,.15);  color: #ef4444; }
+.badge-inventory     { background: rgba(168,85,247,.15); color: #a855f7; }
+.badge-manufacturing { background: rgba(20,184,166,.15); color: #14b8a6; }
+.badge-projects      { background: rgba(249,115,22,.15); color: #f97316; }
+.badge-helpdesk      { background: rgba(236,72,153,.15); color: #ec4899; }
+.badge-crm           { background: rgba(59,130,246,.15); color: #3b82f6; }
+.badge-assets        { background: rgba(107,114,128,.15);color: #6b7280; }
+
+/* ── Toolbar / filters ───────────────────────────────────── */
+.filter-bar {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex; gap: .75rem; flex-wrap: wrap; align-items: center;
+}
+.filter-bar .search-wrap {
+  position: relative; flex: 1; min-width: 200px;
+}
+.filter-bar .search-wrap input {
+  padding-left: 2.4rem; border-radius: 8px; font-size: .85rem;
+}
+.filter-bar .search-wrap i {
+  position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: .85rem; pointer-events: none;
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+.reports-table {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 14px; overflow: hidden;
+}
+.reports-table table thead th {
+  font-size: .73rem; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text-muted); font-weight: 600;
+  border-bottom: 2px solid rgba(var(--border-rgb),.12);
+  padding: .9rem 1rem; background: rgba(var(--border-rgb),.04);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+.reports-table table thead th:hover { color: var(--brand-primary); }
+.reports-table table thead th .sort-icon { margin-left: .3rem; opacity: .4; font-size: .65rem; }
+.reports-table table thead th.sorted .sort-icon { opacity: 1; color: var(--brand-primary); }
+.reports-table table tbody tr {
+  cursor: pointer; transition: background .15s;
+}
+.reports-table table tbody tr:hover { background: rgba(67,97,238,.04); }
+.reports-table table td {
+  padding: .85rem 1rem; font-size: .85rem;
+  border-color: rgba(var(--border-rgb),.08); vertical-align: middle;
+}
+.reports-table table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Action buttons ──────────────────────────────────────── */
+.action-btns { display: flex; gap: .35rem; flex-wrap: nowrap; }
+.action-btns .btn { padding: .22rem .5rem; font-size: .72rem; border-radius: 6px; }
+
+/* ── Chart type pill ─────────────────────────────────────── */
+.chart-pill {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .72rem; padding: .2rem .55rem; border-radius: 6px;
+  background: rgba(var(--border-rgb),.1); color: var(--text-muted); font-weight: 500;
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+.pagination .page-link {
+  border-radius: 8px !important; margin: 0 2px;
+  font-size: .82rem; color: var(--brand-primary); border-color: rgba(var(--border-rgb),.2);
+}
+.pagination .page-item.active .page-link {
+  background: var(--brand-primary); border-color: var(--brand-primary); color: #fff;
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+.empty-state .empty-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(67,97,238,.08); color: var(--brand-primary);
+  font-size: 1.8rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+/* Bulk action bar */
+.bulk-bar {
+  display: none; background: rgba(67,97,238,.08); border-radius: 10px;
+  padding: .6rem 1rem; align-items: center; gap: 1rem;
+  font-size: .85rem; margin-bottom: .75rem;
+}
+.bulk-bar.visible { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<div class="page-hero d-flex align-items-center justify-content-between flex-wrap gap-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1 text-white">
+      <i class="fa-solid fa-bookmark me-2 opacity-75"></i>Saved Reports
+    </h1>
+    <p class="mb-0 opacity-75" style="font-size:.9rem;">
+      {{ total_count|default:"0" }} report{{ total_count|pluralize }} — browse, export, or schedule any of them.
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'analytics:dashboard' %}" class="btn btn-light btn-sm fw-semibold">
+      <i class="fa-solid fa-grid-2 me-1"></i>Dashboard
+    </a>
+    <a href="{% url 'analytics:report_builder' %}" class="btn btn-warning btn-sm fw-bold px-4">
+      <i class="fa-solid fa-plus me-1"></i>New Report
+    </a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FILTER BAR
+═══════════════════════════════════════════════════════════ -->
+<div class="filter-bar">
+  <div class="search-wrap">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="search" id="reportSearch" class="form-control form-control-sm"
+           placeholder="Search reports by name, description…" autocomplete="off">
+  </div>
+
+  <!-- Module filter -->
+  <select class="form-select form-select-sm" id="moduleFilter" style="max-width:160px;">
+    <option value="">All Modules</option>
+    <option value="sales">Sales</option>
+    <option value="finance">Finance</option>
+    <option value="hr">HR</option>
+    <option value="purchase">Purchase</option>
+    <option value="inventory">Inventory</option>
+    <option value="manufacturing">Manufacturing</option>
+    <option value="projects">Projects</option>
+    <option value="helpdesk">Helpdesk</option>
+    <option value="crm">CRM</option>
+    <option value="assets">Assets</option>
+  </select>
+
+  <!-- Chart type filter -->
+  <select class="form-select form-select-sm" id="chartFilter" style="max-width:140px;">
+    <option value="">All Types</option>
+    <option value="none">Table only</option>
+    <option value="bar">Bar</option>
+    <option value="line">Line</option>
+    <option value="area">Area</option>
+    <option value="pie">Pie</option>
+    <option value="doughnut">Doughnut</option>
+  </select>
+
+  <!-- Created by -->
+  <select class="form-select form-select-sm" id="ownerFilter" style="max-width:150px;">
+    <option value="">All Users</option>
+    <option value="mine">My Reports</option>
+    <option value="public">Public</option>
+  </select>
+
+  <!-- Pivot toggle -->
+  <div class="form-check form-switch mb-0">
+    <input class="form-check-input" type="checkbox" id="pivotOnly">
+    <label class="form-check-label" for="pivotOnly" style="font-size:.82rem; white-space:nowrap;">Pivot only</label>
+  </div>
+
+  <button class="btn btn-outline-secondary btn-sm ms-auto" id="clearFilters">
+    <i class="fa-solid fa-xmark me-1"></i>Clear
+  </button>
+</div>
+
+<!-- Bulk action bar -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="fw-semibold"><span id="bulkCount">0</span> selected</span>
+  <button class="btn btn-sm btn-outline-danger" id="bulkDelete">
+    <i class="fa-solid fa-trash-can me-1"></i>Delete Selected
+  </button>
+  <button class="btn btn-sm btn-outline-secondary ms-auto" id="bulkDeselect">
+    <i class="fa-solid fa-xmark me-1"></i>Deselect
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     REPORTS TABLE
+═══════════════════════════════════════════════════════════ -->
+{% if saved_reports %}
+<div class="reports-table">
+  <div class="table-responsive">
+    <table class="table mb-0" id="reportsTable">
+      <thead>
+        <tr>
+          <th style="width:36px; padding-right:0;">
+            <input type="checkbox" id="selectAll" class="form-check-input" title="Select all">
+          </th>
+          <th data-sort="name">
+            Report Name <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th data-sort="module">
+            Module <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th data-sort="chart_type">
+            Chart Type <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th data-sort="is_pivot" class="text-center">
+            Pivot <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th data-sort="created_by">
+            Created By <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th data-sort="updated_at">
+            Last Updated <i class="fa-solid fa-sort sort-icon"></i>
+          </th>
+          <th class="text-center" style="width:220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="reportsBody">
+        {% for report in saved_reports %}
+        <tr class="report-row"
+            data-pk="{{ report.pk }}"
+            data-name="{{ report.name|lower }}"
+            data-desc="{{ report.description|default:''|lower }}"
+            data-module="{{ report.module|lower }}"
+            data-chart="{{ report.chart_type|default:'none'|lower }}"
+            data-pivot="{{ report.is_pivot|yesno:'true,false' }}"
+            data-owner="{% if report.created_by == request.user %}mine{% endif %}{% if report.is_public %} public{% endif %}"
+            onclick="handleRowClick(event, '{{ report.pk }}')">
+
+          <!-- Checkbox -->
+          <td onclick="event.stopPropagation()" style="padding-right:0;">
+            <input type="checkbox" class="form-check-input row-check" value="{{ report.pk }}">
+          </td>
+
+          <!-- Name -->
+          <td>
+            <div class="fw-semibold mb-1" style="font-size:.88rem;">{{ report.name }}</div>
+            <div class="text-muted" style="font-size:.74rem; line-height:1.3;">
+              {{ report.description|default:""|truncatechars:60 }}
+              {% if report.is_scheduled %}
+              <span class="ms-1" style="color:#10b981;" title="Scheduled">
+                <i class="fa-solid fa-calendar-check fa-xs"></i>
+              </span>
+              {% endif %}
+              {% if report.is_public %}
+              <span class="ms-1" style="color:#3b82f6;" title="Public">
+                <i class="fa-solid fa-globe fa-xs"></i>
+              </span>
+              {% endif %}
+            </div>
+          </td>
+
+          <!-- Module -->
+          <td>
+            <span class="badge badge-{{ report.module|lower }} rounded-pill px-2 py-1" style="font-size:.72rem; font-weight:600;">
+              {% if report.module == 'sales' %}<i class="fa-solid fa-chart-line fa-xs me-1"></i>
+              {% elif report.module == 'finance' %}<i class="fa-solid fa-coins fa-xs me-1"></i>
+              {% elif report.module == 'hr' %}<i class="fa-solid fa-users fa-xs me-1"></i>
+              {% elif report.module == 'purchase' %}<i class="fa-solid fa-shopping-bag fa-xs me-1"></i>
+              {% elif report.module == 'inventory' %}<i class="fa-solid fa-boxes-stacked fa-xs me-1"></i>
+              {% elif report.module == 'manufacturing' %}<i class="fa-solid fa-industry fa-xs me-1"></i>
+              {% elif report.module == 'projects' %}<i class="fa-solid fa-diagram-project fa-xs me-1"></i>
+              {% elif report.module == 'helpdesk' %}<i class="fa-solid fa-headset fa-xs me-1"></i>
+              {% elif report.module == 'crm' %}<i class="fa-solid fa-handshake fa-xs me-1"></i>
+              {% elif report.module == 'assets' %}<i class="fa-solid fa-building fa-xs me-1"></i>
+              {% endif %}
+              {{ report.get_module_display }}
+            </span>
+          </td>
+
+          <!-- Chart type -->
+          <td>
+            {% if report.chart_type and report.chart_type != 'none' %}
+            <span class="chart-pill">
+              {% if report.chart_type == 'bar' %}<i class="fa-solid fa-chart-bar"></i>Bar
+              {% elif report.chart_type == 'line' %}<i class="fa-solid fa-chart-line"></i>Line
+              {% elif report.chart_type == 'area' %}<i class="fa-solid fa-chart-area"></i>Area
+              {% elif report.chart_type == 'pie' %}<i class="fa-solid fa-chart-pie"></i>Pie
+              {% elif report.chart_type == 'doughnut' %}<i class="fa-regular fa-circle-dot"></i>Doughnut
+              {% else %}<i class="fa-solid fa-chart-bar"></i>{{ report.chart_type|capfirst }}
+              {% endif %}
+            </span>
+            {% else %}
+            <span class="text-muted" style="font-size:.78rem;">Table only</span>
+            {% endif %}
+          </td>
+
+          <!-- Pivot -->
+          <td class="text-center">
+            {% if report.is_pivot %}
+            <span class="badge" style="background:rgba(67,97,238,.12);color:var(--brand-primary);font-size:.7rem;">
+              <i class="fa-solid fa-table-pivot fa-xs me-1"></i>Yes
+            </span>
+            {% else %}
+            <span class="text-muted" style="font-size:.78rem;">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Created by -->
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                   style="width:26px;height:26px;background:rgba(67,97,238,.12);color:var(--brand-primary);font-size:.7rem;flex-shrink:0;">
+                {{ report.created_by.get_full_name|default:report.created_by.username|slice:":1"|upper }}
+              </div>
+              <span style="font-size:.82rem;">
+                {{ report.created_by.get_full_name|default:report.created_by.username|truncatechars:18 }}
+              </span>
+            </div>
+          </td>
+
+          <!-- Last updated -->
+          <td>
+            <span style="font-size:.82rem;">{{ report.updated_at|date:"M d, Y" }}</span>
+            <div class="text-muted" style="font-size:.72rem;">{{ report.updated_at|timesince }} ago</div>
+          </td>
+
+          <!-- Actions -->
+          <td onclick="event.stopPropagation()">
+            <div class="action-btns">
+              <a href="{% url 'analytics:report_detail' report.pk %}"
+                 class="btn btn-primary" title="View &amp; Run">
+                <i class="fa-solid fa-play"></i>
+              </a>
+              <a href="{% url 'analytics:report_builder' %}?copy={{ report.pk }}"
+                 class="btn btn-outline-secondary" title="Edit / Clone">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              <a href="{% url 'analytics:export_report' report.pk 'csv' %}"
+                 class="btn btn-outline-success" title="Export CSV">
+                <i class="fa-solid fa-file-csv"></i>
+              </a>
+              <a href="{% url 'analytics:export_report' report.pk 'xlsx' %}"
+                 class="btn btn-outline-primary" title="Export Excel">
+                <i class="fa-solid fa-file-excel"></i>
+              </a>
+              <a href="{% url 'analytics:export_report' report.pk 'pdf' %}"
+                 class="btn btn-outline-danger" title="Export PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+              </a>
+              <button class="btn btn-outline-danger"
+                      title="Delete"
+                      onclick="confirmDelete('{{ report.pk }}', '{{ report.name|escapejs }}')">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Table footer: count + pagination -->
+  <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top"
+       style="border-color:rgba(var(--border-rgb),.1) !important;">
+    <div class="text-muted" style="font-size:.82rem;">
+      Showing <span id="visibleCount">{{ saved_reports|length }}</span> of {{ total_count|default:saved_reports|length }} reports
+    </div>
+    {% if is_paginated %}
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+            <i class="fa-solid fa-chevron-left fa-xs"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+          {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+          <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+            <i class="fa-solid fa-chevron-right fa-xs"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="card border-0 shadow-sm rounded-4" style="background:var(--card-bg);">
+  <div class="card-body empty-state">
+    <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
+    <h5 class="fw-bold" style="color:var(--text-primary,#1e293b);">No saved reports found</h5>
+    <p class="text-muted" style="font-size:.9rem; max-width:360px; margin:0 auto 1.5rem;">
+      Reports you create and save will appear here. Use the Report Builder to build
+      your first custom report in minutes.
+    </p>
+    <a href="{% url 'analytics:report_builder' %}" class="btn btn-primary fw-semibold px-4">
+      <i class="fa-solid fa-plus me-2"></i>Create First Report
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     DELETE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4" style="background:var(--card-bg);">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-danger">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>Delete Report
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="mb-1" style="font-size:.92rem;">
+          You're about to delete <strong id="deleteReportName"></strong>.
+        </p>
+        <p class="text-muted mb-0" style="font-size:.83rem;">
+          All schedules and execution history for this report will be permanently removed.
+        </p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="post" action="">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm fw-semibold">
+            <i class="fa-solid fa-trash-can me-1"></i>Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk delete modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4" style="background:var(--card-bg);">
+      <div class="modal-header border-0">
+        <h6 class="modal-title fw-bold text-danger">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>Bulk Delete
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">Delete <strong id="bulkDeleteCount"></strong> selected report(s)? This cannot be undone.</p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <form id="bulkDeleteForm" method="post" action="{% url 'analytics:bulk_delete' %}">
+          {% csrf_token %}
+          <input type="hidden" name="pks" id="bulkDeletePks">
+          <button type="submit" class="btn btn-danger btn-sm fw-semibold">
+            <i class="fa-solid fa-trash-can me-1"></i>Delete All
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+'use strict';
+
+/* ── Filtering ───────────────────────────────────────────── */
+const rows        = [...document.querySelectorAll('.report-row')];
+const searchInput = document.getElementById('reportSearch');
+const modFilter   = document.getElementById('moduleFilter');
+const chartFilter = document.getElementById('chartFilter');
+const ownerFilter = document.getElementById('ownerFilter');
+const pivotOnly   = document.getElementById('pivotOnly');
+const visibleCnt  = document.getElementById('visibleCount');
+
+function applyFilters() {
+  const q      = (searchInput?.value || '').toLowerCase();
+  const mod    = modFilter?.value    || '';
+  const chart  = chartFilter?.value  || '';
+  const owner  = ownerFilter?.value  || '';
+  const pivot  = pivotOnly?.checked  || false;
+
+  let visible = 0;
+  rows.forEach(row => {
+    const name    = row.dataset.name    || '';
+    const desc    = row.dataset.desc    || '';
+    const rowMod  = row.dataset.module  || '';
+    const rowChart= row.dataset.chart   || '';
+    const rowPivot= row.dataset.pivot   === 'true';
+    const rowOwner= row.dataset.owner   || '';
+
+    const matchQ     = !q     || name.includes(q) || desc.includes(q);
+    const matchMod   = !mod   || rowMod   === mod;
+    const matchChart = !chart || rowChart === chart;
+    const matchOwner = !owner || rowOwner.includes(owner);
+    const matchPivot = !pivot || rowPivot;
+
+    const show = matchQ && matchMod && matchChart && matchOwner && matchPivot;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  if (visibleCnt) visibleCnt.textContent = visible;
+}
+
+[searchInput, modFilter, chartFilter, ownerFilter].forEach(el => {
+  el?.addEventListener('input', applyFilters);
+  el?.addEventListener('change', applyFilters);
+});
+pivotOnly?.addEventListener('change', applyFilters);
+
+document.getElementById('clearFilters')?.addEventListener('click', () => {
+  if (searchInput) searchInput.value = '';
+  if (modFilter)   modFilter.value   = '';
+  if (chartFilter) chartFilter.value = '';
+  if (ownerFilter) ownerFilter.value = '';
+  if (pivotOnly)   pivotOnly.checked = false;
+  applyFilters();
+});
+
+/* ── Sorting ─────────────────────────────────────────────── */
+let sortKey = '', sortAsc = true;
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (sortKey === key) { sortAsc = !sortAsc; }
+    else { sortKey = key; sortAsc = true; }
+
+    document.querySelectorAll('th[data-sort]').forEach(t => {
+      t.classList.remove('sorted');
+      const icon = t.querySelector('.sort-icon');
+      if (icon) icon.className = 'fa-solid fa-sort sort-icon';
+    });
+    th.classList.add('sorted');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.className = `fa-solid fa-sort-${sortAsc ? 'up' : 'down'} sort-icon`;
+
+    const tbody = document.getElementById('reportsBody');
+    const sorted = rows.slice().sort((a, b) => {
+      const av = (a.dataset[key] || '').toLowerCase();
+      const bv = (b.dataset[key] || '').toLowerCase();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    sorted.forEach(row => tbody.appendChild(row));
+  });
+});
+
+/* ── Row click ───────────────────────────────────────────── */
+function handleRowClick(event, pk) {
+  if (event.target.closest('.action-btns') || event.target.closest('input[type="checkbox"]')) return;
+  window.location = `/analytics/reports/${pk}/`;
+}
+
+/* ── Checkboxes ──────────────────────────────────────────── */
+const selectAll = document.getElementById('selectAll');
+const bulkBar   = document.getElementById('bulkBar');
+const bulkCount = document.getElementById('bulkCount');
+
+selectAll?.addEventListener('change', () => {
+  document.querySelectorAll('.row-check').forEach(cb => { cb.checked = selectAll.checked; });
+  updateBulkBar();
+});
+
+document.querySelectorAll('.row-check').forEach(cb => {
+  cb.addEventListener('change', updateBulkBar);
+});
+
+function updateBulkBar() {
+  const checked = [...document.querySelectorAll('.row-check:checked')];
+  if (bulkCount) bulkCount.textContent = checked.length;
+  if (bulkBar) bulkBar.classList.toggle('visible', checked.length > 0);
+}
+
+document.getElementById('bulkDeselect')?.addEventListener('click', () => {
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+  if (selectAll) selectAll.checked = false;
+  updateBulkBar();
+});
+
+document.getElementById('bulkDelete')?.addEventListener('click', () => {
+  const pks = [...document.querySelectorAll('.row-check:checked')].map(c => c.value);
+  document.getElementById('bulkDeleteCount').textContent = pks.length;
+  document.getElementById('bulkDeletePks').value = pks.join(',');
+  new bootstrap.Modal(document.getElementById('bulkDeleteModal')).show();
+});
+
+/* ── Delete single ───────────────────────────────────────── */
+function confirmDelete(pk, name) {
+  document.getElementById('deleteReportName').textContent = name;
+  document.getElementById('deleteForm').action = `/analytics/reports/${pk}/delete/`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

@@ -85,6 +85,47 @@
 
 </div>
 
+<!-- ═══════════════════════ WMS ENTERPRISE CARDS ═════════════════════════ -->
+<div class="row g-3 mb-4">
+  <!-- Dead Stock -->
+  <div class="col-6 col-md-4">
+    <div class="card stat-card stat-card-danger h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-skull-crossbones"></i></div>
+      <div class="stat-card-value kpi-animated" data-value="{{ dead_stock_value|floatformat:0 }}">
+        {{ CURRENCY_SYMBOL }}{{ dead_stock_value|floatformat:2|intcomma }}
+      </div>
+      <div class="stat-card-label">Dead Stock Value</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-clock me-1"></i>No movement > 180 days
+      </div>
+    </div>
+  </div>
+
+  <!-- Cycle Counts -->
+  <div class="col-6 col-md-4">
+    <div class="card stat-card stat-card-info h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-clipboard-check"></i></div>
+      <div class="stat-card-value">{{ pending_cycle_counts }}</div>
+      <div class="stat-card-label">Pending Cycle Counts</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-tasks me-1"></i>Awaiting completion
+      </div>
+    </div>
+  </div>
+
+  <!-- QA Items -->
+  <div class="col-6 col-md-4">
+    <div class="card stat-card stat-card-secondary h-100 border-0 report-kpi-card">
+      <div class="stat-card-icon"><i class="fas fa-microscope"></i></div>
+      <div class="stat-card-value">{{ pending_qa }}</div>
+      <div class="stat-card-label">QA Inspections Pending</div>
+      <div class="stat-card-trend text-white-50">
+        <i class="fas fa-box-open me-1"></i>Requires Quality Check
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════ MAIN CONTENT ROW ═════════════════════════════ -->
 <div class="row g-4 mb-4">
 

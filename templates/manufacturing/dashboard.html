@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manufacturing Dashboard{% endblock %}
+{% block nav_manufacturing %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Production Dashboard</h1>
+    <div>
+        <a href="{% url 'manufacturing:mo_create' %}" class="btn btn-primary shadow-sm"><i class="fas fa-plus fa-sm text-white-50"></i> New Order</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Completed MOs -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Completed Orders (OEE Proxy)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mo_done }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-check-circle fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Total Scrap -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Scrap (Units)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_scrap|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-trash fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Active Maintenance -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Maintenance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_maintenance }}</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-wrench fa-2x text-gray-300"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- MRP Plans -->
+    <div class="col-xl-12 col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Material Plans (MRP)</h6>
+                <a href="{% url 'manufacturing:mrp_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Plan ID</th>
+                                <th>Name</th>
+                                <th>Target Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plan in recent_mrp %}
+                            <tr>
+                                <td>{{ plan.number }}</td>
+                                <td>{{ plan.name }}</td>
+                                <td>{{ plan.target_date }}</td>
+                                <td><span class="badge {% if plan.status == 'completed' %}bg-success{% else %}bg-secondary{% endif %}">{{ plan.get_status_display }}</span></td>
+                                <td>
+                                    <a href="{% url 'manufacturing:mrp_detail' plan.pk %}" class="btn btn-sm btn-info">View</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-4">No MRP runs found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

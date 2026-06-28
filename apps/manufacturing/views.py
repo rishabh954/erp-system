@@ -269,3 +269,66 @@ class ProductionCostingDetailView(CompanyMixin, DetailView):
     
     def get_queryset(self):
         return ProductionCosting.objects.filter(company=self.company()).select_related('manufacturing_order__product')
+
+# ════════════════════════ DASHBOARD, MRP, MAINTENANCE ═════════════════════════
+
+from django.views.generic import TemplateView
+from .models import MaterialPlan, MaintenanceRequest
+from .services import MRPService
+
+class ManufacturingDashboardView(CompanyMixin, TemplateView):
+    template_name = 'manufacturing/dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        company = self.company()
+        
+        # OEE / Scrap Rate approximation
+        total_mo = ManufacturingOrder.objects.filter(company=company, status=ManufacturingOrder.Status.DONE).count()
+        ctx['total_mo_done'] = total_mo
+        
+        from django.db.models import Sum
+        scrap_qty = ScrapOrder.objects.filter(company=company).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        ctx['total_scrap'] = scrap_qty
+        
+        # Active Maintenance
+        ctx['active_maintenance'] = MaintenanceRequest.objects.filter(
+            work_center__company=company, 
+            status__in=[MaintenanceRequest.Status.PENDING, MaintenanceRequest.Status.IN_PROGRESS]
+        ).count()
+        
+        # MRP Plans
+        ctx['recent_mrp'] = MaterialPlan.objects.filter(company=company).order_by('-created_at')[:5]
+        
+        return ctx
+
+class MaterialPlanListView(CompanyMixin, ListView):
+    template_name = 'manufacturing/mrp/list.html'
+    context_object_name = 'plans'
+    def get_queryset(self):
+        return MaterialPlan.objects.filter(company=self.company())
+
+class MaterialPlanDetailView(CompanyMixin, DetailView):
+    template_name = 'manufacturing/mrp/detail.html'
+    context_object_name = 'plan'
+    def get_queryset(self):
+        return MaterialPlan.objects.filter(company=self.company()).prefetch_related('items__product')
+
+class MaterialPlanRunView(CompanyMixin, View):
+    def post(self, request, pk):
+        plan = get_object_or_404(MaterialPlan, pk=pk, company=self.company())
+        MRPService.run_mrp(plan.id)
+        messages.success(request, f"MRP Run completed for {plan.name}")
+        return redirect('manufacturing:mrp_detail', pk=plan.id)
+
+class MaintenanceRequestListView(CompanyMixin, ListView):
+    template_name = 'manufacturing/maintenance/list.html'
+    context_object_name = 'requests'
+    def get_queryset(self):
+        return MaintenanceRequest.objects.filter(work_center__company=self.company()).select_related('work_center')
+
+class MaintenanceRequestDetailView(CompanyMixin, DetailView):
+    template_name = 'manufacturing/maintenance/detail.html'
+    context_object_name = 'maintenance_request'
+    def get_queryset(self):
+        return MaintenanceRequest.objects.filter(work_center__company=self.company()).select_related('work_center')

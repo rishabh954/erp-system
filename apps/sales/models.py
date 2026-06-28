@@ -5,6 +5,7 @@ Quotations → Sales Orders → Invoices → Payments
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
+from django.contrib.contenttypes.fields import GenericRelation
 from core.models import CompanyScoped, NotesMixin, SequenceMixin, CurrencyMixin
 
 
@@ -38,6 +39,8 @@ class Quotation(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         on_delete=models.SET_NULL, related_name='approved_quotations',
     )
     reject_reason = models.TextField(blank=True, help_text=_("Reason for rejection"))
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'sales_quotations'
@@ -117,6 +120,9 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     cancel_reason = models.TextField(blank=True, help_text=_("Reason for cancellation"))
     price_list = models.ForeignKey('PriceList', null=True, blank=True, on_delete=models.SET_NULL)
     discount_rule = models.ForeignKey('DiscountRule', null=True, blank=True, on_delete=models.SET_NULL)
+    coupon = models.ForeignKey('Coupon', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'sales_orders'
@@ -198,6 +204,16 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     balance_due = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     terms_conditions = models.TextField(blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    coupon = models.ForeignKey('Coupon', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    # E-Invoicing & India TDS
+    irn = models.CharField(max_length=64, blank=True, help_text="Invoice Reference Number")
+    ack_no = models.CharField(max_length=20, blank=True)
+    ack_date = models.DateTimeField(null=True, blank=True)
+    signed_qr_code = models.TextField(blank=True)
+    tds_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'sales_invoices'
@@ -358,6 +374,75 @@ class DiscountRule(CompanyScoped):
 
     def __str__(self):
         return self.name
+
+class Coupon(CompanyScoped):
+    code = models.CharField(max_length=50, unique=True, db_index=True)
+    discount_rule = models.ForeignKey(DiscountRule, on_delete=models.CASCADE, related_name='coupons')
+    usage_limit = models.PositiveIntegerField(default=1, help_text="Total times this coupon can be used")
+    used_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'sales_coupons'
+        
+    def __str__(self):
+        return self.code
+        
+    def is_valid(self):
+        return self.is_active and self.used_count < self.usage_limit
+
+class Shipment(CompanyScoped, SequenceMixin, NotesMixin):
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        PICKED = 'picked', _('Picked')
+        SHIPPED = 'shipped', _('Shipped')
+        DELIVERED = 'delivered', _('Delivered')
+        CANCELLED = 'cancelled', _('Cancelled')
+
+    sales_order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name='shipments')
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.PENDING)
+    scheduled_date = models.DateField(null=True, blank=True)
+    shipped_date = models.DateField(null=True, blank=True)
+    tracking_number = models.CharField(max_length=100, blank=True)
+    carrier = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        db_table = 'sales_shipments'
+        
+    def __str__(self):
+        return f"{self.number} ({self.sales_order.number})"
+
+class ShipmentLine(models.Model):
+    import uuid as _uuid
+    id = models.UUIDField(primary_key=True, default=_uuid.uuid4, editable=False)
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='lines')
+    order_line = models.ForeignKey(SalesOrderLine, on_delete=models.CASCADE)
+    product = models.ForeignKey('inventory.Product', null=True, blank=True, on_delete=models.SET_NULL)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4)
+
+    class Meta:
+        db_table = 'sales_shipment_lines'
+
+class ProductBundle(CompanyScoped):
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'sales_product_bundles'
+
+    def __str__(self):
+        return self.name
+
+class ProductBundleItem(models.Model):
+    bundle = models.ForeignKey(ProductBundle, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4, default=1)
+    
+    class Meta:
+        db_table = 'sales_product_bundle_items'
 
 class Subscription(CompanyScoped, SequenceMixin):
     class BillingCycle(models.TextChoices):

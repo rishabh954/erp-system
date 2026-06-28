@@ -1,0 +1,74 @@
+{# 
+  Reusable Export Toolbar — include in any list/detail template.
+  
+  Usage:
+    {% include 'analytics/includes/export_toolbar.html' with module='invoices' columns='number,status,total,customer__name,invoice_date' %}
+  
+  Optional params:
+    report_uuid  — if set, links to a saved report's export endpoints
+    title        — toolbar heading (default: Export)
+    filters      — extra query params to append to quick export URL
+#}
+
+<div class="export-toolbar d-flex align-items-center gap-2 flex-wrap" data-export-module="{{ module }}">
+  {% if title %}<span class="text-muted small fw-600 me-1">{{ title }}:</span>{% endif %}
+  
+  {% if report_uuid %}
+    {# Saved report exports #}
+    <a href="{% url 'analytics:report_export' pk=report_uuid fmt='csv' %}"
+       class="btn btn-sm btn-outline-success"
+       title="Download CSV">
+      <i class="fas fa-file-csv me-1"></i>CSV
+    </a>
+    <a href="{% url 'analytics:report_export' pk=report_uuid fmt='xlsx' %}"
+       class="btn btn-sm btn-outline-primary"
+       title="Download Excel">
+      <i class="fas fa-file-excel me-1"></i>Excel
+    </a>
+    <a href="{% url 'analytics:report_export' pk=report_uuid fmt='pdf' %}"
+       class="btn btn-sm btn-outline-danger"
+       title="Download PDF">
+      <i class="fas fa-file-pdf me-1"></i>PDF
+    </a>
+  {% else %}
+    {# Quick exports — no saved report needed #}
+    {% with base_url="/analytics/export/" %}
+    <a href="{{ base_url }}csv/?module={{ module }}&columns={{ columns }}{% if filters %}&{{ filters }}{% endif %}"
+       class="btn btn-sm btn-outline-success"
+       title="Download CSV">
+      <i class="fas fa-file-csv me-1"></i>CSV
+    </a>
+    <a href="{{ base_url }}xlsx/?module={{ module }}&columns={{ columns }}{% if filters %}&{{ filters }}{% endif %}"
+       class="btn btn-sm btn-outline-primary"
+       title="Download Excel">
+      <i class="fas fa-file-excel me-1"></i>Excel
+    </a>
+    <a href="{{ base_url }}pdf/?module={{ module }}&columns={{ columns }}{% if filters %}&{{ filters }}{% endif %}"
+       class="btn btn-sm btn-outline-danger"
+       title="Download PDF">
+      <i class="fas fa-file-pdf me-1"></i>PDF
+    </a>
+    {% endwith %}
+  {% endif %}
+
+  {# Print button #}
+  <button class="btn btn-sm btn-outline-secondary" onclick="window.print()" title="Print this page">
+    <i class="fas fa-print me-1"></i>Print
+  </button>
+
+  {# Link to full Report Builder for this module #}
+  <a href="/analytics/builder/?module={{ module }}"
+     class="btn btn-sm btn-outline-info"
+     title="Open in Report Builder">
+    <i class="fas fa-chart-bar me-1"></i>Report Builder
+  </a>
+</div>
+
+<style>
+  @media print {
+    .export-toolbar, .sidebar, .topbar, nav, .btn, .no-print { display: none !important; }
+    .card { border: none !important; box-shadow: none !important; }
+    table { font-size: 10pt; }
+    thead { background-color: #1e3a5f !important; color: white !important; -webkit-print-color-adjust: exact; }
+  }
+</style>

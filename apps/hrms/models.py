@@ -136,6 +136,10 @@ class EmployeeDocument(CompanyScoped):
     file = models.FileField(upload_to='employees/documents/')
     expiry_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    
+    # Verification
+    is_verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='verified_documents')
 
     class Meta:
         db_table = 'hrms_employee_documents'
@@ -191,6 +195,39 @@ class WorkSchedule(CompanyScoped):
 
     def __str__(self):
         return f"{self.name} ({self.check_in_time}–{self.check_out_time})"
+
+class ShiftAssignment(CompanyScoped):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='shift_assignments')
+    schedule = models.ForeignKey(WorkSchedule, on_delete=models.CASCADE, related_name='assignments')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'hrms_shift_assignments'
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.schedule.name}"
+
+class BiometricLog(models.Model):
+    class PunchType(models.TextChoices):
+        IN = 'in', _('Check In')
+        OUT = 'out', _('Check Out')
+
+    import uuid as _uuid
+    id = models.UUIDField(primary_key=True, default=_uuid.uuid4, editable=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='biometric_logs')
+    timestamp = models.DateTimeField(db_index=True)
+    punch_type = models.CharField(max_length=10, choices=PunchType.choices)
+    device_id = models.CharField(max_length=100, blank=True)
+    is_processed = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'hrms_biometric_logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.employee.full_name} {self.punch_type} @ {self.timestamp}"
 
 
 class Attendance(CompanyScoped):
@@ -586,6 +623,8 @@ class ExpenseClaim(CompanyScoped, SequenceMixin):
     attachment = models.FileField(upload_to='expenses/', null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     approved_by = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    workflows = __import__('django.contrib.contenttypes.fields', fromlist=['GenericRelation']).GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'hrms_expense_claims'
@@ -598,3 +637,49 @@ class ExpenseClaim(CompanyScoped, SequenceMixin):
 
     def __str__(self):
         return f"{self.number} | {self.employee.full_name} - {self.amount}"
+
+class TravelRequest(CompanyScoped, SequenceMixin):
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('Draft')
+        PENDING = 'pending', _('Pending Approval')
+        APPROVED = 'approved', _('Approved')
+        REJECTED = 'rejected', _('Rejected')
+        COMPLETED = 'completed', _('Completed')
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='travel_requests')
+    destination = models.CharField(max_length=200)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    purpose = models.TextField()
+    estimated_cost = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    
+    workflows = __import__('django.contrib.contenttypes.fields', fromlist=['GenericRelation']).GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+
+    class Meta:
+        db_table = 'hrms_travel_requests'
+        ordering = ['-start_date']
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('TRV', self.__class__)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.number} | {self.employee.full_name} to {self.destination}"
+
+class EmployeeAsset(CompanyScoped):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='assigned_assets')
+    asset_name = models.CharField(max_length=200)
+    asset_tag = models.CharField(max_length=100, blank=True)
+    assigned_date = models.DateField()
+    returned_date = models.DateField(null=True, blank=True)
+    condition = models.CharField(max_length=200, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'hrms_employee_assets'
+        ordering = ['-assigned_date']
+
+    def __str__(self):
+        return f"{self.asset_name} -> {self.employee.full_name}"

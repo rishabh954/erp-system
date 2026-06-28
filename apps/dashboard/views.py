@@ -429,3 +429,30 @@ class DashboardIndexView(LoginRequiredMixin, TemplateView):
             {'label': 'Add Task', 'url': '/projects/tasks/create/', 'icon': 'tasks'},
         ]
         return ctx
+
+class SalesDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/sales.html'
+
+class FinanceDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/finance.html'
+
+class PurchaseDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/purchase.html'
+
+class WarehouseDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/warehouse.html'
+
+class HRDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/hr.html'
+
+class CRMDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/crm.html'
+
+class ProjectDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/projects.html'
+
+class HelpdeskDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/helpdesk.html'
+
+class ExecutiveKPIDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/executive_kpi.html'

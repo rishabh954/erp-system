@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Agile Board: {{ sprint.name }}{% endblock %}
+{% block nav_projects %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Sprint: {{ sprint.name }}</h1>
+    <div>
+        <a href="{% url 'projects:detail' sprint.project.pk %}" class="btn btn-secondary shadow-sm">Back to Project</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Burndown Chart (Mockup representation) -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sprint Burndown</h6>
+            </div>
+            <div class="card-body text-center">
+                <h5 class="text-muted">Total Estimated: {{ burndown.total_estimated }} hrs | Remaining: {{ burndown.current_remaining }} hrs</h5>
+                <hr>
+                <div class="chart-area" style="height: 200px; display: flex; align-items: flex-end; justify-content: space-around; padding-bottom: 20px;">
+                    {% for day in burndown.ideal_burndown %}
+                    <div style="width: 30px; background-color: #4e73df; height: calc({{ day.remaining }} / {{ burndown.total_estimated|default:1 }} * 100%); min-height: 5px; position: relative;" title="{{ day.date }}: {{ day.remaining }} hrs left">
+                        <span style="position: absolute; bottom: -20px; left: -10px; font-size: 10px;">{{ day.date|slice:"5:" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sprint Info -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sprint Details</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Goal:</strong> {{ sprint.goal }}</p>
+                <p><strong>Start:</strong> {{ sprint.start_date }}</p>
+                <p><strong>End:</strong> {{ sprint.end_date }}</p>
+                <p><strong>Status:</strong> <span class="badge bg-primary">{{ sprint.get_status_display }}</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Task Board</h4>
+<div class="row kanban-board" style="overflow-x: auto; white-space: nowrap; padding-bottom: 20px;">
+    {% regroup tasks by status as status_list %}
+    {% for status in status_list %}
+    <div class="col-md-3 kanban-col" style="display: inline-block; vertical-align: top; float: none; min-width: 300px;">
+        <div class="card bg-light shadow-sm">
+            <div class="card-header py-2 bg-secondary text-white font-weight-bold text-uppercase">
+                {{ status.grouper }}
+            </div>
+            <div class="card-body p-2" style="min-height: 400px; background-color: #f8f9fc;">
+                {% for task in status.list %}
+                <div class="card mb-2 border-left-{{ task.priority }}">
+                    <div class="card-body p-2">
+                        <h6 class="font-weight-bold mb-1"><a href="{% url 'projects:task_detail' task.pk %}">{{ task.title }}</a></h6>
+                        <div class="text-xs text-muted mb-2">{{ task.project.number }} | {% if task.assigned_to %}{{ task.assigned_to.full_name }}{% else %}Unassigned{% endif %}</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge badge-info">{{ task.estimated_hours }}h</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .border-left-low { border-left: .25rem solid #1cc88a !important; }
+    .border-left-medium { border-left: .25rem solid #36b9cc !important; }
+    .border-left-high { border-left: .25rem solid #f6c23e !important; }
+    .border-left-urgent { border-left: .25rem solid #e74a3b !important; }
+</style>
+{% endblock %}

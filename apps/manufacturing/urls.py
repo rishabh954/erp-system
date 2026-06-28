@@ -32,4 +32,14 @@ urlpatterns = [
     path('orders/create/', views.MOCreateView.as_view(), name='mo_create'),
     path('orders/<uuid:pk>/', views.MODetailView.as_view(), name='mo_detail'),
     path('orders/<uuid:pk>/action/', views.MOActionView.as_view(), name='mo_action'),
+    
+    # Dashboard & MRP
+    path('', views.ManufacturingDashboardView.as_view(), name='dashboard'),
+    path('mrp/', views.MaterialPlanListView.as_view(), name='mrp_list'),
+    path('mrp/<uuid:pk>/', views.MaterialPlanDetailView.as_view(), name='mrp_detail'),
+    path('mrp/<uuid:pk>/run/', views.MaterialPlanRunView.as_view(), name='mrp_run'),
+    
+    # Maintenance
+    path('maintenance/', views.MaintenanceRequestListView.as_view(), name='maintenance_list'),
+    path('maintenance/<uuid:pk>/', views.MaintenanceRequestDetailView.as_view(), name='maintenance_detail'),
 ]

@@ -14,8 +14,8 @@ class SalesService(BaseService):
         """Convert an approved Quotation into a Sales Order."""
         if quotation.status == Quotation.Status.CONVERTED:
             raise ValueError("Quotation is already converted.")
-        if quotation.status != Quotation.Status.APPROVED:
-            raise ValueError("Only approved quotations can be converted.")
+        if quotation.status not in [Quotation.Status.APPROVED, Quotation.Status.SENT]:
+            raise ValueError("Only approved or sent quotations can be converted.")
 
         # Create Sales Order
         order = SalesOrder.objects.create(
@@ -203,3 +203,52 @@ class SalesService(BaseService):
             description=f"Processed {payment.currency.code} {amount} payment for invoice {invoice.number}"
         )
         return payment
+
+    @transaction.atomic
+    def create_shipment_from_order(self, order: SalesOrder, lines_data: list = None) -> 'Shipment':
+        """Generate a Shipment from a Sales Order."""
+        from apps.sales.models import Shipment, ShipmentLine
+        if order.status in [SalesOrder.Status.SHIPPED, SalesOrder.Status.DELIVERED, SalesOrder.Status.CANCELLED]:
+            raise ValueError("Order is already fully shipped or cancelled.")
+
+        shipment = Shipment.objects.create(
+            company=order.company,
+            sales_order=order,
+            status=Shipment.Status.PENDING,
+            scheduled_date=order.delivery_date
+        )
+
+        # Create Shipment Lines
+        for line in order.lines.all():
+            qty_to_ship = line.quantity - line.qty_delivered
+            if qty_to_ship > 0:
+                # If specific lines_data passed (for partial split), respect it
+                if lines_data:
+                    line_data = next((item for item in lines_data if str(item['order_line_id']) == str(line.id)), None)
+                    if line_data:
+                        qty_to_ship = min(qty_to_ship, line_data['quantity'])
+                    else:
+                        continue
+                
+                ShipmentLine.objects.create(
+                    shipment=shipment,
+                    order_line=line,
+                    product=line.product,
+                    quantity=qty_to_ship
+                )
+
+        self.log_activity(
+            action='shipment_created',
+            module='sales',
+            resource_type='SalesOrder',
+            resource_id=order.pk,
+            description=f"Created shipment {shipment.number} for sales order {order.number}"
+        )
+        return shipment
+
+    def verify_credit_limit(self, customer, amount) -> bool:
+        """Check if customer has enough credit limit for this amount."""
+        if customer.credit_limit <= 0:
+            return True # Unlimited or not enforced
+            
+        return customer.outstanding_balance + amount <= customer.credit_limit

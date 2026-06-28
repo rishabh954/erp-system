@@ -427,6 +427,7 @@ class PurchaseOrderCreateView(CompanyMixin, View):
                 company=company,
                 vendor_id=data['vendor'],
                 purchase_request_id=data.get('purchase_request') or None,
+                purchase_contract_id=data.get('purchase_contract') or None,
                 warehouse_id=data.get('warehouse') or None,
                 order_date=data['order_date'],
                 expected_delivery=data.get('expected_delivery') or None,
@@ -479,6 +480,16 @@ class PurchaseOrderCreateView(CompanyMixin, View):
                     tax_amount=tax_amt,
                     total=total,
                 )
+                
+                # Drawdown from contract if applicable
+                if po.purchase_contract_id and products[i]:
+                    try:
+                        contract_line = po.purchase_contract.lines.get(product_id=products[i])
+                        contract_line.quantity_ordered += qty
+                        contract_line.save(update_fields=['quantity_ordered'])
+                    except Exception:
+                        pass
+                
                 subtotal += sub
                 tax_total += tax_amt
 
@@ -1187,13 +1198,30 @@ class PurchaseDashboardView(CompanyMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        from django.db.models import Sum
+        from django.db.models import Sum, Avg
+        from decimal import Decimal
         c = self.company()
         
         ctx['total_expenses'] = Bill.objects.filter(company=c, status__in=['paid', 'partial']).aggregate(t=Sum('amount_paid'))['t'] or 0
         ctx['outstanding_payables'] = Bill.objects.filter(company=c, status__in=['open', 'partial', 'overdue']).aggregate(t=Sum('balance_due'))['t'] or 0
         ctx['pending_pos_count'] = PurchaseOrder.objects.filter(company=c, status__in=['confirmed', 'partial']).count()
         
+        # Purchase Forecast (expected cash outflow from CONFIRMED but unpaid POs)
+        ctx['purchase_forecast'] = PurchaseOrder.objects.filter(
+            company=c, status__in=['confirmed', 'partial']
+        ).aggregate(t=Sum('balance_due'))['t'] or 0
+
+        # Supplier Performance
+        perf = Vendor.objects.filter(company=c, status='active').aggregate(
+            avg_rating=Avg('rating'),
+            avg_on_time=Avg('on_time_delivery_pct'),
+            avg_defect=Avg('defect_rate_pct')
+        )
+        ctx['supplier_perf'] = perf
+        
+        # Cost Analysis (Sum of all POs this month vs last month, simplified for now to total PO value)
+        ctx['cost_analysis_total'] = PurchaseOrder.objects.filter(company=c, is_deleted=False).aggregate(t=Sum('total'))['t'] or 0
+
         ctx['recent_pos'] = PurchaseOrder.objects.filter(company=c).select_related('vendor').order_by('-created_at')[:5]
         
         return ctx

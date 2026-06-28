@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ report.name }} — ERP Report</title>
+  <style>
+    /* ════════════════════════════════════════════════════
+       PAGE SETUP — A4 LANDSCAPE
+    ════════════════════════════════════════════════════ */
+    @page {
+      size: A4 landscape;
+      margin: 18mm 20mm 22mm 20mm;
+
+      @top-left {
+        content: string(company-name);
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+      @top-right {
+        content: "{{ report.name }}";
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+      @bottom-left {
+        content: "Generated: {{ generated_at }}";
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 7.5pt;
+        color: #94a3b8;
+      }
+      @bottom-center {
+        content: "CONFIDENTIAL — For internal use only";
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 7.5pt;
+        color: #cbd5e1;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+      }
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 7.5pt;
+        color: #94a3b8;
+      }
+    }
+
+    /* ════════════════════════════════════════════════════
+       RESET + BASE
+    ════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.5;
+    }
+
+    a { color: #4361ee; text-decoration: none; }
+
+    /* ════════════════════════════════════════════════════
+       DOCUMENT HEADER
+    ════════════════════════════════════════════════════ */
+    .doc-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding-bottom: 14pt;
+      border-bottom: 3px solid #4361ee;
+      margin-bottom: 18pt;
+      page-break-inside: avoid;
+    }
+
+    .company-block {
+      display: flex;
+      align-items: center;
+      gap: 14pt;
+    }
+
+    .company-logo {
+      width: 48pt;
+      height: 48pt;
+      border-radius: 10pt;
+      background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: white;
+      font-size: 20pt;
+      font-weight: 900;
+    }
+
+    .company-name {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0f172a;
+      string-set: company-name content();
+    }
+
+    .company-tagline {
+      font-size: 8pt;
+      color: #64748b;
+      margin-top: 2pt;
+    }
+
+    .report-meta-block { text-align: right; }
+
+    .report-title {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #4361ee;
+      line-height: 1.2;
+      max-width: 260pt;
+      text-align: right;
+    }
+
+    .report-subtitle {
+      font-size: 8.5pt;
+      color: #64748b;
+      margin-top: 4pt;
+      text-align: right;
+    }
+
+    .meta-pills {
+      display: flex;
+      gap: 6pt;
+      justify-content: flex-end;
+      margin-top: 8pt;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      display: inline-block;
+      font-size: 7pt;
+      padding: 2pt 7pt;
+      border-radius: 20pt;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .pill-module   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .pill-chart    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .pill-pivot    { background: #faf5ff; color: #7c3aed; border: 1px solid #e9d5ff; }
+    .pill-rows     { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .pill-date     { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* ════════════════════════════════════════════════════
+       SUMMARY STATS BAR
+    ════════════════════════════════════════════════════ */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10pt;
+      margin-bottom: 18pt;
+      page-break-inside: avoid;
+    }
+
+    .stat-box {
+      border: 1pt solid #e2e8f0;
+      border-radius: 8pt;
+      padding: 10pt 12pt;
+      background: #f8fafc;
+    }
+
+    .stat-box .stat-label {
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 4pt;
+    }
+
+    .stat-box .stat-value {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1;
+    }
+
+    .stat-box .stat-sub {
+      font-size: 7pt;
+      color: #94a3b8;
+      margin-top: 3pt;
+    }
+
+    /* ════════════════════════════════════════════════════
+       SECTION HEADINGS
+    ════════════════════════════════════════════════════ */
+    .section-heading {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      padding: 8pt 0 6pt;
+      border-bottom: 1.5pt solid #e2e8f0;
+      margin-bottom: 10pt;
+      display: flex;
+      align-items: center;
+      gap: 6pt;
+      page-break-after: avoid;
+    }
+
+    .section-heading .heading-bar {
+      display: inline-block;
+      width: 3.5pt;
+      height: 14pt;
+      background: #4361ee;
+      border-radius: 2pt;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════════
+       PIVOT TABLE
+    ════════════════════════════════════════════════════ */
+    .pivot-section { margin-bottom: 20pt; page-break-inside: avoid; }
+
+    .pivot-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+
+    .pivot-table thead tr {
+      background: #4361ee;
+      color: #ffffff;
+    }
+
+    .pivot-table thead th {
+      padding: 6pt 8pt;
+      font-weight: 600;
+      text-align: left;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .pivot-table thead th:not(:first-child) { text-align: right; }
+
+    .pivot-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .pivot-table tbody tr:hover { background: #eff6ff; }
+
+    .pivot-table tbody td {
+      padding: 5.5pt 8pt;
+      border-bottom: 0.5pt solid #e2e8f0;
+      color: #334155;
+    }
+
+    .pivot-table tbody td:not(:first-child) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pivot-table tbody td:first-child { font-weight: 600; color: #1e293b; }
+
+    .pivot-table tfoot tr { background: #f1f5f9; }
+
+    .pivot-table tfoot td {
+      padding: 6pt 8pt;
+      font-weight: 700;
+      border-top: 1.5pt solid #cbd5e1;
+      color: #0f172a;
+    }
+
+    .pivot-table tfoot td:not(:first-child) { text-align: right; }
+
+    /* ════════════════════════════════════════════════════
+       MAIN DATA TABLE
+    ════════════════════════════════════════════════════ */
+    .data-section { margin-bottom: 20pt; }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+
+    .data-table thead tr {
+      background: #1e3a8a;
+      color: #ffffff;
+    }
+
+    .data-table thead th {
+      padding: 7pt 9pt;
+      font-weight: 600;
+      text-align: left;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      white-space: nowrap;
+    }
+
+    .data-table thead th.num { text-align: right; }
+
+    .data-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .data-table tbody tr:nth-child(even) { background: #f0f4ff; }
+
+    .data-table tbody td {
+      padding: 5.5pt 9pt;
+      border-bottom: 0.5pt solid #e2e8f0;
+      color: #334155;
+      vertical-align: top;
+    }
+
+    .data-table tbody td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    /* Column-specific */
+    .data-table tbody tr td:first-child { color: #1e293b; font-weight: 600; }
+
+    .data-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Totals row */
+    .totals-row td {
+      background: #1e3a8a !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      padding: 6.5pt 9pt;
+      border-top: 2pt solid #1e3a8a;
+    }
+
+    /* ════════════════════════════════════════════════════
+       TRUNCATED NOTICE
+    ════════════════════════════════════════════════════ */
+    .truncated-notice {
+      text-align: center;
+      padding: 8pt;
+      background: #fff7ed;
+      border: 1pt solid #fed7aa;
+      border-radius: 6pt;
+      color: #c2410c;
+      font-size: 8pt;
+      font-weight: 600;
+      margin-top: 6pt;
+    }
+
+    /* ════════════════════════════════════════════════════
+       FOOTER (visible in PDF body)
+    ════════════════════════════════════════════════════ */
+    .doc-footer {
+      margin-top: 24pt;
+      padding-top: 10pt;
+      border-top: 1pt solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7pt;
+      color: #94a3b8;
+      page-break-inside: avoid;
+    }
+
+    .doc-footer .footer-left { text-align: left; }
+    .doc-footer .footer-center { text-align: center; color: #cbd5e1; text-transform: uppercase; letter-spacing: .06em; }
+    .doc-footer .footer-right { text-align: right; }
+
+    /* ════════════════════════════════════════════════════
+       DESCRIPTION BOX
+    ════════════════════════════════════════════════════ */
+    .desc-box {
+      background: #f8fafc;
+      border-left: 3pt solid #4361ee;
+      border-radius: 0 6pt 6pt 0;
+      padding: 8pt 12pt;
+      margin-bottom: 16pt;
+      font-size: 8.5pt;
+      color: #475569;
+      line-height: 1.5;
+      page-break-inside: avoid;
+    }
+
+    /* ════════════════════════════════════════════════════
+       PAGE BREAK UTILITIES
+    ════════════════════════════════════════════════════ */
+    .page-break { page-break-after: always; }
+    .no-break   { page-break-inside: avoid; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+       DOCUMENT HEADER
+  ═══════════════════════════════════════════════════ -->
+  <div class="doc-header no-break">
+    <div class="company-block">
+      <div class="company-logo">
+        {% if company_logo %}
+        <img src="{{ company_logo }}" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:10pt;">
+        {% else %}
+        E
+        {% endif %}
+      </div>
+      <div>
+        <div class="company-name">{{ company_name|default:"Enterprise ERP" }}</div>
+        <div class="company-tagline">{{ company_tagline|default:"Integrated Business Management System" }}</div>
+        <div style="font-size:7.5pt; color:#94a3b8; margin-top:3pt;">
+          {{ company_address|default:"" }}
+        </div>
+      </div>
+    </div>
+
+    <div class="report-meta-block">
+      <div class="report-title">{{ report.name }}</div>
+      <div class="report-subtitle">{{ report.description|default:"" }}</div>
+      <div class="meta-pills">
+        <span class="meta-pill pill-module">
+          {{ report.get_module_display }}
+        </span>
+        {% if report.chart_type and report.chart_type != 'none' %}
+        <span class="meta-pill pill-chart">
+          {{ report.chart_type|capfirst }} chart
+        </span>
+        {% endif %}
+        {% if report.is_pivot %}
+        <span class="meta-pill pill-pivot">Pivot table</span>
+        {% endif %}
+        {% if data %}
+        <span class="meta-pill pill-rows">{{ data|length }} rows</span>
+        {% endif %}
+        <span class="meta-pill pill-date">{{ generated_at }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SUMMARY STATS
+  ═══════════════════════════════════════════════════ -->
+  {% if summary_stats %}
+  <div class="stats-bar no-break">
+    {% for stat in summary_stats %}
+    <div class="stat-box">
+      <div class="stat-label">{{ stat.label }}</div>
+      <div class="stat-value">{{ stat.value }}</div>
+      {% if stat.sub %}<div class="stat-sub">{{ stat.sub }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════════════════
+       DESCRIPTION
+  ═══════════════════════════════════════════════════ -->
+  {% if report.description %}
+  <div class="desc-box no-break">
+    <strong>Report Notes:</strong> {{ report.description }}
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════════════════
+       PIVOT TABLE
+  ═══════════════════════════════════════════════════ -->
+  {% if report.is_pivot and pivot_data %}
+  <div class="pivot-section">
+    <div class="section-heading">
+      <span class="heading-bar"></span>
+      Pivot Analysis — {{ pivot_data.row_field|default:"" }} × {{ pivot_data.col_field|default:"" }}
+      <span style="margin-left:auto; font-size:8pt; font-weight:400; color:#64748b;">
+        Aggregation: {{ pivot_data.aggregation|upper|default:"SUM" }}
+      </span>
+    </div>
+
+    <table class="pivot-table">
+      <thead>
+        <tr>
+          <th style="width:25%;">{{ pivot_data.row_field|default:"Row" }}</th>
+          {% for col in pivot_data.col_headers %}
+          <th>{{ col }}</th>
+          {% endfor %}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in pivot_data.rows %}
+        <tr>
+          <td>{{ row.label }}</td>
+          {% for val in row.values %}
+          <td>{{ val|default:"—" }}</td>
+          {% endfor %}
+          <td style="font-weight:700;">{{ row.total|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>Grand Total</td>
+          {% for col_total in pivot_data.col_totals %}
+          <td>{{ col_total }}</td>
+          {% endfor %}
+          <td>{{ pivot_data.grand_total|default:"—" }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════════════════
+       MAIN DATA TABLE
+  ═══════════════════════════════════════════════════ -->
+  <div class="data-section">
+    <div class="section-heading">
+      <span class="heading-bar"></span>
+      Report Data
+      {% if date_range %}
+      <span style="margin-left:auto; font-size:8pt; font-weight:400; color:#64748b;">
+        Period: {{ date_range }}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if data %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:26pt; text-align:right;">#</th>
+          {% for header in headers %}
+          <th {% if header|lower in "amount,total,value,count,quantity,price,revenue,cost,balance" %}class="num"{% endif %}>
+            {{ header }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data %}
+        <tr>
+          <td style="text-align:right; color:#94a3b8; font-weight:400;">{{ forloop.counter }}</td>
+          {% for cell in row %}
+          <td {% if cell|stringformat:"s"|slice:":1" == "-" or cell|stringformat:"s"|add:"" == cell and cell|add:"0" == cell|add:"0" %}class="num"{% endif %}>
+            {{ cell|default:"—" }}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if column_totals %}
+      <tfoot>
+        <tr class="totals-row">
+          <td style="text-align:right; font-size:7.5pt; text-transform:uppercase; letter-spacing:.05em;">Total</td>
+          {% for total in column_totals %}
+          <td style="text-align:right;">{{ total|default:"" }}</td>
+          {% endfor %}
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+
+    {% if truncated %}
+    <div class="truncated-notice">
+      ⚠ This export is limited to {{ data|length|default:"5000" }} rows. Export to CSV/Excel for the full dataset.
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center; padding:24pt; background:#f8fafc; border-radius:8pt; color:#64748b; font-size:9pt; border:1pt dashed #e2e8f0;">
+      No data rows returned for this report configuration.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       DOCUMENT FOOTER
+  ═══════════════════════════════════════════════════ -->
+  <div class="doc-footer">
+    <div class="footer-left">
+      <strong>{{ company_name|default:"Enterprise ERP" }}</strong><br>
+      Report: {{ report.name }}<br>
+      Generated by: {{ generated_by|default:"System" }}
+    </div>
+    <div class="footer-center">
+      Confidential &mdash; Internal Use Only
+    </div>
+    <div class="footer-right">
+      Generated: {{ generated_at }}<br>
+      Module: {{ report.get_module_display }}<br>
+      {% if report.last_run %}Last run: {{ report.last_run|date:"M d, Y H:i" }}{% endif %}
+    </div>
+  </div>
+
+</body>
+</html>

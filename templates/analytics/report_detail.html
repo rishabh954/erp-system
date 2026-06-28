@@ -1,0 +1,923 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ report.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ──────────────────────────────────────────────── */
+.report-hero {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 16px; padding: 1.75rem 2rem;
+  margin-bottom: 1.75rem;
+}
+.report-hero .module-badge {
+  font-size: .75rem; padding: .3rem .75rem; border-radius: 20px;
+  font-weight: 600; letter-spacing: .03em; display: inline-flex; align-items: center; gap: .35rem;
+}
+.badge-sales         { background: rgba(67,97,238,.15);  color: #4361ee; }
+.badge-finance       { background: rgba(16,185,129,.15); color: #10b981; }
+.badge-hr            { background: rgba(245,158,11,.15); color: #f59e0b; }
+.badge-purchase      { background: rgba(239,68,68,.15);  color: #ef4444; }
+.badge-inventory     { background: rgba(168,85,247,.15); color: #a855f7; }
+.badge-manufacturing { background: rgba(20,184,166,.15); color: #14b8a6; }
+.badge-projects      { background: rgba(249,115,22,.15); color: #f97316; }
+.badge-helpdesk      { background: rgba(236,72,153,.15); color: #ec4899; }
+.badge-crm           { background: rgba(59,130,246,.15); color: #3b82f6; }
+.badge-assets        { background: rgba(107,114,128,.15);color: #6b7280; }
+
+/* ── Sections ─────────────────────────────────────────────── */
+.section-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(var(--border-rgb),.12);
+  border-radius: 14px; margin-bottom: 1.5rem; overflow: hidden;
+}
+.section-card .section-header {
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid rgba(var(--border-rgb),.1);
+  display: flex; align-items: center; gap: .75rem;
+}
+.section-card .section-body { padding: 1.5rem; }
+
+/* ── Data table ──────────────────────────────────────────── */
+.data-table-wrap thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--card-bg);
+  font-size: .73rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-muted); font-weight: 600;
+  border-bottom: 2px solid rgba(var(--border-rgb),.15);
+  padding: .85rem 1rem; white-space: nowrap;
+  cursor: pointer; user-select: none;
+}
+.data-table-wrap thead th:hover { color: var(--brand-primary); }
+.data-table-wrap tbody tr {
+  transition: background .15s; cursor: pointer;
+}
+.data-table-wrap tbody tr:nth-child(even) {
+  background: rgba(var(--border-rgb),.025);
+}
+.data-table-wrap tbody tr:hover { background: rgba(67,97,238,.05); }
+.data-table-wrap td {
+  padding: .75rem 1rem; font-size: .85rem;
+  border-color: rgba(var(--border-rgb),.07); vertical-align: middle;
+}
+
+/* Table toolbar */
+.table-toolbar {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  padding: 1rem 1.5rem; border-bottom: 1px solid rgba(var(--border-rgb),.08);
+}
+.table-toolbar .search-wrap { position: relative; min-width: 220px; }
+.table-toolbar .search-wrap input { padding-left: 2.4rem; font-size: .85rem; border-radius: 8px; }
+.table-toolbar .search-wrap i {
+  position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: .82rem; pointer-events: none;
+}
+
+/* ── Chart section ───────────────────────────────────────── */
+.chart-section { position: relative; }
+.chart-legend-item {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .78rem; margin-right: .75rem;
+}
+.chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Pivot table ─────────────────────────────────────────── */
+.pivot-table th {
+  background: rgba(67,97,238,.07); color: var(--brand-primary);
+  font-size: .75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; padding: .75rem 1rem;
+}
+.pivot-table td { font-size: .85rem; padding: .65rem 1rem; text-align: right; }
+.pivot-table td:first-child { text-align: left; font-weight: 600; }
+.pivot-table tfoot td { font-weight: 700; background: rgba(67,97,238,.04); }
+.pivot-table tr:hover td { background: rgba(67,97,238,.04); }
+
+/* ── Schedule slide-over ─────────────────────────────────── */
+.slide-over {
+  position: fixed; top: 0; right: -500px; width: 440px;
+  height: 100vh; background: var(--card-bg); z-index: 1055;
+  box-shadow: -8px 0 40px rgba(0,0,0,.18);
+  transition: right .3s ease; padding: 0; overflow-y: auto;
+}
+.slide-over.open { right: 0; }
+.slide-over-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 1054; display: none;
+}
+.slide-over-backdrop.open { display: block; }
+.slide-over-header {
+  padding: 1.5rem; border-bottom: 1px solid rgba(var(--border-rgb),.1);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--card-bg); z-index: 1;
+}
+.slide-over-body { padding: 1.5rem; }
+
+/* ── Status badges ───────────────────────────────────────── */
+.status-badge { font-size: .7rem; padding: .25rem .6rem; border-radius: 20px; font-weight: 600; }
+.status-success { background: rgba(16,185,129,.15); color: #059669; }
+.status-running  { background: rgba(59,130,246,.15); color: #2563eb; }
+.status-failed   { background: rgba(239,68,68,.15);  color: #dc2626; }
+.status-queued   { background: rgba(245,158,11,.15); color: #d97706; }
+
+/* ── Exec history ─────────────────────────────────────────── */
+.exec-hist-table th { font-size: .72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: .05em; }
+.exec-hist-table td { font-size: .82rem; vertical-align: middle; }
+
+/* ── Print styles ─────────────────────────────────────────── */
+@media print {
+  .no-print, .slide-over, .slide-over-backdrop,
+  nav, .navbar, .sidebar, .btn,
+  .table-toolbar, .export-bar { display: none !important; }
+  .section-card {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+  .data-table-wrap { max-height: none !important; overflow: visible !important; }
+  body { background: #fff !important; }
+  .report-hero { border: 1px solid #e2e8f0; }
+}
+
+/* Pagination */
+.pagination .page-link {
+  border-radius: 8px !important; margin: 0 2px;
+  font-size: .8rem; color: var(--brand-primary);
+  border-color: rgba(var(--border-rgb),.2);
+}
+.pagination .page-item.active .page-link {
+  background: var(--brand-primary); border-color: var(--brand-primary); color: #fff;
+}
+
+/* Numeric cell alignment */
+.text-num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════════════════════════════════════════
+     REPORT HEADER
+═══════════════════════════════════════════════════════════ -->
+<div class="report-hero no-print">
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0" style="font-size:.78rem;">
+      <li class="breadcrumb-item"><a href="{% url 'analytics:dashboard' %}">Analytics</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'analytics:saved_reports' %}">Reports</a></li>
+      <li class="breadcrumb-item active">{{ report.name|truncatechars:40 }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+        <span class="module-badge badge-{{ report.module|lower }}">
+          {% if report.module == 'sales' %}<i class="fa-solid fa-chart-line"></i>
+          {% elif report.module == 'finance' %}<i class="fa-solid fa-coins"></i>
+          {% elif report.module == 'hr' %}<i class="fa-solid fa-users"></i>
+          {% elif report.module == 'purchase' %}<i class="fa-solid fa-shopping-bag"></i>
+          {% elif report.module == 'inventory' %}<i class="fa-solid fa-boxes-stacked"></i>
+          {% elif report.module == 'manufacturing' %}<i class="fa-solid fa-industry"></i>
+          {% elif report.module == 'projects' %}<i class="fa-solid fa-diagram-project"></i>
+          {% elif report.module == 'helpdesk' %}<i class="fa-solid fa-headset"></i>
+          {% elif report.module == 'crm' %}<i class="fa-solid fa-handshake"></i>
+          {% elif report.module == 'assets' %}<i class="fa-solid fa-building"></i>
+          {% endif %}
+          {{ report.get_module_display }}
+        </span>
+        {% if report.is_pivot %}
+        <span class="badge" style="background:rgba(67,97,238,.1);color:var(--brand-primary);font-size:.7rem;padding:.28rem .65rem;">
+          <i class="fa-solid fa-table-pivot fa-xs me-1"></i>Pivot
+        </span>
+        {% endif %}
+        {% if report.is_scheduled %}
+        <span class="badge" style="background:rgba(16,185,129,.1);color:#059669;font-size:.7rem;padding:.28rem .65rem;">
+          <i class="fa-solid fa-calendar-check fa-xs me-1"></i>Scheduled
+        </span>
+        {% endif %}
+        {% if report.is_public %}
+        <span class="badge" style="background:rgba(59,130,246,.1);color:#2563eb;font-size:.7rem;padding:.28rem .65rem;">
+          <i class="fa-solid fa-globe fa-xs me-1"></i>Public
+        </span>
+        {% endif %}
+      </div>
+
+      <h1 class="h4 fw-bold mb-1">{{ report.name }}</h1>
+      {% if report.description %}
+      <p class="text-muted mb-0" style="font-size:.88rem; max-width:600px;">{{ report.description }}</p>
+      {% endif %}
+
+      <div class="d-flex gap-3 mt-2 flex-wrap" style="font-size:.78rem; color:var(--text-muted);">
+        <span><i class="fa-solid fa-user fa-xs me-1"></i>
+          {{ report.created_by.get_full_name|default:report.created_by.username }}
+        </span>
+        <span><i class="fa-solid fa-calendar fa-xs me-1"></i>Created {{ report.created_at|date:"M d, Y" }}</span>
+        <span><i class="fa-solid fa-clock fa-xs me-1"></i>
+          Last run: {{ report.last_run|default:"Never"|timesince }}{% if report.last_run %} ago{% endif %}
+        </span>
+        {% if data %}
+        <span class="text-success fw-semibold">
+          <i class="fa-solid fa-check fa-xs me-1"></i>{{ data|length|default:"0" }} rows returned
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Export & action buttons -->
+    <div class="d-flex flex-wrap gap-2 export-bar" style="align-self:flex-start;">
+      <a href="{% url 'analytics:export_report' report.pk 'csv' %}"
+         class="btn btn-outline-success btn-sm fw-semibold">
+        <i class="fa-solid fa-file-csv me-1"></i>CSV
+      </a>
+      <a href="{% url 'analytics:export_report' report.pk 'xlsx' %}"
+         class="btn btn-outline-primary btn-sm fw-semibold">
+        <i class="fa-solid fa-file-excel me-1"></i>Excel
+      </a>
+      <a href="{% url 'analytics:export_report' report.pk 'pdf' %}"
+         class="btn btn-outline-danger btn-sm fw-semibold">
+        <i class="fa-solid fa-file-pdf me-1"></i>PDF
+      </a>
+      <button onclick="window.print()" class="btn btn-outline-secondary btn-sm fw-semibold">
+        <i class="fa-solid fa-print me-1"></i>Print
+      </button>
+      <a href="{% url 'analytics:report_builder' %}?copy={{ report.pk }}"
+         class="btn btn-outline-secondary btn-sm fw-semibold">
+        <i class="fa-solid fa-pen me-1"></i>Edit
+      </a>
+      <button class="btn btn-primary btn-sm fw-semibold" onclick="openSchedule()">
+        <i class="fa-solid fa-calendar-plus me-1"></i>Schedule
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CHART SECTION
+═══════════════════════════════════════════════════════════ -->
+{% if report.chart_type and report.chart_type != 'none' and chart_labels %}
+<div class="section-card chart-section no-print">
+  <div class="section-header">
+    <i class="fa-solid fa-chart-bar text-primary"></i>
+    <span class="fw-bold" style="font-size:.95rem;">
+      {% if report.chart_type == 'bar' %}Bar Chart
+      {% elif report.chart_type == 'line' %}Line Chart
+      {% elif report.chart_type == 'area' %}Area Chart
+      {% elif report.chart_type == 'pie' %}Pie Chart
+      {% elif report.chart_type == 'doughnut' %}Doughnut Chart
+      {% else %}Chart{% endif %}
+    </span>
+    <span class="text-muted ms-1" style="font-size:.8rem;">
+      — {{ report.group_by_field|default:"" }} by {{ report.value_field|default:"" }}
+    </span>
+    <div class="ms-auto d-flex gap-2">
+      <select class="form-select form-select-sm" id="chartTypeSwitch" style="width:130px;" onchange="switchChartType(this.value)">
+        <option value="bar"      {% if report.chart_type == 'bar' %}selected{% endif %}>Bar</option>
+        <option value="line"     {% if report.chart_type == 'line' %}selected{% endif %}>Line</option>
+        <option value="area"     {% if report.chart_type == 'area' %}selected{% endif %}>Area</option>
+        <option value="pie"      {% if report.chart_type == 'pie' %}selected{% endif %}>Pie</option>
+        <option value="doughnut" {% if report.chart_type == 'doughnut' %}selected{% endif %}>Doughnut</option>
+      </select>
+      <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart()" title="Download chart">
+        <i class="fa-solid fa-download"></i>
+      </button>
+    </div>
+  </div>
+  <div class="section-body">
+    <canvas id="reportChart" style="max-height:360px;"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     PIVOT TABLE SECTION
+═══════════════════════════════════════════════════════════ -->
+{% if report.is_pivot and pivot_data %}
+<div class="section-card">
+  <div class="section-header">
+    <i class="fa-solid fa-table-pivot text-primary"></i>
+    <span class="fw-bold" style="font-size:.95rem;">Pivot Table</span>
+    <span class="text-muted ms-1" style="font-size:.8rem;">
+      — {{ pivot_data.row_field|default:"" }} × {{ pivot_data.col_field|default:"" }}
+    </span>
+    <div class="ms-auto">
+      <input type="search" class="form-control form-control-sm" id="pivotSearch"
+             placeholder="Filter rows…" style="max-width:160px;" oninput="filterPivot()">
+    </div>
+  </div>
+  <div class="section-body p-0">
+    <div class="table-responsive" style="max-height:420px; overflow-y:auto;">
+      <table class="table table-hover pivot-table mb-0" id="pivotTable">
+        <thead>
+          <tr>
+            <th>{{ pivot_data.row_field|default:"Row" }}</th>
+            {% for col in pivot_data.col_headers %}
+            <th class="text-end">{{ col }}</th>
+            {% endfor %}
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody id="pivotBody">
+          {% for row in pivot_data.rows %}
+          <tr class="pivot-row" data-rowlabel="{{ row.label|lower }}">
+            <td class="fw-semibold">{{ row.label }}</td>
+            {% for val in row.values %}
+            <td class="text-num">{{ val|default:"—" }}</td>
+            {% endfor %}
+            <td class="text-num fw-bold">{{ row.total|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="fw-bold">Total</td>
+            {% for col_total in pivot_data.col_totals %}
+            <td class="text-end">{{ col_total }}</td>
+            {% endfor %}
+            <td class="text-end fw-bold">{{ pivot_data.grand_total|default:"—" }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     DATA TABLE
+═══════════════════════════════════════════════════════════ -->
+<div class="section-card">
+  <!-- Toolbar -->
+  <div class="table-toolbar no-print">
+    <div class="search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" id="tableSearch" class="form-control form-control-sm"
+             placeholder="Search data…" oninput="filterTable()">
+    </div>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <span class="text-muted" style="font-size:.8rem;" id="rowCountLabel">
+        {{ data|length }} rows
+      </span>
+      <select class="form-select form-select-sm" id="rowsPerPage" onchange="renderPage(1)" style="width:110px;">
+        <option value="25">25 / page</option>
+        <option value="50">50 / page</option>
+        <option value="100">100 / page</option>
+        <option value="250">250 / page</option>
+        <option value="all">All rows</option>
+      </select>
+      <button class="btn btn-sm btn-outline-secondary" onclick="copyTableToClipboard()" title="Copy to clipboard">
+        <i class="fa-solid fa-copy"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-body p-0">
+    <div class="table-responsive data-table-wrap" style="max-height:520px; overflow-y:auto;">
+      <table class="table table-hover mb-0" id="dataTable">
+        <thead id="dataTableHead">
+          <tr>
+            <th style="width:42px;">#</th>
+            {% for header in headers %}
+            <th data-col="{{ forloop.counter0 }}" onclick="sortTable({{ forloop.counter0 }})">
+              {{ header }} <i class="fa-solid fa-sort ms-1 opacity-25" style="font-size:.6rem;"></i>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody id="dataTableBody">
+          {% for row in data %}
+          <tr class="data-row" onclick="rowDetail({{ forloop.counter0 }})">
+            <td class="text-muted" style="font-size:.75rem;">{{ forloop.counter }}</td>
+            {% for cell in row %}
+            <td>{{ cell|default:"—" }}</td>
+            {% endfor %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{{ headers|length|add:1 }}" class="text-center text-muted py-5">
+              <i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              No data returned for this report.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination footer -->
+    {% if data %}
+    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top no-print"
+         style="border-color:rgba(var(--border-rgb),.08) !important;">
+      <div class="text-muted" style="font-size:.8rem;" id="pageInfo">
+        Showing rows 1–{{ data|length|default:"0" }}
+      </div>
+      <div id="tablePagination" class="d-flex gap-1"></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SIDE PANEL: SCHEDULES + EXECUTION HISTORY
+═══════════════════════════════════════════════════════════ -->
+<div class="row g-4 no-print">
+
+  <!-- Schedule panel -->
+  <div class="col-12 col-lg-5">
+    <div class="section-card h-100">
+      <div class="section-header">
+        <i class="fa-solid fa-calendar-check text-success"></i>
+        <span class="fw-bold" style="font-size:.95rem;">Active Schedules</span>
+        <button class="btn btn-primary btn-sm ms-auto" onclick="openSchedule()">
+          <i class="fa-solid fa-plus me-1"></i>Add Schedule
+        </button>
+      </div>
+      <div class="section-body">
+        {% if schedules %}
+        <div class="d-flex flex-column gap-3">
+          {% for schedule in schedules %}
+          <div class="d-flex align-items-start gap-3 p-3 rounded-3"
+               style="background:rgba(16,185,129,.05); border:1px solid rgba(16,185,129,.12);">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:38px;height:38px;background:rgba(16,185,129,.12);color:#10b981;font-size:.9rem;">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="fw-semibold mb-1" style="font-size:.85rem;">
+                {{ schedule.get_frequency_display }}
+                {% if schedule.day_of_week %}&nbsp;on {{ schedule.day_of_week }}{% endif %}
+                {% if schedule.time %}at {{ schedule.time }}{% endif %}
+              </div>
+              <div class="text-muted" style="font-size:.78rem;">
+                Format: <strong>{{ schedule.format|upper }}</strong>
+                &nbsp;|&nbsp;Recipients: {{ schedule.recipients_count|default:"0" }}
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">
+                Next: {{ schedule.next_run|default:"—" }}
+              </div>
+            </div>
+            <div class="d-flex flex-column gap-1">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox"
+                       {% if schedule.is_active %}checked{% endif %}
+                       onchange="toggleSchedule('{{ schedule.pk }}', this.checked)"
+                       style="cursor:pointer;">
+              </div>
+              <button class="btn btn-sm btn-link text-danger p-0"
+                      onclick="deleteSchedule('{{ schedule.pk }}')" title="Delete schedule">
+                <i class="fa-solid fa-trash-can fa-xs"></i>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-3 text-muted">
+          <i class="fa-solid fa-calendar-xmark fa-2x mb-2 opacity-25 d-block"></i>
+          <p class="mb-2" style="font-size:.85rem;">No schedules configured.</p>
+          <button class="btn btn-sm btn-outline-primary" onclick="openSchedule()">
+            <i class="fa-solid fa-plus me-1"></i>Create Schedule
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Execution history -->
+  <div class="col-12 col-lg-7">
+    <div class="section-card h-100">
+      <div class="section-header">
+        <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+        <span class="fw-bold" style="font-size:.95rem;">Execution History</span>
+        <span class="text-muted ms-1" style="font-size:.78rem;">(last 20 runs)</span>
+      </div>
+      <div class="section-body p-0">
+        {% if executions %}
+        <div class="table-responsive">
+          <table class="table exec-hist-table mb-0">
+            <thead>
+              <tr>
+                <th class="px-4">Status</th>
+                <th>Format</th>
+                <th>Rows</th>
+                <th>Duration</th>
+                <th>Triggered By</th>
+                <th>Date/Time</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for exec in executions %}
+              <tr>
+                <td class="px-4">
+                  <span class="status-badge status-{{ exec.status }}">
+                    {% if exec.status == 'success' %}<i class="fa-solid fa-check fa-xs me-1"></i>Success
+                    {% elif exec.status == 'running' %}<i class="fa-solid fa-spinner fa-spin fa-xs me-1"></i>Running
+                    {% elif exec.status == 'failed' %}<i class="fa-solid fa-xmark fa-xs me-1"></i>Failed
+                    {% else %}<i class="fa-solid fa-hourglass fa-xs me-1"></i>Queued{% endif %}
+                  </span>
+                </td>
+                <td><span class="fw-semibold text-uppercase" style="font-size:.75rem;color:var(--text-muted);">{{ exec.format|upper }}</span></td>
+                <td>{{ exec.row_count|default:"—" }}</td>
+                <td style="font-size:.8rem;">
+                  {% if exec.duration_ms %}{{ exec.duration_ms }}ms{% else %}—{% endif %}
+                </td>
+                <td style="font-size:.8rem;">
+                  {{ exec.triggered_by.get_full_name|default:exec.triggered_by.username|truncatechars:16|default:"System" }}
+                </td>
+                <td class="text-muted" style="font-size:.78rem; white-space:nowrap;">
+                  {{ exec.created_at|date:"M d, Y H:i" }}
+                </td>
+                <td>
+                  {% if exec.status == 'failed' and exec.error_message %}
+                  <button class="btn btn-link btn-sm p-0 text-danger"
+                          title="{{ exec.error_message }}"
+                          data-bs-toggle="tooltip">
+                    <i class="fa-solid fa-circle-exclamation fa-xs"></i>
+                  </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fa-solid fa-inbox fa-2x mb-2 opacity-25 d-block"></i>
+          <p class="mb-0" style="font-size:.85rem;">No execution history yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCHEDULE SLIDE-OVER
+═══════════════════════════════════════════════════════════ -->
+<div class="slide-over-backdrop" id="scheduleBackdrop" onclick="closeSchedule()"></div>
+
+<div class="slide-over" id="scheduleSlideOver">
+  <div class="slide-over-header">
+    <h6 class="fw-bold mb-0">
+      <i class="fa-solid fa-calendar-plus me-2 text-primary"></i>Schedule Report
+    </h6>
+    <button class="btn btn-sm btn-link text-muted p-0" onclick="closeSchedule()">
+      <i class="fa-solid fa-xmark fa-lg"></i>
+    </button>
+  </div>
+  <div class="slide-over-body">
+    <form method="post" action="{% url 'analytics:schedule_report' report.pk %}">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Frequency</label>
+        <select class="form-select" name="frequency" id="schedFrequency" onchange="updateScheduleForm()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="custom">Custom (cron)</option>
+        </select>
+      </div>
+
+      <div class="mb-3" id="schedDayWrap" style="display:none;">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Day of Week</label>
+        <select class="form-select" name="day_of_week">
+          <option value="monday">Monday</option>
+          <option value="tuesday">Tuesday</option>
+          <option value="wednesday">Wednesday</option>
+          <option value="thursday">Thursday</option>
+          <option value="friday">Friday</option>
+          <option value="saturday">Saturday</option>
+          <option value="sunday">Sunday</option>
+        </select>
+      </div>
+
+      <div class="mb-3" id="schedDayMonthWrap" style="display:none;">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Day of Month</label>
+        <input type="number" class="form-control" name="day_of_month" min="1" max="28" value="1">
+      </div>
+
+      <div class="mb-3" id="schedCronWrap" style="display:none;">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Cron Expression</label>
+        <input type="text" class="form-control" name="cron_expression" placeholder="0 9 * * 1-5">
+        <div class="form-text">Standard 5-field cron. E.g. <code>0 9 * * 1-5</code> = weekdays at 9am.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Time</label>
+        <input type="time" class="form-control" name="time" value="09:00">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Export Format</label>
+        <div class="d-flex gap-2">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="format" value="csv" id="sfCSV" checked>
+            <label class="form-check-label" for="sfCSV">CSV</label>
+          </div>
+          <div class="form-check ms-2">
+            <input class="form-check-input" type="radio" name="format" value="xlsx" id="sfExcel">
+            <label class="form-check-label" for="sfExcel">Excel</label>
+          </div>
+          <div class="form-check ms-2">
+            <input class="form-check-input" type="radio" name="format" value="pdf" id="sfPDF">
+            <label class="form-check-label" for="sfPDF">PDF</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">
+          Recipients <span class="fw-normal text-muted">(email, comma-separated)</span>
+        </label>
+        <textarea class="form-control" name="recipients" rows="3"
+                  placeholder="user@example.com, manager@example.com"></textarea>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Subject Line</label>
+        <input type="text" class="form-control" name="subject"
+               value="Scheduled Report: {{ report.name }}">
+      </div>
+
+      <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" name="is_active" id="schedActive" checked>
+        <label class="form-check-label" for="schedActive" style="font-size:.88rem;">
+          Activate immediately
+        </label>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary fw-semibold flex-grow-1">
+          <i class="fa-solid fa-calendar-check me-2"></i>Save Schedule
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="closeSchedule()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────
+   CHART RENDERING
+───────────────────────────────────────────────────────── */
+{% if report.chart_type and report.chart_type != 'none' and chart_labels %}
+const chartLabels = {{ chart_labels|safe }};
+const chartValues = {{ chart_values|safe }};
+const initChartType = '{{ report.chart_type }}';
+
+const PALETTE = ['#4361ee','#10b981','#f59e0b','#ef4444','#a855f7','#14b8a6','#f97316','#ec4899','#3b82f6','#6b7280'];
+
+let reportChartInst = null;
+
+function buildChart(type) {
+  const ctx = document.getElementById('reportChart')?.getContext('2d');
+  if (!ctx) return;
+  if (reportChartInst) reportChartInst.destroy();
+
+  const isCircle = ['pie','doughnut'].includes(type);
+  const isArea   = type === 'area';
+  const chartJsType = isArea ? 'line' : type;
+
+  reportChartInst = new Chart(ctx, {
+    type: chartJsType,
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: '{{ report.value_field|default:"Value"|escapejs }}',
+        data: chartValues,
+        backgroundColor: isCircle ? PALETTE : 'rgba(67,97,238,.18)',
+        borderColor:     isCircle ? PALETTE : '#4361ee',
+        borderWidth: 2,
+        fill: isArea,
+        tension: .4,
+        pointRadius: isCircle ? 0 : 4,
+        pointHoverRadius: 6,
+        hoverOffset: isCircle ? 8 : 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: isCircle, position: 'right', labels: { padding: 16, font: { size: 12 } } },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label: ctx => {
+              let v = ctx.parsed.y ?? ctx.parsed;
+              return ` ${ctx.dataset.label}: ${typeof v === 'number' ? v.toLocaleString() : v}`;
+            }
+          }
+        },
+      },
+      scales: isCircle ? {} : {
+        y: { beginAtZero: true, grid: { color: 'rgba(120,120,180,.1)' },
+             ticks: { font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      },
+      animation: { duration: 500 },
+    }
+  });
+}
+
+buildChart(initChartType);
+
+function switchChartType(type) { buildChart(type); }
+
+function downloadChart() {
+  const canvas = document.getElementById('reportChart');
+  const link = document.createElement('a');
+  link.download = '{{ report.name|slugify }}-chart.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+{% endif %}
+
+/* ─────────────────────────────────────────────────────────
+   DATA TABLE — CLIENT SIDE PAGINATION + SEARCH + SORT
+───────────────────────────────────────────────────────── */
+const allRows  = [...document.querySelectorAll('.data-row')];
+let filtered   = [...allRows];
+let currentPage = 1;
+let sortCol    = -1;
+let sortAsc    = true;
+
+function filterTable() {
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  filtered = allRows.filter(row => {
+    return !q || row.textContent.toLowerCase().includes(q);
+  });
+  document.getElementById('rowCountLabel').textContent = `${filtered.length} rows`;
+  renderPage(1);
+}
+
+function getPageSize() {
+  const v = document.getElementById('rowsPerPage').value;
+  return v === 'all' ? filtered.length : parseInt(v);
+}
+
+function renderPage(page) {
+  currentPage = page;
+  const size  = getPageSize();
+  const start = (page - 1) * size;
+  const end   = Math.min(start + size, filtered.length);
+
+  allRows.forEach(r => r.style.display = 'none');
+  filtered.slice(start, end).forEach(r => r.style.display = '');
+
+  document.getElementById('pageInfo').textContent =
+    `Showing rows ${start+1}–${end} of ${filtered.length}`;
+
+  renderPagination(page, Math.ceil(filtered.length / size));
+}
+
+function renderPagination(current, total) {
+  const container = document.getElementById('tablePagination');
+  if (!container) return;
+  if (total <= 1) { container.innerHTML = ''; return; }
+
+  let html = '';
+  const prev = current - 1;
+  const next = current + 1;
+
+  html += `<button class="btn btn-sm btn-outline-secondary rounded-3 px-2" ${current===1?'disabled':''} onclick="renderPage(${prev})">
+    <i class="fa-solid fa-chevron-left fa-xs"></i></button>`;
+
+  for (let p = 1; p <= total; p++) {
+    if (p === 1 || p === total || Math.abs(p - current) <= 1) {
+      html += `<button class="btn btn-sm rounded-3 px-3 ${p===current ? 'btn-primary' : 'btn-outline-secondary'}"
+        onclick="renderPage(${p})">${p}</button>`;
+    } else if (Math.abs(p - current) === 2) {
+      html += `<span class="text-muted px-1" style="line-height:2rem;">…</span>`;
+    }
+  }
+
+  html += `<button class="btn btn-sm btn-outline-secondary rounded-3 px-2" ${current===total?'disabled':''} onclick="renderPage(${next})">
+    <i class="fa-solid fa-chevron-right fa-xs"></i></button>`;
+
+  container.innerHTML = html;
+}
+
+function sortTable(colIdx) {
+  if (sortCol === colIdx) { sortAsc = !sortAsc; }
+  else { sortCol = colIdx; sortAsc = true; }
+
+  // Reset icons
+  document.querySelectorAll('#dataTable thead th i').forEach(i => {
+    i.className = 'fa-solid fa-sort ms-1 opacity-25';
+    i.style.fontSize = '.6rem';
+  });
+  const th = document.querySelector(`#dataTable thead th[data-col="${colIdx}"] i`);
+  if (th) {
+    th.className = `fa-solid fa-sort-${sortAsc ? 'up' : 'down'} ms-1`;
+    th.style.fontSize = '.6rem';
+    th.style.color = 'var(--brand-primary)';
+    th.style.opacity = '1';
+  }
+
+  filtered.sort((a, b) => {
+    const aCells = a.querySelectorAll('td');
+    const bCells = b.querySelectorAll('td');
+    const av = (aCells[colIdx + 1]?.textContent || '').trim();
+    const bv = (bCells[colIdx + 1]?.textContent || '').trim();
+    const an = parseFloat(av.replace(/,/g,''));
+    const bn = parseFloat(bv.replace(/,/g,''));
+    if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
+    return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  renderPage(1);
+}
+
+function rowDetail(idx) {
+  // Could open a detail modal — no-op for now
+}
+
+function copyTableToClipboard() {
+  const rows = filtered.slice(0, getPageSize());
+  const headers = [...document.querySelectorAll('#dataTable thead th')]
+    .slice(1).map(th => th.textContent.trim()).join('\t');
+  const body = rows.map(row =>
+    [...row.querySelectorAll('td')].slice(1).map(td => td.textContent.trim()).join('\t')
+  ).join('\n');
+  navigator.clipboard.writeText(headers + '\n' + body).then(() => {
+    alert('Table copied to clipboard!');
+  });
+}
+
+// Init
+filterTable();
+
+/* ─────────────────────────────────────────────────────────
+   PIVOT FILTER
+───────────────────────────────────────────────────────── */
+function filterPivot() {
+  const q = document.getElementById('pivotSearch')?.value.toLowerCase() || '';
+  document.querySelectorAll('.pivot-row').forEach(row => {
+    row.style.display = row.dataset.rowlabel.includes(q) ? '' : 'none';
+  });
+}
+
+/* ─────────────────────────────────────────────────────────
+   SCHEDULE SLIDE-OVER
+───────────────────────────────────────────────────────── */
+function openSchedule() {
+  document.getElementById('scheduleSlideOver').classList.add('open');
+  document.getElementById('scheduleBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSchedule() {
+  document.getElementById('scheduleSlideOver').classList.remove('open');
+  document.getElementById('scheduleBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function updateScheduleForm() {
+  const freq = document.getElementById('schedFrequency').value;
+  document.getElementById('schedDayWrap').style.display      = freq === 'weekly'  ? '' : 'none';
+  document.getElementById('schedDayMonthWrap').style.display = freq === 'monthly' ? '' : 'none';
+  document.getElementById('schedCronWrap').style.display     = freq === 'custom'  ? '' : 'none';
+}
+
+async function toggleSchedule(pk, active) {
+  await fetch(`/analytics/schedules/${pk}/toggle/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: active }),
+  });
+}
+
+async function deleteSchedule(pk) {
+  if (!confirm('Delete this schedule?')) return;
+  const res = await fetch(`/analytics/schedules/${pk}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+  });
+  if (res.ok) location.reload();
+}
+
+/* ─────────────────────────────────────────────────────────
+   TOOLTIP INIT
+───────────────────────────────────────────────────────── */
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+  new bootstrap.Tooltip(el);
+});
+
+/* ─────────────────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────────────────── */
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? v.pop() : '';
+}
+</script>
+{% endblock %}

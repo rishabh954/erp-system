@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}HR Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div class="page-header-title">
+    <h1>HR Dashboard</h1>
+    <p>Track attendance, leaves, and employee metrics</p>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
+      <option value="today" selected>Today</option>
+      <option value="week">This Week</option>
+      <option value="month">This Month</option>
+    </select>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <a href="{% url 'hrms:employee_list' %}" class="text-decoration-none">
+      <div class="stat-card stat-card-primary hover-lift">
+        <div class="stat-card-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-card-value" id="val-total">
+          <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+        </div>
+        <div class="stat-card-label">Total Employees</div>
+      </div>
+    </a>
+  </div>
+  
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-success hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-user-check"></i></div>
+      <div class="stat-card-value" id="val-attendance">
+        <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Attendance Rate</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <a href="{% url 'hrms:leave_requests' %}" class="text-decoration-none">
+      <div class="stat-card stat-card-warning hover-lift">
+        <div class="stat-card-icon"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-card-value" id="val-leaves">
+          <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+        </div>
+        <div class="stat-card-label">Pending Leaves</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-danger hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-user-times"></i></div>
+      <div class="stat-card-value" id="val-absent">
+        <span class="skeleton" style="height:32px;width:60px;display:block"></span>
+      </div>
+      <div class="stat-card-label">Absent Today</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-md-6">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0 fw-700">Department Distribution</h6></div>
+      <div class="card-body">
+        <div style="height:250px">
+          <canvas id="deptChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadHRDashboard(period = 'today') {
+  try {
+    const data = await ERP.request(`/api/v1/dashboard/hr/?period=${period}`);
+    document.getElementById('val-total').textContent = data.kpis.total_employees || 0;
+    document.getElementById('val-attendance').textContent = (data.kpis.attendance_rate || 0) + '%';
+    document.getElementById('val-leaves').textContent = data.kpis.pending_leaves || 0;
+    document.getElementById('val-absent').textContent = data.kpis.absent_today || 0;
+    
+    ERP.Charts.doughnut('deptChart', data.charts.dept_labels, data.charts.dept_values, ['#4361ee','#4cc9f0','#7b2d8b','#2dc653','#f8a200','#e63946']);
+  } catch(e) {
+    console.error('Dashboard load error', e);
+  }
+}
+
+document.getElementById('periodFilter')?.addEventListener('change', (e) => loadHRDashboard(e.target.value));
+document.addEventListener('DOMContentLoaded', () => loadHRDashboard('today'));
+</script>
+{% endblock %}

@@ -334,3 +334,80 @@ class ProductionCosting(CompanyScoped):
 
     def __str__(self):
         return f"Costing for MO: {self.manufacturing_order.number}"
+
+# ════════════════════════ MRP & MAINTENANCE ════════════════════════════════════
+
+class MaterialPlan(CompanyScoped, SequenceMixin):
+    """An MRP run to calculate material requirements."""
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('Draft')
+        COMPLETED = 'completed', _('Completed')
+        
+    name = models.CharField(max_length=200)
+    target_date = models.DateField(help_text=_("Calculate requirements up to this date"))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    
+    class Meta:
+        db_table = 'manufacturing_material_plans'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('MRP', self.__class__)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.number} | {self.name}"
+
+class MaterialPlanItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(MaterialPlan, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE)
+    required_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    available_quantity = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    shortage = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    planned_order_date = models.DateField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'manufacturing_material_plan_items'
+        ordering = ['planned_order_date', 'product__name']
+
+    def __str__(self):
+        return f"{self.product.name} (Shortage: {self.shortage})"
+
+class MaintenanceRequest(CompanyScoped, SequenceMixin):
+    """Track machine breakdowns and preventive maintenance."""
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        SCHEDULED = 'scheduled', _('Scheduled')
+        IN_PROGRESS = 'in_progress', _('In Progress')
+        COMPLETED = 'completed', _('Completed')
+        CANCELLED = 'cancelled', _('Cancelled')
+        
+    class Priority(models.TextChoices):
+        LOW = 'low', _('Low')
+        NORMAL = 'normal', _('Normal')
+        HIGH = 'high', _('High')
+        CRITICAL = 'critical', _('Critical')
+
+    work_center = models.ForeignKey(WorkCenter, on_delete=models.CASCADE, related_name='maintenance_requests')
+    issue_description = models.TextField()
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    scheduled_date = models.DateField(null=True, blank=True)
+    completed_date = models.DateField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True)
+    cost = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    technician = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='maintenance_tasks')
+
+    class Meta:
+        db_table = 'manufacturing_maintenance_requests'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number('MNT', self.__class__)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.number} | {self.work_center.name} ({self.get_status_display()})"

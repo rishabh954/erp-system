@@ -268,3 +268,108 @@ class AutoJournalService:
             partner_id=str(payment.vendor.id) if payment.vendor else ''
         )
         return entry
+
+class FinancialReportingService:
+    @staticmethod
+    def get_trial_balance(company, as_of_date=None):
+        from django.db.models import Sum
+        accounts = Account.objects.filter(company=company, is_active=True)
+        tb = []
+        total_debit = 0
+        total_credit = 0
+        
+        for account in accounts:
+            qs = account.journal_items.filter(journal_entry__status='posted')
+            if as_of_date:
+                qs = qs.filter(journal_entry__date__lte=as_of_date)
+            
+            res = qs.aggregate(dr=Sum('debit'), cr=Sum('credit'))
+            dr = res['dr'] or 0
+            cr = res['cr'] or 0
+            
+            if dr > 0 or cr > 0:
+                tb.append({
+                    'code': account.code,
+                    'name': account.name,
+                    'type': account.get_account_type_display(),
+                    'debit': dr,
+                    'credit': cr
+                })
+                total_debit += dr
+                total_credit += cr
+                
+        return {
+            'accounts': tb,
+            'total_debit': total_debit,
+            'total_credit': total_credit,
+            'is_balanced': total_debit == total_credit
+        }
+
+    @staticmethod
+    def get_profit_and_loss(company, start_date=None, end_date=None):
+        revenue_accounts = Account.objects.filter(company=company, account_type='revenue', is_active=True)
+        expense_accounts = Account.objects.filter(company=company, account_type__in=['expense', 'cogs'], is_active=True)
+        
+        revenues = []
+        total_revenue = 0
+        for acc in revenue_accounts:
+            bal = acc.get_balance(from_date=start_date, to_date=end_date)
+            if bal != 0:
+                revenues.append({'code': acc.code, 'name': acc.name, 'balance': bal})
+                total_revenue += bal
+                
+        expenses = []
+        total_expense = 0
+        for acc in expense_accounts:
+            bal = acc.get_balance(from_date=start_date, to_date=end_date)
+            if bal != 0:
+                expenses.append({'code': acc.code, 'name': acc.name, 'balance': bal})
+                total_expense += bal
+                
+        return {
+            'revenues': revenues,
+            'expenses': expenses,
+            'total_revenue': total_revenue,
+            'total_expense': total_expense,
+            'net_profit': total_revenue - total_expense
+        }
+
+    @staticmethod
+    def get_balance_sheet(company, as_of_date=None):
+        assets = []
+        total_assets = 0
+        liabilities = []
+        total_liabilities = 0
+        equities = []
+        total_equity = 0
+        
+        for acc in Account.objects.filter(company=company, is_active=True):
+            bal = acc.get_balance(to_date=as_of_date)
+            if bal == 0:
+                continue
+                
+            item = {'code': acc.code, 'name': acc.name, 'balance': bal}
+            if acc.account_type in ['asset', 'bank']:
+                assets.append(item)
+                total_assets += bal
+            elif acc.account_type == 'liability':
+                liabilities.append(item)
+                total_liabilities += bal
+            elif acc.account_type == 'equity':
+                equities.append(item)
+                total_equity += bal
+                
+        # Calculate Retained Earnings (Net Profit)
+        pl = FinancialReportingService.get_profit_and_loss(company, end_date=as_of_date)
+        retained_earnings = pl['net_profit']
+        
+        return {
+            'assets': assets,
+            'liabilities': liabilities,
+            'equities': equities,
+            'total_assets': total_assets,
+            'total_liabilities': total_liabilities,
+            'total_equity': total_equity,
+            'retained_earnings': retained_earnings,
+            'total_liabilities_and_equity': total_liabilities + total_equity + retained_earnings
+        }
