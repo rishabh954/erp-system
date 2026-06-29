@@ -1,6 +1,7 @@
 from django.utils import timezone
 from .models import Journal, JournalEntry, JournalItem, Account
 from django.db import transaction
+from core.services import BaseService
 
 class AutoJournalService:
     @staticmethod
@@ -373,3 +374,94 @@ class FinancialReportingService:
             'retained_earnings': retained_earnings,
             'total_liabilities_and_equity': total_liabilities + total_equity + retained_earnings
         }
+
+
+class AccountService(BaseService):
+    @transaction.atomic
+    def create_account(self, data):
+        """Creates a new Account based on POST data"""
+        acc = Account(
+            company=self.company,
+            code=data['code'],
+            name=data['name'],
+            account_type=data['account_type'],
+            account_subtype=data.get('account_subtype', ''),
+            description=data.get('description', ''),
+            parent_id=data.get('parent') or None,
+            currency_id=data.get('currency') or None,
+            is_reconcilable=data.get('is_reconcilable') == 'on',
+            opening_balance=data.get('opening_balance', '0'),
+            opening_balance_date=data.get('opening_balance_date') or None,
+        )
+        acc.current_balance = acc.opening_balance
+        acc.save()
+        return acc
+
+
+class JournalEntryService(BaseService):
+    @transaction.atomic
+    def create_entry(self, data):
+        """Creates a Journal Entry and its associated Journal Items"""
+        entry = JournalEntry(
+            company=self.company,
+            journal_id=data['journal'],
+            date=data['date'],
+            reference=data.get('reference', ''),
+            notes=data.get('notes', ''),
+            currency_id=data.get('currency') or None,
+        )
+        from core.services import BaseService as CoreBaseService
+        entry.number = CoreBaseService.generate_sequence_number('JE', JournalEntry, self.company.pk)
+        entry.save()
+
+        accounts  = data.getlist('account[]')
+        descs     = data.getlist('item_description[]')
+        debits    = data.getlist('debit[]')
+        credits   = data.getlist('credit[]')
+
+        from decimal import Decimal
+        total_debit = Decimal('0')
+        total_credit = Decimal('0')
+
+        for i, acc_id in enumerate(accounts):
+            if not acc_id:
+                continue
+            dr = Decimal(debits[i] or '0')
+            cr = Decimal(credits[i] or '0')
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account_id=acc_id,
+                description=descs[i] if i < len(descs) else '',
+                debit=dr,
+                credit=cr,
+            )
+            total_debit += dr
+            total_credit += cr
+
+        entry.total_debit = total_debit
+        entry.total_credit = total_credit
+        entry.save(update_fields=['total_debit', 'total_credit'])
+        
+        return entry
+
+
+class BankingService(BaseService):
+    @transaction.atomic
+    def reconcile_transaction(self, line_id, journal_item_id):
+        """Reconciles a Bank Statement Line with a Journal Item"""
+        from .models import BankStatementLine
+        line = BankStatementLine.objects.get(pk=line_id, statement__bank_account__company=self.company)
+        item = JournalItem.objects.get(pk=journal_item_id, account__company=self.company)
+        
+        # Simple check, we could check signs later
+        if line.amount == 0 and item.debit == 0 and item.credit == 0:
+            pass # allow zero
+            
+        line.is_reconciled = True
+        line.journal_item = item
+        line.save(update_fields=['is_reconciled', 'journal_item'])
+        
+        item.reconciled = True
+        item.save(update_fields=['reconciled'])
+        
+        return line, item

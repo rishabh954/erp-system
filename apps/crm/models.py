@@ -27,6 +27,32 @@ class Campaign(CompanyScoped, NotesMixin):
     def __str__(self):
         return self.name
 
+    @property
+    def total_leads_count(self):
+        return self.leads.filter(is_deleted=False).count()
+        
+    @property
+    def opportunities_count(self):
+        return self.leads.filter(is_deleted=False, is_opportunity=True).count()
+        
+    @property
+    def won_count(self):
+        return self.leads.filter(is_deleted=False, status='won').count()
+        
+    @property
+    def actual_revenue_generated(self):
+        from django.db.models import Sum
+        # Revenue from leads won
+        res = self.leads.filter(is_deleted=False, status='won').aggregate(total=Sum('expected_revenue'))['total']
+        return res or 0
+        
+    @property
+    def roi_percentage(self):
+        if not self.budget or self.budget <= 0:
+            return 0
+        rev = self.actual_revenue_generated
+        return ((float(rev) - float(self.budget)) / float(self.budget)) * 100
+
 class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
 
     class Status(models.TextChoices):
@@ -250,6 +276,31 @@ class Contract(CompanyScoped, NotesMixin):
 
     def __str__(self):
         return f"{self.contract_number} | {self.title}"
+
+    @property
+    def is_valid(self):
+        from django.utils import timezone
+        if self.status != self.Status.ACTIVE:
+            return False
+        if self.end_date and self.end_date < timezone.now().date():
+            return False
+        return True
+        
+    @property
+    def days_until_expiry(self):
+        from django.utils import timezone
+        if not self.end_date:
+            return None
+        delta = self.end_date - timezone.now().date()
+        return delta.days
+
+    def save(self, *args, **kwargs):
+        from django.utils import timezone
+        # Auto-expire logic on save
+        if self.end_date and self.status == self.Status.ACTIVE:
+            if self.end_date < timezone.now().date():
+                self.status = self.Status.EXPIRED
+        super().save(*args, **kwargs)
 
 # ════════════════════════ SALES TEAM MANAGEMENT ══════════════════════════════
 

@@ -22,8 +22,15 @@ if dotenv_path.exists():
                 os.environ.setdefault(key, val)
 
 # ─── Security ────────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+if not DEBUG:
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured("SECRET_KEY environment variable must be set when DEBUG is False")
+else:
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # ─── Applications ─────────────────────────────────────────────────────────────
@@ -99,6 +106,26 @@ MIDDLEWARE = [
     'core.middleware.ActiveUserMiddleware',
     'apps.authentication.middleware.SecurityMiddleware',
 ]
+
+if not DEBUG:
+    # ─── Production Security Settings ──────────────────────────────────────
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    if os.environ.get('USE_X_FORWARDED_PROTO', 'True') == 'True':
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+        
+    if os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True':
+        SECURE_SSL_REDIRECT = True
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = 31536000  # 1 year
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 ROOT_URLCONF = 'config.urls'
 
@@ -179,7 +206,7 @@ else:
     }
     SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+# SESSION_COOKIE_SECURE handled dynamically above
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
@@ -417,5 +444,5 @@ ERP_SETTINGS = {
 }
 
 import sys
-if 'test' in sys.argv:
+if 'test' in sys.argv or 'pytest' in sys.modules:
     DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}

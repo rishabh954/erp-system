@@ -92,21 +92,9 @@ class AccountCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         try:
-            acc = Account(
-                company=company,
-                code=data['code'],
-                name=data['name'],
-                account_type=data['account_type'],
-                account_subtype=data.get('account_subtype', ''),
-                description=data.get('description', ''),
-                parent_id=data.get('parent') or None,
-                currency_id=data.get('currency') or None,
-                is_reconcilable=data.get('is_reconcilable') == 'on',
-                opening_balance=Decimal(data.get('opening_balance', '0')),
-                opening_balance_date=data.get('opening_balance_date') or None,
-            )
-            acc.current_balance = acc.opening_balance
-            acc.save()
+            from .services import AccountService
+            service = AccountService(user=request.user, company=company)
+            acc = service.create_account(data)
             messages.success(request, f'Account {acc.code} — {acc.name} created.')
             return redirect('accounting:chart_of_accounts')
         except Exception as e:
@@ -124,7 +112,7 @@ class JournalListView(CompanyMixin, ListView):
     def get_queryset(self):
         qs = JournalEntry.objects.filter(
             company=self.company(), is_deleted=False
-        ).select_related('journal').order_by('-date', '-created_at')
+        ).select_related('journal', 'fiscal_year', 'posted_by').order_by('-date', '-created_at')
 
         status = self.request.GET.get('status', '')
         journal = self.request.GET.get('journal', '')
@@ -165,46 +153,12 @@ class JournalEntryCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         try:
-            entry = JournalEntry(
-                company=company,
-                journal_id=data['journal'],
-                date=data['date'],
-                reference=data.get('reference', ''),
-                notes=data.get('notes', ''),
-                currency_id=data.get('currency') or None,
-            )
-            entry.number = BaseService.generate_sequence_number('JE', JournalEntry, company.pk)
-            entry.save()
-
-            accounts  = data.getlist('account[]')
-            descs     = data.getlist('item_description[]')
-            debits    = data.getlist('debit[]')
-            credits   = data.getlist('credit[]')
-
-            total_debit = Decimal('0')
-            total_credit = Decimal('0')
-
-            for i, acc_id in enumerate(accounts):
-                if not acc_id:
-                    continue
-                dr = Decimal(debits[i] or '0')
-                cr = Decimal(credits[i] or '0')
-                JournalItem.objects.create(
-                    journal_entry=entry,
-                    account_id=acc_id,
-                    description=descs[i] if i < len(descs) else '',
-                    debit=dr,
-                    credit=cr,
-                )
-                total_debit += dr
-                total_credit += cr
-
-            entry.total_debit = total_debit
-            entry.total_credit = total_credit
-            entry.save(update_fields=['total_debit', 'total_credit'])
-
+            from .services import JournalEntryService
+            service = JournalEntryService(user=request.user, company=company)
+            entry = service.create_entry(data)
+            
             if not entry.is_balanced():
-                messages.warning(request, f'Journal entry {entry.number} saved but is NOT balanced (Dr={total_debit}, Cr={total_credit}).')
+                messages.warning(request, f'Journal entry {entry.number} saved but is NOT balanced (Dr={entry.total_debit}, Cr={entry.total_credit}).')
             else:
                 messages.success(request, f'Journal entry {entry.number} created.')
 
@@ -516,16 +470,9 @@ class BankReconciliationView(CompanyMixin, View):
             journal_item_id = request.POST.get('journal_item_id')
             
             try:
-                line = BankStatementLine.objects.get(pk=line_id, statement__bank_account__company=company)
-                item = JournalItem.objects.get(pk=journal_item_id, account__company=company)
-                
-                line.is_reconciled = True
-                line.journal_item = item
-                line.save()
-                
-                item.reconciled = True
-                item.save()
-                
+                from .services import BankingService
+                service = BankingService(user=request.user, company=company)
+                service.reconcile_transaction(line_id, journal_item_id)
                 messages.success(request, 'Successfully reconciled transaction.')
             except Exception as e:
                 messages.error(request, f'Reconciliation failed: {str(e)}')

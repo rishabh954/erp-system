@@ -1,11 +1,22 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from core.services import StandardResultsSetPagination
-from apps.crm.models import Lead, Customer, LeadActivity, Contract
+from core.pagination import StandardResultsSetPagination
+from apps.crm.models import Lead, Customer, LeadActivity, Contract, Campaign
 from apps.crm.api.serializers import (
-    LeadSerializer, CustomerSerializer, LeadActivitySerializer, ContractSerializer
+    LeadSerializer, CustomerSerializer, LeadActivitySerializer, ContractSerializer, CampaignSerializer
 )
+
+class CampaignViewSet(viewsets.ModelViewSet):
+    queryset = Campaign.objects.all()
+    serializer_class = CampaignSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if hasattr(self.request, 'company') and self.request.company:
+            qs = qs.filter(company=self.request.company, is_deleted=False)
+        return qs
 
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all()

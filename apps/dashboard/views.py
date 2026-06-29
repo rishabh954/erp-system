@@ -13,6 +13,8 @@ from rest_framework import permissions
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 
 def get_period_dates(period='month'):
@@ -37,6 +39,7 @@ def get_period_dates(period='month'):
 class CEODashboardAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         company = request.user.primary_company
         if not company:
@@ -192,6 +195,7 @@ class CEODashboardAPIView(APIView):
 class HRDashboardAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         company = request.user.primary_company
         period = request.query_params.get('period', 'month')
@@ -246,6 +250,7 @@ class HRDashboardAPIView(APIView):
 class SalesDashboardAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         company = request.user.primary_company
         period = request.query_params.get('period', 'month')
@@ -284,6 +289,7 @@ class SalesDashboardAPIView(APIView):
 class FinanceDashboardAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         company = request.user.primary_company
         period = request.query_params.get('period', 'month')

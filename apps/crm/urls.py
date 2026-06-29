@@ -4,9 +4,9 @@ from .views import (
     LeadListView, LeadDetailView, LeadCreateView, LeadUpdateView, LeadDeleteView,
     LeadUpdateStatusView, LeadConvertView, LeadToggleOpportunityView, AddActivityView, PipelineView,
     CustomerListView, CustomerDetailView, CustomerCreateView, CustomerUpdateView, CustomerDeleteView,
-    CampaignListView, CampaignCreateView, CampaignDetailView,
+    CampaignListView, CampaignCreateView, CampaignDetailView, CampaignReportView,
     MeetingSchedulerView, OpportunityListView, InteractionListView,
-    ContractListView, ContractDetailView, ContractCreateView, ContractUpdateView, ContractDeleteView, CRMDashboardView
+    ContractListView, ContractDetailView, ContractCreateView, ContractUpdateView, ContractDeleteView, ContractReportView, CRMDashboardView
 )
 from .views_setup import (
     TerritoryListView, TerritoryCreateView, TerritoryUpdateView, TerritoryDeleteView,
@@ -46,10 +46,12 @@ urlpatterns = [
     path('customers/<uuid:pk>/delete/', CustomerDeleteView.as_view(), name='customer_delete'),
     
     path('campaigns/', CampaignListView.as_view(), name='campaigns'),
+    path('campaigns/report/', CampaignReportView.as_view(), name='campaign_report'),
     path('campaigns/create/', CampaignCreateView.as_view(), name='campaign_create'),
     path('campaigns/<uuid:pk>/', CampaignDetailView.as_view(), name='campaign_detail'),
     
     path('contracts/', ContractListView.as_view(), name='contracts'),
+    path('contracts/report/', ContractReportView.as_view(), name='contract_report'),
     path('contracts/create/', ContractCreateView.as_view(), name='contract_create'),
     path('contracts/<uuid:pk>/', ContractDetailView.as_view(), name='contract_detail'),
     path('contracts/<uuid:pk>/edit/', ContractUpdateView.as_view(), name='contract_update'),

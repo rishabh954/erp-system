@@ -1,0 +1,14 @@
+[run]
+source = .
+omit =
+    */migrations/*
+    */tests/*
+    */tests.py
+    */conftest.py
+    manage.py
+    venv/*
+    config/*
+    */factories.py
+
+[report]
+show_missing = True

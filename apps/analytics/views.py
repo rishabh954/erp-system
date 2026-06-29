@@ -106,14 +106,22 @@ class ReportDetailView(ReportsMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         report = self.object
-        data = get_data(
-            module=report.module,
-            company_id=self.company_id,
-            columns=report.columns,
-            filters=report.filters,
-            sort_by=report.sort_by,
-            limit=1000,
-        )
+        
+        from django.core.cache import cache
+        cache_key = f"report_data_{report.pk}_{report.updated_at.timestamp()}"
+        data = cache.get(cache_key)
+        
+        if data is None:
+            data = get_data(
+                module=report.module,
+                company_id=self.company_id,
+                columns=report.columns,
+                filters=report.filters,
+                sort_by=report.sort_by,
+                limit=1000,
+            )
+            cache.set(cache_key, data, 60 * 15)
+            
         ctx['data'] = data
         ctx['headers'] = report.columns
         ctx['total_rows'] = len(data)

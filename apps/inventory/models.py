@@ -6,6 +6,7 @@ import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
+from django.contrib.contenttypes.fields import GenericRelation
 from core.models import CompanyScoped, SequenceMixin, NotesMixin
 
 
@@ -279,6 +280,7 @@ class InventoryTransfer(CompanyScoped, SequenceMixin, NotesMixin):
 
     class Status(models.TextChoices):
         DRAFT = 'draft', _('Draft')
+        PENDING_APPROVAL = 'pending_approval', _('Pending Approval')
         REQUESTED = 'requested', _('Requested')
         APPROVED = 'approved', _('Approved')
         IN_TRANSIT = 'in_transit', _('In Transit')
@@ -287,15 +289,15 @@ class InventoryTransfer(CompanyScoped, SequenceMixin, NotesMixin):
 
     from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='transfers_out')
     to_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='transfers_in')
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     transfer_date = models.DateField()
     expected_arrival = models.DateField(null=True, blank=True)
     approved_by = models.ForeignKey(
-        'authentication.User', null=True, blank=True,
+        'authentication.User', null=True, blank=True, 
         on_delete=models.SET_NULL, related_name='approved_transfers',
+        help_text='User who approved the transfer'
     )
-    
-    workflows = __import__('django.contrib.contenttypes.fields', fromlist=['GenericRelation']).GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
 
     class Meta:
         db_table = 'inventory_transfers'

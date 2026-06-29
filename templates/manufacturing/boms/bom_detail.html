@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BOM: {{ bom.product.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-transparent p-0 mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:dashboard' %}" class="text-primary text-decoration-none">Manufacturing</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:bom_list' %}" class="text-primary text-decoration-none">Bills of Materials</a></li>
+                    <li class="breadcrumb-item active text-muted" aria-current="page">{{ bom.number }}</li>
+                </ol>
+            </nav>
+            <h2 class="h4 mb-0 text-gray-800 font-weight-bold">{{ bom.product.name }} <span class="badge badge-primary ml-2 text-sm">{{ bom.quantity }} units</span></h2>
+        </div>
+        <div>
+            <a href="#" class="btn btn-sm btn-outline-primary rounded-pill shadow-sm hover-elevate mr-2"><i class="fas fa-edit"></i> Edit</a>
+            <form method="post" action="#" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill shadow-sm hover-elevate"><i class="fas fa-trash"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row fade-in stagger-children">
+        <!-- Components Card -->
+        <div class="col-lg-8">
+            <div class="card shadow border-0 glass-panel mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-cubes mr-2"></i> Components (Recipe)</h6>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"><i class="fas fa-plus fa-sm mr-1"></i> Add Item</button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 custom-table text-sm">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-top-0 px-4 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Component</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right">Quantity</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right">Scrap %</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right">Cost Estimate</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-center px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for line in bom.lines.all %}
+                                <tr>
+                                    <td class="px-4 font-weight-bold text-dark">
+                                        <a href="{% url 'inventory:product_detail' line.component.pk %}" class="text-primary text-decoration-none">{{ line.component.name }}</a>
+                                        <div class="text-xs text-muted">{{ line.component.sku }}</div>
+                                    </td>
+                                    <td class="text-right font-weight-bold text-dark">{{ line.quantity }}</td>
+                                    <td class="text-right text-muted">{{ line.scrap_percentage|default:"0.00" }}%</td>
+                                    <td class="text-right text-success font-weight-bold">${{ line.component.cost_price|default:"0.00" }}</td>
+                                    <td class="text-center px-4">
+                                        <button class="btn btn-sm btn-link text-muted px-2 hover-elevate"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-sm btn-link text-danger px-2 hover-elevate"><i class="fas fa-times"></i></button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted fst-italic">No components added to this BOM yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Routing/Operations Card -->
+            <div class="card shadow border-0 glass-panel mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-route mr-2"></i> Routing & Operations</h6>
+                    {% if bom.routing %}
+                    <span class="badge badge-info rounded-pill px-3">{{ bom.routing.name }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if bom.routing %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 custom-table text-sm">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-top-0 px-4 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Seq</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Operation</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Work Center</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right px-4">Duration (mins)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for op in bom.routing.operations.all %}
+                                <tr>
+                                    <td class="px-4 text-muted font-weight-bold">{{ op.sequence }}</td>
+                                    <td class="font-weight-bold text-dark">{{ op.name }}</td>
+                                    <td>
+                                        <span class="badge badge-light text-dark px-2 py-1 shadow-sm"><i class="fas fa-industry mr-1 text-muted"></i> {{ op.work_center.name }}</span>
+                                    </td>
+                                    <td class="text-right px-4 font-weight-bold text-primary">{{ op.duration_minutes }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-code-branch fa-3x text-gray-300 mb-3"></i>
+                        <h6 class="text-muted font-weight-bold">No Routing Assigned</h6>
+                        <button class="btn btn-sm btn-outline-primary mt-2 rounded-pill shadow-sm">Assign Routing</button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar (Cost Summary) -->
+        <div class="col-lg-4">
+            <div class="card shadow border-0 glass-panel mb-4 bg-gradient-primary text-white">
+                <div class="card-body p-4 text-center">
+                    <div class="icon-circle bg-white text-primary mx-auto mb-3" style="width: 60px; height: 60px;">
+                        <i class="fas fa-calculator fa-2x"></i>
+                    </div>
+                    <h6 class="text-uppercase font-weight-bold mb-1" style="letter-spacing: 1px; opacity: 0.8;">Estimated Cost</h6>
+                    <h2 class="font-weight-bold mb-0">${{ estimated_cost|default:"0.00" }}</h2>
+                    <p class="text-xs mt-2 mb-0 opacity-7">Per {{ bom.quantity }} unit(s) produced</p>
+                </div>
+            </div>
+
+            <div class="card shadow border-0 glass-panel">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="m-0 font-weight-bold text-primary">Metadata</h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush text-sm">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold">Status</span>
+                            {% if bom.is_active %}
+                            <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i> Active</span>
+                            {% else %}
+                            <span class="badge badge-secondary px-2 py-1">Archived</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold">BOM Ref</span>
+                            <span class="text-dark font-weight-bold">{{ bom.number }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

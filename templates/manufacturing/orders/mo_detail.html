@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}MO: {{ mo.number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-transparent p-0 mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:dashboard' %}" class="text-primary text-decoration-none">Manufacturing</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:mo_list' %}" class="text-primary text-decoration-none">Orders</a></li>
+                    <li class="breadcrumb-item active text-muted" aria-current="page">{{ mo.number }}</li>
+                </ol>
+            </nav>
+            <h2 class="h4 mb-0 text-gray-800 font-weight-bold">Production Order: {{ mo.number }}</h2>
+        </div>
+        <div>
+            {% if mo.status == 'draft' %}
+            <form method="post" action="{% url 'manufacturing:mo_confirm' mo.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary rounded-pill shadow-sm hover-elevate">Confirm MO</button>
+            </form>
+            {% elif mo.status == 'confirmed' %}
+            <form method="post" action="{% url 'manufacturing:mo_start' mo.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning rounded-pill shadow-sm hover-elevate text-dark"><i class="fas fa-play mr-1"></i> Start Production</button>
+            </form>
+            {% elif mo.status == 'in_progress' %}
+            <form method="post" action="{% url 'manufacturing:mo_complete' mo.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success rounded-pill shadow-sm hover-elevate"><i class="fas fa-check mr-1"></i> Mark as Done</button>
+            </form>
+            {% endif %}
+            
+            <button class="btn btn-outline-secondary rounded-pill shadow-sm hover-elevate ml-2"><i class="fas fa-print"></i></button>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="row fade-in stagger-children">
+        <!-- Details Card -->
+        <div class="col-lg-8">
+            <div class="card shadow border-0 glass-panel mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="m-0 font-weight-bold text-primary">Overview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-3 text-muted font-weight-bold text-sm">Product</div>
+                        <div class="col-sm-9 font-weight-medium text-dark"><a href="{% url 'inventory:product_detail' mo.product.pk %}" class="text-primary">{{ mo.product.name }}</a></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3 text-muted font-weight-bold text-sm">Bill of Materials</div>
+                        <div class="col-sm-9 font-weight-medium text-dark"><a href="{% url 'manufacturing:bom_detail' mo.bom.pk %}" class="text-primary">{{ mo.bom.number }}</a></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3 text-muted font-weight-bold text-sm">Quantity to Produce</div>
+                        <div class="col-sm-9 font-weight-bold text-dark h5 mb-0">{{ mo.quantity_to_produce }} <span class="text-muted text-sm font-weight-normal">units</span></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3 text-muted font-weight-bold text-sm">Quantity Produced</div>
+                        <div class="col-sm-9 font-weight-bold text-success h5 mb-0">{{ mo.quantity_produced }} <span class="text-muted text-sm font-weight-normal">units</span></div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="text-muted font-weight-bold text-xs mb-1">Planned Start</div>
+                            <div class="text-dark">{{ mo.planned_start_date|date:"M d, Y"|default:"-" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="text-muted font-weight-bold text-xs mb-1">Planned End</div>
+                            <div class="text-dark">{{ mo.planned_end_date|date:"M d, Y"|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Components Table -->
+            <div class="card shadow border-0 glass-panel mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Required Materials</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 custom-table text-sm">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-top-0 px-4 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Component</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right">Required Qty</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right">Consumed Qty</th>
+                                    <th class="border-top-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-center px-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for comp in components %}
+                                <tr>
+                                    <td class="px-4 font-weight-bold text-dark">{{ comp.product.name }} <br><span class="text-xs text-muted">{{ comp.product.sku }}</span></td>
+                                    <td class="text-right font-weight-medium">{{ comp.required_qty }}</td>
+                                    <td class="text-right text-success font-weight-bold">{{ comp.consumed_qty }}</td>
+                                    <td class="text-center px-4">
+                                        {% if comp.consumed_qty >= comp.required_qty %}
+                                        <span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i> Ready</span>
+                                        {% else %}
+                                        <span class="badge badge-warning text-dark px-2 py-1">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted fst-italic">No materials required for this BOM.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Status Card -->
+            <div class="card shadow border-0 glass-panel mb-4">
+                <div class="card-body p-4 text-center">
+                    <div class="mb-3">
+                        {% if mo.status == 'draft' %}
+                        <div class="icon-circle bg-secondary-light text-secondary mx-auto mb-2" style="width: 60px; height: 60px;">
+                            <i class="fas fa-file-alt fa-2x"></i>
+                        </div>
+                        {% elif mo.status == 'confirmed' %}
+                        <div class="icon-circle bg-primary-light text-primary mx-auto mb-2" style="width: 60px; height: 60px;">
+                            <i class="fas fa-clipboard-check fa-2x"></i>
+                        </div>
+                        {% elif mo.status == 'in_progress' %}
+                        <div class="icon-circle bg-warning-light text-warning mx-auto mb-2" style="width: 60px; height: 60px;">
+                            <i class="fas fa-cogs fa-2x fa-spin"></i>
+                        </div>
+                        {% elif mo.status == 'done' %}
+                        <div class="icon-circle bg-success-light text-success mx-auto mb-2" style="width: 60px; height: 60px;">
+                            <i class="fas fa-check fa-2x"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h5 class="font-weight-bold text-dark mb-1">{{ mo.get_status_display }}</h5>
+                    <p class="text-xs text-muted mb-0">Current Order Status</p>
+                </div>
+            </div>
+
+            <!-- Notes Card -->
+            <div class="card shadow border-0 glass-panel">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="m-0 font-weight-bold text-primary">Notes & Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-sm text-dark mb-0" style="white-space: pre-wrap;">{{ mo.notes|default:"No instructions provided." }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

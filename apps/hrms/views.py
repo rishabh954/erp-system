@@ -198,51 +198,19 @@ class EmployeeCreateView(CompanyMixin, View):
     def post(self, request):
         data = request.POST
         company = self.company()
-        employee_id = data.get('employee_id')
-        if employee_id and Employee.objects.filter(company=company, employee_id=employee_id).exists():
-            messages.error(request, f'Employee ID "{employee_id}" is already assigned to another employee.')
-            return render(request, self.template_name, self._ctx())
-
         try:
-            emp = Employee(
-                company=company,
-                employee_id=data['employee_id'],
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                email=data.get('email', ''),
-                phone=data.get('phone', ''),
-                joining_date=data['joining_date'],
-                department_id=data.get('department') or None,
-                branch_id=data.get('branch') or None,
-                job_title_id=data.get('job_title') or None,
-                status=data.get('status', 'active'),
-                gender=data.get('gender', ''),
-                date_of_birth=data.get('date_of_birth') or None,
-                address_line1=data.get('address_line1', ''),
-                city=data.get('city', ''),
-                country=data.get('country', ''),
-                national_id=data.get('national_id', ''),
-                emergency_contact_name=data.get('emergency_contact_name', ''),
-                emergency_contact_phone=data.get('emergency_contact_phone', ''),
-                marital_status=data.get('marital_status', ''),
-                nationality=data.get('nationality', ''),
-                emergency_contact_relation=data.get('emergency_contact_relation', ''),
-            )
-            if request.FILES.get('profile_photo'):
-                emp.profile_photo = request.FILES['profile_photo']
-            emp.save()
-            self._ensure_user_account(emp, company)
-
-            # Initialize leave balances for the new year
-            from .tasks import reset_annual_leave_balances
-            reset_annual_leave_balances.delay(company_id=str(company.pk))
-
+            from .services import EmployeeService
+            service = EmployeeService(user=request.user, company=company)
+            emp = service.onboard_employee(data, request.user, files=request.FILES)
+            
             messages.success(request, f'Employee {emp.full_name} created successfully.')
             return redirect('hrms:employee_detail', pk=emp.pk)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return render(request, self.template_name, self._ctx())
         except Exception as e:
             messages.error(request, f'Error creating employee: {e}')
             return render(request, self.template_name, self._ctx())
-
 
     def _ensure_user_account(self, emp, company):
         if emp.email and not emp.user_id:
@@ -379,15 +347,9 @@ class CheckInView(CompanyMixin, View):
         except Employee.DoesNotExist:
             return JsonResponse({'error': 'Your user account is not linked to an employee profile.'}, status=400)
         
-        today = date.today()
-        att, created = Attendance.objects.get_or_create(
-            company=self.company(), employee=emp, date=today,
-            defaults={'status': 'present', 'check_in': timezone.now()}
-        )
-        if not created and not att.check_in:
-            att.check_in = timezone.now()
-            att.status = 'present'
-            att.save(update_fields=['check_in', 'status'])
+        from .services import AttendanceService
+        service = AttendanceService(user=request.user, company=self.company())
+        att = service.check_in(emp)
         return JsonResponse({'status': 'ok', 'check_in': str(att.check_in)})
 
 
@@ -398,14 +360,13 @@ class CheckOutView(CompanyMixin, View):
         except Employee.DoesNotExist:
             return JsonResponse({'error': 'Your user account is not linked to an employee profile.'}, status=400)
             
-        today = date.today()
         try:
-            att = Attendance.objects.get(company=self.company(), employee=emp, date=today)
-            att.check_out = timezone.now()
-            att.save()
+            from .services import AttendanceService
+            service = AttendanceService(user=request.user, company=self.company())
+            att = service.check_out(emp)
             return JsonResponse({'status': 'ok', 'work_hours': float(att.work_hours)})
-        except Attendance.DoesNotExist:
-            return JsonResponse({'error': 'No check-in found for today'}, status=400)
+        except ValueError as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
 
 # ════════════════════════ LEAVE MANAGEMENT ═══════════════════════════════════
@@ -459,44 +420,14 @@ class LeaveRequestCreateView(CompanyMixin, View):
             messages.error(request, 'No employee profile found for your account.')
             return redirect('hrms:leaves')
 
-        from datetime import datetime
-        start = datetime.strptime(request.POST['start_date'], '%Y-%m-%d').date()
-        end   = datetime.strptime(request.POST['end_date'],   '%Y-%m-%d').date()
-        days  = (end - start).days + 1
-
-        from core.services import BaseService
-        leave = LeaveRequest(
-            company=company,
-            employee=emp,
-            leave_type_id=request.POST['leave_type'],
-            start_date=start,
-            end_date=end,
-            day_type=request.POST.get('day_type', 'full'),
-            total_days=days,
-            reason=request.POST['reason'],
-            status='pending',
-        )
-        leave.number = BaseService.generate_sequence_number('LV', LeaveRequest, company.pk)
-        if request.FILES.get('attachment'):
-            leave.attachment = request.FILES['attachment']
-        leave.save()
-
-        # Trigger approval workflow notification
-        from apps.notifications.tasks import send_bulk_notification
-        from apps.authentication.models import User
-        hr_users = User.objects.filter(
-            role='hr_manager', companies=company, is_active=True
-        ).values_list('pk', flat=True)
-        send_bulk_notification.delay(
-            recipient_ids=list(hr_users),
-            title=f'Leave Request: {emp.full_name}',
-            message=f'{emp.full_name} has submitted a leave request for {days} day(s).',
-            notification_type='approval',
-            action_url=f'/hrms/leaves/{leave.pk}/',
-            company_id=str(company.pk),
-        )
-
-        messages.success(request, f'Leave request {leave.number} submitted successfully.')
+        try:
+            from .services import LeaveService
+            service = LeaveService(user=request.user, company=company)
+            leave = service.request_leave(emp, request.POST, request.FILES)
+            messages.success(request, f'Leave request {leave.number} submitted successfully.')
+        except Exception as e:
+            messages.error(request, f'Error submitting leave request: {e}')
+            
         return redirect('hrms:leaves')
 
 
@@ -504,27 +435,21 @@ class LeaveApproveView(CompanyMixin, View):
     def post(self, request, pk):
         leave = get_object_or_404(LeaveRequest, pk=pk, company=self.company(), is_deleted=False)
         action = request.POST.get('action')
-        if action == 'approve':
-            leave.status = 'approved'
-            leave.approved_by = request.user
-            leave.approved_at = timezone.now()
-            leave.save(update_fields=['status', 'approved_by', 'approved_at'])
-            # Update leave balance
-            bal = LeaveBalance.objects.filter(
-                employee=leave.employee,
-                leave_type=leave.leave_type,
-                year=date.today().year
-            ).first()
-            if bal:
-                bal.used += leave.total_days
-                bal.pending = max(0, bal.pending - leave.total_days)
-                bal.save(update_fields=['used', 'pending'])
-            messages.success(request, f'Leave request {leave.number} approved.')
-        elif action == 'reject':
-            leave.status = 'rejected'
-            leave.rejection_reason = request.POST.get('rejection_reason', '')
-            leave.save(update_fields=['status', 'rejection_reason'])
-            messages.warning(request, f'Leave request {leave.number} rejected.')
+        
+        try:
+            from .services import LeaveService
+            service = LeaveService(user=request.user, company=self.company())
+            service.process_leave(leave, action, request.user, request.POST)
+            
+            if action == 'approve':
+                messages.success(request, f'Leave request {leave.number} approved.')
+            elif action == 'reject':
+                messages.warning(request, f'Leave request {leave.number} rejected.')
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Error processing leave request: {e}')
+            
         return redirect('hrms:leaves')
 
 
@@ -651,9 +576,15 @@ class PayrollDetailView(CompanyMixin, DetailView):
 class PayrollProcessView(CompanyMixin, View):
     def post(self, request, pk):
         period = get_object_or_404(PayrollPeriod, pk=pk, company=self.company(), is_deleted=False)
-        from .tasks import process_payroll
-        process_payroll.delay(str(period.pk))
-        messages.success(request, f'Payroll processing started for {period.name}. This may take a few minutes.')
+        try:
+            # We will process it via celery, but using the service layer instead of monolithic task logic
+            # Let's call the task, and we'll refactor the task to use the PayrollService
+            from .tasks import process_payroll_task
+            process_payroll_task.delay(str(period.pk), request.user.pk)
+            messages.success(request, f'Payroll processing started for {period.name}. This may take a few minutes.')
+        except Exception as e:
+            messages.error(request, f'Error starting payroll: {e}')
+            
         return redirect('hrms:payroll_detail', pk=pk)
 
 

@@ -479,7 +479,7 @@ class WorkflowEngine:
 
         if hasattr(document, 'status'):
             if status == WorkflowInstance.Status.APPROVED:
-                if document.status in ('draft', 'pending', 'submitted'):
+                if document.status in ('draft', 'pending', 'pending_approval', 'submitted'):
                     document.status = 'approved'
             elif status == WorkflowInstance.Status.REJECTED:
                 document.status = 'rejected'

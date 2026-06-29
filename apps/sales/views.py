@@ -41,7 +41,7 @@ class QuotationListView(CompanyScopedMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = self.get_base_qs(Quotation).select_related('customer', 'sales_rep').order_by('-created_at')
+        qs = self.get_base_qs(Quotation).select_related('customer', 'sales_rep', 'branch').order_by('-created_at')
         q = self.request.GET.get('q', '')
         status = self.request.GET.get('status', '')
         if q:
@@ -71,46 +71,9 @@ class QuotationCreateView(CompanyScopedMixin, View):
         data = request.POST
         company = self.get_company()
         try:
-            quot = Quotation(
-                company=company,
-                customer_id=data['customer'],
-                validity_date=data.get('validity_date') or None,
-                delivery_date=data.get('delivery_date') or None,
-                payment_terms=int(data.get('payment_terms', 30)),
-                currency_id=data.get('currency') or None,
-                notes=data.get('notes', ''),
-                terms_conditions=data.get('terms_conditions', ''),
-                sales_rep=request.user,
-            )
-            # Auto-generate number
-            from core.services import BaseService
-            quot.number = BaseService.generate_sequence_number('QUO', Quotation, company.pk)
-            quot.save()
-
-            # Process line items
-            products   = data.getlist('product[]')
-            descs      = data.getlist('description[]')
-            quantities = data.getlist('quantity[]')
-            prices     = data.getlist('unit_price[]')
-            discounts  = data.getlist('discount_percent[]')
-            taxes      = data.getlist('tax[]')
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
-                line = QuotationLine(
-                    quotation=quot,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal('1'),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal('0'),
-                    discount_percent=Decimal(str(discounts[i])) if discounts[i] else Decimal('0'),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
-                )
-                line.save()
-
-            quot.recalculate_totals()
+            from .services import QuotationService
+            service = QuotationService(user=request.user, company=company)
+            quot = service.create_quotation(data, request.user)
 
             messages.success(request, f'Quotation {quot.number} created successfully.')
             return redirect('sales:quotation_detail', pk=quot.pk)
@@ -198,7 +161,7 @@ class QuotationDetailView(CompanyScopedMixin, DetailView):
     context_object_name = 'quotation'
 
     def get_object(self):
-        return get_object_or_404(Quotation, pk=self.kwargs['pk'],
+        return get_object_or_404(Quotation.objects.select_related('customer', 'sales_rep', 'branch'), pk=self.kwargs['pk'],
                                   company=self.get_company(), is_deleted=False)
 
     def get_context_data(self, **kwargs):
@@ -320,43 +283,9 @@ class SalesOrderCreateView(CompanyScopedMixin, View):
         data = request.POST
         company = self.get_company()
         try:
-            order = SalesOrder(
-                company=company,
-                customer_id=data['customer'],
-                order_date=data.get('order_date') or timezone.now().date(),
-                delivery_date=data.get('delivery_date') or None,
-                payment_terms=int(data.get('payment_terms', 30)),
-                currency_id=data.get('currency') or None,
-                notes=data.get('notes', ''),
-                terms_conditions=data.get('terms_conditions', ''),
-                sales_rep=request.user,
-            )
-            order.number = BaseService.generate_sequence_number('SO', SalesOrder, company.pk)
-            order.save()
-
-            products   = data.getlist('product[]')
-            descs      = data.getlist('description[]')
-            quantities = data.getlist('quantity[]')
-            prices     = data.getlist('unit_price[]')
-            discounts  = data.getlist('discount_percent[]')
-            taxes      = data.getlist('tax[]')
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
-                line = SalesOrderLine(
-                    sales_order=order,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal('1'),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal('0'),
-                    discount_percent=Decimal(str(discounts[i])) if discounts[i] else Decimal('0'),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
-                )
-                line.save()
-
-            order.recalculate_totals()
+            from .services import SalesOrderService
+            service = SalesOrderService(user=request.user, company=company)
+            order = service.create_order(data, request.user)
             messages.success(request, f'Sales Order {order.number} created successfully.')
             return redirect('sales:orders')
         except Exception as e:
@@ -482,89 +411,31 @@ class SalesOrderDetailView(CompanyScopedMixin, DetailView):
 class CreateDeliveryFromSOView(CompanyScopedMixin, View):
     def post(self, request, pk):
         so = get_object_or_404(SalesOrder, pk=pk, company=self.get_company(), is_deleted=False)
-        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine, Warehouse
-        
-        if not so.lines.exists():
-            messages.error(request, 'Cannot create delivery for empty order.')
-            return redirect('sales:order_detail', pk=so.pk)
-            
-        warehouse = Warehouse.objects.filter(company=self.get_company(), is_active=True).first()
-        if not warehouse:
-            messages.error(request, 'No active warehouse found. Please create a warehouse first.')
-            return redirect('sales:order_detail', pk=so.pk)
-            
-        delivery = DeliveryOrder.objects.create(
-            company=self.get_company(),
-            number=BaseService.generate_sequence_number('DEL', DeliveryOrder, self.get_company().pk),
-            sales_order=so,
-            warehouse=warehouse,
-            status=DeliveryOrder.Status.READY,
-        )
-        
-        for line in so.lines.all():
-            qty_remaining = line.quantity - line.qty_delivered
-            if qty_remaining > 0:
-                DeliveryOrderLine.objects.create(
-                    delivery_order=delivery,
-                    product=line.product,
-                    description=line.description,
-                    quantity_ordered=qty_remaining,
-                    quantity_shipped=qty_remaining,
-                )
-        
-        if not delivery.lines.exists():
-            delivery.delete()
-            messages.info(request, 'This Sales Order is already fully delivered.')
-            return redirect('sales:order_detail', pk=so.pk)
-            
-        messages.success(request, f'Delivery Note {delivery.number} created successfully.')
-        return redirect('inventory:delivery_detail', pk=delivery.pk)
+        try:
+            from .services import SalesOrderService
+            service = SalesOrderService(user=request.user, company=self.get_company())
+            delivery = service.create_delivery(so)
+            messages.success(request, f'Delivery Note {delivery.number} created successfully.')
+            return redirect('inventory:delivery_detail', pk=delivery.pk)
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+        return redirect('sales:order_detail', pk=so.pk)
 
 
 class CreateInvoiceFromSOView(CompanyScopedMixin, View):
     def post(self, request, pk):
         so = get_object_or_404(SalesOrder, pk=pk, company=self.get_company(), is_deleted=False)
-        from core.services import BaseService
-        from datetime import timedelta
-
-        inv = Invoice(
-            company=so.company,
-            sales_order=so,
-            customer=so.customer,
-            invoice_date=timezone.now().date(),
-            due_date=timezone.now().date() + timedelta(days=so.payment_terms),
-            payment_terms=so.payment_terms,
-            currency=so.currency,
-            subtotal=so.subtotal,
-            tax_amount=so.tax_amount,
-            discount_amount=so.discount_amount,
-            total=so.total,
-            balance_due=so.total,
-        )
-        inv.number = BaseService.generate_sequence_number('INV', Invoice, so.company_id)
-        inv.save()
-
-        for line in so.lines.all():
-            InvoiceLine.objects.create(
-                invoice=inv,
-                product=line.product,
-                description=line.description,
-                quantity=line.quantity,
-                unit_price=line.unit_price,
-                discount_percent=line.discount_percent,
-                tax=line.tax,
-                subtotal=line.subtotal,
-                tax_amount=line.tax_amount,
-                total=line.total,
-            )
-
-        so.status = SalesOrder.Status.INVOICED
-        so.save(update_fields=['status'])
-
-        messages.success(request, f'Invoice {inv.number} created.')
-        return redirect('sales:invoice_detail', pk=inv.pk)
-
-
+        try:
+            from .services import SalesOrderService
+            service = SalesOrderService(user=request.user, company=self.get_company())
+            inv = service.create_invoice(so)
+            messages.success(request, f'Invoice {inv.number} created.')
+            return redirect('sales:invoice_detail', pk=inv.pk)
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+        return redirect('sales:order_detail', pk=so.pk)
 # ════════════════════════ INVOICES ════════════════════════════════════════════
 
 class InvoiceListView(CompanyScopedMixin, ListView):
@@ -606,42 +477,9 @@ class InvoiceCreateView(CompanyScopedMixin, View):
         data = request.POST
         company = self.get_company()
         try:
-            invoice = Invoice(
-                company=company,
-                customer_id=data['customer'],
-                invoice_date=data.get('invoice_date') or timezone.now().date(),
-                due_date=data.get('due_date') or timezone.now().date(),
-                payment_terms=int(data.get('payment_terms', 30)),
-                currency_id=data.get('currency') or None,
-                notes=data.get('notes', ''),
-                terms_conditions=data.get('terms_conditions', ''),
-            )
-            invoice.number = BaseService.generate_sequence_number('INV', Invoice, company.pk)
-            invoice.save()
-
-            products   = data.getlist('product[]')
-            descs      = data.getlist('description[]')
-            quantities = data.getlist('quantity[]')
-            prices     = data.getlist('unit_price[]')
-            discounts  = data.getlist('discount_percent[]')
-            taxes      = data.getlist('tax[]')
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
-                line = InvoiceLine(
-                    invoice=invoice,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal('1'),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal('0'),
-                    discount_percent=Decimal(str(discounts[i])) if discounts[i] else Decimal('0'),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
-                )
-                line.save()
-
-            invoice.recalculate_totals()
+            from .services import InvoiceService
+            service = InvoiceService(user=request.user, company=company)
+            invoice = service.create_invoice(data)
             messages.success(request, f'Invoice {invoice.number} created successfully.')
             return redirect('sales:invoices')
         except Exception as e:
@@ -773,30 +611,16 @@ class InvoicePDFView(CompanyScopedMixin, View):
 class RecordPaymentView(CompanyScopedMixin, View):
     def post(self, request, pk):
         invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company(), is_deleted=False)
-        from decimal import Decimal
-        from core.services import BaseService
+        try:
+            from .services import PaymentService
+            service = PaymentService(user=request.user, company=self.get_company())
+            payment = service.record_payment(invoice, request.POST)
+            messages.success(request, f'Payment of {payment.amount} recorded for invoice {invoice.number}.')
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
 
-        amount = Decimal(request.POST.get('amount', '0'))
-        if amount <= 0:
-            messages.error(request, 'Payment amount must be greater than zero.')
-            return redirect('sales:invoice_detail', pk=pk)
-
-        payment = Payment(
-            company=invoice.company,
-            invoice=invoice,
-            customer=invoice.customer,
-            amount=amount,
-            currency=invoice.currency,
-            payment_date=request.POST.get('payment_date', timezone.now().date()),
-            method=request.POST.get('method', 'bank_transfer'),
-            reference=request.POST.get('reference', ''),
-            notes=request.POST.get('notes', ''),
-            status='completed',
-        )
-        payment.number = BaseService.generate_sequence_number('PAY', Payment, invoice.company_id)
-        payment.save()  # triggers invoice.update_balance()
-
-        messages.success(request, f'Payment of {amount} recorded for invoice {invoice.number}.')
         return redirect('sales:invoice_detail', pk=pk)
 
 
@@ -891,7 +715,7 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
     
     def get_queryset(self):
         from django.db.models import Q
-        qs = self.get_base_qs(Subscription).select_related('customer', 'product').order_by('-created_at')
+        qs = self.get_base_qs(Subscription).select_related('customer', 'product', 'branch').order_by('-created_at')
         
         q = self.request.GET.get('q', '').strip()
         status = self.request.GET.get('status', '').strip()
@@ -925,7 +749,7 @@ class CreditNoteListView(CompanyScopedMixin, ListView):
     context_object_name = 'credit_notes'
     
     def get_queryset(self):
-        return self.get_base_qs(CreditNote).select_related('customer', 'invoice')
+        return self.get_base_qs(CreditNote).select_related('customer', 'invoice', 'branch')
 
 class CreditNoteDetailView(CompanyScopedMixin, DetailView):
     template_name = 'sales/credit_notes/detail.html'

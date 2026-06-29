@@ -147,6 +147,8 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
     class Status(models.TextChoices):
         DRAFT = 'draft', _('Draft')
+        PENDING_APPROVAL = 'pending_approval', _('Pending Approval')
+        APPROVED = 'approved', _('Approved')
         SENT = 'sent', _('Sent to Vendor')
         CONFIRMED = 'confirmed', _('Confirmed')
         PARTIAL = 'partial', _('Partially Received')
@@ -158,7 +160,7 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     purchase_request = models.ForeignKey(PurchaseRequest, null=True, blank=True, on_delete=models.SET_NULL)
     branch = models.ForeignKey('company.Branch', null=True, blank=True, on_delete=models.SET_NULL)
     warehouse = models.ForeignKey('inventory.Warehouse', null=True, blank=True, on_delete=models.SET_NULL)
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True)
     order_date = models.DateField()
     expected_delivery = models.DateField(null=True, blank=True)
     actual_delivery = models.DateField(null=True, blank=True)

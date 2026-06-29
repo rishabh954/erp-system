@@ -44,7 +44,7 @@ class MRPService:
             product = Product.objects.get(id=comp_id)
             
             # Get available quantity across all warehouses for this company
-            on_hand = StockRecord.objects.filter(product=product, warehouse__company=company).aggregate(total=Sum('quantity'))['total']
+            on_hand = StockRecord.objects.filter(product=product, warehouse__company=company).aggregate(total=Sum('quantity_on_hand'))['total']
             available = Decimal(on_hand) if on_hand else Decimal(0)
             
             shortage = req_qty - available

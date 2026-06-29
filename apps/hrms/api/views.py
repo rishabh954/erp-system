@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from core.services import StandardResultsSetPagination
+from core.pagination import StandardResultsSetPagination
 from apps.hrms.models import Employee, Attendance, LeaveRequest, PayrollPeriod, Payslip
 from apps.hrms.api.serializers import (
     EmployeeSerializer, AttendanceSerializer, LeaveRequestSerializer,

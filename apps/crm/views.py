@@ -8,11 +8,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse_lazy
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 
 from .models import Lead, Customer, LeadActivity, Campaign, Contract
 from core.services import BaseService
+from core.base_views import BaseCreateView, BaseUpdateView
+from .forms import LeadForm
 
 
 class CompanyMixin(LoginRequiredMixin):
@@ -86,100 +89,59 @@ class LeadDetailView(CompanyMixin, DetailView):
         return ctx
 
 
-class LeadCreateView(CompanyMixin, View):
+class LeadCreateView(BaseCreateView):
+    model = Lead
+    form_class = LeadForm
     template_name = 'crm/leads/form.html'
-
-    def get(self, request):
+    
+    def get_context_data(self, **kwargs):
         from apps.authentication.models import User
-        c = self.company()
-        return render(request, self.template_name, {
-            'status_choices': Lead.Status.choices,
-            'source_choices': Lead.Source.choices,
-            'sales_users': User.objects.filter(
-                companies=c, is_active=True,
-                role__in=['sales_manager', 'employee', 'company_admin']
-            ).order_by('first_name'),
-            'campaigns': Campaign.objects.filter(company=c, is_deleted=False),
-        })
+        ctx = super().get_context_data(**kwargs)
+        c = self.request.user.primary_company
+        ctx['status_choices'] = Lead.Status.choices
+        ctx['source_choices'] = Lead.Source.choices
+        ctx['sales_users'] = User.objects.filter(
+            companies=c, is_active=True,
+            role__in=['sales_manager', 'employee', 'company_admin']
+        ).order_by('first_name')
+        ctx['campaigns'] = Campaign.objects.filter(company=c, is_deleted=False)
+        return ctx
 
-    def post(self, request):
-        data = request.POST
-        company = self.company()
-        try:
-            lead = Lead(
-                company=company,
-                name=data['name'],
-                company_name=data.get('company_name', ''),
-                email=data.get('email', ''),
-                phone=data.get('phone', ''),
-                source=data.get('source', ''),
-                status=data.get('status', 'new'),
-                assigned_to_id=data.get('assigned_to') or None,
-                expected_revenue=float(data.get('expected_revenue', 0)),
-                probability=int(data.get('probability', 10)),
-                expected_close_date=data.get('expected_close_date') or None,
-                notes=data.get('notes', ''),
-                campaign_id=data.get('campaign') or None,
-            )
-            lead.number = BaseService.generate_sequence_number('LD', Lead, company.pk)
-            lead.save()
-            messages.success(request, f'Lead {lead.number} — {lead.name} created.')
-            return redirect('crm:lead_detail', pk=lead.pk)
-        except Exception as e:
-            messages.error(request, f"Error creating lead: {e}")
-            return redirect('crm:lead_create')
+    def form_valid(self, form):
+        # Generate sequence number and set other defaults
+        form.instance.number = BaseService.generate_sequence_number('LD', Lead, self.request.user.primary_company.pk)
+        messages.success(self.request, f'Lead {form.instance.name} created.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('crm:lead_detail', kwargs={'pk': self.object.pk})
 
 
-class LeadUpdateView(CompanyMixin, View):
+class LeadUpdateView(BaseUpdateView):
+    model = Lead
+    form_class = LeadForm
     template_name = 'crm/leads/form.html'
-
-    def get(self, request, pk):
+    context_object_name = 'lead'
+    
+    def get_context_data(self, **kwargs):
         from apps.authentication.models import User
-        c = self.company()
-        lead = get_object_or_404(Lead, pk=pk, company=c)
-        return render(request, self.template_name, {
-            'lead': lead,
-            'status_choices': Lead.Status.choices,
-            'source_choices': Lead.Source.choices,
-            'sales_users': User.objects.filter(
-                companies=c, is_active=True,
-                role__in=['sales_manager', 'employee', 'company_admin']
-            ).order_by('first_name'),
-            'campaigns': Campaign.objects.filter(company=c, is_deleted=False),
-        })
+        ctx = super().get_context_data(**kwargs)
+        c = self.request.user.primary_company
+        ctx['status_choices'] = Lead.Status.choices
+        ctx['source_choices'] = Lead.Source.choices
+        ctx['sales_users'] = User.objects.filter(
+            companies=c, is_active=True,
+            role__in=['sales_manager', 'employee', 'company_admin']
+        ).order_by('first_name')
+        ctx['campaigns'] = Campaign.objects.filter(company=c, is_deleted=False)
+        return ctx
 
-    def post(self, request, pk):
-        data = request.POST
-        c = self.company()
-        lead = get_object_or_404(Lead, pk=pk, company=c)
-        try:
-            lead.name = data['name']
-            if data.get('company_name'):
-                lead.company_name = data.get('company_name')
-            if data.get('email'):
-                lead.email = data.get('email')
-            if data.get('phone'):
-                lead.phone = data.get('phone')
-            if data.get('source'):
-                lead.source = data.get('source')
-            if data.get('status'):
-                lead.status = data.get('status')
-            lead.assigned_to_id = data.get('assigned_to') or None
-            if data.get('expected_revenue'):
-                lead.expected_revenue = float(data.get('expected_revenue'))
-            if data.get('probability'):
-                lead.probability = int(data.get('probability'))
-            lead.expected_close_date = data.get('expected_close_date') or None
-            if data.get('notes'):
-                lead.notes = data.get('notes')
-            lead.campaign_id = data.get('campaign') or None
-            
-            lead.save()
-            messages.success(request, f'Lead {lead.number} updated successfully.')
-            return redirect('crm:lead_detail', pk=lead.pk)
-        except Exception as e:
-            messages.error(request, f"Error updating lead: {e}")
-            return redirect('crm:leads')
+    def form_valid(self, form):
+        messages.success(self.request, 'Lead updated successfully.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('crm:lead_detail', kwargs={'pk': self.object.pk})
 
 
 class LeadDeleteView(CompanyMixin, View):
@@ -730,6 +692,73 @@ class InteractionListView(CompanyMixin, ListView):
         context['activity_type_choices'] = LeadActivity.ActivityType.choices
         return context
 
+# ════════════════════════ REPORTS ══════════════════════════════════════════════
+
+class CampaignReportView(CompanyMixin, ListView):
+    template_name = 'crm/campaigns/report.html'
+    context_object_name = 'campaigns'
+    
+    def get_queryset(self):
+        qs = Campaign.objects.filter(company=self.company(), is_deleted=False).order_by('-start_date')
+        status = self.request.GET.get('status', '').strip()
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['status_choices'] = Campaign.Status.choices
+        
+        # Calculate totals for the report
+        qs = self.get_queryset()
+        total_budget = sum(c.budget for c in qs)
+        total_revenue = sum(c.actual_revenue_generated for c in qs)
+        total_roi = ((float(total_revenue) - float(total_budget)) / float(total_budget) * 100) if total_budget > 0 else 0
+        
+        ctx['totals'] = {
+            'budget': total_budget,
+            'revenue': total_revenue,
+            'roi': total_roi,
+            'campaigns': qs.count()
+        }
+        return ctx
+
+class ContractReportView(CompanyMixin, ListView):
+    template_name = 'crm/contracts/report.html'
+    context_object_name = 'contracts'
+    
+    def get_queryset(self):
+        # Default sort by end_date so expiring soonest are at top
+        qs = Contract.objects.filter(company=self.company(), is_deleted=False).order_by('end_date')
+        
+        status = self.request.GET.get('status', '').strip()
+        if status:
+            qs = qs.filter(status=status)
+        else:
+            qs = qs.filter(status='active')
+            
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['status_choices'] = Contract.Status.choices
+        
+        # Calculate totals for the report
+        qs = self.get_queryset()
+        total_value = sum(c.value for c in qs)
+        
+        from django.utils import timezone
+        import datetime
+        thirty_days = timezone.now().date() + datetime.timedelta(days=30)
+        expiring_soon = sum(1 for c in qs if c.end_date and timezone.now().date() <= c.end_date <= thirty_days)
+        
+        ctx['totals'] = {
+            'value': total_value,
+            'contracts': qs.count(),
+            'expiring_soon': expiring_soon
+        }
+        return ctx
+
 # ════════════════════════ CRM DASHBOARD ══════════════════════════════════════
 
 class CRMDashboardView(CompanyMixin, TemplateView):
@@ -767,5 +796,33 @@ class CRMDashboardView(CompanyMixin, TemplateView):
             ctx['top_customers'] = top_customers
         except Exception:
             ctx['top_customers'] = []
+            
+        # Campaign Analytics
+        active_campaigns = Campaign.objects.filter(company=c, status='active', is_deleted=False)
+        total_budget = active_campaigns.aggregate(t=Sum('budget'))['t'] or 0
+        total_revenue = 0
+        for camp in active_campaigns:
+            total_revenue += float(camp.actual_revenue_generated)
+            
+        ctx['campaigns'] = {
+            'active_count': active_campaigns.count(),
+            'total_budget': total_budget,
+            'total_revenue': total_revenue,
+            'roi': ((float(total_revenue) - float(total_budget)) / float(total_budget) * 100) if total_budget > 0 else 0
+        }
+        
+        # Contracts Analytics
+        from django.utils import timezone
+        import datetime
+        active_contracts = Contract.objects.filter(company=c, status='active', is_deleted=False)
+        total_contract_value = active_contracts.aggregate(t=Sum('value'))['t'] or 0
+        thirty_days_from_now = timezone.now().date() + datetime.timedelta(days=30)
+        expiring_count = active_contracts.filter(end_date__lte=thirty_days_from_now, end_date__gte=timezone.now().date()).count()
+        
+        ctx['contracts'] = {
+            'active_value': total_contract_value,
+            'expiring_count': expiring_count,
+            'active_count': active_contracts.count()
+        }
             
         return ctx

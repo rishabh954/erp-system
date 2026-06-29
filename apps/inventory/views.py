@@ -35,7 +35,7 @@ class ProductListView(CompanyMixin, ListView):
     def get_queryset(self):
         qs = Product.objects.filter(
             company=self.company(), is_deleted=False
-        ).select_related('category', 'brand', 'uom').order_by('name')
+        ).select_related('category', 'brand', 'uom', 'tax').order_by('name')
 
         q       = self.request.GET.get('q', '')
         cat     = self.request.GET.get('category', '')
@@ -283,48 +283,25 @@ class StockAdjustmentView(CompanyMixin, View):
         try:
             product = get_object_or_404(Product, pk=data['product'], company=company)
             warehouse = get_object_or_404(Warehouse, pk=data['warehouse'], company=company)
-            qty = float(data['quantity'])
-            adj_type = data.get('adjustment_type', 'add')  # add / remove / set
-
-            # Get or create stock record
-            stock, _ = StockRecord.objects.get_or_create(
-                product=product, warehouse=warehouse,
-                defaults={'company': company, 'average_cost': product.cost_price}
-            )
-
-            if adj_type == 'set':
-                actual_qty = qty - float(stock.quantity_on_hand)
-            elif adj_type == 'remove':
-                actual_qty = -abs(qty)
-            else:
-                actual_qty = abs(qty)
-
-            stock.quantity_on_hand += actual_qty
-            if stock.quantity_on_hand < 0:
-                raise ValueError('Stock cannot go negative')
-            stock.save(update_fields=['quantity_on_hand'])
-
-            # Record movement
-            mov = StockMovement(
-                company=company,
+            
+            from .services import StockService
+            service = StockService(user=request.user, company=company)
+            mov = service.adjust_stock(
                 product=product,
                 warehouse=warehouse,
-                movement_type='adjustment',
-                quantity=actual_qty,
-                unit_cost=product.cost_price,
-                total_cost=abs(actual_qty) * float(product.cost_price),
-                movement_date=date.today(),
-                notes=data.get('notes', ''),
-                stock_after=float(stock.quantity_on_hand),
+                qty_input=data['quantity'],
+                adjustment_type=data.get('adjustment_type', 'add'),
+                notes=data.get('notes', '')
             )
-            mov.number = BaseService.generate_sequence_number('ADJ', StockMovement, company.pk)
-            mov.save()
 
             messages.success(request, f'Stock adjustment recorded for {product.name}.')
             return redirect('inventory:movements')
+        except ValueError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f'Adjustment error: {e}')
-            return redirect('inventory:movements')
+            
+        return redirect('inventory:movements')
 
 
 # ════════════════════════ INVENTORY TRANSFERS ════════════════════════════════
@@ -370,50 +347,22 @@ class TransferCreateView(CompanyMixin, View):
         })
 
     def post(self, request):
-        data = request.POST
         company = self.company()
         try:
-            from_wh_id = data['from_warehouse']
-            to_wh_id = data['to_warehouse']
-            if from_wh_id == to_wh_id:
-                raise ValueError("Source and destination warehouses cannot be the same.")
-
-            transfer = InventoryTransfer(
-                company=company,
-                from_warehouse_id=from_wh_id,
-                to_warehouse_id=to_wh_id,
-                transfer_date=data['transfer_date'],
-                expected_arrival=data.get('expected_arrival') or None,
-                notes=data.get('notes', ''),
-                status='draft',
-            )
-            transfer.number = BaseService.generate_sequence_number('TR', InventoryTransfer, company.pk)
-            transfer.save()
-
-            # Process lines
-            products = data.getlist('product[]')
-            quantities = data.getlist('quantity[]')
-
-            for i, prod_id in enumerate(products):
-                if not prod_id:
-                    continue
-                qty = float(quantities[i] or 1)
-                InventoryTransferLine.objects.create(
-                    transfer=transfer,
-                    product_id=prod_id,
-                    quantity_requested=qty,
-                    quantity_sent=0,
-                    quantity_received=0,
-                )
-
+            from .services import TransferService
+            service = TransferService(user=request.user, company=company)
+            transfer = service.create_transfer(request.POST, request.user)
             messages.success(request, f'Inventory Transfer {transfer.number} created in draft.')
             return redirect('inventory:transfer_detail', pk=transfer.pk)
+        except ValueError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f'Error: {e}')
-            return render(request, self.template_name, {
-                'warehouses': Warehouse.objects.filter(company=company, is_active=True, is_deleted=False).order_by('name'),
-                'products': Product.objects.filter(company=company, is_active=True, is_deleted=False).order_by('name'),
-            })
+            
+        return render(request, self.template_name, {
+            'warehouses': Warehouse.objects.filter(company=company, is_active=True, is_deleted=False).order_by('name'),
+            'products': Product.objects.filter(company=company, is_active=True, is_deleted=False).order_by('name'),
+        })
 
 
 class TransferDetailView(CompanyMixin, DetailView):
@@ -433,104 +382,30 @@ class TransferDetailView(CompanyMixin, DetailView):
 
 class TransferActionView(CompanyMixin, View):
     def post(self, request, pk):
-        from decimal import Decimal
         transfer = get_object_or_404(
             InventoryTransfer, pk=pk, company=self.company(), is_deleted=False
         )
         action = request.POST.get('action')
-        company = self.company()
-
+        
         try:
-            if action == 'submit' and transfer.status == 'draft':
-                transfer.status = 'requested'
-                transfer.save(update_fields=['status'])
-                messages.success(request, f'{transfer.number} submitted for approval.')
-
-            elif action == 'approve' and transfer.status == 'requested':
-                transfer.status = 'approved'
-                transfer.approved_by = request.user
-                transfer.save(update_fields=['status', 'approved_by'])
-                messages.success(request, f'{transfer.number} approved.')
-
-            elif action == 'ship' and transfer.status == 'approved':
-                lines = transfer.lines.all()
-                for line in lines:
-                    qty_sent = Decimal(str(request.POST.get(f'qty_sent_{line.id}', line.quantity_requested)))
-                    line.quantity_sent = qty_sent
-                    line.save(update_fields=['quantity_sent'])
-
-                    # Deduct from from_warehouse
-                    stock, _ = StockRecord.objects.get_or_create(
-                        product=line.product, warehouse=transfer.from_warehouse,
-                        defaults={'company': company, 'average_cost': line.product.cost_price}
-                    )
-                    stock.quantity_on_hand -= qty_sent
-                    stock.save(update_fields=['quantity_on_hand'])
-
-                    # Create outgoing StockMovement
-                    mov = StockMovement(
-                        company=company,
-                        product=line.product,
-                        warehouse=transfer.from_warehouse,
-                        movement_type='transfer',
-                        quantity=-qty_sent,
-                        unit_cost=line.product.cost_price,
-                        total_cost=qty_sent * line.product.cost_price,
-                        movement_date=timezone.now().date(),
-                        reference_type='InventoryTransfer',
-                        reference_id=str(transfer.id),
-                        notes=f'Transfer out to {transfer.to_warehouse.name}',
-                        stock_after=float(stock.quantity_on_hand),
-                    )
-                    mov.number = BaseService.generate_sequence_number('TR-OUT', StockMovement, company.pk)
-                    mov.save()
-
-                transfer.status = 'in_transit'
-                transfer.save(update_fields=['status'])
+            from .services import TransferService
+            service = TransferService(user=request.user, company=self.company())
+            transfer = service.process_transfer(transfer, action, request.POST, request.user)
+            
+            if action == 'submit':
+                if transfer.status == InventoryTransfer.Status.PENDING_APPROVAL:
+                    messages.success(request, f'{transfer.number} submitted for approval.')
+                else:
+                    messages.success(request, f'{transfer.number} auto-approved (no matching policies).')
+            elif action == 'ship':
                 messages.success(request, f'{transfer.number} shipped and marked In Transit.')
-
-            elif action == 'receive' and transfer.status == 'in_transit':
-                lines = transfer.lines.all()
-                for line in lines:
-                    qty_recv = Decimal(str(request.POST.get(f'qty_recv_{line.id}', line.quantity_sent)))
-                    line.quantity_received = qty_recv
-                    line.save(update_fields=['quantity_received'])
-
-                    # Add to to_warehouse
-                    stock, _ = StockRecord.objects.get_or_create(
-                        product=line.product, warehouse=transfer.to_warehouse,
-                        defaults={'company': company, 'average_cost': line.product.cost_price}
-                    )
-                    stock.quantity_on_hand += qty_recv
-                    stock.save(update_fields=['quantity_on_hand'])
-
-                    # Create incoming StockMovement
-                    mov = StockMovement(
-                        company=company,
-                        product=line.product,
-                        warehouse=transfer.to_warehouse,
-                        movement_type='transfer',
-                        quantity=qty_recv,
-                        unit_cost=line.product.cost_price,
-                        total_cost=qty_recv * line.product.cost_price,
-                        movement_date=timezone.now().date(),
-                        reference_type='InventoryTransfer',
-                        reference_id=str(transfer.id),
-                        notes=f'Transfer in from {transfer.from_warehouse.name}',
-                        stock_after=float(stock.quantity_on_hand),
-                    )
-                    mov.number = BaseService.generate_sequence_number('TR-IN', StockMovement, company.pk)
-                    mov.save()
-
-                transfer.status = 'received'
-                transfer.save(update_fields=['status'])
+            elif action == 'receive':
                 messages.success(request, f'{transfer.number} received successfully.')
-
-            elif action == 'cancel' and transfer.status in ('draft', 'requested', 'approved'):
-                transfer.status = 'cancelled'
-                transfer.save(update_fields=['status'])
+            elif action == 'cancel':
                 messages.warning(request, f'{transfer.number} has been cancelled.')
-
+                
+        except ValueError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f'Action Error: {e}')
 
@@ -761,8 +636,12 @@ class ShipDeliveryView(CompanyMixin, View):
     def post(self, request, pk):
         delivery = get_object_or_404(DeliveryOrder, pk=pk, company=self.company(), is_deleted=False)
         try:
-            delivery.ship(request.user)
+            from .services import DeliveryService
+            service = DeliveryService(user=request.user, company=self.company())
+            service.ship_delivery(delivery, request.user)
             messages.success(request, f'Delivery {delivery.number} successfully shipped!')
+        except ValueError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f'Error shipping delivery: {e}')
         

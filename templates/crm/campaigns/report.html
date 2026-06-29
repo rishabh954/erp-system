@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Campaign ROI Report{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Campaign ROI Report</h1>
+    <a href="{% url 'crm:campaigns' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Campaigns</a>
+</div>
+
+<!-- Report Summary Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Campaigns</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totals.campaigns }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Budget</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ totals.budget|floatformat:2|intcomma }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Generated Revenue</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ totals.revenue|floatformat:2|intcomma }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Overall ROI</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totals.roi|floatformat:1 }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Campaign Performance Data</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Campaign Name</th>
+                        <th>Status</th>
+                        <th class="text-end">Leads Generated</th>
+                        <th class="text-end">Converted (Won)</th>
+                        <th class="text-end">Budget</th>
+                        <th class="text-end">Actual Revenue</th>
+                        <th class="text-end">ROI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in campaigns %}
+                    <tr>
+                        <td class="fw-bold"><a href="{% url 'crm:campaign_detail' c.pk %}">{{ c.name }}</a></td>
+                        <td>
+                            <span class="badge 
+                                {% if c.status == 'active' %}bg-success
+                                {% elif c.status == 'completed' %}bg-primary
+                                {% elif c.status == 'cancelled' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ c.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-end">{{ c.total_leads_count }}</td>
+                        <td class="text-end">{{ c.won_count }}</td>
+                        <td class="text-end text-danger">${{ c.budget|floatformat:2|intcomma }}</td>
+                        <td class="text-end text-success fw-bold">${{ c.actual_revenue_generated|floatformat:2|intcomma }}</td>
+                        <td class="text-end">
+                            <span class="{% if c.roi_percentage > 0 %}text-success{% elif c.roi_percentage < 0 %}text-danger{% endif %} fw-bold">
+                                {{ c.roi_percentage|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">No campaigns found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

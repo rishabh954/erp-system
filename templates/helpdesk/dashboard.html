@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Helpdesk Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+        <h2 class="h3 mb-0 text-gray-800 font-weight-bold">Helpdesk Command Center</h2>
+        <a href="#" class="btn btn-primary shadow-sm hover-elevate">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i> New Ticket
+        </a>
+    </div>
+
+    <!-- Metrics Row -->
+    <div class="row mb-4 stagger-children">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-primary shadow h-100 py-2 hover-elevate transition-all">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Open Tickets</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.open_tickets|default:"12" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="icon-circle bg-primary-light text-primary">
+                                <i class="fas fa-ticket-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-warning shadow h-100 py-2 hover-elevate transition-all">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">In Progress</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.in_progress|default:"5" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="icon-circle bg-warning-light text-warning">
+                                <i class="fas fa-tools fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-danger shadow h-100 py-2 hover-elevate transition-all">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">SLA Breached</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.sla_breached|default:"2" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="icon-circle bg-danger-light text-danger">
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-success shadow h-100 py-2 hover-elevate transition-all">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Avg Resolution Time</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.avg_resolution_hours|default:"4.5" }} hrs</div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="icon-circle bg-success-light text-success">
+                                <i class="fas fa-stopwatch fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Tickets & Activity Feed -->
+    <div class="row stagger-children">
+        <!-- Active Tickets Table -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow mb-4 h-100 border-0 glass-panel">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-transparent border-bottom-0">
+                    <h6 class="m-0 font-weight-bold text-primary">Priority Tickets</h6>
+                    <a href="{% url 'helpdesk:ticket_list' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 custom-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-top-0 border-bottom-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 px-4">Ticket</th>
+                                    <th class="border-top-0 border-bottom-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Priority</th>
+                                    <th class="border-top-0 border-bottom-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Status</th>
+                                    <th class="border-top-0 border-bottom-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7">Assignee</th>
+                                    <th class="border-top-0 border-bottom-0 text-uppercase text-muted text-xs font-weight-bolder opacity-7 text-right px-4">SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticket in priority_tickets %}
+                                <tr class="transition-all cursor-pointer" onclick="window.location='{% url 'helpdesk:ticket_detail' ticket.pk %}'">
+                                    <td class="px-4">
+                                        <div class="d-flex flex-column">
+                                            <span class="font-weight-bold text-dark">{{ ticket.number }}</span>
+                                            <span class="text-xs text-muted text-truncate" style="max-width: 250px;">{{ ticket.title }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-pill {% if ticket.priority == 'critical' %}badge-danger{% elif ticket.priority == 'high' %}badge-warning{% else %}badge-info{% endif %} px-2 py-1">
+                                            {{ ticket.get_priority_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-dot">
+                                            <i class="bg-primary"></i>
+                                            <span class="text-dark text-xs">{{ ticket.get_status_display }}</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if ticket.assigned_to %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm bg-gradient-primary rounded-circle mr-2 d-flex justify-content-center align-items-center text-white text-xs font-weight-bold">
+                                                {{ ticket.assigned_to.first_name|first }}{{ ticket.assigned_to.last_name|first }}
+                                            </div>
+                                            <span class="text-sm font-weight-medium">{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.email }}</span>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted text-sm fst-italic">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right px-4">
+                                        {% if ticket.sla_breached %}
+                                        <span class="text-danger font-weight-bold text-sm"><i class="fas fa-fire mr-1"></i> Breached</span>
+                                        {% else %}
+                                        <span class="text-success text-sm"><i class="fas fa-check-circle mr-1"></i> On Track</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="empty-state">
+                                            <i class="fas fa-check-double fa-3x text-muted mb-3"></i>
+                                            <h6 class="text-dark font-weight-bold">All caught up!</h6>
+                                            <p class="text-muted text-sm">There are no high-priority tickets requiring immediate attention.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow mb-4 h-100 border-0">
+                <div class="card-header py-3 bg-transparent border-bottom-0">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
+                </div>
+                <div class="card-body p-4 pt-0">
+                    <div class="timeline timeline-one-side" data-timeline-axis-style="dashed">
+                        {% for activity in recent_activities %}
+                        <div class="timeline-block mb-3">
+                            <span class="timeline-step badge-primary-light text-primary">
+                                <i class="fas fa-bell"></i>
+                            </span>
+                            <div class="timeline-content">
+                                <h6 class="text-dark text-sm font-weight-bold mb-0">{{ activity.description }}</h6>
+                                <p class="text-secondary font-weight-normal text-xs mt-1 mb-0">{{ activity.created_at|timesince }} ago</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-sm text-center py-4">No recent activity.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

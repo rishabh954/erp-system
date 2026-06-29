@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from core.services import StandardResultsSetPagination
+from core.pagination import StandardResultsSetPagination
 from apps.inventory.models import Product, Warehouse, StockRecord, StockMovement, InventoryTransfer
 from apps.inventory.api.serializers import (
     ProductSerializer, WarehouseSerializer, StockRecordSerializer,

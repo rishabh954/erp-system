@@ -63,11 +63,11 @@ class Account(CompanyScoped):
         return self.name
 
     def get_balance(self, from_date=None, to_date=None):
-        qs = self.journal_items.filter(journal__status='posted')
+        qs = self.journal_items.filter(journal_entry__status='posted')
         if from_date:
-            qs = qs.filter(journal__date__gte=from_date)
+            qs = qs.filter(journal_entry__date__gte=from_date)
         if to_date:
-            qs = qs.filter(journal__date__lte=to_date)
+            qs = qs.filter(journal_entry__date__lte=to_date)
         result = qs.aggregate(
             debit=models.Sum('debit'), credit=models.Sum('credit')
         )

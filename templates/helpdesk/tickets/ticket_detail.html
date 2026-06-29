@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ ticket.number }} - {{ ticket.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-transparent p-0 mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:dashboard' %}" class="text-primary text-decoration-none">Helpdesk</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:ticket_list' %}" class="text-primary text-decoration-none">Tickets</a></li>
+                    <li class="breadcrumb-item active text-muted" aria-current="page">{{ ticket.number }}</li>
+                </ol>
+            </nav>
+            <h2 class="h4 mb-0 text-gray-800 font-weight-bold">{{ ticket.title }}</h2>
+        </div>
+        <div>
+            {% if ticket.status != 'closed' %}
+            <button class="btn btn-sm btn-outline-secondary mr-2 shadow-sm rounded-pill hover-elevate">Edit</button>
+            <form method="post" action="{% url 'helpdesk:ticket_resolve' ticket.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success shadow-sm rounded-pill hover-elevate">
+                    <i class="fas fa-check mr-1"></i> Resolve
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row fade-in stagger-children">
+        <!-- Main Conversation Area -->
+        <div class="col-lg-8">
+            <!-- Original Request -->
+            <div class="card shadow mb-4 border-0 glass-panel">
+                <div class="card-header bg-white py-3 d-flex flex-row align-items-center justify-content-between border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar avatar-sm bg-gradient-info rounded-circle mr-3 d-flex justify-content-center align-items-center text-white text-xs font-weight-bold">
+                            {{ ticket.requester.first_name|first }}{{ ticket.requester.last_name|first }}
+                        </div>
+                        <div>
+                            <h6 class="m-0 font-weight-bold text-dark text-sm">{{ ticket.requester.get_full_name|default:ticket.requester.email }}</h6>
+                            <span class="text-xs text-muted">Requested on {{ ticket.created_at|date:"M d, Y h:i A" }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="text-dark text-sm" style="white-space: pre-wrap;">{{ ticket.description }}</div>
+                </div>
+            </div>
+
+            <!-- Replies -->
+            <div class="ticket-replies mb-4">
+                {% for reply in ticket.replies.all %}
+                <div class="card shadow-sm mb-3 border-0 {% if reply.is_internal %}bg-warning-light border-left-warning{% endif %}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="font-weight-bold text-dark text-sm mr-2">{{ reply.author.get_full_name|default:reply.author.email }}</span>
+                                {% if reply.is_internal %}
+                                <span class="badge badge-warning text-xs px-2 py-0">Internal Note</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-xs text-muted">{{ reply.created_at|timesince }} ago</span>
+                        </div>
+                        <div class="text-dark text-sm" style="white-space: pre-wrap;">{{ reply.content }}</div>
+                        {% if reply.attachment %}
+                        <div class="mt-3">
+                            <a href="{{ reply.attachment.url }}" class="btn btn-sm btn-outline-primary rounded-pill text-xs px-3">
+                                <i class="fas fa-paperclip mr-1"></i> View Attachment
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Reply Form -->
+            {% if ticket.status != 'closed' %}
+            <div class="card shadow mb-4 border-0">
+                <div class="card-body bg-light rounded">
+                    <form method="post" action="{% url 'helpdesk:ticket_reply' ticket.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <textarea class="form-control border-0 shadow-sm" name="content" rows="4" placeholder="Type your reply here..." required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="is_internal" name="is_internal">
+                                <label class="custom-control-label text-sm text-muted" for="is_internal">Internal Note (Hidden from Customer)</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm hover-elevate">Reply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar (Ticket Metadata) -->
+        <div class="col-lg-4">
+            <div class="card shadow border-0 glass-panel">
+                <div class="card-header py-3 bg-transparent border-bottom-0">
+                    <h6 class="m-0 font-weight-bold text-primary">Ticket Details</h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush text-sm">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold">Status</span>
+                            <span class="badge badge-dot">
+                                <i class="bg-{% if ticket.status == 'open' %}primary{% elif ticket.status == 'resolved' %}success{% else %}warning{% endif %}"></i>
+                                <span class="text-dark font-weight-bold">{{ ticket.get_status_display }}</span>
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold">Priority</span>
+                            <span class="badge badge-pill {% if ticket.priority == 'critical' %}badge-danger{% elif ticket.priority == 'high' %}badge-warning{% elif ticket.priority == 'medium' %}badge-info{% else %}badge-secondary{% endif %} px-2 py-1">
+                                {{ ticket.get_priority_display }}
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex flex-column px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold mb-1">Assignee</span>
+                            <div class="d-flex align-items-center mt-1">
+                                {% if ticket.assigned_to %}
+                                <div class="avatar avatar-xs bg-gradient-primary rounded-circle mr-2 text-white d-flex justify-content-center align-items-center" style="width:24px;height:24px;font-size:10px;">
+                                    {{ ticket.assigned_to.first_name|first }}{{ ticket.assigned_to.last_name|first }}
+                                </div>
+                                <span class="text-dark font-weight-medium">{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.email }}</span>
+                                {% else %}
+                                <span class="text-muted fst-italic text-xs">Unassigned</span>
+                                {% endif %}
+                                <a href="#" class="text-primary text-xs ml-auto"><i class="fas fa-edit"></i></a>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex flex-column px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold mb-1">Category</span>
+                            <span class="text-dark">{{ ticket.category.name|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex flex-column px-4 py-3 bg-transparent">
+                            <span class="text-muted font-weight-bold mb-1">SLA Due</span>
+                            {% if ticket.sla_due_at %}
+                                {% if ticket.sla_breached %}
+                                <span class="text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Breached ({{ ticket.sla_due_at|date:"M d, H:i" }})</span>
+                                {% else %}
+                                <span class="text-dark"><i class="far fa-clock mr-1 text-muted"></i> {{ ticket.sla_due_at|timeuntil }} left</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -43,6 +43,8 @@ urlpatterns = [
     path('orders/<uuid:pk>/', PurchaseOrderDetailView.as_view(), name='order_detail'),
     path('orders/<uuid:pk>/update/', PurchaseOrderUpdateView.as_view(), name='order_update'),
     path('orders/<uuid:pk>/delete/', PurchaseOrderDeleteView.as_view(), name='order_delete'),
+    path('orders/<uuid:pk>/submit/', views.PurchaseOrderSubmitView.as_view(), name='order_submit'),
+    path('orders/<uuid:pk>/confirm/', views.PurchaseOrderConfirmView.as_view(), name='order_confirm'),
     path('orders/<uuid:pk>/receive/', GoodsReceiptCreateView.as_view(), name='order_receive'),
     
     # Bills & Payments

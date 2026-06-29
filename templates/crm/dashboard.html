@@ -7,6 +7,96 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0 text-gray-800">CRM Dashboard</h1>
+    <a href="{% url 'crm:campaign_report' %}" class="btn btn-primary btn-sm shadow-sm"><i class="fas fa-chart-line fa-sm text-white-50 me-1"></i> Campaign ROI Report</a>
+</div>
+
+<div class="row">
+    <!-- Campaign Stats (3 boxes) -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Active Campaigns</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ campaigns.active_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Campaign Revenue vs Budget</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ campaigns.total_revenue|floatformat:0 }} / ${{ campaigns.total_budget|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Average Campaign ROI</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ campaigns.roi|floatformat:1 }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-percent fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Contract Stats -->
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Contracts Value ({{ contracts.active_count }})</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ contracts.active_value|floatformat:0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-contract fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Contracts Expiring Soon (<30 Days)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ contracts.expiring_count }}</div>
+                        {% if contracts.expiring_count > 0 %}
+                        <div class="mt-2"><a href="{% url 'crm:contract_report' %}" class="small text-danger">View Report <i class="fas fa-arrow-right"></i></a></div>
+                        {% endif %}
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row">
