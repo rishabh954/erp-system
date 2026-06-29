@@ -77,6 +77,7 @@ LOCAL_APPS = [
     'apps.administration',
     'apps.analytics',
     'apps.pos',
+    'apps.ai',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -96,6 +97,7 @@ MIDDLEWARE = [
     'core.middleware.AuditLogMiddleware',
     'core.middleware.TenantMiddleware',
     'core.middleware.ActiveUserMiddleware',
+    'apps.authentication.middleware.SecurityMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -112,6 +114,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.administration.context_processors.active_apps',
                 'core.context_processors.company_context',
                 'core.context_processors.notification_context',
                 'core.context_processors.theme_context',
@@ -278,6 +281,36 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TASK_ALWAYS_EAGER = not use_redis
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# ─── AI / LLM Settings ──────────────────────────────────────────────────────
+OPENAI_API_KEY   = os.environ.get('OPENAI_API_KEY', '')
+GEMINI_API_KEY   = os.environ.get('GEMINI_API_KEY', '')
+OPENAI_MODEL     = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+AI_TEMPERATURE   = float(os.environ.get('AI_TEMPERATURE', '0.3'))
+AI_MAX_TOKENS    = int(os.environ.get('AI_MAX_TOKENS', '2048'))
+AI_ENABLED       = bool(OPENAI_API_KEY or GEMINI_API_KEY)
+
+# Workflow escalation + reminder periodic tasks
+CELERY_BEAT_SCHEDULE = {
+    'workflow-check-escalations': {
+        'task': 'workflow.check_escalations',
+        'schedule': 1800,  # every 30 minutes
+    },
+    'workflow-send-pending-reminders': {
+        'task': 'workflow.send_pending_reminders',
+        'schedule': 86400,  # daily
+    },
+    'run-scheduled-reports': {
+        'task': 'analytics.run_scheduled_reports_daily',
+        'schedule': 3600,  # hourly check
+    },
+}
+
+# WhatsApp / Twilio (optional — set these in .env to enable WhatsApp notifications)
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN  = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM', '')  # e.g. +14155238886
+
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')

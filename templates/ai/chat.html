@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Chat{% endblock %}
+{% block extra_css %}
+<style>
+.chat-layout { display: flex; height: calc(100vh - 130px); gap: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-color); }
+.chat-sidebar {
+  width: 260px; flex-shrink: 0; background: var(--sidebar-bg, var(--card-bg));
+  border-right: 1px solid var(--border-color); display: flex; flex-direction: column;
+}
+.chat-sidebar-header { padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+.chat-conv-list { flex: 1; overflow-y: auto; padding: 8px; }
+.chat-conv-item {
+  padding: 9px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+  font-size: .83rem; color: var(--text-primary); transition: background .15s;
+  display: flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.chat-conv-item:hover, .chat-conv-item.active { background: var(--hover-bg); color: var(--brand-primary); }
+.chat-main { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary, #f8f9fa); }
+.chat-header { padding: 14px 20px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.msg-bubble {
+  max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: .9rem; line-height: 1.55;
+  animation: fadeInUp .2s ease;
+}
+@keyframes fadeInUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+.msg-user { background: var(--brand-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+.msg-assistant { background: var(--card-bg); border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+.msg-assistant pre { background: #1e1e2e; color: #cdd6f4; padding: 10px 14px; border-radius: 8px; overflow-x: auto; font-size: .8rem; }
+.msg-assistant code { font-size: .82rem; }
+.chat-input-area { padding: 14px 18px; background: var(--card-bg); border-top: 1px solid var(--border-color); }
+.chat-input-wrap { display: flex; gap: 10px; align-items: flex-end; background: var(--bg-primary,#f8f9fa); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 8px 12px; transition: border-color .2s; }
+.chat-input-wrap:focus-within { border-color: var(--brand-primary); }
+#chatInput { flex: 1; border: none; background: transparent; outline: none; resize: none; max-height: 120px; font-size: .9rem; }
+.typing-indicator { display: flex; gap: 4px; padding: 12px 16px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; border-bottom-left-radius: 4px; width: fit-content; }
+.typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.2s ease infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce { 0%,60%,100% { transform:none; } 30% { transform:translateY(-6px); } }
+.context-badge { font-size: .72rem; padding: 2px 8px; border-radius: 20px; }
+.empty-chat { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; opacity: .7; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0"><i class="fas fa-robot me-2 text-primary"></i>AI Chat Assistant</h1>
+  <div class="d-flex gap-2">
+    <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+    <button class="btn btn-sm btn-primary" id="btnNewChat"><i class="fas fa-plus me-1"></i>New Chat</button>
+  </div>
+</div>
+
+<div class="chat-layout shadow-sm">
+  <!-- Sidebar: conversation list -->
+  <div class="chat-sidebar">
+    <div class="chat-sidebar-header">
+      <div class="small fw-700 text-muted text-uppercase mb-1" style="font-size:.68rem; letter-spacing:.5px">Conversations</div>
+    </div>
+    <div class="chat-conv-list">
+      {% for conv in conversations %}
+      <a href="{% url 'ai:chat_conversation' conv_id=conv.id %}"
+         class="chat-conv-item {% if conversation and conversation.id == conv.id %}active{% endif %}">
+        <i class="fas fa-comment-dots"></i>
+        <span class="text-truncate">{{ conv.title|default:"New Chat"|truncatechars:28 }}</span>
+      </a>
+      {% empty %}
+      <div class="text-center text-muted py-4" style="font-size:.8rem">No conversations yet</div>
+      {% endfor %}
+    </div>
+    <div class="p-3 border-top">
+      <div class="small text-muted" style="font-size:.72rem">
+        <i class="fas fa-circle text-success me-1" style="font-size:.5rem"></i>AI Online
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="chat-main">
+    {% if conversation %}
+    <div class="chat-header">
+      <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px">
+        <i class="fas fa-robot"></i>
+      </div>
+      <div>
+        <div class="fw-700 small">{{ conversation.title|default:"AI Assistant"|truncatechars:50 }}</div>
+        <div class="text-muted" style="font-size:.72rem">
+          <span class="context-badge bg-primary-subtle text-primary">{{ conversation.context }}</span>
+          · {{ conversation.messages.count }} messages
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      {% for msg in messages_list %}
+      <div class="d-flex {% if msg.role == 'user' %}justify-content-end{% endif %}">
+        {% if msg.role == 'assistant' %}
+        <div class="me-2 mt-1">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">🤖</div>
+        </div>
+        {% endif %}
+        <div class="msg-bubble msg-{{ msg.role }}">
+          {{ msg.content|linebreaksbr }}
+        </div>
+        {% if msg.role == 'user' %}
+        <div class="ms-2 mt-1">
+          <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">
+            {{ request.user.get_full_name|slice:":1"|upper }}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="empty-chat">
+        <div style="font-size:3rem;margin-bottom:12px">💬</div>
+        <div class="fw-600">Start the conversation</div>
+        <div class="text-muted small mt-1">Ask anything about your business data</div>
+      </div>
+      {% endfor %}
+      <div id="typingIndicator" class="typing-indicator d-none">
+        <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <!-- Quick prompts -->
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <button class="btn btn-xs btn-outline-primary quick-prompt" style="font-size:.72rem">What is my revenue this month?</button>
+        <button class="btn btn-xs btn-outline-primary quick-prompt" style="font-size:.72rem">Show top customers</button>
+        <button class="btn btn-xs btn-outline-primary quick-prompt" style="font-size:.72rem">Pending invoices?</button>
+        <button class="btn btn-xs btn-outline-primary quick-prompt" style="font-size:.72rem">Inventory alerts?</button>
+      </div>
+      <div class="chat-input-wrap">
+        <textarea id="chatInput" placeholder="Ask anything... (Shift+Enter for newline)" rows="1"></textarea>
+        <button id="sendBtn" class="btn btn-primary btn-sm px-3" style="border-radius:8px">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Empty state: no conversation selected -->
+    <div class="empty-chat">
+      <div style="font-size:4rem;margin-bottom:16px">🤖</div>
+      <h5 class="fw-700">AI Chat Assistant</h5>
+      <p class="text-muted">Start a new conversation or select one from the sidebar.</p>
+      <button class="btn btn-primary mt-2" id="btnStartChat"><i class="fas fa-plus me-1"></i>Start New Chat</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- New Chat Modal -->
+<div class="modal fade" id="newChatModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>New Conversation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-600">Topic (optional)</label>
+          <input type="text" id="newChatTitle" class="form-control" placeholder="e.g., Sales Analysis Q2">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-600">Context</label>
+          <select id="newChatContext" class="form-select">
+            <option value="general">General</option>
+            <option value="sales">Sales</option>
+            <option value="finance">Finance</option>
+            <option value="hr">HR</option>
+            <option value="inventory">Inventory</option>
+            <option value="crm">CRM</option>
+            <option value="purchase">Purchase</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="createChatBtn">Start Chat</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CONV_ID = "{{ conversation.id|default:'' }}";
+const SEND_URL = CONV_ID ? `/ai/chat/${CONV_ID}/send/` : null;
+const NEW_URL = '/ai/chat/new/';
+const CSRF = "{{ csrf_token }}";
+
+// Auto-scroll
+function scrollBottom() {
+  const el = document.getElementById('chatMessages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+scrollBottom();
+
+// Send message
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !SEND_URL) return;
+
+  // Show user bubble
+  appendBubble(text, 'user');
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Show typing
+  const typing = document.getElementById('typingIndicator');
+  typing.classList.remove('d-none');
+  scrollBottom();
+
+  // Stream response
+  const form = new FormData();
+  form.append('message', text);
+  form.append('csrfmiddlewaretoken', CSRF);
+
+  try {
+    const resp = await fetch(SEND_URL, { method: 'POST', body: form });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let assistantText = '';
+    let bubble = null;
+
+    typing.classList.add('d-none');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.chunk) {
+            assistantText += parsed.chunk;
+            if (!bubble) {
+              bubble = appendBubble('', 'assistant');
+            }
+            // Render markdown-ish
+            bubble.innerHTML = renderMarkdown(assistantText);
+            scrollBottom();
+          }
+        } catch(e) {}
+      }
+    }
+  } catch (e) {
+    typing.classList.add('d-none');
+    appendBubble('⚠️ Error: ' + e.message, 'assistant');
+  }
+}
+
+function appendBubble(text, role) {
+  const messages = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = `d-flex ${role === 'user' ? 'justify-content-end' : ''}`;
+
+  if (role === 'assistant') {
+    wrap.innerHTML = `<div class="me-2 mt-1"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">🤖</div></div>
+    <div class="msg-bubble msg-assistant">${renderMarkdown(text)}</div>`;
+  } else {
+    wrap.innerHTML = `<div class="msg-bubble msg-user">${escapeHtml(text)}</div>
+    <div class="ms-2 mt-1"><div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">{{ request.user.get_full_name|slice:":1"|upper }}</div></div>`;
+  }
+  messages.appendChild(wrap);
+  scrollBottom();
+  return wrap.querySelector('.msg-bubble');
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Event listeners
+const sendBtn = document.getElementById('sendBtn');
+const chatInput = document.getElementById('chatInput');
+if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+if (chatInput) {
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  chatInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  });
+}
+
+// Quick prompts
+document.querySelectorAll('.quick-prompt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (chatInput) { chatInput.value = btn.textContent; chatInput.focus(); }
+  });
+});
+
+// New chat
+const newChatModal = document.getElementById('newChatModal');
+const modal = newChatModal ? new bootstrap.Modal(newChatModal) : null;
+['btnNewChat','btnStartChat'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el && modal) el.addEventListener('click', () => modal.show());
+});
+document.getElementById('createChatBtn')?.addEventListener('click', async () => {
+  const title = document.getElementById('newChatTitle').value || 'New Chat';
+  const context = document.getElementById('newChatContext').value;
+  const form = new FormData();
+  form.append('title', title);
+  form.append('context', context);
+  form.append('csrfmiddlewaretoken', CSRF);
+  const resp = await fetch(NEW_URL, { method:'POST', body:form });
+  const data = await resp.json();
+  if (data.id) window.location.href = `/ai/chat/${data.id}/`;
+});
+</script>
+{% endblock %}

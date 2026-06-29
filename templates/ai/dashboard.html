@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}AI Hub{% endblock %}
+{% block extra_css %}
+<style>
+.ai-hero {
+  background: linear-gradient(135deg, #4361ee 0%, #7209b7 50%, #f72585 100%);
+  border-radius: 16px; padding: 36px 40px; color: #fff; position: relative; overflow: hidden;
+}
+.ai-hero::before {
+  content: ''; position: absolute; top: -60px; right: -60px; width: 280px; height: 280px;
+  background: rgba(255,255,255,.07); border-radius: 50%;
+}
+.ai-hero::after {
+  content: ''; position: absolute; bottom: -80px; left: 30%; width: 200px; height: 200px;
+  background: rgba(255,255,255,.05); border-radius: 50%;
+}
+.ai-feature-card {
+  border: 1px solid var(--border-color); border-radius: 14px; padding: 20px 18px;
+  background: var(--card-bg); transition: all .2s; cursor: pointer; text-decoration: none;
+  display: block; height: 100%;
+}
+.ai-feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(67,97,238,.18); border-color: var(--brand-primary); }
+.ai-feature-card .ai-icon {
+  width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 1.3rem; margin-bottom: 14px;
+}
+.ai-feature-card h6 { font-weight: 700; margin-bottom: 6px; color: var(--text-primary); }
+.ai-feature-card p  { font-size: .82rem; color: var(--text-muted); margin-bottom: 0; line-height: 1.5; }
+.ai-badge { font-size: .65rem; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="ai-hero mb-4">
+  <div class="position-relative" style="z-index:1">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <div style="font-size:2.5rem">🤖</div>
+      <div>
+        <h1 class="fw-800 mb-1 text-white" style="font-size:1.8rem">AI Hub</h1>
+        <p class="mb-0 opacity-80">Intelligent automation, forecasting & insights powered by AI</p>
+      </div>
+      <div class="ms-auto">
+        {% if ai_available %}
+        <span class="badge bg-success px-3 py-2"><span class="status-dot bg-white me-1"></span>AI Active</span>
+        {% else %}
+        <span class="badge bg-warning text-dark px-3 py-2">⚠️ Setup Required</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if not ai_available %}
+    <div class="alert alert-warning border-0 mb-0" style="background:rgba(255,255,255,.15); color:#fff">
+      <i class="fas fa-key me-2"></i>
+      Add your <strong>OPENAI_API_KEY</strong> to the <code>.env</code> file to activate AI features.
+      <a href="{% url 'ai:settings' %}" class="btn btn-sm btn-light ms-3">Configure Now</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-primary hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-comments"></i></div>
+      <div class="stat-card-value">{{ conversation_count }}</div>
+      <div class="stat-card-label">Chat Sessions</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-success hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-file-invoice"></i></div>
+      <div class="stat-card-value">{{ ocr_count }}</div>
+      <div class="stat-card-label">OCR Documents</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-card-warning hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-lightbulb"></i></div>
+      <div class="stat-card-value">{{ insight_count }}</div>
+      <div class="stat-card-label">AI Insights</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card hover-lift">
+      <div class="stat-card-icon"><i class="fas fa-search"></i></div>
+      <div class="stat-card-value">{{ nlp_count }}</div>
+      <div class="stat-card-label">NL Queries</div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Grid -->
+<div class="row g-3 mb-4">
+
+  <!-- Chat -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:chat' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#4361ee20,#4361ee40)">💬</div>
+      <h6>AI Chat Assistant</h6>
+      <p>Ask anything about your business. Get instant, context-aware answers from your ERP data.</p>
+      <span class="badge bg-primary-subtle text-primary ai-badge">NEW</span>
+    </a>
+  </div>
+
+  <!-- NLP Reports -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:nlp_reports' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#7209b720,#7209b740)">🔍</div>
+      <h6>Natural Language Reports</h6>
+      <p>Type a question in plain English — get instant data tables and charts without writing queries.</p>
+      <span class="badge bg-purple-subtle text-purple ai-badge" style="background:#f3e8ff;color:#7c3aed">SMART</span>
+    </a>
+  </div>
+
+  <!-- Forecasting -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:forecast' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#06d6a020,#06d6a040)">📈</div>
+      <h6>Sales & Demand Forecast</h6>
+      <p>ML-powered predictions for sales revenue, inventory levels, and product demand over 7–90 days.</p>
+      <span class="badge bg-success-subtle text-success ai-badge">ML</span>
+    </a>
+  </div>
+
+  <!-- OCR -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:ocr' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#f7971e20,#f7971e40)">📄</div>
+      <h6>Invoice & Receipt OCR</h6>
+      <p>Upload any invoice or receipt image — AI extracts vendor, date, total, and line items automatically.</p>
+      <span class="badge bg-warning-subtle text-warning ai-badge">VISION</span>
+    </a>
+  </div>
+
+  <!-- Customer Insights -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:insights' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#f7297220,#f7297240)">👥</div>
+      <h6>AI Customer Insights</h6>
+      <p>Automatic RFM segmentation, churn risk detection, and AI-generated retention recommendations.</p>
+      <span class="badge bg-danger-subtle text-danger ai-badge">RFM</span>
+    </a>
+  </div>
+
+  <!-- Purchase Recommendations -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:purchase_recommendations' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#4cc9f020,#4cc9f040)">🛒</div>
+      <h6>AI Purchase Recommendation</h6>
+      <p>AI analyses stock levels and demand forecasts to suggest optimal purchase orders before you run out.</p>
+      <span class="badge bg-info-subtle text-info ai-badge">SMART</span>
+    </a>
+  </div>
+
+  <!-- Expense Categorisation -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:expense_categorisation' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#3a0ca320,#3a0ca340)">💳</div>
+      <h6>AI Expense Categorisation</h6>
+      <p>Paste expense descriptions — AI classifies them to GL accounts instantly with confidence scores.</p>
+      <span class="badge bg-primary-subtle text-primary ai-badge">AUTO</span>
+    </a>
+  </div>
+
+  <!-- Financial Summary -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:financial_summary' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#2dc65320,#2dc65340)">📊</div>
+      <h6>AI Financial Summary</h6>
+      <p>Get a CFO-level narrative of your P&L, AR/AP status, cash flow risks, and recommended actions.</p>
+      <span class="badge bg-success-subtle text-success ai-badge">GPT-4</span>
+    </a>
+  </div>
+
+  <!-- Settings -->
+  <div class="col-12 col-md-6 col-xl-4">
+    <a href="{% url 'ai:settings' %}" class="ai-feature-card">
+      <div class="ai-icon" style="background:linear-gradient(135deg,#64748b20,#64748b40)">⚙️</div>
+      <h6>AI Settings</h6>
+      <p>Configure API keys, select AI models, enable/disable features, and monitor token usage.</p>
+      <span class="badge bg-secondary-subtle text-secondary ai-badge">CONFIG</span>
+    </a>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header fw-600"><i class="fas fa-clock me-2"></i>Recent Conversations</div>
+      <div class="card-body p-0">
+        {% if recent_conversations %}
+        <ul class="list-group list-group-flush">
+          {% for conv in recent_conversations %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <a href="{% url 'ai:chat_conversation' conv_id=conv.id %}" class="fw-600 text-decoration-none small">
+                💬 {{ conv.title|default:"Untitled"|truncatechars:45 }}
+              </a>
+              <div class="text-muted" style="font-size:.72rem">{{ conv.created_at|timesince }} ago · {{ conv.context }}</div>
+            </div>
+            <span class="badge bg-secondary-subtle text-secondary">{{ conv.messages.count }} msg</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+          <i class="fas fa-comments fa-2x mb-2 opacity-40"></i><br>No conversations yet.
+          <a href="{% url 'ai:chat' %}" class="d-block mt-2">Start chatting →</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-header fw-600"><i class="fas fa-lightbulb me-2"></i>Recent Insights</div>
+      <div class="card-body p-0">
+        {% if recent_insights %}
+        <ul class="list-group list-group-flush">
+          {% for ins in recent_insights %}
+          <li class="list-group-item">
+            <div class="fw-600 small">
+              {% if ins.insight_type == 'financial' %}📊
+              {% elif ins.insight_type == 'customer' %}👥
+              {% elif ins.insight_type == 'purchase' %}🛒{% endif %}
+              {{ ins.title|truncatechars:50 }}
+            </div>
+            <div class="text-muted" style="font-size:.72rem">{{ ins.generated_at|timesince }} ago</div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+          <i class="fas fa-lightbulb fa-2x mb-2 opacity-40"></i><br>No insights generated yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

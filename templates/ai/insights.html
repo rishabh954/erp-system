@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Customer Insights{% endblock %}
+
+{% block extra_css %}
+<style>
+.segment-card {
+  border-radius: 14px; padding: 18px 16px; text-align: center; border: 2px solid transparent;
+  transition: all .2s; cursor: default;
+}
+.segment-card.champions  { background:#f0fdf4; border-color:#22c55e; }
+.segment-card.loyal      { background:#eff6ff; border-color:#3b82f6; }
+.segment-card.new        { background:#fefce8; border-color:#eab308; }
+.segment-card.at_risk    { background:#fff7ed; border-color:#f97316; }
+.segment-card.lost       { background:#fef2f2; border-color:#ef4444; }
+.segment-count { font-size: 2rem; font-weight: 800; }
+.narrative-card { background: linear-gradient(135deg,#4361ee0a,#7209b70a); border-left: 4px solid var(--brand-primary); border-radius: 0 12px 12px 0; padding: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-users me-2 text-danger"></i>AI Customer Insights</h1>
+    <p class="text-muted mb-0">RFM segmentation, behaviour analysis, and AI-generated retention strategies</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+    <button class="btn btn-sm btn-primary" id="generateBtn" onclick="generateInsights()">
+      <i class="fas fa-robot me-1"></i>Generate Insights
+    </button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loadingState" class="card text-center py-5 d-none">
+  <div class="card-body">
+    <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem"></div>
+    <h5 class="fw-700">Analysing Customer Data…</h5>
+    <p class="text-muted">Calculating RFM scores, running segmentation, generating AI narrative…</p>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="insightResults" class="{% if not insight %}d-none{% endif %}">
+  <!-- RFM Segments -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2 col-lg">
+      <div class="segment-card champions" id="seg-champions">
+        <div class="text-success mb-1">👑</div>
+        <div class="segment-count text-success" id="count-champions">0</div>
+        <div class="fw-600 small">Champions</div>
+        <div class="text-muted" style="font-size:.7rem">High value, recent</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2 col-lg">
+      <div class="segment-card loyal" id="seg-loyal">
+        <div class="text-primary mb-1">💙</div>
+        <div class="segment-count text-primary" id="count-loyal">0</div>
+        <div class="fw-600 small">Loyal</div>
+        <div class="text-muted" style="font-size:.7rem">Frequent buyers</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2 col-lg">
+      <div class="segment-card new" id="seg-new">
+        <div class="mb-1">🌱</div>
+        <div class="segment-count" id="count-new">0</div>
+        <div class="fw-600 small">New</div>
+        <div class="text-muted" style="font-size:.7rem">First purchases</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2 col-lg">
+      <div class="segment-card at_risk" id="seg-at_risk">
+        <div class="text-warning mb-1">⚠️</div>
+        <div class="segment-count text-warning" id="count-at_risk">0</div>
+        <div class="fw-600 small">At Risk</div>
+        <div class="text-muted" style="font-size:.7rem">Declining activity</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2 col-lg">
+      <div class="segment-card lost" id="seg-lost">
+        <div class="text-danger mb-1">😴</div>
+        <div class="segment-count text-danger" id="count-lost">0</div>
+        <div class="fw-600 small">Lost</div>
+        <div class="text-muted" style="font-size:.7rem">No recent orders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Narrative -->
+  <div class="card mb-4">
+    <div class="card-header fw-600"><i class="fas fa-robot me-2 text-primary"></i>AI Analysis & Recommendations</div>
+    <div class="card-body">
+      <div class="narrative-card">
+        <div id="narrativeText">
+          {% if insight %}{{ insight.narrative|linebreaksbr }}{% endif %}
+        </div>
+      </div>
+      <div class="text-muted small mt-2" id="generatedAt">
+        {% if insight %}Generated {{ insight.generated_at|timesince }} ago{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Customers per Segment -->
+  <div class="card">
+    <div class="card-header fw-600"><i class="fas fa-list me-2"></i>Customer Details by Segment</div>
+    <div class="card-body p-0">
+      <div id="customerDetails">
+        {% if insight %}
+        <div class="text-center py-4 text-muted small">Generate fresh insights to see customer-level details.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Empty State -->
+<div id="emptyState" class="{% if insight %}d-none{% endif %} card text-center py-5">
+  <div class="card-body">
+    <div style="font-size:3.5rem;margin-bottom:12px">👥</div>
+    <h5 class="fw-700">Ready to Analyse Your Customers</h5>
+    <p class="text-muted">Click "Generate Insights" to run RFM segmentation and get AI-powered recommendations.</p>
+    <button class="btn btn-primary mt-2" onclick="generateInsights()">
+      <i class="fas fa-robot me-1"></i>Generate Insights Now
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const CSRF = "{{ csrf_token }}";
+
+async function generateInsights() {
+  document.getElementById('loadingState').classList.remove('d-none');
+  document.getElementById('insightResults').classList.add('d-none');
+  document.getElementById('emptyState').classList.add('d-none');
+  document.getElementById('generateBtn').disabled = true;
+
+  try {
+    const resp = await fetch('/ai/insights/generate/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF },
+    });
+    const data = await resp.json();
+
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('generateBtn').disabled = false;
+
+    if (data.error) { alert('Error: ' + data.error); return; }
+
+    // Update segment counts
+    const segs = data.segments || {};
+    ['champions','loyal','new','at_risk','lost'].forEach(s => {
+      document.getElementById('count-' + s).textContent = segs[s] || 0;
+    });
+
+    // Update narrative
+    document.getElementById('narrativeText').innerHTML =
+      (data.narrative||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    document.getElementById('generatedAt').textContent = 'Generated just now';
+
+    // Customer details table
+    const details = data.details || {};
+    let html = '';
+    const segColors = {champions:'success',loyal:'primary',new:'warning',at_risk:'orange',lost:'danger'};
+    for (const [seg, customers] of Object.entries(details)) {
+      if (!customers.length) continue;
+      html += `<div class="p-3 border-bottom">
+        <div class="fw-600 mb-2 text-${segColors[seg]||'secondary'}">${seg.replace('_',' ').toUpperCase()} (Top ${customers.length})</div>
+        <div class="table-responsive"><table class="table table-sm mb-0">
+          <thead><tr><th>Customer</th><th>Last Order</th><th>Orders</th><th>Revenue</th></tr></thead>
+          <tbody>
+            ${customers.map(c => `<tr>
+              <td class="fw-600 small">${c.name||'—'}</td>
+              <td class="small text-muted">${c.recency_days} days ago</td>
+              <td class="small">${c.frequency}</td>
+              <td class="small fw-600">₹${(c.monetary||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    }
+    document.getElementById('customerDetails').innerHTML = html || '<div class="text-center py-4 text-muted small">No customer data available.</div>';
+
+    document.getElementById('insightResults').classList.remove('d-none');
+  } catch(e) {
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('emptyState').classList.remove('d-none');
+    alert('Error: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

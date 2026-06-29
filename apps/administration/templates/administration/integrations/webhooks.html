@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Webhook Management{% endblock %}
+{% block page_title %}Webhooks{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add Webhook</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group mb-3">
+                        <label class="form-label">Payload URL</label>
+                        <input type="url" name="url" class="form-control" placeholder="https://example.com/webhook" required>
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="form-label">Events to send</label>
+                        <input type="text" name="events" class="form-control" placeholder="invoice.created, payment.success" value="*">
+                        <small class="text-muted">Comma separated, or * for all events.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Endpoint</button>
+                    <a href="{% url 'administration:integrations_dashboard' %}" class="btn btn-outline-secondary mt-2 w-100">Back</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Active Webhooks</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>Events</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hook in webhooks %}
+                            <tr>
+                                <td>{{ hook.url }}</td>
+                                <td>{{ hook.subscribed_events|join:", " }}</td>
+                                <td>
+                                    {% if hook.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ hook.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3 text-muted">No webhooks configured.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

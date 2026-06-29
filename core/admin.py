@@ -42,7 +42,7 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(UserCompany)
 class UserCompanyAdmin(admin.ModelAdmin):
-    list_display  = ['user', 'company', 'branch', 'role_override', 'is_active', 'joined_at']
+    list_display  = ['user', 'company', 'role', 'is_active', 'joined_at']
     list_filter   = ['is_active', 'company']
     search_fields = ['user__email', 'company__name']
 

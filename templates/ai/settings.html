@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Settings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-cogs me-2 text-secondary"></i>AI Settings</h1>
+    <p class="text-muted mb-0">Configure AI providers and manage feature availability</p>
+  </div>
+  <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header fw-600"><i class="fas fa-key me-2"></i>API Configuration</div>
+      <div class="card-body">
+        
+        <div class="d-flex align-items-center mb-4 p-3 border rounded {% if openai_key_set %}bg-success-subtle border-success{% else %}bg-warning-subtle border-warning{% endif %}">
+          <div class="me-3" style="font-size:2rem">🤖</div>
+          <div class="flex-grow-1">
+            <h6 class="fw-700 mb-1">OpenAI (Primary Provider)</h6>
+            {% if openai_key_set %}
+            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+            <span class="text-muted small ms-2">Using model: {{ model }}</span>
+            {% else %}
+            <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Configured</span>
+            <p class="text-muted small mb-0 mt-1">Add <code>OPENAI_API_KEY</code> to your <code>.env</code> file.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center mb-4 p-3 border rounded {% if gemini_key_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
+          <div class="me-3" style="font-size:2rem">🌌</div>
+          <div class="flex-grow-1">
+            <h6 class="fw-700 mb-1">Google Gemini (Fallback Provider)</h6>
+            {% if gemini_key_set %}
+            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+            {% else %}
+            <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
+            <p class="text-muted small mb-0 mt-1">Add <code>GEMINI_API_KEY</code> to your <code>.env</code> file as a fallback.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center p-3 border rounded {% if twilio_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
+          <div class="me-3" style="font-size:2rem">📱</div>
+          <div class="flex-grow-1">
+            <h6 class="fw-700 mb-1">WhatsApp & SMS (Twilio)</h6>
+            {% if twilio_set %}
+            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+            {% else %}
+            <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
+            <p class="text-muted small mb-0 mt-1">Required for AI-triggered workflow alerts. Set <code>TWILIO_ACCOUNT_SID</code>.</p>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-600"><i class="fas fa-chart-bar me-2"></i>Usage Statistics</div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span class="text-muted">Total Chat Tokens</span>
+            <span class="fw-600">{{ tokens_used|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span class="text-muted">Conversations</span>
+            <span class="fw-600">{{ total_conversations|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span class="text-muted">OCR Documents</span>
+            <span class="fw-600">{{ total_ocr|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span class="text-muted">AI Insights</span>
+            <span class="fw-600">{{ total_insights|default:0 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span class="text-muted">NLP Queries</span>
+            <span class="fw-600">{{ total_nlp|default:0 }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

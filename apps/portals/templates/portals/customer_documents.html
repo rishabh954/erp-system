@@ -1,0 +1,40 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Shared Documents{% endblock %}
+{% block page_title %}Shared Documents{% endblock %}
+{% block nav_documents_c %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Document</th>
+                    <th>Category</th>
+                    <th>Added Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td>
+                        <div class="font-weight-600">{{ doc.title }}</div>
+                        <div class="small text-muted">{{ doc.description|truncatechars:50 }}</div>
+                    </td>
+                    <td><span class="badge badge-gray">{{ doc.category.name|default:"Uncategorized" }}</span></td>
+                    <td>{{ doc.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        {% if doc.file %}
+                        <a href="{{ doc.file.url }}" class="btn btn-primary btn-sm" target="_blank"><i class="fas fa-download"></i> Download</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-4 text-muted">No shared documents found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

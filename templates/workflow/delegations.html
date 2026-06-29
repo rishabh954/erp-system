@@ -1,60 +1,97 @@
-{% extends 'base.html' %}
-{% block title %}Delegated Approvals{% endblock %}
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Approval Delegations{% endblock %}
 {% block nav_workflow %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">My Delegations</h1>
-    <a href="{% url 'workflow:delegation_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Delegation</a>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-exchange-alt me-2 text-info"></i>Approval Delegations</h1>
+    <p class="text-muted mb-0">Temporarily hand off your approval authority</p>
+  </div>
+  <a href="{% url 'workflow:delegation_create' %}" class="btn btn-primary">
+    <i class="fas fa-plus me-1"></i>New Delegation
+  </a>
 </div>
 
-<div class="card shadow mb-4">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Delegated To</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Status</th>
-                        <th>Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for del in delegations %}
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                {% if del.delegatee.avatar %}
-                                <img src="{{ del.delegatee.avatar.url }}" class="rounded-circle me-2" width="30" height="30">
-                                {% else %}
-                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 12px;">
-                                    {{ del.delegatee.first_name|first }}{{ del.delegatee.last_name|first }}
-                                </div>
-                                {% endif %}
-                                {{ del.delegatee.get_full_name }}
-                            </div>
-                        </td>
-                        <td>{{ del.start_date|date:"M d, Y" }}</td>
-                        <td>{{ del.end_date|date:"M d, Y" }}</td>
-                        <td>
-                            {% if del.is_active %}
-                            <span class="badge bg-success">Active</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ del.notes|default:"-" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-4">You have not delegated your approvals to anyone.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="card">
+  <div class="card-body p-0">
+    {% if delegations %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Delegated To</th>
+            <th>Scope</th>
+            <th>Period</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in delegations %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-xs bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center fw-700" style="width:32px;height:32px">
+                  {{ d.delegatee.get_full_name|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div class="fw-600">{{ d.delegatee.get_full_name }}</div>
+                  <div class="text-muted small">{{ d.delegatee.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if d.workflow %}
+              <span class="badge bg-primary-subtle text-primary">{{ d.workflow.name }}</span>
+              {% else %}
+              <span class="badge bg-secondary-subtle text-secondary">All Workflows</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              <i class="fas fa-calendar me-1 text-muted"></i>
+              {{ d.start_date|date:"M d, Y" }} → {{ d.end_date|date:"M d, Y" }}
+            </td>
+            <td>
+              {% if d.is_active %}
+                {% now "Y-m-d" as today %}
+                {% if d.end_date|date:"Y-m-d" >= today %}
+                  <span class="badge bg-success"><i class="fas fa-circle me-1" style="font-size:.5rem"></i>Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Expired</span>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-secondary">Deactivated</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ d.notes|truncatechars:50|default:"—" }}</td>
+            <td class="text-end">
+              {% if d.is_active %}
+              <form method="post" action="{% url 'workflow:delegation_delete' pk=d.pk %}" onsubmit="return confirm('Deactivate this delegation?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-xs btn-outline-danger">
+                  <i class="fas fa-ban me-1"></i>Deactivate
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-exchange-alt fa-3x mb-3 opacity-40"></i>
+      <p class="mb-1">No delegations set up.</p>
+      <a href="{% url 'workflow:delegation_create' %}" class="btn btn-sm btn-primary mt-2">
+        <i class="fas fa-plus me-1"></i>Create Delegation
+      </a>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

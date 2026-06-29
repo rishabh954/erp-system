@@ -1,52 +1,116 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static humanize %}
+
 {% block title %}Approval History{% endblock %}
 {% block nav_workflow %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Approval History</h1>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-history me-2"></i>Approval History</h1>
+    <p class="text-muted mb-0">Complete audit trail of all workflow decisions</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="?mine={% if mine_only %}0{% else %}1{% endif %}" class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-user me-1"></i>{% if mine_only %}Show All{% else %}My Actions Only{% endif %}
+    </a>
+    <a href="{% url 'workflow:pending_approvals' %}" class="btn btn-sm btn-warning">
+      <i class="fas fa-inbox me-1"></i>Pending
+    </a>
+  </div>
 </div>
 
-<div class="card shadow mb-4">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Document</th>
-                        <th>Type</th>
-                        <th>Step</th>
-                        <th>Action</th>
-                        <th>Comment</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for act in actions %}
-                    <tr>
-                        <td><strong>{{ act.instance.related_object }}</strong></td>
-                        <td><span class="badge bg-secondary">{{ act.instance.content_type.model|title }}</span></td>
-                        <td>{{ act.step.name }}</td>
-                        <td>
-                            {% if act.action == 'approved' %}
-                            <span class="badge bg-success">Approved</span>
-                            {% elif act.action == 'rejected' %}
-                            <span class="badge bg-danger">Rejected</span>
-                            {% else %}
-                            <span class="badge bg-info">{{ act.get_action_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ act.comment|default:"-" }}</td>
-                        <td>{{ act.acted_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center py-4">No approval history found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="card">
+  <div class="card-body p-0">
+    {% if actions %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th>Document</th>
+            <th>Workflow</th>
+            <th>Step</th>
+            <th>Actioned By</th>
+            <th>Decision</th>
+            <th>Comment</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for action in actions %}
+          <tr>
+            <td>
+              <a href="{% url 'workflow:instance_detail' pk=action.instance.pk %}" class="fw-600 text-decoration-none">
+                {{ action.instance.content_type.name|title }}
+                <span class="text-muted small">#{{ action.instance.object_id|slice:":8" }}</span>
+              </a>
+            </td>
+            <td class="small text-muted">{{ action.instance.definition.name }}</td>
+            <td class="small">{{ action.step.name }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-xs bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-700" style="width:28px;height:28px;font-size:.7rem">
+                  {{ action.actor.get_full_name|slice:":1"|upper }}
+                </div>
+                <span class="small">{{ action.actor.get_full_name }}</span>
+              </div>
+            </td>
+            <td>
+              {% if action.action == 'approved' %}
+                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Approved</span>
+              {% elif action.action == 'rejected' %}
+                <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Rejected</span>
+              {% elif action.action == 'delegated' %}
+                <span class="badge bg-info"><i class="fas fa-exchange-alt me-1"></i>Delegated
+                  {% if action.delegated_to %}→ {{ action.delegated_to.get_full_name }}{% endif %}
+                </span>
+              {% elif action.action == 'escalated' %}
+                <span class="badge bg-warning text-dark"><i class="fas fa-exclamation me-1"></i>Escalated</span>
+              {% elif action.action == 'returned' %}
+                <span class="badge bg-purple text-white" style="background:#7c3aed"><i class="fas fa-undo me-1"></i>Returned</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ action.get_action_display }}</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted" style="max-width:200px">
+              {{ action.comment|truncatechars:60|default:"—" }}
+            </td>
+            <td class="small text-muted text-nowrap">{{ action.acted_at|date:"M d, Y H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-center py-3">
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if mine_only %}&mine=1{% endif %}">&laquo;</a></li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <li class="page-item"><a class="page-link" href="?page={{ num }}{% if mine_only %}&mine=1{% endif %}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if mine_only %}&mine=1{% endif %}">&raquo;</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-history fa-3x mb-3 opacity-40"></i>
+      <p class="mb-0">No approval history yet.</p>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

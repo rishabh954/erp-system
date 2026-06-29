@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Forecasting{% endblock %}
+
+{% block extra_css %}
+<style>
+.forecast-tab { cursor:pointer; padding:10px 20px; border-radius:8px; font-weight:600; font-size:.85rem; transition:all .2s; }
+.forecast-tab.active { background: var(--brand-primary); color:#fff; }
+.forecast-tab:not(.active) { color: var(--text-muted); }
+.forecast-tab:not(.active):hover { background: var(--hover-bg); }
+.metric-pill { background: var(--hover-bg); border-radius: 8px; padding: 10px 16px; }
+.urgency-critical { color: #dc2626; }
+.urgency-warning  { color: #d97706; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-chart-line me-2 text-primary"></i>AI Forecasting</h1>
+    <p class="text-muted mb-0">ML-powered predictions using your historical data</p>
+  </div>
+  <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+</div>
+
+<!-- Forecast Type Tabs -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex gap-2 flex-wrap mb-4">
+      <div class="forecast-tab active" data-type="sales" onclick="switchForecast('sales', this)">
+        📈 Sales Forecast
+      </div>
+      <div class="forecast-tab" data-type="inventory" onclick="switchForecast('inventory', this)">
+        📦 Inventory Forecast
+      </div>
+      <div class="forecast-tab" data-type="demand" onclick="switchForecast('demand', this)">
+        📊 Demand Prediction
+      </div>
+    </div>
+
+    <!-- Period selector -->
+    <div class="d-flex gap-2 align-items-center mb-4">
+      <span class="text-muted small fw-600">Forecast Period:</span>
+      <!-- Forecast Period Buttons -->
+      <button class="btn btn-sm btn-outline-primary period-btn active" data-days="30">30 Days</button>
+      <button class="btn btn-sm btn-outline-secondary period-btn" data-days="7">7 Days</button>
+      <button class="btn btn-sm btn-outline-secondary period-btn" data-days="60">60 Days</button>
+      <button class="btn btn-sm btn-outline-secondary period-btn" data-days="90">90 Days</button>
+      <button class="btn btn-sm btn-primary ms-auto" onclick="loadForecast()">
+        <i class="fas fa-sync me-1"></i>Generate Forecast
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingState" class="text-center py-5 d-none">
+      <div class="spinner-border text-primary mb-3"></div>
+      <p class="text-muted">Running ML model on your data…</p>
+    </div>
+
+    <!-- Sales / Demand Chart -->
+    <div id="chartSection">
+      <div class="row g-3 mb-3" id="metricsRow"></div>
+      <div class="chart-container" style="position:relative;height:320px">
+        <canvas id="forecastChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Inventory Alerts Table -->
+    <div id="inventorySection" class="d-none">
+      <div class="row g-3 mb-3" id="invMetricsRow"></div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="inventoryTable">
+          <thead class="table-light">
+            <tr><th>Product</th><th>Current Stock</th><th>Reorder Level</th><th>Days Until Reorder</th><th>Recommended Qty</th><th>Urgency</th></tr>
+          </thead>
+          <tbody id="inventoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Algorithm info -->
+    <div id="algorithmInfo" class="text-muted small mt-3 d-none">
+      <i class="fas fa-info-circle me-1"></i>
+      <span id="algorithmText"></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let currentType = 'sales';
+let currentDays = 30;
+let forecastChart = null;
+
+function switchForecast(type, el) {
+  currentType = type;
+  document.querySelectorAll('.forecast-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadForecast();
+}
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.classList.remove('active','btn-primary');
+      b.classList.add('btn-outline-secondary');
+    });
+    this.classList.add('active','btn-primary');
+    this.classList.remove('btn-outline-secondary');
+    currentDays = parseInt(this.dataset.days);
+  });
+});
+
+async function loadForecast() {
+  document.getElementById('loadingState').classList.remove('d-none');
+  document.getElementById('chartSection').classList.add('d-none');
+  document.getElementById('inventorySection').classList.add('d-none');
+  document.getElementById('algorithmInfo').classList.add('d-none');
+
+  try {
+    const resp = await fetch(`/ai/forecast/data/?type=${currentType}&days=${currentDays}`);
+    const data = await resp.json();
+
+    document.getElementById('loadingState').classList.add('d-none');
+
+    if (data.error) {
+      alert('Forecast error: ' + data.error);
+      return;
+    }
+
+    if (currentType === 'inventory') {
+      renderInventory(data);
+    } else {
+      renderChart(data);
+    }
+
+    // Algorithm info
+    const metrics = data.metrics || {};
+    const algoEl = document.getElementById('algorithmInfo');
+    document.getElementById('algorithmText').textContent =
+      `Algorithm: ${metrics.algorithm || 'N/A'} · Training data: ${metrics.training_days || '?'} days · Accuracy (R²): ${metrics.r2_score || 'N/A'}`;
+    algoEl.classList.remove('d-none');
+  } catch(e) {
+    document.getElementById('loadingState').classList.add('d-none');
+    alert('Error: ' + e.message);
+  }
+}
+
+function renderChart(data) {
+  const section = document.getElementById('chartSection');
+  section.classList.remove('d-none');
+
+  // Metrics row
+  const metrics = data.metrics || {};
+  document.getElementById('metricsRow').innerHTML = `
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-primary fs-5">₹${(metrics.total_predicted||0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+        <div class="text-muted small">Predicted Total</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-success fs-5">${metrics.r2_score !== undefined ? (metrics.r2_score * 100).toFixed(1)+'%' : 'N/A'}</div>
+        <div class="text-muted small">Model Accuracy</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 fs-5">${currentDays}</div>
+        <div class="text-muted small">Days Ahead</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-warning fs-5">${metrics.avg_daily_demand !== undefined ? metrics.avg_daily_demand : (metrics.training_days || '—')}</div>
+        <div class="text-muted small">${metrics.avg_daily_demand !== undefined ? 'Avg Daily Demand' : 'Training Days'}</div>
+      </div>
+    </div>`;
+
+  // Chart
+  if (forecastChart) forecastChart.destroy();
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  forecastChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [...(data.historical_labels||[]).slice(-14), ...(data.forecast_labels||[])],
+      datasets: [
+        {
+          label: 'Historical',
+          data: [...(data.historical_values||[]).slice(-14), ...Array(data.forecast_labels?.length||0).fill(null)],
+          borderColor: '#4361ee', backgroundColor: 'rgba(67,97,238,.1)',
+          fill: true, tension: 0.4, pointRadius: 2,
+        },
+        {
+          label: 'Forecast',
+          data: [...Array((data.historical_values||[]).slice(-14).length).fill(null), ...(data.predicted||[])],
+          borderColor: '#f72585', backgroundColor: 'rgba(247,37,133,.08)',
+          fill: false, tension: 0.4, borderDash: [5,5], pointRadius: 3,
+        },
+        {
+          label: 'Upper Bound',
+          data: [...Array((data.historical_values||[]).slice(-14).length).fill(null), ...(data.upper_bound||[])],
+          borderColor: 'rgba(247,37,133,.2)', fill: false, pointRadius: 0, borderWidth: 1,
+        },
+        {
+          label: 'Lower Bound',
+          data: [...Array((data.historical_values||[]).slice(-14).length).fill(null), ...(data.lower_bound||[])],
+          borderColor: 'rgba(247,37,133,.2)', fill: '-1',
+          backgroundColor: 'rgba(247,37,133,.05)', pointRadius: 0, borderWidth: 1,
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position:'top' }, tooltip: { mode:'index', intersect:false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function renderInventory(data) {
+  const section = document.getElementById('inventorySection');
+  section.classList.remove('d-none');
+  const alerts = data.alerts || [];
+
+  document.getElementById('invMetricsRow').innerHTML = `
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-danger fs-5">${data.critical_count||0}</div>
+        <div class="text-muted small">Critical (≤7 days)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-warning fs-5">${(data.total_alerts||0) - (data.critical_count||0)}</div>
+        <div class="text-muted small">Warning</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 fs-5">${data.total_alerts||0}</div>
+        <div class="text-muted small">Total Alerts</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-pill text-center">
+        <div class="fw-700 text-muted fs-5">${data.metrics?.products_analysed||0}</div>
+        <div class="text-muted small">Products Analysed</div>
+      </div>
+    </div>`;
+
+  const tbody = document.getElementById('inventoryBody');
+  if (!alerts.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">✅ No reorder alerts — all products are well-stocked.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = alerts.map(a => `
+    <tr>
+      <td class="fw-600">${a.product}</td>
+      <td>${a.current_stock.toLocaleString()}</td>
+      <td class="text-muted">${a.reorder_level.toLocaleString()}</td>
+      <td class="urgency-${a.urgency} fw-600">${a.days_until_reorder} days</td>
+      <td>${(a.reorder_quantity||0).toLocaleString()}</td>
+      <td><span class="badge bg-${a.urgency === 'critical' ? 'danger' : 'warning text-dark'}">${a.urgency.toUpperCase()}</span></td>
+    </tr>`).join('');
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadForecast);
+</script>
+{% endblock %}

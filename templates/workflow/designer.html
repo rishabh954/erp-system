@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Workflow Designer — {{ workflow.name }}{% endblock %}
+{% block nav_workflow %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Designer Canvas ───────────────────────────────────────────────── */
+#designer-canvas {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  background:
+    radial-gradient(circle, #e2e8f0 1px, transparent 1px),
+    radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: auto;
+}
+.flow-node {
+  position: absolute;
+  min-width: 160px;
+  max-width: 200px;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  cursor: grab;
+  transition: box-shadow .2s, border-color .2s;
+  user-select: none;
+  z-index: 10;
+}
+.flow-node:hover, .flow-node.selected { border-color: var(--brand-primary); box-shadow: 0 4px 16px rgba(67,97,238,.2); }
+.flow-node.type-start  { border-color: #2dc653; background: #f0fdf4; }
+.flow-node.type-end    { border-color: #e63946; background: #fff5f5; }
+.flow-node.type-approval { border-color: #4361ee; }
+.flow-node.type-condition { border-color: #f8a200; background: #fffbeb; border-style: dashed; }
+.flow-node.type-notification { border-color: #4cc9f0; }
+.flow-node .node-badge {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; margin-bottom: 4px;
+}
+.flow-node .node-title { font-size: .85rem; font-weight: 600; color: var(--text-primary); }
+.flow-node .node-meta  { font-size: .72rem; color: var(--text-muted); margin-top: 3px; }
+.flow-node .node-badge.approval   { color: #4361ee; }
+.flow-node .node-badge.condition  { color: #f8a200; }
+.flow-node .node-badge.notification { color: #4cc9f0; }
+.flow-node .node-actions { margin-top: 8px; display: flex; gap: 4px; }
+.flow-connector {
+  position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5;
+}
+.escalation-badge { font-size: .65rem; background: #fef3c7; color: #d97706; border-radius: 4px; padding: 1px 5px; }
+
+/* ── Step sidebar ──────────────────────────────────────────────────── */
+.step-sidebar { border-left: 1px solid var(--border-color); overflow-y: auto; max-height: 600px; }
+.step-card {
+  border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px;
+  margin-bottom: 8px; background: var(--card-bg); cursor: pointer;
+  transition: all .15s;
+}
+.step-card:hover { border-color: var(--brand-primary); background: var(--hover-bg); }
+.step-card.active { border-color: var(--brand-primary); background: #eff2ff; }
+.drag-handle { cursor: grab; color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'workflow:dashboard' %}">Workflow</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'workflow:list' %}">Definitions</a></li>
+        <li class="breadcrumb-item active">{{ workflow.name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h4 mb-0">
+      <i class="fas fa-drafting-compass me-2 text-primary"></i>{{ workflow.name }}
+      <span class="badge bg-{{ workflow.is_active|yesno:'success,secondary' }} ms-2 small">
+        {{ workflow.is_active|yesno:'Active,Inactive' }}
+      </span>
+    </h1>
+    <p class="text-muted small mb-0">{{ workflow.trigger_model }} · {{ workflow.get_trigger_event_display }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'workflow:notification_templates' workflow_pk=workflow.pk %}" class="btn btn-sm btn-outline-info">
+      <i class="fas fa-envelope me-1"></i>Notifications
+    </a>
+    <button class="btn btn-sm btn-outline-secondary" id="btnSaveLayout">
+      <i class="fas fa-save me-1"></i>Save Layout
+    </button>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addStepModal">
+      <i class="fas fa-plus me-1"></i>Add Step
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Left: Visual Canvas -->
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-600"><i class="fas fa-project-diagram me-2"></i>Visual Approval Flow</span>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="text-muted small">{{ steps|length }} step{{ steps|length|pluralize }}</span>
+          <button class="btn btn-xs btn-outline-secondary" onclick="resetLayout()">
+            <i class="fas fa-redo"></i> Auto-Layout
+          </button>
+        </div>
+      </div>
+      <div class="card-body p-2">
+        <div id="designer-canvas">
+          <svg id="flow-svg" class="flow-connector" width="100%" height="100%"></svg>
+          <!-- START node -->
+          <div class="flow-node type-start" id="node-start" data-x="40" data-y="210" style="left:40px;top:210px;">
+            <div class="node-badge" style="color:#2dc653"><i class="fas fa-play-circle me-1"></i>START</div>
+            <div class="node-title">Trigger</div>
+            <div class="node-meta">{{ workflow.get_trigger_event_display }}</div>
+          </div>
+
+          {% for step in steps %}
+          <div class="flow-node type-{{ step.step_type }}" 
+               id="node-{{ step.id }}"
+               data-step-id="{{ step.id }}"
+               data-step-order="{{ step.step_order }}"
+               data-x="{{ step.canvas_x|default:forloop.counter|add:'1'|stringformat:'i' }}"
+               data-y="{{ step.canvas_y|default:'210' }}"
+               style="left:{{ step.canvas_x|default_if_none:0 }}px;top:{{ step.canvas_y|default_if_none:0 }}px"
+               onclick="selectStep('{{ step.id }}')">
+            <div class="node-badge {{ step.step_type }}">
+              {% if step.step_type == 'approval' %}<i class="fas fa-user-check me-1"></i>Approval
+              {% elif step.step_type == 'condition' %}<i class="fas fa-code-branch me-1"></i>Condition
+              {% elif step.step_type == 'notification' %}<i class="fas fa-bell me-1"></i>Notification
+              {% else %}<i class="fas fa-bolt me-1"></i>Auto Action{% endif %}
+            </div>
+            <div class="node-title">{{ step.name }}</div>
+            <div class="node-meta">
+              {% if step.step_type == 'approval' %}
+                {% if step.approver_user %}{{ step.approver_user.get_full_name }}
+                {% elif step.approver_role %}Role: {{ step.approver_role }}
+                {% elif step.approver_type == 'manager' %}Direct Manager
+                {% elif step.approver_type == 'department_head' %}Dept. Head
+                {% endif %}
+              {% endif %}
+              {% if step.min_amount or step.max_amount %}
+                <br><span class="text-success">₹{{ step.min_amount|default_if_none:"0" }}–{{ step.max_amount|default_if_none:"∞" }}</span>
+              {% endif %}
+            </div>
+            {% if step.escalation_enabled %}
+            <div class="escalation-badge mt-1"><i class="fas fa-exclamation-triangle me-1"></i>Escalates in {{ step.escalation_hours }}h</div>
+            {% endif %}
+            <div class="node-actions">
+              <form method="post" action="{% url 'workflow:step_delete' pk=step.id %}" class="d-inline" onsubmit="return confirm('Delete this step?')">
+                {% csrf_token %}
+                <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+
+          <!-- END node (positioned dynamically by JS) -->
+          <div class="flow-node type-end" id="node-end" style="left:0px;top:210px;">
+            <div class="node-badge" style="color:#e63946"><i class="fas fa-flag-checkered me-1"></i>END</div>
+            <div class="node-title">Completed</div>
+            <div class="node-meta">Approved or Rejected</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Step List -->
+  <div class="col-12 col-lg-4 step-sidebar">
+    <div class="card mb-3">
+      <div class="card-header fw-600"><i class="fas fa-list-ol me-2"></i>Steps</div>
+      <div class="card-body p-2" id="step-list-sortable">
+        {% if not steps %}
+        <div class="text-center py-3 text-muted small">
+          <i class="fas fa-plus-circle fa-2x mb-2 opacity-40"></i><br>No steps yet. Add your first approval step.
+        </div>
+        {% endif %}
+        {% for step in steps %}
+        <div class="step-card" id="step-card-{{ step.id }}" data-step-id="{{ step.id }}" onclick="selectStep('{{ step.id }}')">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex gap-2 align-items-start">
+              <span class="drag-handle mt-1"><i class="fas fa-grip-vertical"></i></span>
+              <div>
+                <div class="fw-600 small">{{ forloop.counter }}. {{ step.name }}</div>
+                <div class="text-muted" style="font-size:.72rem">
+                  {{ step.get_step_type_display }}
+                  {% if step.approver_user %} · {{ step.approver_user.get_full_name }}{% endif %}
+                  {% if step.escalation_enabled %} · <span class="text-warning">⚡ {{ step.escalation_hours }}h</span>{% endif %}
+                </div>
+              </div>
+            </div>
+            <span class="badge bg-{{ step.step_type|lower|slugify }}-subtle text-dark small">{{ step.step_order }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Notification Channels -->
+    <div class="card">
+      <div class="card-header fw-600"><i class="fas fa-bell me-2"></i>Notification Channels</div>
+      <div class="card-body">
+        <div class="d-flex flex-column gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ workflow.notify_in_app|yesno:'success,secondary' }}">
+              <i class="fas fa-{{ workflow.notify_in_app|yesno:'check,times' }}"></i>
+            </span>
+            <span class="small">In-App Notifications</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ workflow.notify_email|yesno:'success,secondary' }}">
+              <i class="fas fa-{{ workflow.notify_email|yesno:'check,times' }}"></i>
+            </span>
+            <span class="small">Email Notifications</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ workflow.notify_whatsapp|yesno:'success,secondary' }}">
+              <i class="fas fa-{{ workflow.notify_whatsapp|yesno:'check,times' }}"></i>
+            </span>
+            <span class="small">WhatsApp Notifications</span>
+          </div>
+        </div>
+        <a href="{% url 'workflow:notification_templates' workflow_pk=workflow.pk %}" class="btn btn-sm btn-outline-primary w-100 mt-3">
+          <i class="fas fa-envelope-open-text me-1"></i>Configure Templates
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Step Modal -->
+<div class="modal fade" id="addStepModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add Approval Step</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'workflow:step_create' workflow_pk=workflow.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-600">Step Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="e.g., Manager Approval" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Step Type</label>
+              <select name="step_type" class="form-select" id="stepTypeSelect" onchange="toggleStepFields()">
+                {% for val, label in step_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+              </select>
+            </div>
+
+            <!-- Approval fields -->
+            <div id="approvalFields" class="col-12">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-600">Approver Type</label>
+                  <select name="approver_type" class="form-select" id="approverTypeSelect" onchange="toggleApproverFields()">
+                    {% for val, label in approver_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6" id="approverUserField">
+                  <label class="form-label fw-600">Specific User</label>
+                  <select name="approver_user" class="form-select">
+                    <option value="">-- Select User --</option>
+                    {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name }} ({{ u.email }})</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6 d-none" id="approverRoleField">
+                  <label class="form-label fw-600">Role Name</label>
+                  <input type="text" name="approver_role" class="form-control" placeholder="e.g., finance_manager">
+                </div>
+                <div class="col-md-6 d-none" id="approverFieldField">
+                  <label class="form-label fw-600">Document Field (Dynamic)</label>
+                  <input type="text" name="approver_field" class="form-control" placeholder="e.g., manager__user">
+                </div>
+              </div>
+            </div>
+
+            <!-- Amount conditions -->
+            <div class="col-md-6">
+              <label class="form-label">Min Amount (optional)</label>
+              <input type="number" name="min_amount" class="form-control" placeholder="0.00" step="0.01">
+              <div class="form-text">Only route to this step if document amount ≥ this value</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Max Amount (optional)</label>
+              <input type="number" name="max_amount" class="form-control" placeholder="Leave blank for unlimited" step="0.01">
+            </div>
+
+            <!-- Escalation -->
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="escalation_enabled" id="escalationToggle" onchange="toggleEscalation()">
+                <label class="form-check-label fw-600" for="escalationToggle">Enable Escalation</label>
+              </div>
+            </div>
+            <div class="col-12 d-none" id="escalationFields">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Escalate After (hours)</label>
+                  <input type="number" name="escalation_hours" class="form-control" value="24" min="1">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Escalation Action</label>
+                  <select name="escalation_action" class="form-select" id="escalationActionSelect" onchange="toggleEscalationTo()">
+                    {% for val, label in escalation_actions %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4 d-none" id="escalationToField">
+                  <label class="form-label">Reassign To</label>
+                  <select name="escalation_to" class="form-select">
+                    <option value="">-- Select User --</option>
+                    {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Step</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const stepsData = {{ steps_json|safe }};
+const SAVE_URL = "{% url 'workflow:designer_save' pk=workflow.pk %}";
+const FLOW_URL = "{% url 'workflow:visual_flow' pk=workflow.pk %}";
+const CSRF = "{{ csrf_token }}";
+
+// ── Node dragging ──────────────────────────────────────────────────────────────
+let selectedNodeId = null;
+let dragging = false, dragOffX = 0, dragOffY = 0, dragNode = null;
+
+document.querySelectorAll('.flow-node').forEach(node => {
+  node.addEventListener('mousedown', e => {
+    if (e.target.closest('.node-actions') || e.target.closest('form')) return;
+    dragging = true;
+    dragNode = node;
+    const rect = node.getBoundingClientRect();
+    const canvas = document.getElementById('designer-canvas').getBoundingClientRect();
+    dragOffX = e.clientX - rect.left;
+    dragOffY = e.clientY - rect.top;
+    node.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+});
+
+document.addEventListener('mousemove', e => {
+  if (!dragging || !dragNode) return;
+  const canvas = document.getElementById('designer-canvas');
+  const rect = canvas.getBoundingClientRect();
+  let x = e.clientX - rect.left - dragOffX + canvas.scrollLeft;
+  let y = e.clientY - rect.top  - dragOffY + canvas.scrollTop;
+  x = Math.max(0, x); y = Math.max(0, y);
+  dragNode.style.left = x + 'px';
+  dragNode.style.top  = y + 'px';
+  dragNode.dataset.x = x;
+  dragNode.dataset.y = y;
+  drawConnectors();
+});
+
+document.addEventListener('mouseup', () => {
+  if (dragNode) { dragNode.style.cursor = 'grab'; dragNode = null; }
+  dragging = false;
+});
+
+// ── SVG Connectors ─────────────────────────────────────────────────────────────
+function getNodeCenter(el) {
+  if (!el) return null;
+  const x = parseInt(el.style.left || el.dataset.x || 0) + el.offsetWidth / 2;
+  const y = parseInt(el.style.top  || el.dataset.y || 0) + el.offsetHeight / 2;
+  return {x, y};
+}
+
+function drawConnectors() {
+  const svg = document.getElementById('flow-svg');
+  const canvas = document.getElementById('designer-canvas');
+  svg.setAttribute('width',  canvas.scrollWidth);
+  svg.setAttribute('height', canvas.scrollHeight);
+  svg.innerHTML = `<defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4361ee" opacity=".7"/>
+    </marker>
+  </defs>`;
+
+  const nodeIds = ['start', ...stepsData.map(s => s.id), 'end'];
+
+  for (let i = 0; i < nodeIds.length - 1; i++) {
+    const fromEl = document.getElementById('node-' + nodeIds[i]);
+    const toEl   = document.getElementById('node-' + nodeIds[i + 1]);
+    if (!fromEl || !toEl) continue;
+
+    const from = { x: parseInt(fromEl.style.left||0) + fromEl.offsetWidth,
+                   y: parseInt(fromEl.style.top||0)  + fromEl.offsetHeight/2 };
+    const to   = { x: parseInt(toEl.style.left||0),
+                   y: parseInt(toEl.style.top||0)   + toEl.offsetHeight/2 };
+
+    const cpx = (from.x + to.x) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${from.x},${from.y} C${cpx},${from.y} ${cpx},${to.y} ${to.x},${to.y}`);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#4361ee');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('opacity', '0.6');
+    path.setAttribute('marker-end', 'url(#arrowhead)');
+    svg.appendChild(path);
+  }
+}
+
+// ── Auto-Layout ────────────────────────────────────────────────────────────────
+function resetLayout() {
+  const nodes = document.querySelectorAll('.flow-node');
+  let x = 40;
+  ['start', ...stepsData.map(s => s.id), 'end'].forEach((id, i) => {
+    const el = document.getElementById('node-' + id);
+    if (el) {
+      el.style.left = x + 'px';
+      el.style.top  = '180px';
+      el.dataset.x = x;
+      x += el.offsetWidth + 60;
+    }
+  });
+  drawConnectors();
+}
+
+// ── Save Layout ────────────────────────────────────────────────────────────────
+document.getElementById('btnSaveLayout').addEventListener('click', async () => {
+  const nodes = [];
+  document.querySelectorAll('.flow-node[data-step-id]').forEach(el => {
+    nodes.push({ id: el.dataset.stepId, x: parseInt(el.dataset.x||0), y: parseInt(el.dataset.y||0) });
+  });
+  try {
+    await fetch(SAVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ nodes }),
+    });
+    // Show toast
+    const t = document.createElement('div');
+    t.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success py-2 px-3 shadow';
+    t.textContent = '✓ Layout saved';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+  } catch(e) { alert('Save failed: ' + e); }
+});
+
+// ── Step selection ─────────────────────────────────────────────────────────────
+function selectStep(id) {
+  document.querySelectorAll('.flow-node, .step-card').forEach(el => el.classList.remove('selected', 'active'));
+  const node = document.getElementById('node-' + id);
+  const card = document.getElementById('step-card-' + id);
+  if (node) node.classList.add('selected');
+  if (card) { card.classList.add('active'); card.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+}
+
+// ── Modal toggles ──────────────────────────────────────────────────────────────
+function toggleStepFields() {
+  const type = document.getElementById('stepTypeSelect').value;
+  document.getElementById('approvalFields').style.display = (type === 'approval') ? '' : 'none';
+}
+function toggleApproverFields() {
+  const t = document.getElementById('approverTypeSelect').value;
+  document.getElementById('approverUserField').classList.toggle('d-none', t !== 'user');
+  document.getElementById('approverRoleField').classList.toggle('d-none', t !== 'role');
+  document.getElementById('approverFieldField').classList.toggle('d-none', t !== 'dynamic');
+}
+function toggleEscalation() {
+  const on = document.getElementById('escalationToggle').checked;
+  document.getElementById('escalationFields').classList.toggle('d-none', !on);
+}
+function toggleEscalationTo() {
+  const v = document.getElementById('escalationActionSelect').value;
+  document.getElementById('escalationToField').classList.toggle('d-none', v !== 'reassign');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Position end node after last step
+  const stepEls = stepsData.map(s => document.getElementById('node-' + s.id)).filter(Boolean);
+  const endNode = document.getElementById('node-end');
+  if (stepEls.length) {
+    const last = stepEls[stepEls.length - 1];
+    const x = parseInt(last.style.left||0) + last.offsetWidth + 60;
+    const y = parseInt(last.style.top||0);
+    endNode.style.left = x + 'px';
+    endNode.style.top  = y + 'px';
+  } else {
+    endNode.style.left = '300px';
+  }
+
+  // If nodes have no position yet, auto-layout
+  const hasPositions = stepsData.some(s => s.x > 0 || s.y > 0);
+  if (!hasPositions) { setTimeout(resetLayout, 100); }
+
+  setTimeout(drawConnectors, 150);
+});
+</script>
+{% endblock %}

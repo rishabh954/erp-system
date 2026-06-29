@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Purchase Recommendations{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-shopping-cart me-2 text-info"></i>AI Purchase Recommendations</h1>
+    <p class="text-muted mb-0">AI analyses stock and demand to suggest optimal purchase orders</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+    <button class="btn btn-sm btn-primary" id="generateBtn" onclick="generateRecommendations()">
+      <i class="fas fa-robot me-1"></i>Generate Recommendations
+    </button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loadingState" class="card text-center py-5 d-none">
+  <div class="card-body">
+    <div class="spinner-border text-info mb-3" style="width:3rem;height:3rem"></div>
+    <h5 class="fw-700">Analysing Inventory & Demand…</h5>
+    <p class="text-muted">Predicting future stockouts and calculating optimal reorder quantities.</p>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="resultsSection" class="d-none">
+  <div class="alert alert-info border-0 mb-4" style="background:#e0f2fe; color:#0369a1">
+    <i class="fas fa-magic me-2"></i><strong>AI Insight:</strong> Based on the next 14 days forecast, these are the recommended items to restock immediately.
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-600"><i class="fas fa-list me-2"></i>Recommended Purchase Orders</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th>
+              <th>Reason</th>
+              <th>Urgency</th>
+              <th>Suggested Qty</th>
+              <th>Lead Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="recTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Empty State -->
+<div id="emptyState" class="card text-center py-5">
+  <div class="card-body">
+    <div style="font-size:3.5rem;margin-bottom:12px">🛒</div>
+    <h5 class="fw-700">Get Smart Restock Suggestions</h5>
+    <p class="text-muted">Avoid stockouts. Let AI tell you what to buy and when.</p>
+    <button class="btn btn-primary mt-2" onclick="generateRecommendations()">
+      <i class="fas fa-robot me-1"></i>Generate Recommendations
+    </button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function generateRecommendations() {
+  document.getElementById('loadingState').classList.remove('d-none');
+  document.getElementById('resultsSection').classList.add('d-none');
+  document.getElementById('emptyState').classList.add('d-none');
+  document.getElementById('generateBtn').disabled = true;
+
+  try {
+    const resp = await fetch('/ai/purchase-recommendations/generate/');
+    const data = await resp.json();
+
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('generateBtn').disabled = false;
+
+    if (data.error) { alert('Error: ' + data.error); return; }
+
+    const tbody = document.getElementById('recTableBody');
+    if (data.recommendations && data.recommendations.length > 0) {
+      tbody.innerHTML = data.recommendations.map(r => {
+        let uBadge = 'secondary';
+        if (r.urgency === 'critical') uBadge = 'danger';
+        else if (r.urgency === 'high') uBadge = 'warning text-dark';
+        
+        return `<tr>
+          <td class="fw-600">${r.product_name || 'Unknown'}</td>
+          <td class="small text-muted">${r.reason || 'Low stock'}</td>
+          <td><span class="badge bg-${uBadge}">${(r.urgency||'medium').toUpperCase()}</span></td>
+          <td class="fw-600">${r.recommended_quantity}</td>
+          <td class="small">${r.suggested_lead_time_days ? r.suggested_lead_time_days+' days' : '—'}</td>
+          <td>
+            <a href="/purchase/orders/create/?product_id=${r.product_id||''}&qty=${r.recommended_quantity}" class="btn btn-xs btn-outline-primary">
+              Create PO
+            </a>
+          </td>
+        </tr>`;
+      }).join('');
+    } else {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No purchase recommendations at this time. Inventory looks healthy!</td></tr>`;
+    }
+
+    document.getElementById('resultsSection').classList.remove('d-none');
+  } catch(e) {
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('emptyState').classList.remove('d-none');
+    alert('Error: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

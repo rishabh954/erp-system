@@ -1,0 +1,39 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Contracts{% endblock %}
+{% block page_title %}Contracts{% endblock %}
+{% block nav_contracts_c %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Contract Name</th>
+                    <th>Status</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contract in contracts %}
+                <tr>
+                    <td class="font-weight-600">{{ contract.title }}</td>
+                    <td>
+                        <span class="badge {% if contract.status == 'active' %}badge-green{% elif contract.status == 'draft' %}badge-gray{% else %}badge-yellow{% endif %}">
+                            {{ contract.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ contract.start_date|date:"M d, Y" }}</td>
+                    <td>{{ contract.end_date|date:"M d, Y" }}</td>
+                    <td class="font-weight-600">{{ contract.currency.symbol|default:"$" }}{{ contract.value }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-4 text-muted">No contracts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

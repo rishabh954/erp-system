@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Natural Language Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+.nlp-search-wrap {
+  background: linear-gradient(135deg,#4361ee08,#7209b708);
+  border: 2px solid var(--brand-primary); border-radius: 16px; padding: 24px 28px;
+}
+.nlp-input { font-size: 1rem; border: none; background: transparent; outline: none; width: 100%; }
+.example-chip {
+  display: inline-block; background: var(--hover-bg); border: 1px solid var(--border-color);
+  border-radius: 20px; padding: 4px 14px; font-size: .78rem; cursor: pointer;
+  transition: all .15s; color: var(--text-muted);
+}
+.example-chip:hover { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+.result-card { animation: fadeInUp .3s ease; }
+@keyframes fadeInUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+.narrative-box {
+  background: linear-gradient(135deg,#4361ee08,#7209b708);
+  border-left: 3px solid var(--brand-primary); border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-search me-2 text-primary"></i>Natural Language Reports</h1>
+    <p class="text-muted mb-0">Ask questions in plain English — get instant data results</p>
+  </div>
+  <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
+</div>
+
+<!-- Search Box -->
+<div class="nlp-search-wrap mb-4">
+  <div class="d-flex align-items-center gap-3">
+    <div style="font-size:1.5rem">🔍</div>
+    <input type="text" id="nlpInput" class="nlp-input" placeholder="e.g. Show me top 10 customers by revenue this month…" autocomplete="off">
+    <button class="btn btn-primary px-4" id="nlpSearchBtn">
+      <i class="fas fa-magic me-1"></i>Generate
+    </button>
+  </div>
+  <div id="nlpLoading" class="text-center py-3 d-none">
+    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+    <span class="text-muted small">AI is analysing your question and querying data…</span>
+  </div>
+</div>
+
+<!-- Example Questions -->
+<div class="mb-4">
+  <div class="text-muted small fw-600 mb-2">Try these examples:</div>
+  <div class="d-flex flex-wrap gap-2">
+    {% for q in example_questions %}
+    <span class="example-chip" onclick="setQuestion('{{ q }}')">{{ q }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Result -->
+<div id="nlpResult" class="d-none">
+  <div class="card result-card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-600"><i class="fas fa-robot me-2 text-primary"></i>AI Answer</span>
+      <span id="resultMeta" class="text-muted small"></span>
+    </div>
+    <div class="card-body">
+      <div class="narrative-box mb-3" id="nlpNarrative"></div>
+      <div class="d-flex gap-3 small text-muted" id="resultStats"></div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card result-card mb-3" id="dataTableCard">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-600"><i class="fas fa-table me-2"></i>Results</span>
+      <div class="d-flex gap-2">
+        <button class="btn btn-xs btn-outline-success" onclick="exportCSV()"><i class="fas fa-file-csv me-1"></i>CSV</button>
+        <button class="btn btn-xs btn-outline-primary" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="nlpDataTable">
+          <thead class="table-light" id="nlpTableHead"></thead>
+          <tbody id="nlpTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart (if applicable) -->
+  <div class="card result-card d-none" id="chartCard">
+    <div class="card-header fw-600"><i class="fas fa-chart-bar me-2"></i>Chart</div>
+    <div class="card-body">
+      <div style="height:280px"><canvas id="nlpChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Queries -->
+{% if recent_queries %}
+<div class="card mt-4">
+  <div class="card-header fw-600"><i class="fas fa-history me-2"></i>Recent Queries</div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light"><tr><th>Question</th><th>Results</th><th>Time</th><th>When</th></tr></thead>
+      <tbody>
+        {% for q in recent_queries %}
+        <tr style="cursor:pointer" onclick="setQuestion('{{ q.question|escapejs }}')">
+          <td class="small fw-600">{{ q.question|truncatechars:70 }}</td>
+          <td class="small text-muted">{{ q.result_count }} rows</td>
+          <td class="small text-muted">{{ q.execution_ms }}ms</td>
+          <td class="small text-muted">{{ q.created_at|timesince }} ago</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const CSRF = "{{ csrf_token }}";
+let nlpChart = null;
+
+function setQuestion(q) {
+  document.getElementById('nlpInput').value = q;
+  document.getElementById('nlpInput').focus();
+}
+
+async function runQuery() {
+  const q = document.getElementById('nlpInput').value.trim();
+  if (!q) return;
+
+  document.getElementById('nlpLoading').classList.remove('d-none');
+  document.getElementById('nlpResult').classList.add('d-none');
+
+  const form = new FormData();
+  form.append('question', q);
+  form.append('csrfmiddlewaretoken', CSRF);
+
+  try {
+    const resp = await fetch('/ai/reports/query/', { method:'POST', body:form });
+    const data = await resp.json();
+
+    document.getElementById('nlpLoading').classList.add('d-none');
+
+    if (data.error) { alert('Error: ' + data.error); return; }
+
+    // Narrative
+    document.getElementById('nlpNarrative').innerHTML =
+      data.narrative?.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>') || '';
+
+    // Stats
+    document.getElementById('resultMeta').textContent =
+      `${data.count} results · ${data.execution_ms}ms · ${data.tokens_used||0} tokens`;
+
+    document.getElementById('resultStats').innerHTML = `
+      <span><i class="fas fa-database me-1"></i>${data.count} records</span>
+      <span><i class="fas fa-clock me-1"></i>${data.execution_ms}ms</span>
+      <span><i class="fas fa-coins me-1"></i>${data.tokens_used||0} tokens</span>`;
+
+    // Table
+    buildTable(data.results || []);
+
+    // Chart
+    if (data.chart_config && data.chart_config.type !== 'none' && (data.results||[]).length > 0) {
+      buildChart(data.chart_config, data.results);
+    }
+
+    document.getElementById('nlpResult').classList.remove('d-none');
+  } catch(e) {
+    document.getElementById('nlpLoading').classList.add('d-none');
+    alert('Error: ' + e.message);
+  }
+}
+
+function buildTable(rows) {
+  if (!rows.length) return;
+  const cols = Object.keys(rows[0]);
+  document.getElementById('nlpTableHead').innerHTML =
+    '<tr>' + cols.map(c => `<th>${c.replace(/__/g,' ').replace(/_/g,' ')}</th>`).join('') + '</tr>';
+  document.getElementById('nlpTableBody').innerHTML =
+    rows.map(r => '<tr>' + cols.map(c => `<td class="small">${r[c] || '—'}</td>`).join('') + '</tr>').join('');
+}
+
+function buildChart(config, results) {
+  const card = document.getElementById('chartCard');
+  card.classList.remove('d-none');
+  if (nlpChart) nlpChart.destroy();
+
+  const labels = results.map(r => Object.values(r)[0]);
+  const values = results.map(r => parseFloat(Object.values(r)[1]) || 0);
+
+  nlpChart = new Chart(document.getElementById('nlpChart').getContext('2d'), {
+    type: config.type || 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Value',
+        data: values,
+        backgroundColor: 'rgba(67,97,238,.6)',
+        borderColor: '#4361ee',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+function exportCSV() {
+  const table = document.getElementById('nlpDataTable');
+  const rows = [...table.querySelectorAll('tr')].map(row =>
+    [...row.querySelectorAll('th,td')].map(c => `"${c.textContent.trim()}"`).join(',')
+  );
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:'nlp_report.csv'});
+  a.click();
+}
+
+document.getElementById('nlpSearchBtn').addEventListener('click', runQuery);
+document.getElementById('nlpInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runQuery();
+});
+</script>
+{% endblock %}

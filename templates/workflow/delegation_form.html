@@ -1,60 +1,81 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
 
 {% block title %}New Delegation{% endblock %}
 {% block nav_workflow %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Delegate Approvals</h1>
-    <a href="{% url 'workflow:delegations' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+      <li class="breadcrumb-item"><a href="{% url 'workflow:dashboard' %}">Workflow</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'workflow:delegations' %}">Delegations</a></li>
+      <li class="breadcrumb-item active">New</li>
+    </ol>
+  </nav>
+  <h1 class="h4"><i class="fas fa-exchange-alt me-2 text-info"></i>Create Approval Delegation</h1>
+  <p class="text-muted">Temporarily delegate your approval authority to a colleague.</p>
 </div>
 
-<div class="card shadow mb-4 col-md-8 mx-auto">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Delegation Details</h6>
-    </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <label class="form-label">Delegate To</label>
-                <select name="delegatee" class="form-select" required>
-                    <option value="">Select a user...</option>
-                    {% for u in users %}
-                    <option value="{{ u.pk }}" {% if form.delegatee.value|stringformat:"s" == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name }} ({{ u.email }})</option>
-                    {% endfor %}
-                </select>
-                {% if form.delegatee.errors %}
-                <div class="text-danger small">{{ form.delegatee.errors }}</div>
-                {% endif %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-6">
+    <form method="post" action="{% url 'workflow:delegation_create' %}">
+      {% csrf_token %}
+      <div class="card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-600">Delegate To <span class="text-danger">*</span></label>
+              <select name="delegatee" class="form-select" required>
+                <option value="">Select a colleague...</option>
+                {% for u in users %}
+                <option value="{{ u.pk }}">{{ u.get_full_name }} — {{ u.email }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">This person will act on your behalf for approvals.</div>
             </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" name="start_date" class="form-control" required value="{{ form.start_date.value|default:'' }}">
-                    {% if form.start_date.errors %}
-                    <div class="text-danger small">{{ form.start_date.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">End Date</label>
-                    <input type="date" name="end_date" class="form-control" required value="{{ form.end_date.value|default:'' }}">
-                    {% if form.end_date.errors %}
-                    <div class="text-danger small">{{ form.end_date.errors }}</div>
-                    {% endif %}
-                </div>
+
+            <div class="col-12">
+              <label class="form-label fw-600">Scope (optional)</label>
+              <select name="workflow" class="form-select">
+                <option value="">All Workflows (global delegation)</option>
+                {% for wf in workflows %}
+                <option value="{{ wf.pk }}">{{ wf.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Leave blank to delegate ALL approval authority.</div>
             </div>
-            
-            <div class="mb-4">
-                <label class="form-label">Notes (Optional)</label>
-                <textarea name="notes" class="form-control" rows="3">{{ form.notes.value|default:'' }}</textarea>
-                <div class="form-text">Provide a reason for the delegation (e.g. "On Vacation").</div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-600">Start Date <span class="text-danger">*</span></label>
+              <input type="date" name="start_date" class="form-control" required>
             </div>
-            
-            <button type="submit" class="btn btn-primary">Save Delegation</button>
-        </form>
-    </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">End Date <span class="text-danger">*</span></label>
+              <input type="date" name="end_date" class="form-control" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-600">Notes</label>
+              <textarea name="notes" class="form-control" rows="3" placeholder="e.g., On annual leave — please handle any leave request approvals."></textarea>
+            </div>
+
+            <div class="col-12">
+              <div class="alert alert-warning py-2 small">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                The delegatee will receive full approval authority during the delegation period. They will be notified via email and in-app notification.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-end gap-2">
+          <a href="{% url 'workflow:delegations' %}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-check me-1"></i>Create Delegation
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

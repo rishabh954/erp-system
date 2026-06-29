@@ -707,3 +707,55 @@ class SystemSetting(UUIDModel):
             return obj.value
         except cls.DoesNotExist:
             return default
+
+class RolePermission(CompanyScoped):
+    role = models.CharField(max_length=30)
+    module = models.CharField(max_length=50)
+    can_view = models.BooleanField(default=False)
+    can_create = models.BooleanField(default=False)
+    can_edit = models.BooleanField(default=False)
+    can_delete = models.BooleanField(default=False)
+    can_approve = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'admin_role_permission'
+        unique_together = ('company', 'role', 'module')
+
+class BackupSchedule(CompanyScoped):
+    frequency = models.CharField(max_length=20, choices=[('daily', 'Daily'), ('weekly', 'Weekly'), ('monthly', 'Monthly')])
+    time_of_day = models.TimeField()
+    retention_days = models.PositiveSmallIntegerField(default=30)
+    is_active = models.BooleanField(default=True)
+    destination = models.CharField(max_length=50, choices=[('local', 'Local'), ('s3', 'AWS S3'), ('gcs', 'Google Cloud Storage')], default='local')
+
+    class Meta:
+        db_table = 'admin_backup_schedule'
+
+class InstalledApp(CompanyScoped):
+    """Tracks which modular apps are enabled for the company."""
+    
+    class AppChoices(models.TextChoices):
+        ACCOUNTING = 'accounting', _('Accounting')
+        CRM = 'crm', _('CRM')
+        SALES = 'sales', _('Sales')
+        PURCHASE = 'purchase', _('Purchase')
+        INVENTORY = 'inventory', _('Inventory')
+        MANUFACTURING = 'manufacturing', _('Manufacturing')
+        HRMS = 'hrms', _('HR & Payroll')
+        PROJECTS = 'projects', _('Projects')
+        HELPDESK = 'helpdesk', _('Helpdesk')
+        ASSETS = 'assets', _('Assets')
+        POS = 'pos', _('Point of Sale')
+        DOCUMENTS = 'documents', _('Documents')
+        PORTALS = 'portals', _('Customer & Vendor Portals')
+        ANALYTICS = 'analytics', _('Reporting & Analytics')
+        WORKFLOW = 'workflow', _('Workflows')
+        
+    app_label = models.CharField(max_length=50, choices=AppChoices.choices)
+    is_active = models.BooleanField(default=True)
+    installed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'admin_installed_apps'
+        unique_together = ('company', 'app_label')
+

@@ -1,0 +1,102 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Vendor Dashboard{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon indigo"><i class="fas fa-file-contract"></i></div>
+        <div>
+            <div class="stat-value">{{ total_orders }}</div>
+            <div class="stat-label">Total Purchase Orders</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon yellow"><i class="fas fa-clock"></i></div>
+        <div>
+            <div class="stat-value">{{ pending_orders }}</div>
+            <div class="stat-label">Pending Orders</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-file-invoice"></i></div>
+        <div>
+            <div class="stat-value">{{ unpaid_bills }}</div>
+            <div class="stat-label">Unpaid Bills</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="card-title">Recent Purchase Orders</div>
+        <a href="{% url 'portals:vendor_orders' %}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr onclick="window.location.href='{% url 'portals:vendor_order_detail' order.pk %}'" style="cursor:pointer">
+                    <td class="font-weight-600">{{ order.number }}</td>
+                    <td>{{ order.date|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="badge {% if order.status == 'approved' %}badge-green{% elif order.status == 'draft' %}badge-yellow{% elif order.status == 'cancelled' %}badge-red{% else %}badge-gray{% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ order.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-4">No recent purchase orders found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Recent Bills</div>
+        <a href="{% url 'portals:vendor_bills' %}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Date</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in bills %}
+                <tr>
+                    <td class="font-weight-600">{{ bill.number }}</td>
+                    <td>{{ bill.date|date:"M d, Y" }}</td>
+                    <td>{{ bill.due_date|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="badge {% if bill.status == 'paid' %}badge-green{% elif bill.status == 'draft' %}badge-gray{% else %}badge-yellow{% endif %}">
+                            {{ bill.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="font-weight-600">{{ bill.currency.symbol|default:"$" }}{{ bill.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-4">No recent bills found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

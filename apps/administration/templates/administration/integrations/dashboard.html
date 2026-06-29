@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Integrations Hub{% endblock %}
+{% block page_title %}Integrations Hub{% endblock %}
+
+{% block content %}
+<style>
+    .integration-card {
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .integration-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .integration-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="mb-4 d-flex gap-2">
+    <a href="{% url 'administration:webhooks' %}" class="btn btn-outline-secondary"><i class="fas fa-satellite-dish"></i> Webhooks</a>
+    <a href="{% url 'administration:data_import' %}" class="btn btn-outline-secondary"><i class="fas fa-file-import"></i> Data Import (Tally/Excel)</a>
+</div>
+
+<h4 class="mb-3">Communications</h4>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-success bg-success-subtle me-3">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">WhatsApp</h6>
+                        <small class="text-muted">Business API</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Send notifications and invoices via WhatsApp.</p>
+                <a href="{% url 'administration:integration_setup' 'whatsapp' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-primary bg-primary-subtle me-3">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Email SMTP</h6>
+                        <small class="text-muted">System Emails</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Configure global email delivery settings.</p>
+                <a href="{% url 'administration:integration_setup' 'email' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-info bg-info-subtle me-3">
+                        <i class="fas fa-sms"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">SMS Gateway</h6>
+                        <small class="text-muted">Twilio / MSG91</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Send SMS alerts to customers and staff.</p>
+                <a href="{% url 'administration:integration_setup' 'sms' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Payments & Logistics</h4>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-primary bg-primary-subtle me-3">
+                        <i class="fab fa-stripe-s"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Stripe</h6>
+                        <small class="text-muted">Payment Gateway</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Accept credit cards and digital wallets.</p>
+                <a href="{% url 'administration:integration_setup' 'stripe' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-primary bg-primary-subtle me-3">
+                        <i class="fab fa-paypal"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">PayPal</h6>
+                        <small class="text-muted">Payment Gateway</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Accept international payments.</p>
+                <a href="{% url 'administration:integration_setup' 'paypal' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-danger bg-danger-subtle me-3">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Shiprocket</h6>
+                        <small class="text-muted">Logistics</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Automate shipping and track orders.</p>
+                <a href="{% url 'administration:integration_setup' 'shiprocket' %}" class="btn btn-sm btn-outline-primary w-100">Configure</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Cloud Storage & Calendars</h4>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-warning bg-warning-subtle me-3">
+                        <i class="fab fa-google-drive"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Google Drive</h6>
+                        <small class="text-muted">Cloud Storage</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Sync documents and attachments.</p>
+                <a href="{% url 'administration:oauth_connect' 'google_drive' %}" class="btn btn-sm btn-outline-primary w-100">Connect Google</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-primary bg-primary-subtle me-3">
+                        <i class="fab fa-dropbox"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Dropbox</h6>
+                        <small class="text-muted">Cloud Storage</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Backup files directly to Dropbox.</p>
+                <a href="{% url 'administration:oauth_connect' 'dropbox' %}" class="btn btn-sm btn-outline-primary w-100">Connect Dropbox</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card integration-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="integration-icon text-info bg-info-subtle me-3">
+                        <i class="fab fa-microsoft"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Microsoft 365</h6>
+                        <small class="text-muted">OneDrive / Outlook</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-3">Sync your calendar events and files.</p>
+                <a href="{% url 'administration:oauth_connect' 'microsoft' %}" class="btn btn-sm btn-outline-primary w-100">Connect Microsoft</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

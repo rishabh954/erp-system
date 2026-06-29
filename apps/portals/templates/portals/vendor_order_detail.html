@@ -1,0 +1,71 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Order {{ order.number }}{% endblock %}
+{% block page_title %}Purchase Order {{ order.number }}{% endblock %}
+{% block nav_orders %}active{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'portals:vendor_orders' %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div style="display:flex; justify-content: space-between; margin-bottom: 24px;">
+            <div>
+                <h4 style="margin-bottom: 8px;">Purchase Order</h4>
+                <div class="text-muted small">Date: {{ order.date|date:"M d, Y" }}</div>
+                <div class="text-muted small">Status: {{ order.get_status_display }}</div>
+            </div>
+            <div style="text-align: right;">
+                <h4 style="margin-bottom: 8px;">{{ order.company.name }}</h4>
+                <div class="text-muted small">{{ order.company.address|linebreaksbr }}</div>
+            </div>
+        </div>
+
+        <h5 class="mb-3" style="font-size: 0.9rem; font-weight: 600;">Order Items</h5>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Description</th>
+                        <th style="text-align:right">Qty</th>
+                        <th style="text-align:right">Price</th>
+                        <th style="text-align:right">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.lines.all %}
+                    <tr>
+                        <td class="font-weight-600">{{ item.product.name }}</td>
+                        <td class="text-muted small">{{ item.description }}</td>
+                        <td style="text-align:right">{{ item.quantity }}</td>
+                        <td style="text-align:right">{{ order.currency.symbol|default:"$" }}{{ item.unit_price }}</td>
+                        <td style="text-align:right" class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ item.subtotal }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4">No items found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 24px; text-align: right;">
+            <div style="display:inline-block; width: 250px;">
+                <div style="display:flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                    <span class="text-muted">Subtotal:</span>
+                    <span class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ order.subtotal }}</span>
+                </div>
+                <div style="display:flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                    <span class="text-muted">Tax:</span>
+                    <span class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ order.tax_amount }}</span>
+                </div>
+                <div style="display:flex; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); font-size: 1.1rem;">
+                    <span class="font-weight-600">Total:</span>
+                    <span class="font-weight-700">{{ order.currency.symbol|default:"$" }}{{ order.total }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

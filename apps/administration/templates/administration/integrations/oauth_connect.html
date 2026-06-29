@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Connect {{ provider|title }}{% endblock %}
+{% block page_title %}Connect {{ provider|title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center mt-5">
+        <div class="mb-4" style="font-size: 4rem;">
+            {% if provider == 'google_drive' or provider == 'google_calendar' %}
+                <i class="fab fa-google text-danger"></i>
+            {% elif provider == 'microsoft' %}
+                <i class="fab fa-microsoft text-info"></i>
+            {% elif provider == 'dropbox' %}
+                <i class="fab fa-dropbox text-primary"></i>
+            {% else %}
+                <i class="fas fa-cloud"></i>
+            {% endif %}
+        </div>
+        
+        <h3>Connect your {{ provider|title }} account</h3>
+        <p class="text-muted mb-4">By connecting your account, you authorize the ERP system to access your files and calendars based on the requested permissions.</p>
+        
+        <form method="POST">
+            {% csrf_token %}
+            <!-- This simulates the OAuth callback success -->
+            <button type="submit" class="btn btn-primary btn-lg px-5">
+                Authorize {{ provider|title }}
+            </button>
+        </form>
+        
+        <div class="mt-4">
+            <a href="{% url 'administration:integrations_dashboard' %}" class="text-decoration-none text-muted">Cancel and return to dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Shipment {{ shipment.number }}{% endblock %}
+{% block page_title %}Shipment {{ shipment.number }}{% endblock %}
+{% block nav_shipments_c %}active{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'portals:customer_shipments' %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back to Shipments</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div style="display:flex; justify-content: space-between; margin-bottom: 24px;">
+            <div>
+                <h4 style="margin-bottom: 8px;">Shipment Details</h4>
+                <div class="text-muted small">Date: {{ shipment.date|date:"M d, Y" }}</div>
+                <div class="text-muted small">Status: {{ shipment.get_status_display }}</div>
+            </div>
+            <div style="text-align: right;">
+                <h4 style="margin-bottom: 8px;">Tracking Info</h4>
+                <div class="text-muted small">Carrier: {{ shipment.carrier|default:"N/A" }}</div>
+                <div class="text-muted small">Tracking #: {{ shipment.tracking_number|default:"N/A" }}</div>
+            </div>
+        </div>
+
+        <h5 class="mb-3" style="font-size: 0.9rem; font-weight: 600;">Shipped Items</h5>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Description</th>
+                        <th style="text-align:right">Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in shipment.lines.all %}
+                    <tr>
+                        <td class="font-weight-600">{{ item.product.name }}</td>
+                        <td class="text-muted small">{{ item.description|default:"-" }}</td>
+                        <td style="text-align:right">{{ item.quantity }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center py-4">No items found in this shipment.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -11,8 +11,10 @@ urlpatterns = [
     # Report Builder
     path('builder/', views.ReportBuilderView.as_view(), name='builder'),
 
-    # Saved Reports
+    # Saved Reports & Executions
     path('reports/', views.SavedReportsListView.as_view(), name='saved_reports'),
+    path('reports/bulk-delete/', views.ReportBulkDeleteView.as_view(), name='bulk_delete'),
+    path('executions/', views.ExecutionLogListView.as_view(), name='execution_log'),
     path('reports/<uuid:pk>/', views.ReportDetailView.as_view(), name='report_detail'),
     path('reports/<uuid:pk>/delete/', views.ReportDeleteView.as_view(), name='report_delete'),
 

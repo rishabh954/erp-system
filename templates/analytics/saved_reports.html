@@ -133,7 +133,7 @@
     <a href="{% url 'analytics:dashboard' %}" class="btn btn-light btn-sm fw-semibold">
       <i class="fa-solid fa-grid-2 me-1"></i>Dashboard
     </a>
-    <a href="{% url 'analytics:report_builder' %}" class="btn btn-warning btn-sm fw-bold px-4">
+    <a href="{% url 'analytics:builder' %}" class="btn btn-warning btn-sm fw-bold px-4">
       <i class="fa-solid fa-plus me-1"></i>New Report
     </a>
   </div>
@@ -344,7 +344,7 @@
                  class="btn btn-primary" title="View &amp; Run">
                 <i class="fa-solid fa-play"></i>
               </a>
-              <a href="{% url 'analytics:report_builder' %}?copy={{ report.pk }}"
+              <a href="{% url 'analytics:builder' %}?copy={{ report.pk }}"
                  class="btn btn-outline-secondary" title="Edit / Clone">
                 <i class="fa-solid fa-pen"></i>
               </a>
@@ -419,7 +419,7 @@
       Reports you create and save will appear here. Use the Report Builder to build
       your first custom report in minutes.
     </p>
-    <a href="{% url 'analytics:report_builder' %}" class="btn btn-primary fw-semibold px-4">
+    <a href="{% url 'analytics:builder' %}" class="btn btn-primary fw-semibold px-4">
       <i class="fa-solid fa-plus me-2"></i>Create First Report
     </a>
   </div>

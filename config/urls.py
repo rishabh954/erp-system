@@ -7,6 +7,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
+from django.views.generic import TemplateView
 
 urlpatterns = [
     # Admin
@@ -37,6 +38,12 @@ urlpatterns = [
 urlpatterns += [
     path('auth/', include('apps.authentication.urls', namespace='auth')),
     path('dashboard/', include('apps.dashboard.urls', namespace='dashboard')),
+
+    # PWA
+    path('manifest.json', TemplateView.as_view(template_name='manifest.json', content_type='application/json')),
+    path('service-worker.js', TemplateView.as_view(template_name='service-worker.js', content_type='application/javascript')),
+    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
+
     path('manufacturing/', include('apps.manufacturing.urls', namespace='manufacturing')),
     path('api/', include('apps.api.urls', namespace='api')),
     path('portals/', include('apps.portals.urls', namespace='portals')),
@@ -56,6 +63,7 @@ urlpatterns += [
     path('notifications/', include('apps.notifications.urls', namespace='notifications')),
     path('analytics/', include('apps.analytics.urls', namespace='analytics')),
     path('pos/', include('apps.pos.urls', namespace='pos')),
+    path('ai/', include('apps.ai.urls', namespace='ai')),
 ]
 
 # Redirect root to dashboard

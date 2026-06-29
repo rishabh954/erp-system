@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Execution Logs{% endblock %}
+{% block page_title %}Recent Executions{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Report</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Rows</th>
+                        <th>Format</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exec in executions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'analytics:report_detail' exec.report.pk %}" class="fw-semibold text-decoration-none">
+                                {{ exec.report.name }}
+                            </a>
+                        </td>
+                        <td>{{ exec.started_at|date:"M d, Y H:i:s" }}</td>
+                        <td>
+                            {% if exec.completed_at %}
+                                {{ exec.completed_at|timeuntil:exec.started_at }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if exec.status == 'completed' %}
+                                <span class="badge bg-success-subtle text-success">Completed</span>
+                            {% elif exec.status == 'failed' %}
+                                <span class="badge bg-danger-subtle text-danger">Failed</span>
+                            {% elif exec.status == 'running' %}
+                                <span class="badge bg-warning-subtle text-warning">Running</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ exec.rows_processed }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ exec.export_format|upper }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No report executions found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if is_paginated %}
+        <div class="card-footer bg-transparent border-top">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-end">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    
+                    <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

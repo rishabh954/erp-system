@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Enterprise Security{% endblock %}
+{% block page_title %}Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Two-Factor Authentication</h5>
+                {% if request.user.two_factor_enabled %}
+                    <span class="badge bg-success">Enabled</span>
+                {% else %}
+                    <span class="badge bg-secondary">Disabled</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p>Protect your account with an extra layer of security. Once configured, you'll be required to enter both your password and an authentication code from your mobile phone in order to sign in.</p>
+                {% if not request.user.two_factor_enabled %}
+                    <a href="{% url 'auth:2fa_setup' %}" class="btn btn-primary">Setup 2FA</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">IP Restrictions</h5>
+            </div>
+            <div class="card-body">
+                <p>Restrict logins to specific IP addresses. If configured, you will only be able to login from the listed IPs.</p>
+                <form method="POST" action="{% url 'auth:ip_add' %}" class="mb-3 d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="ip_address" class="form-control" placeholder="192.168.1.1" required>
+                    <input type="text" name="description" class="form-control" placeholder="Description (e.g. Office)">
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </form>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ip in ip_restrictions %}
+                            <tr>
+                                <td>{{ ip.ip_address }}</td>
+                                <td>{{ ip.description }}</td>
+                                <td><span class="badge bg-success">Allowed</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted">No specific IPs restricted. Any IP is allowed.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Active Sessions</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Last Active</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in active_sessions %}
+                            <tr>
+                                <td>{{ session.ip_address }}</td>
+                                <td>{{ session.last_activity|timesince }} ago</td>
+                                <td>
+                                    <form method="POST" action="{% url 'auth:session_revoke' session.pk %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Revoke</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3 text-muted">No other active sessions.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Logins</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for login in recent_logins %}
+                            <tr>
+                                <td>{{ login.timestamp|date:"M d, Y H:i" }}</td>
+                                <td>{{ login.ip_address }}</td>
+                                <td>
+                                    {% if login.status == 'success' %}
+                                        <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3 text-muted">No recent logins found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

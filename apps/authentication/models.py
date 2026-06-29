@@ -89,6 +89,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=[('totp', 'Authenticator App')],
         default='totp',
     )
+    totp_secret = models.CharField(max_length=32, blank=True)
 
     # Activity
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
@@ -151,22 +152,66 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class UserCompany(models.Model):
-    """Through model: User ↔ Company with branch and department assignment."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     company = models.ForeignKey('company.Company', on_delete=models.CASCADE)
-    branch = models.ForeignKey('company.Branch', null=True, blank=True, on_delete=models.SET_NULL)
-    department = models.ForeignKey('company.Department', null=True, blank=True, on_delete=models.SET_NULL)
-    role_override = models.CharField(max_length=30, choices=User.Role.choices, blank=True)
+    role = models.CharField(max_length=30, choices=User.Role.choices, default=User.Role.EMPLOYEE)
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'auth_user_company'
         unique_together = ('user', 'company')
-        db_table = 'auth_user_companies'
 
     def __str__(self):
-        return f"{self.user} @ {self.company}"
+        return f"{self.user.email} - {self.company.name}"
+
+
+class LoginHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_history')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=[('success', 'Success'), ('failed', 'Failed')])
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'auth_login_history'
+        ordering = ['-timestamp']
+
+class UserSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='active_sessions')
+    session_key = models.CharField(max_length=40, unique=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        db_table = 'auth_user_session'
+
+class IPRestriction(models.Model):
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    ip_address = models.GenericIPAddressField()
+    is_allowed = models.BooleanField(default=True)
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'auth_ip_restriction'
+
+class PasswordPolicy(models.Model):
+    company = models.OneToOneField('company.Company', on_delete=models.CASCADE, related_name='password_policy')
+    min_length = models.PositiveSmallIntegerField(default=8)
+    require_uppercase = models.BooleanField(default=True)
+    require_numbers = models.BooleanField(default=True)
+    require_special = models.BooleanField(default=True)
+    expiry_days = models.PositiveSmallIntegerField(default=90, help_text="0 means no expiry")
+    max_failed_logins = models.PositiveSmallIntegerField(default=5)
+    lockout_time_minutes = models.PositiveSmallIntegerField(default=30)
+    
+    class Meta:
+        db_table = 'auth_password_policy'
 
 
 class Role(models.Model):

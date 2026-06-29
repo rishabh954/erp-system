@@ -1,11 +1,14 @@
 from django.urls import path
 from . import views
+from . import security_views
+from . import integration_views
 
 app_name = 'administration'
 
 urlpatterns = [
     # Dashboard
     path('', views.AdminDashboardView.as_view(), name='dashboard'),
+    path('app-store/', views.AppStoreView.as_view(), name='app_store'),
 
     # Organization
     path('designations/', views.DesignationListView.as_view(), name='designations'),
@@ -30,8 +33,17 @@ urlpatterns = [
     path('document-templates/', views.DocumentTemplateListView.as_view(), name='document_templates'),
 
     # Data
-    path('import-export/', views.DataImportView.as_view(), name='import_export'),
+    path('integrations/', integration_views.IntegrationsDashboardView.as_view(), name='integrations_dashboard'),
+    path('integrations/setup/<str:provider>/', integration_views.GenericIntegrationSetupView.as_view(), name='integration_setup'),
+    path('integrations/oauth/<str:provider>/', integration_views.OAuthMockConnectView.as_view(), name='oauth_connect'),
+    path('integrations/webhooks/', integration_views.WebhookManagementView.as_view(), name='webhooks'),
+    path('integrations/import/', integration_views.DataImportView.as_view(), name='data_import'),
     path('backup-restore/', views.BackupRestoreView.as_view(), name='backup_restore'),
+    
+    # Integrations & API
+    path('api-keys/', security_views.APIKeyManagementView.as_view(), name='api_keys'),
+    path('api-keys/<uuid:pk>/revoke/', security_views.APIKeyRevokeView.as_view(), name='api_key_revoke'),
+    path('backup-schedule/', security_views.BackupSchedulerView.as_view(), name='backup_schedule'),
 
     # Logs
     path('audit-logs/', views.AuditLogView.as_view(), name='audit_logs'),

@@ -234,34 +234,69 @@
 <!-- Sidebar -->
 <aside class="portal-sidebar">
     <div class="sidebar-brand">
-        <div class="logo-text">🏢 Customer Portal</div>
+        <div class="logo-text">🏢 {% if vendor %}Vendor{% else %}Customer{% endif %} Portal</div>
         <div class="logo-sub">Self-Service Hub</div>
     </div>
     <div class="sidebar-user">
         <div class="user-avatar">{{ request.user.first_name|first|default:request.user.username|first|upper }}</div>
         <div>
             <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-            <div class="user-role">Customer</div>
+            <div class="user-role">{% if vendor %}Vendor{% else %}Customer{% endif %}</div>
         </div>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-label">Overview</div>
-        <a href="{% url 'portals:customer' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
-            <i class="fas fa-th-large"></i> Dashboard
-        </a>
-
-        <div class="nav-label">My Business</div>
-        <a href="{% url 'portals:customer_orders' %}" class="nav-link {% block nav_orders %}{% endblock %}">
-            <i class="fas fa-shopping-cart"></i> My Orders
-        </a>
-        <a href="{% url 'portals:customer_invoices' %}" class="nav-link {% block nav_invoices %}{% endblock %}">
-            <i class="fas fa-file-invoice-dollar"></i> My Invoices
-        </a>
-
-        <div class="nav-label">Support</div>
-        <a href="{% url 'portals:customer_tickets' %}" class="nav-link {% block nav_tickets %}{% endblock %}">
-            <i class="fas fa-headset"></i> Support Tickets
-        </a>
+        {% if vendor %}
+            <a href="{% url 'portals:vendor' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <div class="nav-label">My Business</div>
+            <a href="{% url 'portals:vendor_orders' %}" class="nav-link {% block nav_orders %}{% endblock %}">
+                <i class="fas fa-file-contract"></i> Purchase Orders
+            </a>
+            <a href="{% url 'portals:vendor_bills' %}" class="nav-link {% block nav_bills %}{% endblock %}">
+                <i class="fas fa-file-invoice"></i> My Bills
+            </a>
+            <a href="{% url 'portals:vendor_payments' %}" class="nav-link {% block nav_payments %}{% endblock %}">
+                <i class="fas fa-money-check-alt"></i> Payments Received
+            </a>
+            <div class="nav-label">Settings</div>
+            <a href="{% url 'portals:vendor_profile' %}" class="nav-link {% block nav_profile %}{% endblock %}">
+                <i class="fas fa-user-cog"></i> My Profile
+            </a>
+        {% else %}
+            <a href="{% url 'portals:customer' %}" class="nav-link {% block nav_dashboard_c %}{% endblock %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <div class="nav-label">My Business</div>
+            <a href="{% url 'portals:customer_orders' %}" class="nav-link {% block nav_orders_c %}{% endblock %}">
+                <i class="fas fa-shopping-cart"></i> My Orders
+            </a>
+            <a href="{% url 'portals:customer_invoices' %}" class="nav-link {% block nav_invoices_c %}{% endblock %}">
+                <i class="fas fa-file-invoice-dollar"></i> My Invoices
+            </a>
+            <a href="{% url 'portals:customer_payments' %}" class="nav-link {% block nav_payments_c %}{% endblock %}">
+                <i class="fas fa-receipt"></i> Payment History
+            </a>
+            <a href="{% url 'portals:customer_shipments' %}" class="nav-link {% block nav_shipments_c %}{% endblock %}">
+                <i class="fas fa-shipping-fast"></i> Shipments
+            </a>
+            <div class="nav-label">Documents & Contracts</div>
+            <a href="{% url 'portals:customer_contracts' %}" class="nav-link {% block nav_contracts_c %}{% endblock %}">
+                <i class="fas fa-file-signature"></i> Contracts
+            </a>
+            <a href="{% url 'portals:customer_documents' %}" class="nav-link {% block nav_documents_c %}{% endblock %}">
+                <i class="fas fa-folder-open"></i> Shared Documents
+            </a>
+            <div class="nav-label">Support</div>
+            <a href="{% url 'portals:customer_tickets' %}" class="nav-link {% block nav_tickets_c %}{% endblock %}">
+                <i class="fas fa-headset"></i> Support Tickets
+            </a>
+            <div class="nav-label">Settings</div>
+            <a href="{% url 'portals:customer_profile' %}" class="nav-link {% block nav_profile_c %}{% endblock %}">
+                <i class="fas fa-user-cog"></i> My Profile
+            </a>
+        {% endif %}
     </nav>
     <div class="sidebar-footer">
         <a href="{% url 'authentication:logout' %}"><i class="fas fa-sign-out-alt"></i> Sign Out</a>

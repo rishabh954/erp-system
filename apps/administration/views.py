@@ -17,6 +17,7 @@ from .models import (
     DocumentTemplate, ImportJob, ExportJob, BackupRecord,
     AuditLog, ActivityLog, APIKey, Integration, WebhookEndpoint,
     CustomDashboard, DashboardWidget, CustomReport, SystemSetting,
+    InstalledApp,
 )
 
 
@@ -25,11 +26,54 @@ class AdminRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
-        role = getattr(request.user, 'role', '')
-        if role not in ('super_admin', 'company_admin') and not request.user.is_superuser:
+        if request.user.role not in ['super_admin', 'company_admin']:
             messages.error(request, 'You do not have permission to access the Administration Center.')
-            return redirect('dashboard:index')
+            return redirect('dashboard:home')
         return super().dispatch(request, *args, **kwargs)
+
+class AppStoreView(AdminRequiredMixin, TemplateView):
+    template_name = 'administration/app_store.html'
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        company = self.request.user.primary_company
+        installed = InstalledApp.objects.filter(company=company, is_active=True).values_list('app_label', flat=True)
+        
+        ctx['apps'] = [
+            {'id': 'crm', 'name': 'CRM', 'icon': 'users', 'description': 'Manage leads, customers, and pipelines.'},
+            {'id': 'sales', 'name': 'Sales', 'icon': 'shopping-cart', 'description': 'Manage sales orders and invoices.'},
+            {'id': 'purchase', 'name': 'Purchasing', 'icon': 'shopping-bag', 'description': 'Manage purchase orders and bills.'},
+            {'id': 'inventory', 'name': 'Inventory', 'icon': 'boxes', 'description': 'Warehouse and stock management.'},
+            {'id': 'manufacturing', 'name': 'Manufacturing', 'icon': 'industry', 'description': 'Bills of Material and work orders.'},
+            {'id': 'hrms', 'name': 'HRMS', 'icon': 'user-tie', 'description': 'Employees, payroll, and attendance.'},
+            {'id': 'projects', 'name': 'Projects', 'icon': 'project-diagram', 'description': 'Project tracking and timesheets.'},
+            {'id': 'helpdesk', 'name': 'Helpdesk', 'icon': 'life-ring', 'description': 'Customer support tickets.'},
+            {'id': 'assets', 'name': 'Assets', 'icon': 'laptop', 'description': 'Fixed asset tracking.'},
+            {'id': 'pos', 'name': 'Point of Sale', 'icon': 'cash-register', 'description': 'Retail POS interface.'},
+            {'id': 'documents', 'name': 'Documents', 'icon': 'folder', 'description': 'Centralized document storage.'},
+            {'id': 'portals', 'name': 'Portals', 'icon': 'globe', 'description': 'Customer and Vendor self-service.'},
+            {'id': 'analytics', 'name': 'Analytics', 'icon': 'chart-bar', 'description': 'Advanced reporting and dashboards.'},
+            {'id': 'workflow', 'name': 'Workflows', 'icon': 'cogs', 'description': 'Automated business workflows.'},
+        ]
+        
+        for app in ctx['apps']:
+            app['is_installed'] = app['id'] in installed
+            
+        return ctx
+        
+    def post(self, request):
+        company = request.user.primary_company
+        app_label = request.POST.get('app_label')
+        action = request.POST.get('action')
+        
+        if action == 'install':
+            InstalledApp.objects.update_or_create(company=company, app_label=app_label, defaults={'is_active': True})
+            messages.success(request, f"Successfully installed {app_label.upper()}.")
+        elif action == 'uninstall':
+            InstalledApp.objects.filter(company=company, app_label=app_label).update(is_active=False)
+            messages.warning(request, f"Uninstalled {app_label.upper()}.")
+            
+        return redirect('administration:app_store')
 
     @property
     def company(self):

@@ -6,6 +6,7 @@ from .views import (
     ProfileView, ProfileUpdateView, ChangePasswordView,
     RevokeSessionView, RevokeAllSessionsView, ActivityLogView,
 )
+from . import security_views
 
 app_name = 'auth'
 
@@ -23,4 +24,10 @@ urlpatterns = [
     path('sessions/<uuid:session_id>/revoke/', RevokeSessionView.as_view(), name='revoke_session'),
     path('sessions/revoke-all/', RevokeAllSessionsView.as_view(), name='revoke_all_sessions'),
     path('activity-log/', ActivityLogView.as_view(), name='activity_log'),
+    
+    # Enterprise Security
+    path('security/', security_views.SecurityDashboardView.as_view(), name='security_dashboard'),
+    path('security/2fa/setup/', security_views.TwoFactorSetupView.as_view(), name='2fa_setup'),
+    path('security/sessions/<int:pk>/revoke/', security_views.SessionRevokeView.as_view(), name='session_revoke'),
+    path('security/ip/add/', security_views.IPRestrictionAddView.as_view(), name='ip_add'),
 ]

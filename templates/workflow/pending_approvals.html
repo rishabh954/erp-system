@@ -1,64 +1,224 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static humanize %}
+
 {% block title %}Pending Approvals{% endblock %}
 {% block nav_workflow %}active{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Pending Approvals</h1>
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1><i class="fas fa-inbox me-2 text-warning"></i>Pending Approvals</h1>
+    <p class="text-muted mb-0">{{ total_pending }} item{{ total_pending|pluralize }} awaiting your action
+      {% if escalated_count %}<span class="badge bg-danger ms-2">{{ escalated_count }} Escalated</span>{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'workflow:history' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-history me-1"></i>History
+    </a>
+    <a href="{% url 'workflow:delegation_create' %}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-exchange-alt me-1"></i>Delegate Approvals
+    </a>
+  </div>
 </div>
 
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Your Approval Queue</h6>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Document</th>
-                        <th>Type</th>
-                        <th>Initiated By</th>
-                        <th>Step</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inst in instances %}
-                    <tr>
-                        <td>
-                            <strong>{{ inst.related_object }}</strong>
-                        </td>
-                        <td><span class="badge bg-secondary">{{ inst.content_type.model|title }}</span></td>
-                        <td>{{ inst.initiated_by.get_full_name }}</td>
-                        <td>{{ inst.current_step.name }}</td>
-                        <td>{{ inst.created_at|date:"M d, Y" }}</td>
-                        <td>
-                            <form action="{% url 'workflow:action_api' inst.pk %}" method="post" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="btn btn-sm btn-success" title="Approve">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </form>
-                            <form action="{% url 'workflow:action_api' inst.pk %}" method="post" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="reject">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Reject">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center py-4">No pending approvals!</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+{% if instances %}
+<div class="row g-3">
+  {% for inst in instances %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm{% if inst.status == 'escalated' %} border-start border-danger border-3{% endif %}">
+      <div class="card-body">
+        <div class="row align-items-center g-3">
+
+          <!-- Document info -->
+          <div class="col-12 col-md-4">
+            <div class="d-flex align-items-start gap-3">
+              <div class="bg-primary-subtle text-primary rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px">
+                <i class="fas fa-file-alt fa-lg"></i>
+              </div>
+              <div>
+                <div class="fw-700">
+                  {{ inst.content_type.name|title }}
+                  <a href="{% url 'workflow:instance_detail' pk=inst.pk %}" class="text-muted small ms-1 text-decoration-none">
+                    #{{ inst.object_id|slice:":8" }} <i class="fas fa-external-link-alt" style="font-size:.6rem"></i>
+                  </a>
+                </div>
+                <div class="text-muted small">
+                  <i class="fas fa-project-diagram me-1"></i>{{ inst.definition.name }}
+                </div>
+                <div class="text-muted small">
+                  <i class="fas fa-calendar me-1"></i>Submitted {{ inst.created_at|timesince }} ago
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Workflow progress -->
+          <div class="col-12 col-md-4">
+            <div class="small text-muted mb-1">Current Step</div>
+            <div class="fw-600">{{ inst.current_step.name|default:"—" }}</div>
+            {% if inst.current_step_started_at %}
+            <div class="text-muted small">
+              <i class="fas fa-clock me-1"></i>Waiting {{ inst.current_step_started_at|timesince }}
+              {% if inst.status == 'escalated' %}<span class="text-danger ms-1">(Escalated)</span>{% endif %}
+            </div>
+            {% endif %}
+            <!-- Submitted by -->
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <div class="avatar-xs bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center fw-700" style="width:24px;height:24px;font-size:.7rem">
+                {{ inst.initiated_by.get_full_name|slice:":1"|upper }}
+              </div>
+              <span class="small">{{ inst.initiated_by.get_full_name }}</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12 col-md-4 text-md-end">
+            <div class="d-flex gap-2 justify-content-md-end flex-wrap">
+
+              <!-- Approve -->
+              <form method="post" action="{% url 'workflow:action_api' instance_id=inst.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve">
+                <div class="input-group input-group-sm">
+                  <input type="text" name="comment" class="form-control form-control-sm" placeholder="Comment (optional)" style="width:160px">
+                  <button type="submit" class="btn btn-success btn-sm">
+                    <i class="fas fa-check me-1"></i>Approve
+                  </button>
+                </div>
+              </form>
+
+              <!-- Reject -->
+              <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ inst.pk|stringformat:'s'|slice:':-28' }}">
+                <i class="fas fa-times me-1"></i>Reject
+              </button>
+
+              <!-- More actions dropdown -->
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{% url 'workflow:instance_detail' pk=inst.pk %}">
+                      <i class="fas fa-eye me-2"></i>View Details & Timeline
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#delegateModal{{ forloop.counter }}">
+                      <i class="fas fa-exchange-alt me-2"></i>Delegate This Step
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#returnModal{{ forloop.counter }}">
+                      <i class="fas fa-undo me-2"></i>Return for Clarification
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="modal fade" id="rejectModal{{ inst.pk|stringformat:'s'|slice:':-28' }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="fas fa-times-circle me-2"></i>Reject — {{ inst.definition.name }}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="post" action="{% url 'workflow:action_api' instance_id=inst.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reject">
+          <div class="modal-body">
+            <label class="form-label fw-600">Reason for Rejection <span class="text-danger">*</span></label>
+            <textarea name="comment" class="form-control" rows="4" placeholder="Please provide a reason..." required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger"><i class="fas fa-times me-1"></i>Confirm Reject</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delegate Modal -->
+  <div class="modal fade" id="delegateModal{{ forloop.counter }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Delegate Approval</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="post" action="{% url 'workflow:action_api' instance_id=inst.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delegate">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-600">Delegate To</label>
+              <select name="delegatee_id" class="form-select" required>
+                <option value="">Select a user...</option>
+                {% for u in request.user.usercompany_set.all %}
+                  {# Placeholder - rendered dynamically in production #}
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-600">Reason</label>
+              <textarea name="comment" class="form-control" rows="3" placeholder="Why are you delegating?"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-exchange-alt me-1"></i>Delegate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Return Modal -->
+  <div class="modal fade" id="returnModal{{ forloop.counter }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-undo me-2"></i>Return for Clarification</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="post" action="{% url 'workflow:action_api' instance_id=inst.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="return">
+          <div class="modal-body">
+            <label class="form-label fw-600">What needs clarification?</label>
+            <textarea name="comment" class="form-control" rows="4" placeholder="Describe what additional information you need..." required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning"><i class="fas fa-undo me-1"></i>Return to Submitter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% endfor %}
 </div>
+
+{% else %}
+<div class="card text-center py-5">
+  <div class="card-body">
+    <i class="fas fa-check-circle fa-4x text-success mb-3 opacity-75"></i>
+    <h4 class="fw-700">You're all caught up!</h4>
+    <p class="text-muted">No approvals are waiting for your action right now.</p>
+    <a href="{% url 'workflow:history' %}" class="btn btn-outline-secondary mt-2">
+      <i class="fas fa-history me-1"></i>View Approval History
+    </a>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

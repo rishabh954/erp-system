@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}OCR Result — {{ doc.doc_type|title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'ai:ocr' %}">OCR</a></li>
+        <li class="breadcrumb-item active">Result</li>
+      </ol>
+    </nav>
+    <h1 class="h4"><i class="fas fa-file-invoice me-2 text-warning"></i>{{ doc.doc_type|title }} OCR Result</h1>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'ai:ocr' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-plus me-1"></i>New OCR
+    </a>
+    {% if doc.status == 'done' %}
+    <button class="btn btn-sm btn-primary" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if doc.status == 'pending' or doc.status == 'processing' %}
+<div class="card text-center py-5" id="processingCard">
+  <div class="card-body">
+    <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem"></div>
+    <h5 class="fw-700">Processing your document…</h5>
+    <p class="text-muted">AI is extracting data. This usually takes 5–15 seconds.</p>
+    <div class="progress mt-3" style="height:6px;max-width:300px;margin:auto">
+      <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width:70%"></div>
+    </div>
+  </div>
+</div>
+
+{% elif doc.status == 'failed' %}
+<div class="alert alert-danger">
+  <i class="fas fa-times-circle me-2"></i>OCR processing failed: {{ doc.error_message|default:"Unknown error" }}
+</div>
+
+{% else %}
+{% with d=doc.extracted_data %}
+<div class="row g-3">
+  <!-- Key extracted fields -->
+  <div class="col-12 col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-600"><i class="fas fa-robot me-2 text-primary"></i>Extracted Data</span>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="text-muted small">Confidence:</span>
+          <div class="progress" style="width:80px;height:8px">
+            <div class="progress-bar bg-success" style="width:{{ doc.confidence|floatformat:0 }}%"></div>
+          </div>
+          <span class="text-success fw-600 small">{{ doc.confidence|floatformat:0 }}%</span>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if doc.doc_type == 'invoice' %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Vendor / Supplier</label>
+            <input type="text" class="form-control" value="{{ d.vendor|default:'' }}" id="f_vendor">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Vendor Address</label>
+            <input type="text" class="form-control" value="{{ d.vendor_address|default:'' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Invoice Number</label>
+            <input type="text" class="form-control fw-600" value="{{ d.invoice_number|default:'' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Invoice Date</label>
+            <input type="date" class="form-control" value="{{ d.invoice_date|default:'' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Due Date</label>
+            <input type="date" class="form-control" value="{{ d.due_date|default:'' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Currency</label>
+            <input type="text" class="form-control" value="{{ d.currency|default:'USD' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Subtotal</label>
+            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'$' }}</span>
+            <input type="number" class="form-control fw-600" value="{{ d.subtotal|default:'0' }}"></div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted">Tax</label>
+            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'$' }}</span>
+            <input type="number" class="form-control" value="{{ d.tax_amount|default:'0' }}"></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Total Amount</label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text fw-700">{{ d.currency|default:'$' }}</span>
+              <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <!-- Receipt fields -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Merchant</label>
+            <input type="text" class="form-control fw-600" value="{{ d.merchant|default:'' }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Date</label>
+            <input type="date" class="form-control" value="{{ d.date|default:'' }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">Time</label>
+            <input type="time" class="form-control" value="{{ d.time|default:'' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Category</label>
+            <input type="text" class="form-control" value="{{ d.category_suggestion|default:'' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small text-muted">Payment Method</label>
+            <input type="text" class="form-control" value="{{ d.payment_method|default:'' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Total Amount</label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text fw-700">{{ d.currency|default:'$' }}</span>
+              <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Line items -->
+    {% if d.line_items %}
+    <div class="card">
+      <div class="card-header fw-600"><i class="fas fa-list me-2"></i>Line Items</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Description</th>
+                {% if doc.doc_type == 'invoice' %}<th class="text-center">Qty</th><th class="text-end">Unit Price</th>{% endif %}
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in d.line_items %}
+              <tr>
+                <td>{{ item.description|default:"—" }}</td>
+                {% if doc.doc_type == 'invoice' %}
+                <td class="text-center">{{ item.quantity|default:"1" }}</td>
+                <td class="text-end">{{ d.currency|default:'$' }} {{ item.unit_price|default:"0" }}</td>
+                {% endif %}
+                <td class="text-end fw-600">{{ d.currency|default:'$' }} {{ item.total|default:item.amount|default:"0" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right panel -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header fw-600"><i class="fas fa-info-circle me-2"></i>Processing Info</div>
+      <div class="card-body">
+        <dl class="row small mb-0">
+          <dt class="col-5 text-muted">Status</dt>
+          <dd class="col-7"><span class="badge bg-success">Done</span></dd>
+          <dt class="col-5 text-muted">Type</dt>
+          <dd class="col-7 fw-600">{{ doc.doc_type|title }}</dd>
+          <dt class="col-5 text-muted">Confidence</dt>
+          <dd class="col-7 fw-600 text-success">{{ doc.confidence|floatformat:0 }}%</dd>
+          <dt class="col-5 text-muted">Process Time</dt>
+          <dd class="col-7">{{ doc.processing_time_ms }}ms</dd>
+          <dt class="col-5 text-muted">Uploaded</dt>
+          <dd class="col-7">{{ doc.created_at|timesince }} ago</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if doc.doc_type == 'invoice' %}
+    <div class="card mb-3">
+      <div class="card-header fw-600"><i class="fas fa-file-import me-2"></i>Create from OCR</div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="{% url 'purchase:bills_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-file-invoice me-1"></i>Create Bill (Purchase)
+        </a>
+        <a href="{% url 'accounting:journals_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-success btn-sm">
+          <i class="fas fa-book me-1"></i>Create Journal Entry
+        </a>
+      </div>
+    </div>
+    {% elif doc.doc_type == 'receipt' %}
+    <div class="card mb-3">
+      <div class="card-header fw-600"><i class="fas fa-file-import me-2"></i>Create from Receipt</div>
+      <div class="card-body">
+        <a href="{% url 'hrms:expenses_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm w-100">
+          <i class="fas fa-receipt me-1"></i>Create Expense Claim
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Raw JSON toggle -->
+    <div class="card">
+      <div class="card-header fw-600 d-flex justify-content-between">
+        <span><i class="fas fa-code me-2"></i>Raw JSON</span>
+        <button class="btn btn-xs btn-outline-secondary" onclick="toggleRaw()">Toggle</button>
+      </div>
+      <div class="card-body d-none" id="rawJson">
+        <pre class="small" style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:12px;overflow-x:auto;max-height:300px">{{ doc.extracted_data|pprint }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleRaw() {
+  document.getElementById('rawJson').classList.toggle('d-none');
+}
+
+// Poll for processing status
+{% if doc.status == 'pending' or doc.status == 'processing' %}
+const pollInterval = setInterval(async () => {
+  const resp = await fetch('/ai/ocr/{{ doc.pk }}/status/');
+  const data = await resp.json();
+  if (data.status === 'done' || data.status === 'failed') {
+    clearInterval(pollInterval);
+    window.location.reload();
+  }
+}, 3000);
+{% endif %}
+</script>
+{% endblock %}

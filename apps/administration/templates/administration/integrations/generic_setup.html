@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Setup {{ provider|title }}{% endblock %}
+{% block page_title %}Configure {{ provider|title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ provider|title }} Integration</h5>
+                {% if integration.status == 'connected' %}
+                    <span class="badge bg-success">Connected</span>
+                {% else %}
+                    <span class="badge bg-secondary">Disconnected</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p>Please enter your API credentials provided by {{ provider|title }}.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="integration_type" value="{% if provider in 'stripe,paypal,razorpay' %}payment_gateway{% elif provider == 'shiprocket' %}shipping{% else %}custom{% endif %}">
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label">API Key / Client ID</label>
+                        <input type="text" name="api_key" class="form-control" value="{{ integration.credentials.api_key|default:'' }}" required>
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label class="form-label">API Secret</label>
+                        <input type="password" name="api_secret" class="form-control" value="{{ integration.credentials.api_secret|default:'' }}" required>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Save & Connect</button>
+                        <a href="{% url 'administration:integrations_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

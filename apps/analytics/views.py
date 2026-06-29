@@ -84,6 +84,16 @@ class SavedReportsListView(ReportsMixin, ListView):
         ).order_by('-created_at')
 
 
+class ExecutionLogListView(ReportsMixin, ListView):
+    template_name = 'analytics/execution_log.html'
+    context_object_name = 'executions'
+    paginate_by = 30
+
+    def get_queryset(self):
+        return ReportExecution.objects.filter(
+            report__created_by=self.request.user
+        ).order_by('-started_at')
+
 # ── Report Detail / Runner ─────────────────────────────────────────────────────
 
 class ReportDetailView(ReportsMixin, DetailView):
@@ -330,11 +340,19 @@ class ReportDeleteView(ReportsMixin, View):
     def post(self, request, pk):
         report = get_object_or_404(SavedReport, pk=pk, created_by=request.user)
         report.delete()
-        messages.success(request, "Report deleted.")
-        return redirect('analytics:dashboard')
+        messages.success(request, f"Report '{report.name}' deleted.")
+        return redirect('analytics:saved_reports')
 
+class ReportBulkDeleteView(ReportsMixin, View):
+    def post(self, request):
+        pks = request.POST.get('pks', '')
+        pk_list = [pk.strip() for pk in pks.split(',') if pk.strip()]
+        if pk_list:
+            deleted, _ = SavedReport.objects.filter(pk__in=pk_list, created_by=request.user).delete()
+            messages.success(request, f"Successfully deleted {deleted} reports.")
+        return redirect('analytics:saved_reports')
 
-# ── Legacy CustomReport views (backward compat) ────────────────────────────────
+# ── Legacy / Internal API ────────────────────────────────────────────────────────
 
 class GenerateReportAPIView(ReportsMixin, View):
     def get(self, request, *args, **kwargs):

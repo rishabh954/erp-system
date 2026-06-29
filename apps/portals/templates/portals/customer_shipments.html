@@ -1,0 +1,41 @@
+{% extends "portals/portal_base.html" %}
+{% block title %}Shipments{% endblock %}
+{% block page_title %}Shipment Tracking{% endblock %}
+{% block nav_shipments_c %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Shipment #</th>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Carrier</th>
+                    <th>Tracking #</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for shipment in shipments %}
+                <tr onclick="window.location.href='{% url 'portals:customer_shipment_detail' shipment.pk %}'" style="cursor:pointer">
+                    <td class="font-weight-600">{{ shipment.number }}</td>
+                    <td>{{ shipment.sales_order.number }}</td>
+                    <td>{{ shipment.date|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="badge {% if shipment.status == 'delivered' %}badge-green{% elif shipment.status == 'shipped' %}badge-indigo{% elif shipment.status == 'cancelled' %}badge-red{% else %}badge-yellow{% endif %}">
+                            {{ shipment.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ shipment.carrier|default:"N/A" }}</td>
+                    <td>{{ shipment.tracking_number|default:"N/A" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-4 text-muted">No shipments found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

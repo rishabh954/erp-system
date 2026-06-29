@@ -34,6 +34,7 @@
     }
   </style>
   {% endif %}
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body class="{% block body_class %}app-body{% endblock %}">
 
@@ -272,6 +273,14 @@
         </ul>
       </li>
 
+      <li class="nav-item {% block nav_ai %}{% endblock %}">
+        <a href="{% url 'ai:hub' %}" class="nav-link text-primary fw-600" style="background: linear-gradient(90deg, rgba(67,97,238,0.05) 0%, transparent 100%);">
+          <i class="fas fa-robot nav-icon text-primary"></i>
+          <span class="nav-label">AI Hub</span>
+          <span class="badge bg-primary-subtle text-primary ms-auto" style="font-size:0.65rem">NEW</span>
+        </a>
+      </li>
+
       <li class="nav-section-title">Support</li>
 
       <li class="nav-item {% block nav_helpdesk %}{% endblock %}">
@@ -281,19 +290,23 @@
         </a>
       </li>
 
-      <li class="nav-item {% block nav_documents %}{% endblock %}">
+      {% if 'documents' in active_app_labels or request.user.is_superuser %}
+<li class="nav-item {% block nav_documents %}{% endblock %}">
         <a href="{% url 'documents:list' %}" class="nav-link">
           <i class="fas fa-folder-open nav-icon"></i>
           <span class="nav-label">Documents</span>
         </a>
       </li>
+{% endif %}
 
-      <li class="nav-item {% block nav_assets %}{% endblock %}">
+      {% if 'assets' in active_app_labels or request.user.is_superuser %}
+<li class="nav-item {% block nav_assets %}{% endblock %}">
         <a href="{% url 'assets:list' %}" class="nav-link">
           <i class="fas fa-laptop nav-icon"></i>
           <span class="nav-label">Assets</span>
         </a>
       </li>
+{% endif %}
       <li class="nav-item nav-has-children {% block nav_workflow %}{% endblock %}">
         <a href="#" class="nav-link nav-parent">
           <i class="fas fa-project-diagram nav-icon"></i>
@@ -573,5 +586,114 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(pollNotifications, 30000);
 });
 </script>
+</script>
+
+<!-- Global Floating AI Assistant Widget -->
+{% if request.user.is_authenticated %}
+<div id="aiWidgetToggle" class="position-fixed shadow" style="bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--brand-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; z-index: 1050; transition: transform 0.2s;">
+  <i class="fas fa-robot"></i>
+</div>
+
+<div id="aiWidgetContainer" class="position-fixed shadow-lg d-none" style="bottom: 90px; right: 24px; width: 350px; height: 500px; border-radius: 16px; background: var(--card-bg); z-index: 1050; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden;">
+  <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+    <div class="fw-600"><i class="fas fa-robot me-2"></i>AI Assistant</div>
+    <button class="btn-close btn-close-white" style="font-size: 0.8rem;" id="aiWidgetClose"></button>
+  </div>
+  <div class="flex-grow-1 p-3" id="aiWidgetMessages" style="overflow-y: auto; background: var(--bg-primary);">
+    <div class="mb-3 d-flex">
+      <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
+      <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;">Hi! I'm your ERP Assistant. You can ask me questions about this page.</div>
+    </div>
+  </div>
+  <div class="p-2 border-top bg-white">
+    <div class="input-group">
+      <input type="text" id="aiWidgetInput" class="form-control form-control-sm" placeholder="Ask a question..." autocomplete="off">
+      <button class="btn btn-primary btn-sm" id="aiWidgetSend"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const toggle = document.getElementById('aiWidgetToggle');
+  const container = document.getElementById('aiWidgetContainer');
+  const closeBtn = document.getElementById('aiWidgetClose');
+  const input = document.getElementById('aiWidgetInput');
+  const sendBtn = document.getElementById('aiWidgetSend');
+  const messages = document.getElementById('aiWidgetMessages');
+
+  if(toggle && container) {
+    toggle.addEventListener('click', () => {
+      container.classList.toggle('d-none');
+      if(!container.classList.contains('d-none')) input.focus();
+    });
+    
+    closeBtn.addEventListener('click', () => {
+      container.classList.add('d-none');
+    });
+
+    const sendMessage = async () => {
+      const text = input.value.trim();
+      if(!text) return;
+
+      // Add user message
+      messages.innerHTML += `<div class="mb-3 d-flex justify-content-end">
+        <div class="bg-primary text-white p-2 rounded" style="font-size: 0.85rem; max-width: 80%;">${text.replace(/</g, "&lt;")}</div>
+      </div>`;
+      input.value = '';
+      messages.scrollTop = messages.scrollHeight;
+
+      // Add loading state
+      const loadingId = 'ai-loading-' + Date.now();
+      messages.innerHTML += `<div class="mb-3 d-flex" id="${loadingId}">
+        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
+        <div class="bg-white p-2 border rounded text-muted small"><i class="fas fa-circle-notch fa-spin"></i> Thinking...</div>
+      </div>`;
+      messages.scrollTop = messages.scrollHeight;
+
+      try {
+        const resp = await fetch('/ai/assistant/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+          body: JSON.stringify({ question: text, context: { path: window.location.pathname } })
+        });
+        const data = await resp.json();
+        
+        document.getElementById(loadingId).remove();
+        
+        const answer = data.answer || data.error || 'Sorry, I encountered an error.';
+        
+        messages.innerHTML += `<div class="mb-3 d-flex">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
+          <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;">${answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>
+        </div>`;
+        messages.scrollTop = messages.scrollHeight;
+      } catch (err) {
+        document.getElementById(loadingId).remove();
+        messages.innerHTML += `<div class="mb-3 d-flex text-danger"><div class="bg-white p-2 border rounded border-danger small">Network error occurred.</div></div>`;
+      }
+    };
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') sendMessage();
+    });
+  }
+});
+</script>
+{% endif %}
+
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, function(err) {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
