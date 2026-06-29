@@ -188,6 +188,15 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     def __str__(self):
         return f"{self.number} | {self.vendor.name}"
 
+    def recalculate_totals(self):
+        lines = self.lines.all()
+        self.subtotal = sum(l.subtotal for l in lines)
+        self.tax_amount = sum(l.tax_amount for l in lines)
+        self.discount_amount = sum((l.subtotal * (l.discount_percent / 100)) for l in lines)
+        self.total = self.subtotal + self.tax_amount - self.discount_amount + self.shipping_cost
+        self.balance_due = self.total - self.amount_paid
+        self.save(update_fields=['subtotal', 'tax_amount', 'discount_amount', 'total', 'balance_due'])
+
 
 class PurchaseOrderLine(models.Model):
     import uuid as _uuid
@@ -208,6 +217,15 @@ class PurchaseOrderLine(models.Model):
 
     class Meta:
         db_table = 'purchase_order_lines'
+
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        self.subtotal = self.quantity * self.unit_price
+        discount_amount = self.subtotal * (self.discount_percent / Decimal('100'))
+        taxable = self.subtotal - discount_amount
+        self.tax_amount = self.tax.compute(taxable) if self.tax else Decimal('0')
+        self.total = taxable + self.tax_amount
+        super().save(*args, **kwargs)
 
 
 class GoodsReceipt(CompanyScoped, SequenceMixin, NotesMixin):

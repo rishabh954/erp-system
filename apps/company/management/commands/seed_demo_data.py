@@ -245,6 +245,7 @@ class Command(BaseCommand):
         for i in range(12):
             Ticket.objects.create(
                 company=company,
+                number=f"TKT-{run_id}-{i}",
                 title=fake.sentence(),
                 description=fake.paragraph(nb_sentences=3),
                 category=cat_support,
