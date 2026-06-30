@@ -617,6 +617,57 @@ class SalesOrderService(BaseService):
         order.save(update_fields=['status'])
         return inv
 
+    @transaction.atomic
+    def confirm_order(self, order):
+        if order.status != order.Status.DRAFT:
+            raise ValueError("Only draft orders can be confirmed.")
+            
+        from apps.inventory.models import Warehouse, StockRecord
+        warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
+        
+        if warehouse:
+            for line in order.lines.all():
+                if line.product and line.product.product_type == line.product.ProductType.STOCKABLE:
+                    stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
+                        company=self.company,
+                        product=line.product,
+                        warehouse=warehouse,
+                        defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
+                    )
+                    stock_record.quantity_reserved += line.quantity
+                    stock_record.save(update_fields=['quantity_reserved'])
+                    
+        order.status = order.Status.CONFIRMED
+        order.save(update_fields=['status'])
+        return order
+
+    @transaction.atomic
+    def cancel_order(self, order, reason=''):
+        if order.status in [order.Status.SHIPPED, order.Status.DELIVERED, order.Status.INVOICED, order.Status.COMPLETED]:
+            raise ValueError("Cannot cancel an order that has already been shipped, invoiced, or completed.")
+            
+        # Release reservations if it was confirmed
+        if order.status in [order.Status.CONFIRMED, order.Status.PROCESSING]:
+            from apps.inventory.models import Warehouse, StockRecord
+            warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
+            if warehouse:
+                for line in order.lines.all():
+                    if line.product and line.product.product_type == line.product.ProductType.STOCKABLE:
+                        stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
+                            company=self.company,
+                            product=line.product,
+                            warehouse=warehouse,
+                            defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
+                        )
+                        from decimal import Decimal
+                        stock_record.quantity_reserved = max(Decimal('0'), stock_record.quantity_reserved - line.quantity)
+                        stock_record.save(update_fields=['quantity_reserved'])
+                        
+        order.status = order.Status.CANCELLED
+        order.cancel_reason = reason
+        order.save(update_fields=['status', 'cancel_reason'])
+        return order
+
 
 class InvoiceService(BaseService):
     @transaction.atomic

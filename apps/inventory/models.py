@@ -314,6 +314,8 @@ class InventoryTransferLine(models.Model):
     quantity_requested = models.DecimalField(max_digits=15, decimal_places=4)
     quantity_sent = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     quantity_received = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    batch_number = models.CharField(max_length=100, blank=True)
+    serial_number = models.CharField(max_length=100, blank=True)
 
     class Meta:
         db_table = 'inventory_transfer_lines'
@@ -357,6 +359,8 @@ class DeliveryOrderLine(models.Model):
     description = models.CharField(max_length=500, blank=True)
     quantity_ordered = models.DecimalField(max_digits=15, decimal_places=4)
     quantity_shipped = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    batch_number = models.CharField(max_length=100, blank=True)
+    serial_number = models.CharField(max_length=100, blank=True)
 
     class Meta:
         db_table = 'inventory_delivery_order_lines'

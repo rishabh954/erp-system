@@ -185,9 +185,12 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
         order = self.get_object()
-        order.status = SalesOrder.Status.CONFIRMED
-        order.save(update_fields=['status'])
-        return Response(SalesOrderSerializer(order).data)
+        from apps.sales.services import SalesOrderService
+        try:
+            order = SalesOrderService(user=request.user, company=request.user.primary_company).confirm_order(order)
+            return Response(SalesOrderSerializer(order).data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
 
     @action(detail=True, methods=['post'])
     def create_invoice(self, request, pk=None):

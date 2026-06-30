@@ -241,9 +241,9 @@
                 card.className = 'product-card';
                 card.onclick = () => addToCart(p.id);
                 card.innerHTML = `
-                    <div>${imgHtml}</div>
+                    <div> {{ current_company.default_currency.symbol|default:'$' }}{imgHtml}</div>
                     <div>
-                        <div class="product-name">${p.name}</div>
+                        <div class="product-name"> {{ current_company.default_currency.symbol|default:'$' }}{p.name}</div>
                         <div class="product-price">{{ current_company.default_currency.symbol|default:'$' }}${parseFloat(p.price).toFixed(2)}</div>
                     </div>`;
                 grid.appendChild(card);
@@ -305,12 +305,12 @@
                     li.className = 'cart-item';
                     li.innerHTML = `
                         <div class="cart-item-details">
-                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-name"> {{ current_company.default_currency.symbol|default:'$' }}{item.name}</div>
                             <div class="cart-item-price">{{ current_company.default_currency.symbol|default:'$' }}${parseFloat(item.price).toFixed(2)} each</div>
                         </div>
                         <div class="cart-item-controls">
                             <button class="qty-btn" onclick="updateCartQty(${index}, -1)">&minus;</button>
-                            <span class="qty-input">${item.qty}</span>
+                            <span class="qty-input"> {{ current_company.default_currency.symbol|default:'$' }}{item.qty}</span>
                             <button class="qty-btn" onclick="updateCartQty(${index}, 1)">+</button>
                         </div>
                         <div class="item-total">{{ current_company.default_currency.symbol|default:'$' }}${itemTotal.toFixed(2)}</div>`;

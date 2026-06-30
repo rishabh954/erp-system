@@ -134,3 +134,71 @@ class InventoryTransferViewSet(viewsets.ModelViewSet):
         
         # In a real app, this would also trigger the stock movements here
         return Response({'status': 'received'})
+
+class BarcodeScanViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'], url_path='scan-receive')
+    def scan_receive(self, request):
+        barcode = request.data.get('barcode')
+        warehouse_id = request.data.get('warehouse')
+        qty = request.data.get('quantity', 1)
+        
+        if not barcode or not warehouse_id:
+            return Response({'error': 'barcode and warehouse are required'}, status=400)
+            
+        from decimal import Decimal
+        qty = Decimal(str(qty))
+        
+        product = Product.objects.filter(barcode=barcode, company=request.user.primary_company).first()
+        if not product:
+            return Response({'error': 'Product not found'}, status=404)
+            
+        try:
+            warehouse = Warehouse.objects.get(pk=warehouse_id, company=request.user.primary_company)
+        except Warehouse.DoesNotExist:
+            return Response({'error': 'Warehouse not found'}, status=404)
+            
+        from apps.inventory.services import StockService
+        try:
+            StockService(user=request.user, company=request.user.primary_company).receive_stock(
+                product=product,
+                warehouse=warehouse,
+                qty=qty,
+                unit_cost=product.cost_price,
+                reference_type='Barcode Scan',
+                reference_id='0',
+                notes='Received via barcode scan'
+            )
+            return Response({'status': 'success', 'product': product.name, 'quantity': qty})
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+    @action(detail=False, methods=['post'], url_path='scan-pick')
+    def scan_pick(self, request):
+        barcode = request.data.get('barcode')
+        pick_list_id = request.data.get('pick_list')
+        
+        if not barcode or not pick_list_id:
+            return Response({'error': 'barcode and pick_list are required'}, status=400)
+            
+        from apps.inventory.models import PickListLine
+        line = PickListLine.objects.filter(
+            pick_list_id=pick_list_id, 
+            product__barcode=barcode,
+            pick_list__company=request.user.primary_company
+        ).first()
+        
+        if not line:
+            return Response({'error': 'Product not in pick list'}, status=404)
+            
+        if line.quantity_picked >= line.quantity_to_pick:
+            return Response({'error': 'Product already fully picked'}, status=400)
+            
+        line.quantity_picked += 1
+        line.save(update_fields=['quantity_picked'])
+        
+        return Response({
+            'status': 'success',
+            'product': line.product.name,
+            'picked': line.quantity_picked,
+            'remaining': line.quantity_to_pick - line.quantity_picked
+        })

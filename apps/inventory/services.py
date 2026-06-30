@@ -99,9 +99,9 @@ class StockService(BaseService):
         else:
             actual_qty = abs(qty)
 
+        if actual_qty < 0 and stock.quantity_available < abs(actual_qty):
+            raise ValueError(f"Insufficient stock for {product.sku} at {warehouse.name}: available {stock.quantity_available}, requested {abs(actual_qty)}")
         stock.quantity_on_hand += actual_qty
-        if stock.quantity_on_hand < 0:
-            raise ValueError(f"Insufficient stock for {product.sku} at {warehouse.name}: available {stock.quantity_on_hand - actual_qty}, requested {abs(actual_qty)}")
         stock.save(update_fields=['quantity_on_hand'])
         
         unit_cost = stock.average_cost if actual_qty < 0 else product.cost_price
@@ -239,16 +239,26 @@ class TransferService(BaseService):
             lines = transfer.lines.all()
             for line in lines:
                 qty_sent = Decimal(str(data.get(f'qty_sent_{line.id}', line.quantity_requested)))
+                batch = data.get(f'batch_number_{line.id}', '')
+                serial = data.get(f'serial_number_{line.id}', '')
                 line.quantity_sent = qty_sent
-                line.save(update_fields=['quantity_sent'])
+                line.batch_number = batch
+                line.serial_number = serial
+                line.save(update_fields=['quantity_sent', 'batch_number', 'serial_number'])
+
+                from .models import Product
+                if line.product.tracking_method in (Product.TrackingMethod.LOT, Product.TrackingMethod.SERIAL):
+                    if not line.batch_number and not line.serial_number:
+                        from django.core.exceptions import ValidationError
+                        raise ValidationError(f"Lot/Serial number is required for tracked product: {line.product.sku}")
 
                 # Deduct from from_warehouse
                 stock, _ = StockRecord.objects.select_for_update().get_or_create(
                     product=line.product, warehouse=transfer.from_warehouse,
                     defaults={'company': self.company, 'average_cost': line.product.cost_price}
                 )
-                if stock.quantity_on_hand < qty_sent:
-                    raise ValueError(f"Insufficient stock for {line.product.sku} at {transfer.from_warehouse.name}: available {stock.quantity_on_hand}, requested {qty_sent}")
+                if stock.quantity_available < qty_sent:
+                    raise ValueError(f"Insufficient stock for {line.product.sku} at {transfer.from_warehouse.name}: available {stock.quantity_available}, requested {qty_sent}")
                 stock.quantity_on_hand -= qty_sent
                 stock.save(update_fields=['quantity_on_hand'])
                 
@@ -349,6 +359,10 @@ class TransferService(BaseService):
 class DeliveryService(BaseService):
     @transaction.atomic
     def ship_delivery(self, delivery, user):
+        from .models import DeliveryOrder
+        # Lock the delivery order for idempotency protection
+        delivery = DeliveryOrder.objects.select_for_update().get(pk=delivery.pk)
+        
         if delivery.status != DeliveryOrder.Status.READY:
             raise ValueError("Delivery Order must be in READY status to ship.")
             
@@ -356,18 +370,36 @@ class DeliveryService(BaseService):
             if line.quantity_shipped <= 0:
                 continue
                 
+            from .models import Product
+            if line.product.tracking_method in (Product.TrackingMethod.LOT, Product.TrackingMethod.SERIAL):
+                if not line.batch_number and not line.serial_number:
+                    from django.core.exceptions import ValidationError
+                    raise ValidationError(f"Lot/Serial number is required for tracked product: {line.product.sku}")
+                
             stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
                 company=self.company,
                 product=line.product,
                 warehouse=delivery.warehouse,
-                defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price}
+                defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
             )
             
-            if stock_record.quantity_on_hand < line.quantity_shipped:
-                raise ValueError(f"Insufficient stock for {line.product.sku} at {delivery.warehouse.name}: available {stock_record.quantity_on_hand}, requested {line.quantity_shipped}")
+            # Since this is a shipment for a confirmed order, the stock is already reserved.
+            # We check if there is enough total physical stock, or if we were somehow oversold.
+            # The available stock check is technically on `quantity_available` but since we are
+            # now *consuming* the reserved stock, we should be careful. 
+            # If we reserved 5, on_hand=5, available=0. If we ship 5, we shouldn't fail the guard.
+            # So the guard against available stock should only be for NON-reserved operations,
+            # or we release the reservation FIRST.
+            
+            # Release the reservation (cap at 0 just in case)
+            stock_record.quantity_reserved = max(Decimal('0'), stock_record.quantity_reserved - line.quantity_shipped)
+            
+            # Now we check if we have enough available stock (which includes the freshly released stock)
+            if stock_record.quantity_available < line.quantity_shipped:
+                raise ValueError(f"Insufficient stock for {line.product.sku} at {delivery.warehouse.name}: available {stock_record.quantity_available}, requested {line.quantity_shipped}")
                 
             stock_record.quantity_on_hand -= line.quantity_shipped
-            stock_record.save(update_fields=['quantity_on_hand'])
+            stock_record.save(update_fields=['quantity_on_hand', 'quantity_reserved'])
                 
             StockMovement.objects.create(
                 company=self.company,

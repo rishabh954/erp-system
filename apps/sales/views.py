@@ -238,9 +238,9 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
                 messages.success(request, f'Sales Order {so.number} created (Draft pending approval).')
                 return redirect('sales:order_detail', pk=so.pk)
 
+            from apps.sales.services import SalesOrderService
             so = service.convert_quote_to_order(quot)
-            so.status = SalesOrder.Status.CONFIRMED
-            so.save(update_fields=['status'])
+            so = SalesOrderService(user=request.user, company=self.get_company()).confirm_order(so)
             
             messages.success(request, f'Successfully converted to Sales Order {so.number}.')
             return redirect('sales:order_detail', pk=so.pk)
@@ -378,12 +378,13 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
             messages.error(request, 'Cannot cancel an order with paid invoices.')
             return redirect('sales:order_detail', pk=pk)
             
-        order.status = SalesOrder.Status.CANCELLED
         cancel_reason = request.POST.get('cancel_reason', '').strip()
-        if cancel_reason:
-            order.cancel_reason = cancel_reason
-        order.save(update_fields=['status', 'cancel_reason'])
-        
+        try:
+            from apps.sales.services import SalesOrderService
+            SalesOrderService(user=request.user, company=self.get_company()).cancel_order(order, reason=cancel_reason)
+        except Exception as e:
+            messages.error(request, f'Error cancelling order: {e}')
+            return redirect('sales:order_detail', pk=pk)
         for delivery in order.delivery_orders.filter(status__in=['draft', 'ready']):
             delivery.status = 'cancelled'
             delivery.save(update_fields=['status'])
