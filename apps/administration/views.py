@@ -31,6 +31,10 @@ class AdminRequiredMixin(LoginRequiredMixin):
             return redirect('dashboard:home')
         return super().dispatch(request, *args, **kwargs)
 
+    @property
+    def company(self):
+        return getattr(self.request.user, 'primary_company', None)
+
 class AppStoreView(AdminRequiredMixin, TemplateView):
     template_name = 'administration/app_store.html'
     
@@ -74,11 +78,6 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
             messages.warning(request, f"Uninstalled {app_label.upper()}.")
             
         return redirect('administration:app_store')
-
-    @property
-    def company(self):
-        return self.request.user.primary_company
-
 
 # ── 1. Administration Dashboard ───────────────────────────────────────────────
 

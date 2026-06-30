@@ -10,7 +10,8 @@
   {% if current_company and current_company.favicon %}
   <link rel="icon" href="{{ current_company.favicon.url }}">
   {% else %}
-  <link rel="icon" href="{% load static %}{% static 'images/favicon.ico' %}">
+  <link rel="icon" href="{% load static %}
+{% load currency_tags %}{% static 'images/favicon.ico' %}">
   {% endif %}
 
   <!-- Bootstrap 5 -->
@@ -599,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="fw-600"><i class="fas fa-robot me-2"></i>AI Assistant</div>
     <button class="btn-close btn-close-white" style="font-size: 0.8rem;" id="aiWidgetClose"></button>
   </div>
-  <div class="flex-grow-1 p-3" id="aiWidgetMessages" style="overflow-y: auto; background: var(--bg-primary);">
+  <div class="flex-grow-1 p-3" id="aiWidgetMessages" style="overflow-y: auto; background: var(--bg-body);">
     <div class="mb-3 d-flex">
       <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
       <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;">Hi! I'm your ERP Assistant. You can ask me questions about this page.</div>
@@ -638,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Add user message
       messages.innerHTML += `<div class="mb-3 d-flex justify-content-end">
-        <div class="bg-primary text-white p-2 rounded" style="font-size: 0.85rem; max-width: 80%;">${text.replace(/</g, "&lt;")}</div>
+        <div class="bg-primary text-white p-2 rounded" style="font-size: 0.85rem; max-width: 80%;"> {{ current_company.default_currency.symbol|default:'$' }}{text.replace(/</g, "&lt;")}</div>
       </div>`;
       input.value = '';
       messages.scrollTop = messages.scrollHeight;
@@ -665,7 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messages.innerHTML += `<div class="mb-3 d-flex">
           <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
-          <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;">${answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>
+          <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;"> {{ current_company.default_currency.symbol|default:'$' }}{answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g,'<strong>{{ '1'|currency:current_company }}</strong>')}</div>
         </div>`;
         messages.scrollTop = messages.scrollHeight;
       } catch (err) {

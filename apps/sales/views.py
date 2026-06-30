@@ -715,7 +715,7 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
     
     def get_queryset(self):
         from django.db.models import Q
-        qs = self.get_base_qs(Subscription).select_related('customer', 'product', 'branch').order_by('-created_at')
+        qs = self.get_base_qs(Subscription).select_related('customer', 'product').order_by('-created_at')
         
         q = self.request.GET.get('q', '').strip()
         status = self.request.GET.get('status', '').strip()

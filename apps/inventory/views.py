@@ -443,7 +443,7 @@ class ProductCategoryListView(CompanyMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = ProductCategory.objects.filter(company=self.company())
         q = self.request.GET.get('q')
         if q:
             qs = qs.filter(name__icontains=q)
@@ -472,10 +472,16 @@ class ProductCategoryUpdateView(CompanyMixin, SuccessMessageMixin, UpdateView):
     success_url = reverse_lazy('inventory:categories')
     success_message = "Category updated successfully."
 
+    def get_queryset(self):
+        return ProductCategory.objects.filter(company=self.company())
+
 class ProductCategoryDeleteView(CompanyMixin, DeleteView):
     model = ProductCategory
     template_name = 'inventory/categories/confirm_delete.html'
     success_url = reverse_lazy('inventory:categories')
+
+    def get_queryset(self):
+        return ProductCategory.objects.filter(company=self.company())
 
     def form_valid(self, form):
         from django.utils import timezone

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Budget: {{ budget.name }}{% endblock %}
@@ -60,8 +61,8 @@
                             {% for line in budget.lines.all %}
                             <tr>
                                 <td>{{ line.account.code }} - {{ line.account.name }}</td>
-                                <td class="text-end fw-bold">${{ line.planned_amount|floatformat:2 }}</td>
-                                <td class="text-end fw-bold">${{ line.actual_amount|floatformat:2 }}</td>
+                                <td class="text-end fw-bold">{{ line.planned_amount|floatformat:2 |currency:current_company }}</td>
+                                <td class="text-end fw-bold">{{ line.actual_amount|floatformat:2 |currency:current_company }}</td>
                                 <td style="width: 30%;">
                                     {% with actual=line.actual_amount|default:0 planned=line.planned_amount|default:1 %}
                                     <div class="progress" style="height: 10px;">

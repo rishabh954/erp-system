@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static humanize %}
 
 {% block title %}Campaign ROI Report{% endblock %}
@@ -31,7 +32,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Budget</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ totals.budget|floatformat:2|intcomma }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totals.budget|floatformat:2|intcomma |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -44,7 +45,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Generated Revenue</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ totals.revenue|floatformat:2|intcomma }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totals.revenue|floatformat:2|intcomma |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -98,8 +99,8 @@
                         </td>
                         <td class="text-end">{{ c.total_leads_count }}</td>
                         <td class="text-end">{{ c.won_count }}</td>
-                        <td class="text-end text-danger">${{ c.budget|floatformat:2|intcomma }}</td>
-                        <td class="text-end text-success fw-bold">${{ c.actual_revenue_generated|floatformat:2|intcomma }}</td>
+                        <td class="text-end text-danger">{{ c.budget|floatformat:2|intcomma |currency:current_company }}</td>
+                        <td class="text-end text-success fw-bold">{{ c.actual_revenue_generated|floatformat:2|intcomma |currency:current_company }}</td>
                         <td class="text-end">
                             <span class="{% if c.roi_percentage > 0 %}text-success{% elif c.roi_percentage < 0 %}text-danger{% endif %} fw-bold">
                                 {{ c.roi_percentage|floatformat:1 }}%

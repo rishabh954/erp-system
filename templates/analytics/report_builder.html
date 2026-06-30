@@ -742,8 +742,8 @@ function renderFieldList() {
     <div class="field-item" onclick="toggleField('${f.key}', this)">
       <input type="checkbox" ${state.selected.includes(f.key) ? 'checked' : ''}
              id="fld_${f.key}" class="field-cb" data-key="${f.key}">
-      <label for="fld_${f.key}" style="cursor:pointer;flex-grow:1;">${f.label}</label>
-      <span class="field-type">${f.type || 'text'}</span>
+      <label for="fld_${f.key}" style="cursor:pointer;flex-grow:1;"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</label>
+      <span class="field-type"> {{ current_company.default_currency.symbol|default:'$' }}{f.type || 'text'}</span>
     </div>`).join('') || '<div class="text-muted text-center py-2">No fields found.</div>';
 
   updateSelectedCount();
@@ -790,7 +790,7 @@ function updateColOrder() {
     const f = state.fields.find(x => x.key === k);
     return `<span class="badge rounded-pill px-3 py-2 fw-semibold"
               style="background:rgba(67,97,238,.1);color:var(--brand-primary);font-size:.78rem;cursor:grab;">
-              <i class="fa-solid fa-grip-dots-vertical me-1 opacity-50"></i>${f ? f.label : k}
+              <i class="fa-solid fa-grip-dots-vertical me-1 opacity-50"></i> {{ current_company.default_currency.symbol|default:'$' }}{f ? f.label : k}
             </span>`;
   }).join('');
 }
@@ -801,14 +801,14 @@ function updateColOrder() {
 function populateDynamicSelects() {
   const fields = state.fields;
   const opts = '<option value="">— Select —</option>' +
-    fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+    fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
 
   document.getElementById('sortField').innerHTML = '<option value="">— None —</option>' +
-    fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+    fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
 
   const dateFields = fields.filter(f => ['date','datetime'].includes(f.type));
   document.getElementById('dateField').innerHTML = '<option value="">— Auto —</option>' +
-    dateFields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+    dateFields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
 
   ['groupByField','valueField','pivotRowField','pivotColField','pivotValueField'].forEach(id => {
     document.getElementById(id).innerHTML = opts;
@@ -823,13 +823,13 @@ function addFilter() {
   filterCount++;
   const id = `fr${filterCount}`;
   const fields = state.fields;
-  const fieldOpts = fields.map(f => `<option value="${f.key}">${f.label}</option>`).join('');
+  const fieldOpts = fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
 
   const row = document.createElement('div');
   row.className = 'filter-row';
   row.id = id;
   row.innerHTML = `
-    <select class="form-select form-select-sm filter-field">${fieldOpts}</select>
+    <select class="form-select form-select-sm filter-field"> {{ current_company.default_currency.symbol|default:'$' }}{fieldOpts}</select>
     <select class="form-select form-select-sm filter-op">
       <option value="eq">= equals</option>
       <option value="ne">≠ not eq</option>
@@ -1019,14 +1019,13 @@ function renderPreview(data) {
   const rows    = data.rows    || [];
 
   document.getElementById('previewStats').innerHTML = `
-    <span><i class="fa-solid fa-database fa-xs me-1"></i>${rows.length.toLocaleString()} rows</span>
-    <span><i class="fa-solid fa-table-columns fa-xs me-1"></i>${headers.length} columns</span>
-    ${data.truncated ? '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>Preview truncated</span>' : ''}`;
+    <span><i class="fa-solid fa-database fa-xs me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{rows.length.toLocaleString()} rows</span>
+    <span><i class="fa-solid fa-table-columns fa-xs me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{headers.length} columns</span> {{ current_company.default_currency.symbol|default:'$' }}{data.truncated ? '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>Preview truncated</span>' : ''}`;
 
   document.getElementById('previewThead').innerHTML =
-    `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+    `<tr> {{ current_company.default_currency.symbol|default:'$' }}{headers.map(h => `<th> {{ current_company.default_currency.symbol|default:'$' }}{h}</th>`).join('')}</tr>`;
   document.getElementById('previewTbody').innerHTML =
-    rows.map(row => `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`).join('');
+    rows.map(row => `<tr> {{ current_company.default_currency.symbol|default:'$' }}{row.map(cell => `<td> {{ current_company.default_currency.symbol|default:'$' }}{cell ?? ''}</td>`).join('')}</tr>`).join('');
 
   document.getElementById('previewContent').style.display = '';
 }
@@ -1034,22 +1033,22 @@ function renderPreview(data) {
 function renderPivotTable(pivot, table) {
   const { col_headers, row_headers, cells, totals } = pivot;
   let html = '<thead><tr><th></th>';
-  col_headers.forEach(c => { html += `<th class="text-center">${c}</th>`; });
+  col_headers.forEach(c => { html += `<th class="text-center"> {{ current_company.default_currency.symbol|default:'$' }}{c}</th>`; });
   html += '<th class="text-center fw-bold">Total</th></tr></thead><tbody>';
   row_headers.forEach((row, ri) => {
-    html += `<tr><td class="fw-semibold">${row}</td>`;
+    html += `<tr><td class="fw-semibold"> {{ current_company.default_currency.symbol|default:'$' }}{row}</td>`;
     col_headers.forEach((_, ci) => {
       const val = cells[ri]?.[ci];
-      html += `<td class="text-end">${val !== undefined ? val.toLocaleString() : '—'}</td>`;
+      html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{val !== undefined ? val.toLocaleString() : '—'}</td>`;
     });
-    html += `<td class="text-end fw-bold">${(totals?.rows?.[ri] ?? '').toLocaleString()}</td></tr>`;
+    html += `<td class="text-end fw-bold"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.rows?.[ri] ?? '').toLocaleString()}</td></tr>`;
   });
   // Total row
   html += '<tr class="table-active fw-bold"><td>Total</td>';
   col_headers.forEach((_, ci) => {
-    html += `<td class="text-end">${(totals?.cols?.[ci] ?? '').toLocaleString()}</td>`;
+    html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.cols?.[ci] ?? '').toLocaleString()}</td>`;
   });
-  html += `<td class="text-end">${(totals?.grand ?? '').toLocaleString()}</td></tr>`;
+  html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.grand ?? '').toLocaleString()}</td></tr>`;
   html += '</tbody>';
   table.innerHTML = html;
 }

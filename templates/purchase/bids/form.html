@@ -88,7 +88,7 @@
                   <td>{{ line.quantity|floatformat:2 }}</td>
                   <td>
                     <div class="input-group">
-                      <span class="input-group-text">$</span>
+                      <span class="input-group-text"> {{ current_company.default_currency.symbol|default:'$' }}</span>
                       <input type="number" name="price[]" class="form-control" step="0.01" min="0" value="0.00" required>
                     </div>
                   </td>

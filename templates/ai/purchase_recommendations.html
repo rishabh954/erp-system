@@ -92,11 +92,11 @@ async function generateRecommendations() {
         else if (r.urgency === 'high') uBadge = 'warning text-dark';
         
         return `<tr>
-          <td class="fw-600">${r.product_name || 'Unknown'}</td>
-          <td class="small text-muted">${r.reason || 'Low stock'}</td>
-          <td><span class="badge bg-${uBadge}">${(r.urgency||'medium').toUpperCase()}</span></td>
-          <td class="fw-600">${r.recommended_quantity}</td>
-          <td class="small">${r.suggested_lead_time_days ? r.suggested_lead_time_days+' days' : '—'}</td>
+          <td class="fw-600"> {{ current_company.default_currency.symbol|default:'$' }}{r.product_name || 'Unknown'}</td>
+          <td class="small text-muted"> {{ current_company.default_currency.symbol|default:'$' }}{r.reason || 'Low stock'}</td>
+          <td><span class="badge bg-${uBadge}"> {{ current_company.default_currency.symbol|default:'$' }}{(r.urgency||'medium').toUpperCase()}</span></td>
+          <td class="fw-600"> {{ current_company.default_currency.symbol|default:'$' }}{r.recommended_quantity}</td>
+          <td class="small"> {{ current_company.default_currency.symbol|default:'$' }}{r.suggested_lead_time_days ? r.suggested_lead_time_days+' days' : '—'}</td>
           <td>
             <a href="/purchase/orders/create/?product_id=${r.product_id||''}&qty=${r.recommended_quantity}" class="btn btn-xs btn-outline-primary">
               Create PO

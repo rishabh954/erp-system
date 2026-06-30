@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% block title %}Subscription - {{ subscription.customer.name }}{% endblock %}
 
 {% block content %}
@@ -53,7 +54,7 @@
             </div>
             <div class="card-body">
                 <table class="table table-sm table-borderless">
-                    <tr><th style="width: 40%">Recurring Amount:</th><td class="fw-bold">Rs. {{ subscription.recurring_amount }}</td></tr>
+                    <tr><th style="width: 40%">Recurring Amount:</th><td class="fw-bold">{{ subscription.recurring_amount |currency:current_company }}</td></tr>
                     <tr><th>Start Date:</th><td>{{ subscription.start_date|date:"M d, Y" }}</td></tr>
                     <tr><th>Next Billing Date:</th><td class="text-primary fw-bold">{{ subscription.next_billing_date|date:"M d, Y" }}</td></tr>
                 </table>

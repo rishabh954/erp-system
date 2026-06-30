@@ -87,7 +87,7 @@
             <div class="col-md-6">
               <label class="form-label fw-semibold">Purchase Cost <span class="text-danger">*</span></label>
               <div class="input-group">
-                <span class="input-group-text">$</span>
+                <span class="input-group-text"> {{ current_company.default_currency.symbol|default:'$' }}</span>
                 <input type="number" step="0.01" min="0" name="purchase_cost" class="form-control fw-bold" required>
               </div>
             </div>
@@ -105,7 +105,7 @@
             <div class="col-md-4">
               <label class="form-label fw-semibold">Salvage/Scrap Value</label>
               <div class="input-group">
-                <span class="input-group-text">$</span>
+                <span class="input-group-text"> {{ current_company.default_currency.symbol|default:'$' }}</span>
                 <input type="number" step="0.01" min="0" name="salvage_value" class="form-control" value="0">
               </div>
             </div>

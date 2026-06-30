@@ -1,4 +1,5 @@
 {% extends 'portals/portal_base.html' %}
+{% load currency_tags %}
 {% block title %}Order {{ order.number }}{% endblock %}
 {% block nav_orders %}active{% endblock %}
 {% block page_title %}Order {{ order.number }}{% endblock %}
@@ -32,8 +33,8 @@
                         <tr>
                             <td><strong>{{ line.description }}</strong></td>
                             <td>{{ line.quantity }}</td>
-                            <td>{{ order.currency.symbol|default:"$" }}{{ line.unit_price|floatformat:2 }}</td>
-                            <td><strong>{{ order.currency.symbol|default:"$" }}{{ line.subtotal|floatformat:2 }}</strong></td>
+                            <td>{{ order.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ line.unit_price|floatformat:2 }}</td>
+                            <td><strong>{{ order.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ line.subtotal|floatformat:2 }}</strong></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -64,7 +65,7 @@
                 <hr style="border:none;border-top:1px solid var(--gray-100);margin:14px 0;">
                 <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:700;">
                     <span>Total</span>
-                    <span style="color:var(--primary);">{{ order.currency.symbol|default:"$" }}{{ order.total_amount|floatformat:2 }}</span>
+                    <span style="color:var(--primary);">{{ order.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ order.total_amount|floatformat:2 }}</span>
                 </div>
             </div>
         </div>

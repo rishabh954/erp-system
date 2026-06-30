@@ -22,7 +22,7 @@
           <li><a href="{% url 'administration:notifications' %}" class="admin-nav-link {% if active_url == 'notifications' %}active{% endif %}"><i class="fas fa-bell fa-fw me-2"></i>Notification Templates</a></li>
           <li class="admin-nav-section">DOCUMENTS & DATA</li>
           <li><a href="{% url 'administration:document_templates' %}" class="admin-nav-link {% if active_url == 'document_templates' %}active{% endif %}"><i class="fas fa-file-code fa-fw me-2"></i>Document Templates</a></li>
-          <li><a href="{% url 'administration:import_export' %}" class="admin-nav-link {% if active_url == 'import_export' %}active{% endif %}"><i class="fas fa-exchange-alt fa-fw me-2"></i>Import / Export</a></li>
+          <li><a href="{% url 'administration:data_import' %}" class="admin-nav-link {% if active_url == 'data_import' %}active{% endif %}"><i class="fas fa-exchange-alt fa-fw me-2"></i>Import / Export</a></li>
           <li><a href="{% url 'administration:backup_restore' %}" class="admin-nav-link {% if active_url == 'backup_restore' %}active{% endif %}"><i class="fas fa-database fa-fw me-2"></i>Backup & Restore</a></li>
           <li class="admin-nav-section">LOGS & SECURITY</li>
           <li><a href="{% url 'administration:audit_logs' %}" class="admin-nav-link {% if active_url == 'audit_logs' %}active{% endif %}"><i class="fas fa-history fa-fw me-2"></i>Audit Logs</a></li>

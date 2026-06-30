@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Point of Sale{% endblock %}
@@ -113,7 +114,7 @@
       <div class="cart-footer">
         <!-- Totals -->
         <div class="total-row text-muted"><span>Subtotal</span><span>₹<span x-text="cartTotal.toFixed(2)"></span></span></div>
-        <div class="total-row text-muted"><span>Tax</span><span>₹0.00</span></div>
+        <div class="total-row text-muted"><span>Tax</span><span>{{ '0.00'|currency:current_company }}</span></div>
         <div class="total-row grand-total border-top pt-2 mt-1">
           <span>Total</span>
           <span class="text-success">₹<span x-text="cartTotal.toFixed(2)"></span></span>
@@ -294,9 +295,9 @@ function posApp() {
         if (data.success) {
           // Fill receipt modal
           document.getElementById('receipt-invoice-num').textContent = 'Invoice: ' + data.invoice_number;
-          document.getElementById('receipt-total').textContent  = '₹' + parseFloat(data.invoice_total).toFixed(2);
-          document.getElementById('receipt-paid').textContent   = '₹' + parseFloat(data.amount_paid).toFixed(2);
-          document.getElementById('receipt-change').textContent = '₹' + parseFloat(data.change_due).toFixed(2);
+          document.getElementById('receipt-total').textContent  = '{{ current_company.default_currency.symbol|default:'$' }}' + parseFloat(data.invoice_total).toFixed(2);
+          document.getElementById('receipt-paid').textContent   = '{{ current_company.default_currency.symbol|default:'$' }}' + parseFloat(data.amount_paid).toFixed(2);
+          document.getElementById('receipt-change').textContent = '{{ current_company.default_currency.symbol|default:'$' }}' + parseFloat(data.change_due).toFixed(2);
           document.getElementById('receipt-invoice-link').href  = '/sales/invoices/' + data.invoice_id + '/';
 
           const modal = new bootstrap.Modal(document.getElementById('receiptModal'));

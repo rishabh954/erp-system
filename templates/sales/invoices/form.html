@@ -200,8 +200,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-$(document).ready(function() {
+<script> {{ current_company.default_currency.symbol|default:'$' }}(document).ready(function() {
   if (document.querySelectorAll('.item-row').length === 0) {
     addRow();
   } else {

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% block title %}Bank Statements{% endblock %}
 {% block nav_accounting %}active{% endblock %}
 
@@ -39,8 +40,8 @@
                                 <span class="badge bg-warning text-dark">{{ stmt.status|title }}</span>
                                 {% endif %}
                             </td>
-                            <td>${{ stmt.starting_balance }}</td>
-                            <td>${{ stmt.ending_balance }}</td>
+                            <td>{{ stmt.starting_balance |currency:current_company }}</td>
+                            <td>{{ stmt.ending_balance |currency:current_company }}</td>
                             <td>
                                 <a href="{% url 'accounting:bank_reconciliation' %}?bank_account={{ stmt.bank_account.id }}" class="btn btn-sm btn-info text-white">Reconcile</a>
                             </td>

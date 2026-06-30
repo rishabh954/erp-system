@@ -1,5 +1,7 @@
-from typing import TypeVar, Generic, Optional, List, Dict, Any, Type
+from typing import TypeVar, Generic, Optional, List, Dict, Any, Type, Union
+from decimal import Decimal
 from django.db import models, transaction
+from django.utils import timezone
 from django.core.exceptions import ValidationError, PermissionDenied
 import logging
 
@@ -153,3 +155,85 @@ class BaseService:
             else:
                 seq = 1
             return f"{prefix}-{seq:05d}"
+
+
+# ─── Currency Service ──────────────────────────────────────────────────────────
+
+class CurrencyService:
+    """
+    Centralized service for formatting and converting currency.
+    Follows enterprise software patterns for multi-currency handling.
+    """
+
+    @classmethod
+    def get_company_currency(cls, company: Optional[Any]) -> Optional[Any]:
+        """Retrieves the default currency for a given company."""
+        if company and hasattr(company, 'default_currency') and company.default_currency:
+            return company.default_currency
+        return None
+
+    @classmethod
+    def format(cls, amount: Union[Decimal, float, int, str, None], company: Optional[Any] = None) -> str:
+        """
+        Format a monetary amount according to the company's currency settings.
+        Example: $1,234.56 or 1.234,56 €
+        """
+        if amount is None or amount == '':
+            amount = Decimal('0.00')
+        
+        try:
+            val = Decimal(str(amount))
+        except (ValueError, TypeError):
+            val = Decimal('0.00')
+
+        currency = cls.get_company_currency(company)
+        
+        if not currency:
+            return f"${val:,.2f}"
+
+        symbol = currency.symbol
+        decimals = currency.decimal_places
+
+        format_str = f"{{:,.{decimals}f}}"
+        formatted_val = format_str.format(val)
+
+        return f"{symbol}{formatted_val}"
+
+    @classmethod
+    def convert_currency(cls, amount: Decimal, from_currency: Any, to_currency: Any, date=None) -> Decimal:
+        """
+        Convert amount from one currency to another using ExchangeRates.
+        """
+        if from_currency == to_currency:
+            return amount
+
+        date = date or timezone.now().date()
+        
+        from apps.company.models import ExchangeRate
+        rate_record = ExchangeRate.objects.filter(
+            from_currency=from_currency,
+            to_currency=to_currency,
+            effective_date__lte=date
+        ).first()
+
+        if rate_record:
+            return amount * rate_record.rate
+        
+        inverse_rate = ExchangeRate.objects.filter(
+            from_currency=to_currency,
+            to_currency=from_currency,
+            effective_date__lte=date
+        ).first()
+
+        if inverse_rate and inverse_rate.rate:
+            return amount / inverse_rate.rate
+
+        raise ValueError(f"No exchange rate found from {from_currency.code} to {to_currency.code}")
+
+    @classmethod
+    def format_for_pdf(cls, amount: Decimal, company: Optional[Any]) -> str:
+        return cls.format(amount, company)
+
+    @classmethod
+    def format_for_excel(cls, amount: Decimal) -> float:
+        return float(amount)

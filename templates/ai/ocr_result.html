@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% load static %}
 {% block title %}OCR Result — {{ doc.doc_type|title }}{% endblock %}
 
@@ -85,18 +86,18 @@
           </div>
           <div class="col-md-4">
             <label class="form-label small text-muted">Subtotal</label>
-            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'$' }}</span>
+            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
             <input type="number" class="form-control fw-600" value="{{ d.subtotal|default:'0' }}"></div>
           </div>
           <div class="col-md-4">
             <label class="form-label small text-muted">Tax</label>
-            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'$' }}</span>
+            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
             <input type="number" class="form-control" value="{{ d.tax_amount|default:'0' }}"></div>
           </div>
           <div class="col-12">
             <label class="form-label small text-muted">Total Amount</label>
             <div class="input-group input-group-lg">
-              <span class="input-group-text fw-700">{{ d.currency|default:'$' }}</span>
+              <span class="input-group-text fw-700">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
               <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
             </div>
           </div>
@@ -127,7 +128,7 @@
           <div class="col-12">
             <label class="form-label small text-muted">Total Amount</label>
             <div class="input-group input-group-lg">
-              <span class="input-group-text fw-700">{{ d.currency|default:'$' }}</span>
+              <span class="input-group-text fw-700">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
               <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
             </div>
           </div>
@@ -156,9 +157,9 @@
                 <td>{{ item.description|default:"—" }}</td>
                 {% if doc.doc_type == 'invoice' %}
                 <td class="text-center">{{ item.quantity|default:"1" }}</td>
-                <td class="text-end">{{ d.currency|default:'$' }} {{ item.unit_price|default:"0" }}</td>
+                <td class="text-end">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }} {{ item.unit_price|default:"0" }}</td>
                 {% endif %}
-                <td class="text-end fw-600">{{ d.currency|default:'$' }} {{ item.total|default:item.amount|default:"0" }}</td>
+                <td class="text-end fw-600">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }} {{ item.total|default:item.amount|default:"0" }}</td>
               </tr>
               {% endfor %}
             </tbody>

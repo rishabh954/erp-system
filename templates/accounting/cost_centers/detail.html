@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Cost Center: {{ cost_center.name }}{% endblock %}
@@ -89,7 +90,7 @@
                         <td><a href="{% url 'accounting:journal_detail' exp.journal_entry.pk %}">{{ exp.journal_entry.reference|default:exp.journal_entry.number }}</a></td>
                         <td>{{ exp.account.code }} - {{ exp.account.name }}</td>
                         <td>{{ exp.description|default:"-" }}</td>
-                        <td class="text-end fw-bold text-danger">${{ exp.debit|floatformat:2 }}</td>
+                        <td class="text-end fw-bold text-danger">{{ exp.debit|floatformat:2 |currency:current_company }}</td>
                     </tr>
                     {% empty %}
                     <tr>

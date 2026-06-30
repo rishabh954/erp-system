@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% load static %}
 {% block title %}Natural Language Reports{% endblock %}
 
@@ -155,16 +156,16 @@ async function runQuery() {
 
     // Narrative
     document.getElementById('nlpNarrative').innerHTML =
-      data.narrative?.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>') || '';
+      data.narrative?.replace(/\*\*(.*?)\*\*/g,'<strong>{{ '1'|currency:current_company }}</strong>').replace(/\n/g,'<br>') || '';
 
     // Stats
     document.getElementById('resultMeta').textContent =
       `${data.count} results · ${data.execution_ms}ms · ${data.tokens_used||0} tokens`;
 
     document.getElementById('resultStats').innerHTML = `
-      <span><i class="fas fa-database me-1"></i>${data.count} records</span>
-      <span><i class="fas fa-clock me-1"></i>${data.execution_ms}ms</span>
-      <span><i class="fas fa-coins me-1"></i>${data.tokens_used||0} tokens</span>`;
+      <span><i class="fas fa-database me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{data.count} records</span>
+      <span><i class="fas fa-clock me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{data.execution_ms}ms</span>
+      <span><i class="fas fa-coins me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{data.tokens_used||0} tokens</span>`;
 
     // Table
     buildTable(data.results || []);
@@ -185,9 +186,9 @@ function buildTable(rows) {
   if (!rows.length) return;
   const cols = Object.keys(rows[0]);
   document.getElementById('nlpTableHead').innerHTML =
-    '<tr>' + cols.map(c => `<th>${c.replace(/__/g,' ').replace(/_/g,' ')}</th>`).join('') + '</tr>';
+    '<tr>' + cols.map(c => `<th> {{ current_company.default_currency.symbol|default:'$' }}{c.replace(/__/g,' ').replace(/_/g,' ')}</th>`).join('') + '</tr>';
   document.getElementById('nlpTableBody').innerHTML =
-    rows.map(r => '<tr>' + cols.map(c => `<td class="small">${r[c] || '—'}</td>`).join('') + '</tr>').join('');
+    rows.map(r => '<tr>' + cols.map(c => `<td class="small"> {{ current_company.default_currency.symbol|default:'$' }}{r[c] || '—'}</td>`).join('') + '</tr>').join('');
 }
 
 function buildChart(config, results) {

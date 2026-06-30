@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% load static %}
 {% block title %}AI Financial Summary{% endblock %}
 
@@ -70,28 +71,28 @@
     <div class="col-6 col-md-3">
       <div class="metric-card bg-success bg-opacity-10 border border-success border-opacity-20">
         <div class="text-muted small mb-1">Monthly Revenue</div>
-        <div class="metric-value text-success">₹{{ m.monthly_revenue|default:"0"|floatformat:0 }}</div>
+        <div class="metric-value text-success">{{ m.monthly_revenue|default:"0"|floatformat:0 |currency:current_company }}</div>
         <div class="text-muted small">{{ m.period }}</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-card bg-primary bg-opacity-10 border border-primary border-opacity-20">
         <div class="text-muted small mb-1">Outstanding AR</div>
-        <div class="metric-value text-primary">₹{{ m.outstanding_invoices|default:"0"|floatformat:0 }}</div>
+        <div class="metric-value text-primary">{{ m.outstanding_invoices|default:"0"|floatformat:0 |currency:current_company }}</div>
         <div class="text-muted small">Total invoiced</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-card bg-danger bg-opacity-10 border border-danger border-opacity-20">
         <div class="text-muted small mb-1">Overdue Invoices</div>
-        <div class="metric-value text-danger">₹{{ m.overdue_invoices|default:"0"|floatformat:0 }}</div>
+        <div class="metric-value text-danger">{{ m.overdue_invoices|default:"0"|floatformat:0 |currency:current_company }}</div>
         <div class="text-muted small">Past due date</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-card bg-warning bg-opacity-10 border border-warning border-opacity-20">
         <div class="text-muted small mb-1">Monthly Expenses</div>
-        <div class="metric-value text-warning">₹{{ m.monthly_expenses|default:"0"|floatformat:0 }}</div>
+        <div class="metric-value text-warning">{{ m.monthly_expenses|default:"0"|floatformat:0 |currency:current_company }}</div>
         <div class="text-muted small">{{ m.period }}</div>
       </div>
     </div>
@@ -145,8 +146,8 @@ async function generateSummary() {
 
     // Narrative
     document.getElementById('summaryNarrative').innerHTML =
-      (data.narrative||'').replace(/## (.*)/g,'<h4>$1</h4>').replace(/### (.*)/g,'<h4>$1</h4>')
-        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+      (data.narrative||'').replace(/## (.*)/g,'<h4>{{ '1'|currency:current_company }}</h4>').replace(/### (.*)/g,'<h4>{{ '1'|currency:current_company }}</h4>')
+        .replace(/\*\*(.*?)\*\*/g,'<strong>{{ '1'|currency:current_company }}</strong>').replace(/\n/g,'<br>');
     document.getElementById('summaryTitle').textContent = 'Financial Summary';
     document.getElementById('summaryDate').textContent = 'Generated just now';
 
@@ -157,7 +158,7 @@ async function generateSummary() {
         <div class="metric-card bg-success bg-opacity-10 border border-success border-opacity-20">
           <div class="text-muted small mb-1">Monthly Revenue</div>
           <div class="metric-value text-success">₹${(m.monthly_revenue||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div>
-          <div class="text-muted small">${m.period||''}</div>
+          <div class="text-muted small"> {{ current_company.default_currency.symbol|default:'$' }}{m.period||''}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -178,7 +179,7 @@ async function generateSummary() {
         <div class="metric-card bg-warning bg-opacity-10 border border-warning border-opacity-20">
           <div class="text-muted small mb-1">Monthly Expenses</div>
           <div class="metric-value text-warning">₹${(m.monthly_expenses||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div>
-          <div class="text-muted small">${m.period||''}</div>
+          <div class="text-muted small"> {{ current_company.default_currency.symbol|default:'$' }}{m.period||''}</div>
         </div>
       </div>`;
 

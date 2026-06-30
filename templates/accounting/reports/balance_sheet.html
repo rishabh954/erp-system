@@ -66,8 +66,7 @@
     </div>
     <div class="text-end">
       <div class="text-muted small">Difference</div>
-      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}">
-        ${% widthratio total_assets total_liabilities_equity 1 %}
+      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}"> {{ current_company.default_currency.symbol|default:'$' }}{% widthratio total_assets total_liabilities_equity 1 %}
       </div>
     </div>
   </div>

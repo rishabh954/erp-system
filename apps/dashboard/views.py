@@ -177,14 +177,28 @@ class CEODashboardAPIView(APIView):
         if not breakdown:
             breakdown = {'Products': 60, 'Services': 25, 'Consulting': 10, 'Other': 5}
 
+        from apps.inventory.models import StockRecord
+        inv_breakdown_qs = StockRecord.objects.filter(
+            company=company, is_deleted=False, product__category__isnull=False
+        ).values('product__category__name').annotate(
+            total=Sum(F('quantity_on_hand') * F('average_cost'))
+        ).order_by('-total')[:6]
+
+        inv_categories = [row['product__category__name'] for row in inv_breakdown_qs]
+        inv_values = [float(row['total']) for row in inv_breakdown_qs]
+
+        if not inv_categories:
+            inv_categories = ['Electronics', 'Raw Materials', 'Finished Goods', 'Consumables']
+            inv_values = [0, 0, 0, 0]
+
         return {
             'months': months,
             'revenue': revenue_data,
             'expenses': expense_data,
             'pipeline': pipeline,
             'breakdown': breakdown,
-            'inventory_categories': ['Electronics', 'Raw Materials', 'Finished Goods', 'Consumables'],
-            'inventory_values': [42000, 18000, 65000, 9000],
+            'inventory_categories': inv_categories,
+            'inventory_values': inv_values,
             'cash_inflow': revenue_data,
             'cash_outflow': expense_data,
         }

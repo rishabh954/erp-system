@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const chartArea = document.getElementById('chart-{{ report.id }}').parentNode;
                 if (data.error) {
                     console.error("Error loading report {{ report.id }}:", data.error);
-                    chartArea.innerHTML = `<div class="text-danger text-center mt-5"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>Failed to load chart:<br><small>${data.error}</small></div>`;
+                    chartArea.innerHTML = `<div class="text-danger text-center mt-5"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>Failed to load chart:<br><small> {{ current_company.default_currency.symbol|default:'$' }}{data.error}</small></div>`;
                     return;
                 }
                 

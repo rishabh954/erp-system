@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load humanize %}
 
 {% block title %}Account Details - {{ account.name }}{% endblock %}
@@ -20,7 +21,7 @@
             <div class="text-end">
                 <span class="text-muted d-block" style="font-size: 13px;">Current Balance</span>
                 <span class="fs-4 fw-bold {% if account.current_balance < 0 %}text-danger{% else %}text-success{% endif %}">
-                    {{ CURRENCY_SYMBOL|default:'$' }}{{ account.current_balance|floatformat:2|intcomma }}
+                    {{ CURRENCY_SYMBOL|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}{{ account.current_balance|floatformat:2|intcomma }}
                 </span>
             </div>
         </div>
@@ -52,7 +53,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fs-6"><i class="fas fa-list me-2"></i>Ledger Entries</h5>
-        <span class="badge bg-primary">Period Balance: {{ CURRENCY_SYMBOL|default:'$' }}{{ balance|floatformat:2|intcomma }}</span>
+        <span class="badge bg-primary">Period Balance: {{ CURRENCY_SYMBOL|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}{{ balance|floatformat:2|intcomma }}</span>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -75,8 +76,8 @@
                         </a>
                     </td>
                     <td>{{ item.description|default:"-" }}</td>
-                    <td class="text-end">{% if item.debit > 0 %}{{ CURRENCY_SYMBOL|default:'$' }}{{ item.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
-                    <td class="text-end">{% if item.credit > 0 %}{{ CURRENCY_SYMBOL|default:'$' }}{{ item.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                    <td class="text-end">{% if item.debit > 0 %}{{ CURRENCY_SYMBOL|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}{{ item.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                    <td class="text-end">{% if item.credit > 0 %}{{ CURRENCY_SYMBOL|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}{{ item.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
                 </tr>
                 {% empty %}
                 <tr>

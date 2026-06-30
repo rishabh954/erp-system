@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Accounting Dashboard{% endblock %}
@@ -21,7 +22,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Cash (Bank Balances)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_cash|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_cash|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-university fa-2x text-gray-300"></i></div>
                 </div>
@@ -36,7 +37,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Accounts Receivable (Open)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ open_ar|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ open_ar|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div>
                 </div>
@@ -51,7 +52,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Accounts Payable (Open)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ open_ap|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ open_ap|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-file-invoice fa-2x text-gray-300"></i></div>
                 </div>
@@ -66,7 +67,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Net Profit (YTD)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ net_profit_ytd|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ net_profit_ytd|floatformat:2 |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -80,7 +81,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Assets</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_assets|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_assets|floatformat:2 |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -94,7 +95,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Liabilities</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_liabilities|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_liabilities|floatformat:2 |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -134,7 +135,7 @@
                         <p class="mb-1 small">{{ entry.reference|default:"No reference" }}</p>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <span class="badge {% if entry.status == 'posted' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">{{ entry.status|title }}</span>
-                            <span class="fw-bold text-dark">${{ entry.total_debit|floatformat:2 }}</span>
+                            <span class="fw-bold text-dark">{{ entry.total_debit|floatformat:2 |currency:current_company }}</span>
                         </div>
                     </a>
                     {% empty %}
@@ -171,7 +172,7 @@
                                 <td><span class="fw-bold">{{ bank.name }}</span></td>
                                 <td>{{ bank.bank_name }}</td>
                                 <td>{{ bank.account_number }}</td>
-                                <td class="text-end fw-bold">${{ bank.current_balance|floatformat:2 }}</td>
+                                <td class="text-end fw-bold">{{ bank.current_balance|floatformat:2 |currency:current_company }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -218,7 +219,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 scales: {
                     x: { grid: { display: false } },
                     y: {
-                        ticks: { callback: function(value) { return '$' + value; } },
+                        ticks: { callback: function(value) { return '{{ current_company.default_currency.symbol|default:'$' }}' + value; } },
                         grid: { borderDash: [2], zeroLineBorderDash: [2] }
                     }
                 }

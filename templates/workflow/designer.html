@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% load static humanize %}
 
 {% block title %}Workflow Designer — {{ workflow.name }}{% endblock %}
@@ -147,7 +148,7 @@
                 {% endif %}
               {% endif %}
               {% if step.min_amount or step.max_amount %}
-                <br><span class="text-success">₹{{ step.min_amount|default_if_none:"0" }}–{{ step.max_amount|default_if_none:"∞" }}</span>
+                <br><span class="text-success">{{ step.min_amount|default_if_none:"0" |currency:current_company }}–{{ step.max_amount|default_if_none:"∞" }}</span>
               {% endif %}
             </div>
             {% if step.escalation_enabled %}

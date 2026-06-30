@@ -291,8 +291,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-$(document).ready(function() {
+<script> {{ current_company.default_currency.symbol|default:'$' }}(document).ready(function() {
   $('.status-change-btn').click(function(e) {
     e.preventDefault();
     const newStatus = $(this).data('value');

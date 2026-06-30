@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Purchase Dashboard{% endblock %}
@@ -18,7 +19,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Expenses (Paid)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_expenses|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_expenses|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-money-bill-wave fa-2x text-gray-300"></i></div>
                 </div>
@@ -33,7 +34,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Cost Analysis (Total POs)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ cost_analysis_total|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ cost_analysis_total|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-chart-bar fa-2x text-gray-300"></i></div>
                 </div>
@@ -48,7 +49,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Purchase Forecast (Confirmed unpaid)</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ purchase_forecast|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ purchase_forecast|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-chart-line fa-2x text-gray-300"></i></div>
                 </div>
@@ -63,7 +64,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Outstanding Payables</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ outstanding_payables|floatformat:2 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ outstanding_payables|floatformat:2 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto"><i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i></div>
                 </div>
@@ -129,7 +130,7 @@
                             <h6 class="mb-0 fw-bold">{{ po.number }}</h6>
                             <small class="text-muted">{{ po.vendor.name }}</small>
                         </div>
-                        <span class="badge bg-secondary rounded-pill px-3 py-2">${{ po.total|floatformat:2 }}</span>
+                        <span class="badge bg-secondary rounded-pill px-3 py-2">{{ po.total|floatformat:2 |currency:current_company }}</span>
                     </a>
                     {% empty %}
                     <div class="p-4 text-center text-muted">No recent purchase orders.</div>
@@ -168,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     y: {
                         ticks: {
                             callback: function(value, index, values) {
-                                return '$' + value;
+                                return '{{ current_company.default_currency.symbol|default:'$' }}' + value;
                             }
                         },
                         grid: {

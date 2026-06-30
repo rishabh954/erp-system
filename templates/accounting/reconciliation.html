@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}Bank Reconciliation{% endblock %}
@@ -46,7 +47,7 @@
                             <span class="badge {% if tx.transaction_type == 'credit' %}bg-success{% else %}bg-danger{% endif %} rounded-pill mb-1">
                                 {{ tx.transaction_type|title }}
                             </span>
-                            <div class="fw-bold fs-5">${{ tx.amount|floatformat:2 }}</div>
+                            <div class="fw-bold fs-5">{{ tx.amount|floatformat:2 |currency:current_company }}</div>
                         </div>
                     </div>
                     {% empty %}
@@ -79,10 +80,10 @@
                         <div class="text-end">
                             {% if item.debit > 0 %}
                             <span class="badge bg-success rounded-pill mb-1">Debit (In)</span>
-                            <div class="fw-bold fs-5">${{ item.debit|floatformat:2 }}</div>
+                            <div class="fw-bold fs-5">{{ item.debit|floatformat:2 |currency:current_company }}</div>
                             {% else %}
                             <span class="badge bg-danger rounded-pill mb-1">Credit (Out)</span>
-                            <div class="fw-bold fs-5">${{ item.credit|floatformat:2 }}</div>
+                            <div class="fw-bold fs-5">{{ item.credit|floatformat:2 |currency:current_company }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -103,9 +104,9 @@
 <div class="position-fixed bottom-0 start-0 w-100 bg-dark text-white p-3 shadow-lg d-none" id="reconciliationBar" style="z-index: 1050;">
     <div class="container-fluid d-flex justify-content-between align-items-center">
         <div>
-            <span class="me-4"><i class="fas fa-file-invoice text-primary"></i> Bank Tx: <strong id="selectedTxAmount">$0.00</strong></span>
-            <span class="me-4"><i class="fas fa-book text-info"></i> Journal Item: <strong id="selectedJlAmount">$0.00</strong></span>
-            <span><i class="fas fa-balance-scale text-warning"></i> Difference: <strong id="differenceAmount">$0.00</strong></span>
+            <span class="me-4"><i class="fas fa-file-invoice text-primary"></i> Bank Tx: <strong id="selectedTxAmount">{{ '0.00'|currency:current_company }}</strong></span>
+            <span class="me-4"><i class="fas fa-book text-info"></i> Journal Item: <strong id="selectedJlAmount">{{ '0.00'|currency:current_company }}</strong></span>
+            <span><i class="fas fa-balance-scale text-warning"></i> Difference: <strong id="differenceAmount">{{ '0.00'|currency:current_company }}</strong></span>
         </div>
         <div>
             <form method="post" class="d-inline">
@@ -210,11 +211,11 @@
         if (selectedTxId || selectedJlId) {
             bar.classList.remove('d-none');
             
-            document.getElementById('selectedTxAmount').innerText = '$' + selectedTxAmount.toFixed(2);
-            document.getElementById('selectedJlAmount').innerText = '$' + selectedJlAmount.toFixed(2);
+            document.getElementById('selectedTxAmount').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + selectedTxAmount.toFixed(2);
+            document.getElementById('selectedJlAmount').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + selectedJlAmount.toFixed(2);
             
             let diff = Math.abs(selectedTxAmount - selectedJlAmount);
-            document.getElementById('differenceAmount').innerText = '$' + diff.toFixed(2);
+            document.getElementById('differenceAmount').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + diff.toFixed(2);
             
             const btn = document.getElementById('btnReconcile');
             if (selectedTxId && selectedJlId && diff < 0.01) {

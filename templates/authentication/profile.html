@@ -275,8 +275,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-  $(document).ready(function() {
+<script> {{ current_company.default_currency.symbol|default:'$' }}(document).ready(function() {
     // Automatically add form-control class to all inputs from the Django form
     $('#pane-general input, #pane-general select, #pane-general textarea').addClass('form-control');
     

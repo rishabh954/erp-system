@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% block title %}Claim Details | HRMS{% endblock %}
 {% block nav_hrms %}active{% endblock %}
 
@@ -29,7 +30,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
           <div>
             <div class="text-muted small fw-bold">TOTAL AMOUNT</div>
-            <div class="fs-3 fw-bold text-dark">{{ claim.currency.symbol|default:"$" }}{{ claim.amount }}</div>
+            <div class="fs-3 fw-bold text-dark">{{ claim.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ claim.amount }}</div>
           </div>
           <div class="text-end">
             <div class="text-muted small fw-bold">STATUS</div>

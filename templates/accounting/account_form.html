@@ -159,7 +159,7 @@
             <div class="col-md-5">
               <label class="form-label fw-semibold">Opening Balance</label>
               <div class="input-group">
-                <span class="input-group-text bg-transparent">$</span>
+                <span class="input-group-text bg-transparent"> {{ current_company.default_currency.symbol|default:'$' }}</span>
                 <input type="number" name="opening_balance"
                        class="form-control"
                        placeholder="0.00"
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Show badge indicator under the select
     indicator.style.display = 'flex';
-    badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${info.bg};color:${info.color};border:1px solid ${info.color}30;"><i class="fas ${info.icon}"></i>${info.label}</span>`;
+    badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${info.bg};color:${info.color};border:1px solid ${info.color}30;"><i class="fas ${info.icon}"></i> {{ current_company.default_currency.symbol|default:'$' }}{info.label}</span>`;
     note.textContent = `Normal balance: ${info.normal}`;
 
     // Show info card

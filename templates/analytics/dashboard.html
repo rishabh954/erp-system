@@ -539,7 +539,7 @@ qeModule.addEventListener('change', async () => {
     qeColList.innerHTML = data.fields.map(f => `
       <div class="form-check form-check-sm mb-1">
         <input class="form-check-input qe-col" type="checkbox" value="${f.key}" id="qe_${f.key}" checked>
-        <label class="form-check-label" for="qe_${f.key}" style="font-size:.8rem;">${f.label}</label>
+        <label class="form-check-label" for="qe_${f.key}" style="font-size:.8rem;"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</label>
       </div>`).join('');
   } catch (e) {
     qeColList.innerHTML = '<span class="text-danger">Failed to load columns.</span>';

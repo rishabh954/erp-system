@@ -1,4 +1,4 @@
-{# 
+{% comment %}
   Reusable Export Toolbar — include in any list/detail template.
   
   Usage:
@@ -8,7 +8,7 @@
     report_uuid  — if set, links to a saved report's export endpoints
     title        — toolbar heading (default: Export)
     filters      — extra query params to append to quick export URL
-#}
+{% endcomment %}
 
 <div class="export-toolbar d-flex align-items-center gap-2 flex-wrap" data-export-module="{{ module }}">
   {% if title %}<span class="text-muted small fw-600 me-1">{{ title }}:</span>{% endif %}

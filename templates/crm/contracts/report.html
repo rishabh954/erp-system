@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static humanize %}
 
 {% block title %}Contracts Expiry Report{% endblock %}
@@ -31,7 +32,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Listed Value</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ totals.value|floatformat:2|intcomma }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ totals.value|floatformat:2|intcomma |currency:current_company }}</div>
                     </div>
                 </div>
             </div>
@@ -108,7 +109,7 @@
                                 -
                             {% endif %}
                         </td>
-                        <td class="text-end text-dark fw-bold">${{ c.value|floatformat:2|intcomma }}</td>
+                        <td class="text-end text-dark fw-bold">{{ c.value|floatformat:2|intcomma |currency:current_company }}</td>
                     </tr>
                     {% empty %}
                     <tr>

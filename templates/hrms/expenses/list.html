@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% block title %}Expense Claims | HRMS{% endblock %}
 {% block nav_hrms %}active{% endblock %}
 
@@ -40,7 +41,7 @@
           <td><a href="{% url 'hrms:employee_detail' claim.employee.pk %}">{{ claim.employee.full_name }}</a></td>
           <td>{{ claim.expense_date|date:"M j, Y" }}</td>
           <td>{{ claim.category }}</td>
-          <td>{{ claim.currency.symbol|default:"$" }}{{ claim.amount }}</td>
+          <td>{{ claim.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ claim.amount }}</td>
           <td>
             {% if claim.status == 'approved' %}<span class="badge bg-success">Approved</span>
             {% elif claim.status == 'submitted' %}<span class="badge bg-warning text-dark">Pending</span>

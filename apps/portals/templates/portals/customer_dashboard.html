@@ -1,4 +1,5 @@
 {% extends 'portals/portal_base.html' %}
+{% load currency_tags %}
 {% block title %}Dashboard{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -53,7 +54,7 @@
                     <tr>
                         <td><a href="{% url 'portals:customer_order_detail' order.pk %}" style="color:var(--primary);font-weight:600;">{{ order.number }}</a></td>
                         <td>{{ order.date|date:"d M Y" }}</td>
-                        <td>{{ order.currency.symbol|default:"$" }}{{ order.total_amount|floatformat:2 }}</td>
+                        <td>{{ order.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ order.total_amount|floatformat:2 }}</td>
                         <td>
                             {% if order.status == 'confirmed' %}<span class="badge badge-blue">Confirmed</span>
                             {% elif order.status == 'delivered' %}<span class="badge badge-green">Delivered</span>
@@ -86,7 +87,7 @@
                     <tr>
                         <td><strong>{{ inv.number }}</strong></td>
                         <td>{{ inv.date|date:"d M Y" }}</td>
-                        <td>{{ inv.currency.symbol|default:"$" }}{{ inv.total_amount|floatformat:2 }}</td>
+                        <td>{{ inv.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ inv.total_amount|floatformat:2 }}</td>
                         <td>
                             {% if inv.status == 'paid' %}<span class="badge badge-green">Paid</span>
                             {% elif inv.status == 'overdue' %}<span class="badge badge-red">Overdue</span>

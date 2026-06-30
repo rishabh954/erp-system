@@ -163,20 +163,20 @@ function renderChart(data) {
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 text-success fs-5">${metrics.r2_score !== undefined ? (metrics.r2_score * 100).toFixed(1)+'%' : 'N/A'}</div>
+        <div class="fw-700 text-success fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{metrics.r2_score !== undefined ? (metrics.r2_score * 100).toFixed(1)+'%' : 'N/A'}</div>
         <div class="text-muted small">Model Accuracy</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 fs-5">${currentDays}</div>
+        <div class="fw-700 fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{currentDays}</div>
         <div class="text-muted small">Days Ahead</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 text-warning fs-5">${metrics.avg_daily_demand !== undefined ? metrics.avg_daily_demand : (metrics.training_days || '—')}</div>
-        <div class="text-muted small">${metrics.avg_daily_demand !== undefined ? 'Avg Daily Demand' : 'Training Days'}</div>
+        <div class="fw-700 text-warning fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{metrics.avg_daily_demand !== undefined ? metrics.avg_daily_demand : (metrics.training_days || '—')}</div>
+        <div class="text-muted small"> {{ current_company.default_currency.symbol|default:'$' }}{metrics.avg_daily_demand !== undefined ? 'Avg Daily Demand' : 'Training Days'}</div>
       </div>
     </div>`;
 
@@ -229,25 +229,25 @@ function renderInventory(data) {
   document.getElementById('invMetricsRow').innerHTML = `
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 text-danger fs-5">${data.critical_count||0}</div>
+        <div class="fw-700 text-danger fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{data.critical_count||0}</div>
         <div class="text-muted small">Critical (≤7 days)</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 text-warning fs-5">${(data.total_alerts||0) - (data.critical_count||0)}</div>
+        <div class="fw-700 text-warning fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{(data.total_alerts||0) - (data.critical_count||0)}</div>
         <div class="text-muted small">Warning</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 fs-5">${data.total_alerts||0}</div>
+        <div class="fw-700 fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{data.total_alerts||0}</div>
         <div class="text-muted small">Total Alerts</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="metric-pill text-center">
-        <div class="fw-700 text-muted fs-5">${data.metrics?.products_analysed||0}</div>
+        <div class="fw-700 text-muted fs-5"> {{ current_company.default_currency.symbol|default:'$' }}{data.metrics?.products_analysed||0}</div>
         <div class="text-muted small">Products Analysed</div>
       </div>
     </div>`;
@@ -260,12 +260,12 @@ function renderInventory(data) {
 
   tbody.innerHTML = alerts.map(a => `
     <tr>
-      <td class="fw-600">${a.product}</td>
-      <td>${a.current_stock.toLocaleString()}</td>
-      <td class="text-muted">${a.reorder_level.toLocaleString()}</td>
-      <td class="urgency-${a.urgency} fw-600">${a.days_until_reorder} days</td>
-      <td>${(a.reorder_quantity||0).toLocaleString()}</td>
-      <td><span class="badge bg-${a.urgency === 'critical' ? 'danger' : 'warning text-dark'}">${a.urgency.toUpperCase()}</span></td>
+      <td class="fw-600"> {{ current_company.default_currency.symbol|default:'$' }}{a.product}</td>
+      <td> {{ current_company.default_currency.symbol|default:'$' }}{a.current_stock.toLocaleString()}</td>
+      <td class="text-muted"> {{ current_company.default_currency.symbol|default:'$' }}{a.reorder_level.toLocaleString()}</td>
+      <td class="urgency-${a.urgency} fw-600"> {{ current_company.default_currency.symbol|default:'$' }}{a.days_until_reorder} days</td>
+      <td> {{ current_company.default_currency.symbol|default:'$' }}{(a.reorder_quantity||0).toLocaleString()}</td>
+      <td><span class="badge bg-${a.urgency === 'critical' ? 'danger' : 'warning text-dark'}"> {{ current_company.default_currency.symbol|default:'$' }}{a.urgency.toUpperCase()}</span></td>
     </tr>`).join('');
 }
 

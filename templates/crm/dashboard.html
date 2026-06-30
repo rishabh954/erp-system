@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% load static %}
 
 {% block title %}CRM Dashboard{% endblock %}
@@ -34,7 +35,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Campaign Revenue vs Budget</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ campaigns.total_revenue|floatformat:0 }} / ${{ campaigns.total_budget|floatformat:0 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ campaigns.total_revenue|floatformat:0 |currency:current_company }} / {{ campaigns.total_budget|floatformat:0 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -69,7 +70,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Contracts Value ({{ contracts.active_count }})</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ contracts.active_value|floatformat:0 }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ contracts.active_value|floatformat:0 |currency:current_company }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-file-contract fa-2x text-gray-300"></i>
@@ -148,7 +149,7 @@
                             <h6 class="mb-0 fw-bold">{{ cust.name }}</h6>
                             <small class="text-muted">{{ cust.customer_code }}</small>
                         </div>
-                        <span class="badge bg-success rounded-pill px-3 py-2">${{ cust.total_invoiced|floatformat:2 }}</span>
+                        <span class="badge bg-success rounded-pill px-3 py-2">{{ cust.total_invoiced|floatformat:2 |currency:current_company }}</span>
                     </a>
                     {% empty %}
                     <div class="p-4 text-center text-muted">No invoiced customers yet.</div>

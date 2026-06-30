@@ -128,15 +128,14 @@ function renderResults(results) {
     else if (conf < 80) confColor = 'warning';
 
     return `<tr>
-      <td class="small fw-600">${r.description}</td>
+      <td class="small fw-600"> {{ current_company.default_currency.symbol|default:'$' }}{r.description}</td>
       <td>
-        <span class="badge bg-primary-subtle text-primary">${r.category}</span>
-        ${r.gl_code ? `<small class="text-muted ms-1">(${r.gl_code})</small>` : ''}
+        <span class="badge bg-primary-subtle text-primary"> {{ current_company.default_currency.symbol|default:'$' }}{r.category}</span> {{ current_company.default_currency.symbol|default:'$' }}{r.gl_code ? `<small class="text-muted ms-1">(${r.gl_code})</small>` : ''}
       </td>
       <td>
         <div class="d-flex align-items-center gap-2">
           <div class="progress" style="width:50px;height:6px"><div class="progress-bar bg-${confColor}" style="width:${conf}%"></div></div>
-          <span class="small fw-600 text-${confColor}">${conf}%</span>
+          <span class="small fw-600 text-${confColor}"> {{ current_company.default_currency.symbol|default:'$' }}{conf}%</span>
         </div>
       </td>
     </tr>`;

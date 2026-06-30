@@ -714,14 +714,14 @@ a:hover { color: var(--brand-secondary); }
 }
 
 /* Status badges */
-.badge-draft { background: rgba(108,117,125,0.15); color: #6c757d; }
-.badge-pending { background: rgba(248,162,0,0.15); color: #c97700; }
-.badge-active, .badge-approved, .badge-completed { background: rgba(45,198,83,0.15); color: #1a7a32; }
-.badge-rejected, .badge-cancelled { background: rgba(230,57,70,0.15); color: #a4262e; }
+.badge-draft, .badge-refunded { background: rgba(108,117,125,0.15); color: #6c757d; }
+.badge-pending, .badge-partial { background: rgba(248,162,0,0.15); color: #c97700; }
+.badge-active, .badge-approved, .badge-completed, .badge-paid { background: rgba(45,198,83,0.15); color: #1a7a32; }
+.badge-rejected, .badge-cancelled, .badge-overdue { background: rgba(230,57,70,0.15); color: #a4262e; }
 .badge-sent { background: rgba(72,149,239,0.15); color: #1a6bb5; }
 
-[data-theme="dark"] .badge-active, [data-theme="dark"] .badge-approved { color: #56d07e; background: rgba(45,198,83,0.20); }
-[data-theme="dark"] .badge-pending { color: #ffc107; background: rgba(248,162,0,0.20); }
+[data-theme="dark"] .badge-active, [data-theme="dark"] .badge-approved, [data-theme="dark"] .badge-paid { color: #56d07e; background: rgba(45,198,83,0.20); }
+[data-theme="dark"] .badge-pending, [data-theme="dark"] .badge-partial { color: #ffc107; background: rgba(248,162,0,0.20); }
 
 /* ─── Page Header ─────────────────────────────────────────────────────────── */
 .page-header {

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency_tags %}
 {% block title %}Sales Commissions{% endblock %}
 
 {% block content %}
@@ -52,7 +53,7 @@
                 <tr>
                     <td>{{ com.sales_rep.full_name }}</td>
                     <td><a href="{% url 'sales:invoice_detail' com.invoice.pk %}">{{ com.invoice.number }}</a></td>
-                    <td class="fw-bold text-success">Rs. {{ com.amount }}</td>
+                    <td class="fw-bold text-success">{{ com.amount |currency:current_company }}</td>
                     <td><span class="badge bg-{% if com.status == 'paid' %}success{% else %}warning{% endif %}">{{ com.get_status_display }}</span></td>
                     <td>{{ com.created_at|date }}</td>
                     <td class="text-center">

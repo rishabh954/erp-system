@@ -244,7 +244,7 @@
                     <div>${imgHtml}</div>
                     <div>
                         <div class="product-name">${p.name}</div>
-                        <div class="product-price">Rs. ${parseFloat(p.price).toFixed(2)}</div>
+                        <div class="product-price">{{ current_company.default_currency.symbol|default:'$' }}${parseFloat(p.price).toFixed(2)}</div>
                     </div>`;
                 grid.appendChild(card);
             });
@@ -306,22 +306,22 @@
                     li.innerHTML = `
                         <div class="cart-item-details">
                             <div class="cart-item-name">${item.name}</div>
-                            <div class="cart-item-price">Rs. ${parseFloat(item.price).toFixed(2)} each</div>
+                            <div class="cart-item-price">{{ current_company.default_currency.symbol|default:'$' }}${parseFloat(item.price).toFixed(2)} each</div>
                         </div>
                         <div class="cart-item-controls">
                             <button class="qty-btn" onclick="updateCartQty(${index}, -1)">&minus;</button>
                             <span class="qty-input">${item.qty}</span>
                             <button class="qty-btn" onclick="updateCartQty(${index}, 1)">+</button>
                         </div>
-                        <div class="item-total">Rs. ${itemTotal.toFixed(2)}</div>`;
+                        <div class="item-total">{{ current_company.default_currency.symbol|default:'$' }}${itemTotal.toFixed(2)}</div>`;
                     list.appendChild(li);
                 });
 
                 btnCheckout.disabled = false;
             }
             
-            document.getElementById('summarySubtotal').innerText = 'Rs. ' + total.toFixed(2);
-            document.getElementById('summaryTotal').innerText = 'Rs. ' + total.toFixed(2);
+            document.getElementById('summarySubtotal').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + total.toFixed(2);
+            document.getElementById('summaryTotal').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + total.toFixed(2);
         }
 
         // â”€â”€ Checkout & Numpad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -329,7 +329,7 @@
         const receiptModal  = new bootstrap.Modal(document.getElementById('receiptModal'));
         
         document.getElementById('btnCheckout').addEventListener('click', () => {
-            document.getElementById('modalTotalDue').innerText = 'Rs. ' + total.toFixed(2);
+            document.getElementById('modalTotalDue').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + total.toFixed(2);
             tendered = 0;
             isTypingTendered = false;
             updateTenderedUI();
@@ -339,7 +339,7 @@
         function updateTenderedUI() {
             document.getElementById('tenderedAmount').value = tendered.toFixed(2);
             const change = Math.max(0, tendered - total);
-            document.getElementById('modalChange').innerText = 'Rs. ' + change.toFixed(2);
+            document.getElementById('modalChange').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + change.toFixed(2);
             document.getElementById('btnCompleteSale').disabled = tendered < total;
         }
 
@@ -382,8 +382,8 @@
                 if (data.status === 'success') {
                     saleCompleted = true;
                     document.getElementById('receiptOrderNum').innerText = 'Order #' + data.order_number;
-                    document.getElementById('receiptTotal').innerText    = 'Rs. ' + total.toFixed(2);
-                    document.getElementById('receiptChange').innerText   = 'Rs. ' + parseFloat(data.change).toFixed(2);
+                    document.getElementById('receiptTotal').innerText    = '{{ current_company.default_currency.symbol|default:'$' }}' + total.toFixed(2);
+                    document.getElementById('receiptChange').innerText   = '{{ current_company.default_currency.symbol|default:'$' }}' + parseFloat(data.change).toFixed(2);
                     checkoutModal.hide();
                     setTimeout(() => receiptModal.show(), 350);
                 } else {

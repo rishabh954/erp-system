@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_tags %}
 {% block title %}Bank Reconciliation{% endblock %}
 {% block nav_accounting %}active{% endblock %}
 
@@ -25,7 +26,7 @@
                 </div>
                 <div class="col-md-4 mt-4">
                     {% if selected_bank %}
-                    <span class="badge bg-primary fs-6">Balance: ${{ selected_bank.current_balance }}</span>
+                    <span class="badge bg-primary fs-6">Balance: {{ selected_bank.current_balance |currency:current_company }}</span>
                     {% endif %}
                 </div>
             </form>
@@ -48,7 +49,7 @@
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-1 fw-bold">{{ line.description }}</h6>
                                 <span class="fw-bold {% if line.amount > 0 %}text-success{% else %}text-danger{% endif %}">
-                                    ${{ line.amount }}
+                                    {{ line.amount |currency:current_company }}
                                 </span>
                             </div>
                             <small class="text-muted">{{ line.date }} | Ref: {{ line.reference }}</small>
@@ -75,8 +76,8 @@
                             <div class="d-flex w-100 justify-content-between">
                                 <h6 class="mb-1 fw-bold">{{ item.journal_entry.reference|default:item.description|default:item.journal_entry.number }}</h6>
                                 <span>
-                                    {% if item.debit > 0 %}<span class="text-success fw-bold">Dr: ${{ item.debit }}</span>{% endif %}
-                                    {% if item.credit > 0 %}<span class="text-danger fw-bold">Cr: ${{ item.credit }}</span>{% endif %}
+                                    {% if item.debit > 0 %}<span class="text-success fw-bold">Dr: {{ item.debit |currency:current_company }}</span>{% endif %}
+                                    {% if item.credit > 0 %}<span class="text-danger fw-bold">Cr: {{ item.credit |currency:current_company }}</span>{% endif %}
                                 </span>
                             </div>
                             <small class="text-muted">{{ item.journal_entry.date }}</small>
@@ -94,11 +95,11 @@
     <div class="position-fixed bottom-0 start-0 w-100 bg-dark text-white p-3 shadow-lg" style="display: none; z-index: 1000;" id="matchActionBar">
         <div class="container d-flex justify-content-between align-items-center">
             <div>
-                <span class="me-4"><i class="fas fa-university text-primary me-2"></i> Bank: <span id="selectedBankAmount" class="fw-bold">$0.00</span></span>
-                <span><i class="fas fa-book text-success me-2"></i> Ledger: <span id="selectedLedgerAmount" class="fw-bold">$0.00</span></span>
+                <span class="me-4"><i class="fas fa-university text-primary me-2"></i> Bank: <span id="selectedBankAmount" class="fw-bold">{{ '0.00'|currency:current_company }}</span></span>
+                <span><i class="fas fa-book text-success me-2"></i> Ledger: <span id="selectedLedgerAmount" class="fw-bold">{{ '0.00'|currency:current_company }}</span></span>
             </div>
             <div class="d-flex align-items-center">
-                <span id="matchDifference" class="me-4 fw-bold">Diff: $0.00</span>
+                <span id="matchDifference" class="me-4 fw-bold">Diff: {{ '0.00'|currency:current_company }}</span>
                 <form method="post" id="reconcileForm">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="reconcile">
@@ -147,11 +148,11 @@
                 ledgerAmt = dr - cr; 
             }
             
-            bankAmtDisplay.textContent = '$' + bankAmt.toFixed(2);
-            ledgerAmtDisplay.textContent = '$' + ledgerAmt.toFixed(2);
+            bankAmtDisplay.textContent = '{{ current_company.default_currency.symbol|default:'$' }}' + bankAmt.toFixed(2);
+            ledgerAmtDisplay.textContent = '{{ current_company.default_currency.symbol|default:'$' }}' + ledgerAmt.toFixed(2);
             
             let diff = Math.abs(bankAmt - ledgerAmt);
-            diffDisplay.textContent = 'Diff: $' + diff.toFixed(2);
+            diffDisplay.textContent = 'Diff: {{ current_company.default_currency.symbol|default:'$' }}' + diff.toFixed(2);
             
             if (selectedLine && selectedItem && diff < 0.01) {
                 diffDisplay.className = 'me-4 fw-bold text-success';
