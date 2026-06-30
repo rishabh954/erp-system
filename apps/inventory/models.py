@@ -315,7 +315,7 @@ class InventoryTransferLine(models.Model):
     quantity_sent = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     quantity_received = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     batch_number = models.CharField(max_length=100, blank=True)
-    serial_number = models.CharField(max_length=100, blank=True)
+    serial_numbers = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = 'inventory_transfer_lines'
@@ -360,7 +360,7 @@ class DeliveryOrderLine(models.Model):
     quantity_ordered = models.DecimalField(max_digits=15, decimal_places=4)
     quantity_shipped = models.DecimalField(max_digits=15, decimal_places=4, default=0)
     batch_number = models.CharField(max_length=100, blank=True)
-    serial_number = models.CharField(max_length=100, blank=True)
+    serial_numbers = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = 'inventory_delivery_order_lines'

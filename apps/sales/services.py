@@ -622,20 +622,33 @@ class SalesOrderService(BaseService):
         if order.status != order.Status.DRAFT:
             raise ValueError("Only draft orders can be confirmed.")
             
-        from apps.inventory.models import Warehouse, StockRecord
+        from apps.inventory.models import Warehouse
+        from apps.inventory.services import StockService
+        
+        # Assumption: If SalesOrder doesn't have a warehouse, use the first active one.
         warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
         
-        if warehouse:
-            for line in order.lines.all():
-                if line.product and line.product.product_type == line.product.ProductType.STOCKABLE:
-                    stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
-                        company=self.company,
-                        product=line.product,
-                        warehouse=warehouse,
-                        defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
+        if not warehouse:
+            raise ValueError("No active warehouse found to reserve stock against.")
+            
+        stock_service = StockService(company=self.company, user=self.user)
+        short_products = []
+        
+        for line in order.lines.all():
+            if line.product and line.product.product_type == line.product.ProductType.STOCKABLE:
+                try:
+                    stock_service.reserve_stock(
+                        product=line.product, 
+                        warehouse=warehouse, 
+                        qty=line.quantity, 
+                        reference_type='SalesOrder', 
+                        reference_id=str(order.id)
                     )
-                    stock_record.quantity_reserved += line.quantity
-                    stock_record.save(update_fields=['quantity_reserved'])
+                except ValueError:
+                    short_products.append(line.product.sku)
+                    
+        if short_products:
+            raise ValueError(f"Insufficient stock to confirm order. Short on: {', '.join(short_products)}")
                     
         order.status = order.Status.CONFIRMED
         order.save(update_fields=['status'])
@@ -648,20 +661,23 @@ class SalesOrderService(BaseService):
             
         # Release reservations if it was confirmed
         if order.status in [order.Status.CONFIRMED, order.Status.PROCESSING]:
-            from apps.inventory.models import Warehouse, StockRecord
+            from apps.inventory.models import Warehouse
+            from apps.inventory.services import StockService
             warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
             if warehouse:
+                stock_service = StockService(company=self.company, user=self.user)
                 for line in order.lines.all():
                     if line.product and line.product.product_type == line.product.ProductType.STOCKABLE:
-                        stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
-                            company=self.company,
-                            product=line.product,
-                            warehouse=warehouse,
-                            defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
+                        # In a real cancellation, we would calculate (reserved - already_shipped)
+                        # For simple implementation, assuming all line quantity was reserved
+                        qty_to_release = line.quantity
+                        stock_service.release_reservation(
+                            product=line.product, 
+                            warehouse=warehouse, 
+                            qty=qty_to_release, 
+                            reference_type='SalesOrder', 
+                            reference_id=str(order.id)
                         )
-                        from decimal import Decimal
-                        stock_record.quantity_reserved = max(Decimal('0'), stock_record.quantity_reserved - line.quantity)
-                        stock_record.save(update_fields=['quantity_reserved'])
                         
         order.status = order.Status.CANCELLED
         order.cancel_reason = reason

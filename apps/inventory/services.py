@@ -83,6 +83,46 @@ from django.db import transaction
 
 class StockService(BaseService):
     @transaction.atomic
+    def reserve_stock(self, product, warehouse, qty, reference_type='', reference_id=''):
+        qty = Decimal(str(qty))
+        stock, _ = StockRecord.objects.select_for_update().get_or_create(
+            product=product, warehouse=warehouse,
+            defaults={'company': self.company, 'average_cost': product.cost_price, 'quantity_on_hand': 0, 'quantity_reserved': 0}
+        )
+        
+        available = stock.quantity_on_hand - stock.quantity_reserved
+        if available < qty:
+            raise ValueError(f"Cannot reserve {qty} of {product.sku} at {warehouse.name}: only {available} available")
+            
+        stock.quantity_reserved += qty
+        stock.save(update_fields=['quantity_reserved'])
+        
+        # We also create a note on the stock movement log for this reservation? The spec just says return stock record.
+        return stock
+
+    @transaction.atomic
+    def release_reservation(self, product, warehouse, qty, reference_type='', reference_id=''):
+        qty = Decimal(str(qty))
+        # Use select_for_update to avoid race conditions
+        stock = StockRecord.objects.select_for_update().filter(product=product, warehouse=warehouse).first()
+        if not stock:
+            return None
+            
+        # Decrement quantity_reserved by qty, clamped at 0
+        stock.quantity_reserved = max(Decimal('0'), stock.quantity_reserved - qty)
+        stock.save(update_fields=['quantity_reserved'])
+        return stock
+
+    def validate_tracking_requirements(self, product, batch_number=None, serial_numbers=None):
+        from django.core.exceptions import ValidationError
+        if product.tracking_method == Product.TrackingMethod.LOT and not batch_number:
+            raise ValidationError(f"{product.sku} requires a lot/batch number to ship.")
+        
+        if product.tracking_method == Product.TrackingMethod.SERIAL:
+            if not serial_numbers or len(serial_numbers) == 0:
+                raise ValidationError(f"{product.sku} requires serial number(s) to ship.")
+
+    @transaction.atomic
     def adjust_stock(self, product, warehouse, qty_input, adjustment_type, notes=''):
         qty = Decimal(str(qty_input))
         
@@ -237,28 +277,47 @@ class TransferService(BaseService):
 
         elif action == 'ship' and transfer.status == InventoryTransfer.Status.APPROVED:
             lines = transfer.lines.all()
+            stock_service = StockService(company=self.company, user=self.user)
+            
             for line in lines:
                 qty_sent = Decimal(str(data.get(f'qty_sent_{line.id}', line.quantity_requested)))
                 batch = data.get(f'batch_number_{line.id}', '')
-                serial = data.get(f'serial_number_{line.id}', '')
+                
+                # Try getting it as a list first (from API), otherwise try single string and split (from form)
+                serial_nums = data.getlist(f'serial_numbers_{line.id}')
+                if not serial_nums:
+                    serial_str = data.get(f'serial_numbers_{line.id}', '')
+                    if serial_str:
+                        serial_nums = [s.strip() for s in serial_str.split(',') if s.strip()]
+                
                 line.quantity_sent = qty_sent
                 line.batch_number = batch
-                line.serial_number = serial
-                line.save(update_fields=['quantity_sent', 'batch_number', 'serial_number'])
+                line.serial_numbers = serial_nums
+                line.save(update_fields=['quantity_sent', 'batch_number', 'serial_numbers'])
 
-                from .models import Product
-                if line.product.tracking_method in (Product.TrackingMethod.LOT, Product.TrackingMethod.SERIAL):
-                    if not line.batch_number and not line.serial_number:
+                # STEP B.2: Validate tracking requirements BEFORE stock deduction
+                stock_service.validate_tracking_requirements(
+                    product=line.product, 
+                    batch_number=line.batch_number, 
+                    serial_numbers=line.serial_numbers
+                )
+                
+                # STEP B.3: For serial-tracked products, validate serial count matches quantity
+                if line.product.tracking_method == line.product.TrackingMethod.SERIAL:
+                    if len(line.serial_numbers) != int(qty_sent):
                         from django.core.exceptions import ValidationError
-                        raise ValidationError(f"Lot/Serial number is required for tracked product: {line.product.sku}")
+                        raise ValidationError(f"{line.product.sku} requires exactly {int(qty_sent)} serial numbers, but {len(line.serial_numbers)} were provided.")
 
                 # Deduct from from_warehouse
                 stock, _ = StockRecord.objects.select_for_update().get_or_create(
                     product=line.product, warehouse=transfer.from_warehouse,
-                    defaults={'company': self.company, 'average_cost': line.product.cost_price}
+                    defaults={'company': self.company, 'average_cost': line.product.cost_price, 'quantity_on_hand': 0, 'quantity_reserved': 0}
                 )
+                
+                # Transfers do not reserve stock. The availability is just (on_hand - reserved).
                 if stock.quantity_available < qty_sent:
                     raise ValueError(f"Insufficient stock for {line.product.sku} at {transfer.from_warehouse.name}: available {stock.quantity_available}, requested {qty_sent}")
+                    
                 stock.quantity_on_hand -= qty_sent
                 stock.save(update_fields=['quantity_on_hand'])
                 
@@ -272,11 +331,13 @@ class TransferService(BaseService):
                     movement_type=StockMovement.MovementType.TRANSFER,
                     quantity=-qty_sent,
                     unit_cost=unit_cost,
-                    total_cost=qty_sent * unit_cost,
+                    total_cost=-(qty_sent * unit_cost),
                     movement_date=timezone.now().date(),
                     reference_type='InventoryTransfer',
                     reference_id=str(transfer.id),
                     notes=f'Transfer out to {transfer.to_warehouse.name}',
+                    batch_number=line.batch_number,
+                    serial_numbers=line.serial_numbers,
                     stock_after=stock.quantity_on_hand,
                 )
                 mov.number = BaseService.generate_sequence_number('TR-OUT', StockMovement, self.company.pk)
@@ -366,15 +427,24 @@ class DeliveryService(BaseService):
         if delivery.status != DeliveryOrder.Status.READY:
             raise ValueError("Delivery Order must be in READY status to ship.")
             
+        stock_service = StockService(company=self.company, user=self.user)
+        
         for line in delivery.lines.all():
             if line.quantity_shipped <= 0:
                 continue
                 
-            from .models import Product
-            if line.product.tracking_method in (Product.TrackingMethod.LOT, Product.TrackingMethod.SERIAL):
-                if not line.batch_number and not line.serial_number:
+            # STEP B.2: Validate tracking requirements BEFORE stock deduction
+            stock_service.validate_tracking_requirements(
+                product=line.product, 
+                batch_number=line.batch_number, 
+                serial_numbers=line.serial_numbers
+            )
+            
+            # STEP B.3: For serial-tracked products, validate serial count matches quantity
+            if line.product.tracking_method == line.product.TrackingMethod.SERIAL:
+                if len(line.serial_numbers) != int(line.quantity_shipped):
                     from django.core.exceptions import ValidationError
-                    raise ValidationError(f"Lot/Serial number is required for tracked product: {line.product.sku}")
+                    raise ValidationError(f"{line.product.sku} requires exactly {int(line.quantity_shipped)} serial numbers, but {len(line.serial_numbers)} were provided.")
                 
             stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
                 company=self.company,
@@ -383,37 +453,43 @@ class DeliveryService(BaseService):
                 defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price, 'quantity_reserved': 0}
             )
             
-            # Since this is a shipment for a confirmed order, the stock is already reserved.
-            # We check if there is enough total physical stock, or if we were somehow oversold.
-            # The available stock check is technically on `quantity_available` but since we are
-            # now *consuming* the reserved stock, we should be careful. 
-            # If we reserved 5, on_hand=5, available=0. If we ship 5, we shouldn't fail the guard.
-            # So the guard against available stock should only be for NON-reserved operations,
-            # or we release the reservation FIRST.
+            # STEP A.5: Update the oversell guard to check availability, not just on-hand
+            # Since this order previously reserved stock (during confirmation), its reservation is included in the total `quantity_reserved`.
+            # To avoid failing the guard against its own reserved stock, we add its reserved amount (quantity_ordered) back to the available calculation.
+            # We assume `line.quantity_ordered` is the amount that was reserved.
+            this_order_reservation = line.quantity_ordered
+            effective_available = (stock_record.quantity_on_hand - stock_record.quantity_reserved) + this_order_reservation
             
-            # Release the reservation (cap at 0 just in case)
-            stock_record.quantity_reserved = max(Decimal('0'), stock_record.quantity_reserved - line.quantity_shipped)
-            
-            # Now we check if we have enough available stock (which includes the freshly released stock)
-            if stock_record.quantity_available < line.quantity_shipped:
-                raise ValueError(f"Insufficient stock for {line.product.sku} at {delivery.warehouse.name}: available {stock_record.quantity_available}, requested {line.quantity_shipped}")
+            if effective_available < line.quantity_shipped:
+                raise ValueError(f"Insufficient stock for {line.product.sku} at {delivery.warehouse.name}: available {effective_available} (including this order's reservation), requested {line.quantity_shipped}")
                 
             stock_record.quantity_on_hand -= line.quantity_shipped
-            stock_record.save(update_fields=['quantity_on_hand', 'quantity_reserved'])
+            stock_record.save(update_fields=['quantity_on_hand'])
                 
-            StockMovement.objects.create(
+            mov = StockMovement.objects.create(
                 company=self.company,
                 product=line.product,
                 warehouse=delivery.warehouse,
                 movement_type=StockMovement.MovementType.DELIVERY,
                 quantity=-line.quantity_shipped,
                 unit_cost=stock_record.average_cost,
-                total_cost=line.quantity_shipped * stock_record.average_cost,
+                total_cost=-(line.quantity_shipped * stock_record.average_cost),
                 movement_date=timezone.now().date(),
                 reference_type='DeliveryOrder',
-                reference_id=str(delivery.pk),
+                reference_id=str(delivery.id),
+                batch_number=line.batch_number,
+                serial_numbers=line.serial_numbers,
                 notes=f"Shipped via {delivery.number} for {delivery.sales_order.number}",
-                stock_after=stock_record.quantity_on_hand,
+                stock_after=stock_record.quantity_on_hand
+            )
+            
+            # STEP A.3: Release reservation on shipment
+            stock_service.release_reservation(
+                product=line.product, 
+                warehouse=delivery.warehouse, 
+                qty=line.quantity_shipped, 
+                reference_type='DeliveryOrder', 
+                reference_id=str(delivery.id)
             )
             
             so_line = delivery.sales_order.lines.filter(product=line.product).first()
