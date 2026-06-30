@@ -86,8 +86,8 @@ class StockService(BaseService):
     def adjust_stock(self, product, warehouse, qty_input, adjustment_type, notes=''):
         qty = Decimal(str(qty_input))
         
-        # Get or create stock record
-        stock, _ = StockRecord.objects.get_or_create(
+        # Get or create stock record with lock
+        stock, _ = StockRecord.objects.select_for_update().get_or_create(
             product=product, warehouse=warehouse,
             defaults={'company': self.company, 'average_cost': product.cost_price}
         )
@@ -101,8 +101,10 @@ class StockService(BaseService):
 
         stock.quantity_on_hand += actual_qty
         if stock.quantity_on_hand < 0:
-            raise ValueError('Stock cannot go negative')
+            raise ValueError(f"Insufficient stock for {product.sku} at {warehouse.name}: available {stock.quantity_on_hand - actual_qty}, requested {abs(actual_qty)}")
         stock.save(update_fields=['quantity_on_hand'])
+        
+        unit_cost = stock.average_cost if actual_qty < 0 else product.cost_price
 
         # Record movement
         mov = StockMovement(
@@ -111,8 +113,8 @@ class StockService(BaseService):
             warehouse=warehouse,
             movement_type=StockMovement.MovementType.ADJUSTMENT,
             quantity=actual_qty,
-            unit_cost=product.cost_price,
-            total_cost=Decimal(abs(actual_qty)) * product.cost_price,
+            unit_cost=unit_cost,
+            total_cost=Decimal(abs(actual_qty)) * unit_cost,
             movement_date=date.today(),
             notes=notes,
             stock_after=stock.quantity_on_hand,
@@ -127,6 +129,44 @@ class StockService(BaseService):
             resource_id=stock.pk,
             description=f"Adjusted stock for {product.name} at {warehouse.name} by {actual_qty}"
         )
+        return mov
+
+    @transaction.atomic
+    def receive_stock(self, product, warehouse, qty, unit_cost, reference_type, reference_id, notes='', user=None):
+        stock, _ = StockRecord.objects.select_for_update().get_or_create(
+            product=product, warehouse=warehouse,
+            defaults={'company': self.company, 'average_cost': product.cost_price}
+        )
+        
+        old_qty = stock.quantity_on_hand
+        old_avg_cost = stock.average_cost
+        
+        new_qty = old_qty + qty
+        if new_qty > 0:
+            new_avg = ((old_qty * old_avg_cost) + (qty * unit_cost)) / new_qty
+        else:
+            new_avg = old_avg_cost
+            
+        stock.quantity_on_hand = new_qty
+        stock.average_cost = new_avg
+        stock.save(update_fields=['quantity_on_hand', 'average_cost'])
+        
+        mov = StockMovement(
+            company=self.company,
+            product=product,
+            warehouse=warehouse,
+            movement_type=StockMovement.MovementType.RECEIPT,
+            quantity=qty,
+            unit_cost=unit_cost,
+            total_cost=qty * unit_cost,
+            movement_date=date.today(),
+            reference_type=reference_type,
+            reference_id=str(reference_id),
+            notes=notes,
+            stock_after=stock.quantity_on_hand
+        )
+        mov.number = BaseService.generate_sequence_number('REC', StockMovement, self.company.pk)
+        mov.save()
         return mov
 
 
@@ -203,12 +243,16 @@ class TransferService(BaseService):
                 line.save(update_fields=['quantity_sent'])
 
                 # Deduct from from_warehouse
-                stock, _ = StockRecord.objects.get_or_create(
+                stock, _ = StockRecord.objects.select_for_update().get_or_create(
                     product=line.product, warehouse=transfer.from_warehouse,
                     defaults={'company': self.company, 'average_cost': line.product.cost_price}
                 )
+                if stock.quantity_on_hand < qty_sent:
+                    raise ValueError(f"Insufficient stock for {line.product.sku} at {transfer.from_warehouse.name}: available {stock.quantity_on_hand}, requested {qty_sent}")
                 stock.quantity_on_hand -= qty_sent
                 stock.save(update_fields=['quantity_on_hand'])
+                
+                unit_cost = stock.average_cost
 
                 # Create outgoing StockMovement
                 mov = StockMovement(
@@ -217,8 +261,8 @@ class TransferService(BaseService):
                     warehouse=transfer.from_warehouse,
                     movement_type=StockMovement.MovementType.TRANSFER,
                     quantity=-qty_sent,
-                    unit_cost=line.product.cost_price,
-                    total_cost=qty_sent * line.product.cost_price,
+                    unit_cost=unit_cost,
+                    total_cost=qty_sent * unit_cost,
                     movement_date=timezone.now().date(),
                     reference_type='InventoryTransfer',
                     reference_id=str(transfer.id),
@@ -248,7 +292,7 @@ class TransferService(BaseService):
                 line.save(update_fields=['quantity_received'])
 
                 # Add to to_warehouse
-                stock, _ = StockRecord.objects.get_or_create(
+                stock, _ = StockRecord.objects.select_for_update().get_or_create(
                     product=line.product, warehouse=transfer.to_warehouse,
                     defaults={'company': self.company, 'average_cost': line.product.cost_price}
                 )
@@ -312,26 +356,33 @@ class DeliveryService(BaseService):
             if line.quantity_shipped <= 0:
                 continue
                 
+            stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
+                company=self.company,
+                product=line.product,
+                warehouse=delivery.warehouse,
+                defaults={'quantity_on_hand': 0, 'average_cost': line.product.cost_price}
+            )
+            
+            if stock_record.quantity_on_hand < line.quantity_shipped:
+                raise ValueError(f"Insufficient stock for {line.product.sku} at {delivery.warehouse.name}: available {stock_record.quantity_on_hand}, requested {line.quantity_shipped}")
+                
+            stock_record.quantity_on_hand -= line.quantity_shipped
+            stock_record.save(update_fields=['quantity_on_hand'])
+                
             StockMovement.objects.create(
                 company=self.company,
                 product=line.product,
                 warehouse=delivery.warehouse,
                 movement_type=StockMovement.MovementType.DELIVERY,
                 quantity=-line.quantity_shipped,
+                unit_cost=stock_record.average_cost,
+                total_cost=line.quantity_shipped * stock_record.average_cost,
                 movement_date=timezone.now().date(),
                 reference_type='DeliveryOrder',
                 reference_id=str(delivery.pk),
                 notes=f"Shipped via {delivery.number} for {delivery.sales_order.number}",
+                stock_after=stock_record.quantity_on_hand,
             )
-            
-            stock_record, _ = StockRecord.objects.get_or_create(
-                company=self.company,
-                product=line.product,
-                warehouse=delivery.warehouse,
-                defaults={'quantity_on_hand': 0}
-            )
-            stock_record.quantity_on_hand -= line.quantity_shipped
-            stock_record.save()
             
             so_line = delivery.sales_order.lines.filter(product=line.product).first()
             if so_line:

@@ -345,59 +345,8 @@ class DeliveryOrder(CompanyScoped, SequenceMixin, NotesMixin):
         return self.number
 
     def ship(self, user):
-        if self.status != self.Status.READY:
-            raise ValueError("Delivery Order must be in READY status to ship.")
-        
-        from django.utils import timezone
-        from .models import StockMovement, StockRecord
-        
-        for line in self.lines.all():
-            if line.quantity_shipped <= 0:
-                continue
-                
-            StockMovement.objects.create(
-                company=self.company,
-                product=line.product,
-                warehouse=self.warehouse,
-                movement_type=StockMovement.MovementType.DELIVERY,
-                quantity=-line.quantity_shipped,
-                movement_date=timezone.now().date(),
-                reference_type='DeliveryOrder',
-                reference_id=str(self.pk),
-                notes=f"Shipped via {self.number} for {self.sales_order.number}",
-            )
-            
-            stock_record, _ = StockRecord.objects.get_or_create(
-                company=self.company,
-                product=line.product,
-                warehouse=self.warehouse,
-                defaults={'quantity_on_hand': 0}
-            )
-            stock_record.quantity_on_hand -= line.quantity_shipped
-            stock_record.save()
-            
-            so_line = self.sales_order.lines.filter(product=line.product).first()
-            if so_line:
-                so_line.qty_delivered += line.quantity_shipped
-                so_line.save(update_fields=['qty_delivered'])
-
-        self.status = self.Status.SHIPPED
-        self.shipped_date = timezone.now()
-        self.shipped_by = user
-        self.save()
-
-        all_delivered = True
-        for so_line in self.sales_order.lines.all():
-            if so_line.qty_delivered < so_line.quantity:
-                all_delivered = False
-                break
-        
-        if all_delivered:
-            self.sales_order.status = self.sales_order.Status.DELIVERED
-            self.sales_order.save(update_fields=['status'])
-        elif self.sales_order.status == self.sales_order.Status.CONFIRMED:
-            self.sales_order.status = self.sales_order.Status.PROCESSING
-            self.sales_order.save(update_fields=['status'])
+        from .services import DeliveryService
+        DeliveryService(company=self.company).ship_delivery(self, user)
 
 
 class DeliveryOrderLine(models.Model):

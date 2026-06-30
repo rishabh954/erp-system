@@ -379,25 +379,16 @@ class PurchaseOrderService(BaseService):
                 
                 # Update stock level
                 if line.product and receipt.warehouse:
-                    stock_record, _ = StockRecord.objects.get_or_create(
-                        company=self.company,
+                    from apps.inventory.services import StockService
+                    StockService(company=self.company).receive_stock(
                         product=line.product,
                         warehouse=receipt.warehouse,
-                        defaults={'quantity_on_hand': 0}
-                    )
-                    stock_record.quantity_on_hand += qty
-                    stock_record.save(update_fields=['quantity_on_hand'])
-                    
-                    StockMovement.objects.create(
-                        company=self.company,
-                        product=line.product,
-                        warehouse=receipt.warehouse,
-                        movement_type=StockMovement.MovementType.RECEIPT,
-                        quantity=qty,
-                        movement_date=timezone.now().date(),
+                        qty=qty,
+                        unit_cost=line.unit_price,
                         reference_type='GoodsReceipt',
                         reference_id=str(receipt.pk),
-                        stock_after=stock_record.quantity_on_hand
+                        notes=f"Received against PO {order.number}",
+                        user=user
                     )
             
             if line.qty_received < line.quantity:
