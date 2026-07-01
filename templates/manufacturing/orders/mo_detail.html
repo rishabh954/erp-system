@@ -11,7 +11,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent p-0 mb-1">
                     <li class="breadcrumb-item"><a href="{% url 'manufacturing:dashboard' %}" class="text-primary text-decoration-none">Manufacturing</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:mo_list' %}" class="text-primary text-decoration-none">Orders</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'manufacturing:orders' %}" class="text-primary text-decoration-none">Orders</a></li>
                     <li class="breadcrumb-item active text-muted" aria-current="page">{{ mo.number }}</li>
                 </ol>
             </nav>
@@ -19,17 +19,17 @@
         </div>
         <div>
             {% if mo.status == 'draft' %}
-            <form method="post" action="{% url 'manufacturing:mo_confirm' mo.pk %}" class="d-inline">
+            <form method="post" action="{% url 'manufacturing:mo_action' mo.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-primary rounded-pill shadow-sm hover-elevate">Confirm MO</button>
             </form>
             {% elif mo.status == 'confirmed' %}
-            <form method="post" action="{% url 'manufacturing:mo_start' mo.pk %}" class="d-inline">
+            <form method="post" action="{% url 'manufacturing:mo_action' mo.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-warning rounded-pill shadow-sm hover-elevate text-dark"><i class="fas fa-play mr-1"></i> Start Production</button>
             </form>
             {% elif mo.status == 'in_progress' %}
-            <form method="post" action="{% url 'manufacturing:mo_complete' mo.pk %}" class="d-inline">
+            <form method="post" action="{% url 'manufacturing:mo_action' mo.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-success rounded-pill shadow-sm hover-elevate"><i class="fas fa-check mr-1"></i> Mark as Done</button>
             </form>

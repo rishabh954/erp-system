@@ -28,7 +28,7 @@
                             {{ payment.get_status_display }}
                         </span>
                     </td>
-                    <td class="font-weight-600 text-success">{{ payment.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ payment.amount }}</td>
+                    <td class="font-weight-600 text-success">{% firstof payment.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ payment.amount }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="text-center py-4 text-muted">No payments found.</td></tr>

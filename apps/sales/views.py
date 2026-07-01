@@ -584,6 +584,41 @@ class InvoiceDetailView(CompanyScopedMixin, DetailView):
         ctx['payments'] = self.object.payments.filter(status='completed').order_by('payment_date')
         return ctx
 
+class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
+    def post(self, request, pk):
+        from apps.administration.services.integrations import RazorpayService
+        invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company(), is_deleted=False)
+        
+        if invoice.status in ['paid', 'void']:
+            messages.error(request, "Cannot generate payment link for paid or void invoices.")
+            return redirect('sales:invoice_detail', pk=pk)
+            
+        service = RazorpayService(credentials={'api_key': 'mock', 'api_secret': 'mock'})
+        
+        try:
+            # Calculate remaining amount
+            paid_amount = sum(p.amount for p in invoice.payments.filter(status='completed'))
+            remaining = invoice.total - paid_amount
+            
+            link = service.generate_payment_link(
+                amount=float(remaining),
+                currency=invoice.currency.code if invoice.currency else 'USD',
+                reference_id=invoice.number,
+                description=f"Payment for Invoice {invoice.number}",
+                customer_email=invoice.customer.email if invoice.customer else '',
+                customer_phone=invoice.customer.phone if invoice.customer else ''
+            )
+            
+            # Save the link in invoice notes or just show it in a message for mock purposes
+            invoice.notes = (invoice.notes or "") + f"\n\nPayment Link Generated: {link['short_url']}"
+            invoice.save(update_fields=['notes'])
+            
+            messages.success(request, f"Payment link generated: {link['short_url']}")
+        except Exception as e:
+            messages.error(request, f"Error generating payment link: {e}")
+            
+        return redirect('sales:invoice_detail', pk=pk)
+
 
 class InvoicePDFView(CompanyScopedMixin, View):
     def get(self, request, pk):

@@ -126,14 +126,14 @@
             <td class="text-end pe-4">
               {% if leave.status == 'pending' and request.user.role in 'hr_manager,company_admin,super_admin' %}
               <div class="btn-group shadow-sm">
-                <form method="post" action="{% url 'hrms:leave_approve' leave.pk %}" class="d-inline">
+                <form method="post" action="{% url 'hrms:leaves' leave.pk %}" class="d-inline">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="approve">
                   <button type="submit" class="btn btn-success btn-sm border-0" title="Approve">
                     <i class="fas fa-check"></i>
                   </button>
                 </form>
-                <form method="post" action="{% url 'hrms:leave_approve' leave.pk %}" class="d-inline">
+                <form method="post" action="{% url 'hrms:leaves' leave.pk %}" class="d-inline">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="reject">
                   <button type="submit" class="btn btn-danger btn-sm border-0" title="Reject">

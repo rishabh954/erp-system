@@ -104,7 +104,7 @@
             <label class="form-label fw-600">Message Body <span class="text-danger">*</span></label>
             <textarea name="body" class="form-control" rows="5" placeholder="Hello,&#10;&#10;You have a pending approval for {{ document }}.&#10;Submitted by: {{ submitter }}&#10;&#10;Please log in to act." required></textarea>
             <div class="form-text">
-              Available variables: <code>{{ '{{' }} document {{ '}}' }}</code> <code>{{ '{{' }} submitter {{ '}}' }}</code> <code>{{ '{{' }} approver {{ '}}' }}</code> <code>{{ '{{' }} company {{ '}}' }}</code> <code>{{ '{{' }} workflow {{ '}}' }}</code>
+              Available variables: <code>{% templatetag openvariable %} document {% templatetag closevariable %}</code> <code>{% templatetag openvariable %} submitter {% templatetag closevariable %}</code> <code>{% templatetag openvariable %} approver {% templatetag closevariable %}</code> <code>{% templatetag openvariable %} company {% templatetag closevariable %}</code> <code>{% templatetag openvariable %} workflow {% templatetag closevariable %}</code>
             </div>
           </div>
           <button type="submit" class="btn btn-primary w-100">

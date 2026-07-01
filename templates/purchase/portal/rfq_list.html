@@ -1,0 +1,53 @@
+{% extends "portals/portal_base.html" %}
+{% load currency_tags %}
+{% block title %}Active RFQs{% endblock %}
+{% block page_title %}Active RFQs{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Requests for Quotation</div>
+    </div>
+    <div class="card-body p-0 table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>RFQ #</th>
+                    <th>Date</th>
+                    <th>Deadline</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rfq in rfqs %}
+                <tr onclick="window.location.href='{% url 'purchase:portal_rfq_detail' rfq.pk %}'" style="cursor:pointer">
+                    <td class="font-weight-600">{{ rfq.number }}</td>
+                    <td>{{ rfq.created_at|date:"M d, Y" }}</td>
+                    <td>{{ rfq.deadline|date:"M d, Y" }}</td>
+                    <td>{{ rfq.lines.count }} items</td>
+                    <td>
+                        <span class="badge badge-green">Open</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-4">No active RFQs available at the moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if is_paginated %}
+<div class="pagination mt-4">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">&laquo; Prev</a>
+    {% endif %}
+    <span class="mx-2">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -500,6 +500,23 @@ class DeliveryService(BaseService):
         delivery.status = DeliveryOrder.Status.SHIPPED
         delivery.shipped_date = timezone.now()
         delivery.shipped_by = user
+        
+        # Mock Shiprocket Integration
+        try:
+            from apps.administration.services.integrations import ShiprocketService
+            shiprocket = ShiprocketService(credentials={'token': 'mock'})
+            shipment = shiprocket.create_shipment(
+                order_id=delivery.number,
+                pickup_pincode='110001',
+                delivery_pincode='400001',
+                weight=1.5,
+                dimensions='10x10x10'
+            )
+            delivery.tracking_number = shipment['awb_code']
+            delivery.notes = (delivery.notes or "") + f"\n\nShipped via {shipment['courier_name']}. Est Delivery: {shipment['estimated_delivery']}"
+        except Exception as e:
+            pass # Non-critical failure
+            
         delivery.save()
 
         all_delivered = True

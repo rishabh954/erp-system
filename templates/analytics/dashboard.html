@@ -275,15 +275,15 @@
           <i class="fa-solid fa-play fa-xs me-1"></i>View
         </a>
         <div class="btn-group btn-group-sm">
-          <a href="{% url 'analytics:export_report' report.pk 'csv' %}"
+          <a href="{% url 'dashboard:index' report.pk 'csv' %}"
              class="btn btn-outline-secondary" title="Export CSV">
             <i class="fa-solid fa-file-csv"></i>
           </a>
-          <a href="{% url 'analytics:export_report' report.pk 'xlsx' %}"
+          <a href="{% url 'dashboard:index' report.pk 'xlsx' %}"
              class="btn btn-outline-secondary" title="Export Excel">
             <i class="fa-solid fa-file-excel"></i>
           </a>
-          <a href="{% url 'analytics:export_report' report.pk 'pdf' %}"
+          <a href="{% url 'dashboard:index' report.pk 'pdf' %}"
              class="btn btn-outline-secondary" title="Export PDF">
             <i class="fa-solid fa-file-pdf"></i>
           </a>

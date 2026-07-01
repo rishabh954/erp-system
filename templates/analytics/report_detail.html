@@ -225,15 +225,15 @@
 
     <!-- Export & action buttons -->
     <div class="d-flex flex-wrap gap-2 export-bar" style="align-self:flex-start;">
-      <a href="{% url 'analytics:export_report' report.pk 'csv' %}"
+      <a href="{% url 'dashboard:index' report.pk 'csv' %}"
          class="btn btn-outline-success btn-sm fw-semibold">
         <i class="fa-solid fa-file-csv me-1"></i>CSV
       </a>
-      <a href="{% url 'analytics:export_report' report.pk 'xlsx' %}"
+      <a href="{% url 'dashboard:index' report.pk 'xlsx' %}"
          class="btn btn-outline-primary btn-sm fw-semibold">
         <i class="fa-solid fa-file-excel me-1"></i>Excel
       </a>
-      <a href="{% url 'analytics:export_report' report.pk 'pdf' %}"
+      <a href="{% url 'dashboard:index' report.pk 'pdf' %}"
          class="btn btn-outline-danger btn-sm fw-semibold">
         <i class="fa-solid fa-file-pdf me-1"></i>PDF
       </a>

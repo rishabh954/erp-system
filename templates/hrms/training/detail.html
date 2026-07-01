@@ -29,7 +29,7 @@
         <table class="table table-sm table-borderless">
           <tr><th class="w-50 text-muted">Start Date</th><td>{{ program.start_date|date:"M j, Y" }}</td></tr>
           <tr><th class="text-muted">End Date</th><td>{{ program.end_date|date:"M j, Y" }}</td></tr>
-          <tr><th class="text-muted">Cost per head</th><td>{{ request.user.company.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ program.cost }}</td></tr>
+          <tr><th class="text-muted">Cost per head</th><td>{{ program.currency.symbol|default:'$' }}{{ program.cost }}</td></tr>
           <tr><th class="text-muted">Total Enrolled</th><td><span class="badge bg-info text-dark">{{ program.attendees.count }}</span></td></tr>
         </table>
       </div>

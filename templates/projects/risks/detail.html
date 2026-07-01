@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ risk.title }} | Project Risk{% endblock %}
+{% block nav_projects %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'projects:list' %}">Projects</a></li>
+<li class="breadcrumb-item"><a href="{% url 'projects:risk_list' risk.project.pk %}">Risks</a></li>
+<li class="breadcrumb-item active">{{ risk.title|truncatechars:20 }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">{{ risk.title }}</h1>
+    <p class="text-muted mb-0">Project: {{ risk.project.name }}</p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <div class="text-muted small fw-bold">PROBABILITY</div>
+        <div><span class="badge bg-secondary">{{ risk.get_probability_display|default:risk.probability }}</span></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="text-muted small fw-bold">IMPACT</div>
+        <div><span class="badge bg-secondary">{{ risk.get_impact_display|default:risk.impact }}</span></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="text-muted small fw-bold">STATUS</div>
+        <div><span class="badge bg-secondary">{{ risk.get_status_display|default:risk.status }}</span></div>
+      </div>
+      
+      <div class="col-12 mt-3 mb-3">
+        <div class="text-muted small fw-bold">DESCRIPTION</div>
+        <div>{{ risk.description|linebreaks }}</div>
+      </div>
+      
+      <div class="col-12">
+        <div class="text-muted small fw-bold">MITIGATION PLAN</div>
+        <div class="bg-light p-3 rounded">{{ risk.mitigation_plan|linebreaks|default:"No mitigation plan provided." }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

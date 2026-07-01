@@ -86,18 +86,18 @@
           </div>
           <div class="col-md-4">
             <label class="form-label small text-muted">Subtotal</label>
-            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
+            <div class="input-group"><span class="input-group-text">{% firstof d.currency current_company.default_currency.symbol '$' %}</span>
             <input type="number" class="form-control fw-600" value="{{ d.subtotal|default:'0' }}"></div>
           </div>
           <div class="col-md-4">
             <label class="form-label small text-muted">Tax</label>
-            <div class="input-group"><span class="input-group-text">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
+            <div class="input-group"><span class="input-group-text">{% firstof d.currency current_company.default_currency.symbol '$' %}</span>
             <input type="number" class="form-control" value="{{ d.tax_amount|default:'0' }}"></div>
           </div>
           <div class="col-12">
             <label class="form-label small text-muted">Total Amount</label>
             <div class="input-group input-group-lg">
-              <span class="input-group-text fw-700">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
+              <span class="input-group-text fw-700">{% firstof d.currency current_company.default_currency.symbol '$' %}</span>
               <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
             </div>
           </div>
@@ -128,7 +128,7 @@
           <div class="col-12">
             <label class="form-label small text-muted">Total Amount</label>
             <div class="input-group input-group-lg">
-              <span class="input-group-text fw-700">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }}</span>
+              <span class="input-group-text fw-700">{% firstof d.currency current_company.default_currency.symbol '$' %}</span>
               <input type="number" class="form-control fw-800 text-success" value="{{ d.total|default:'0' }}" style="font-size:1.3rem">
             </div>
           </div>
@@ -157,9 +157,9 @@
                 <td>{{ item.description|default:"—" }}</td>
                 {% if doc.doc_type == 'invoice' %}
                 <td class="text-center">{{ item.quantity|default:"1" }}</td>
-                <td class="text-end">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }} {{ item.unit_price|default:"0" }}</td>
+                <td class="text-end">{% firstof d.currency current_company.default_currency.symbol '$' %} {{ item.unit_price|default:"0" }}</td>
                 {% endif %}
-                <td class="text-end fw-600">{{ d.currency|default:'{{ current_company.default_currency.symbol|default:'$' }}' }} {{ item.total|default:item.amount|default:"0" }}</td>
+                <td class="text-end fw-600">{% firstof d.currency current_company.default_currency.symbol '$' %} {{ item.total|default:item.amount|default:"0" }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -194,10 +194,10 @@
     <div class="card mb-3">
       <div class="card-header fw-600"><i class="fas fa-file-import me-2"></i>Create from OCR</div>
       <div class="card-body d-flex flex-column gap-2">
-        <a href="{% url 'purchase:bills_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm">
+        <a href="{% url 'purchase:bills' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm">
           <i class="fas fa-file-invoice me-1"></i>Create Bill (Purchase)
         </a>
-        <a href="{% url 'accounting:journals_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-success btn-sm">
+        <a href="{% url 'accounting:journal_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-success btn-sm">
           <i class="fas fa-book me-1"></i>Create Journal Entry
         </a>
       </div>
@@ -206,7 +206,7 @@
     <div class="card mb-3">
       <div class="card-header fw-600"><i class="fas fa-file-import me-2"></i>Create from Receipt</div>
       <div class="card-body">
-        <a href="{% url 'hrms:expenses_create' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm w-100">
+        <a href="{% url 'hrms:expense_claims' %}?from_ocr={{ doc.pk }}" class="btn btn-outline-primary btn-sm w-100">
           <i class="fas fa-receipt me-1"></i>Create Expense Claim
         </a>
       </div>

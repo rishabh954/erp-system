@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Material Requirements Planning (MRP) | Manufacturing{% endblock %}
+{% block nav_manufacturing %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'manufacturing:dashboard' %}">Manufacturing</a></li>
+<li class="breadcrumb-item active">MRP Plans</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Material Requirements Planning</h1>
+    <p class="text-muted mb-0">Generate and review material requirements for production</p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
+      <thead class="table-light">
+        <tr>
+          <th>Plan Name</th>
+          <th>Created Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans %}
+        <tr>
+          <td><strong><a href="{% url 'manufacturing:mrp_detail' plan.pk %}">{{ plan.name }}</a></strong></td>
+          <td>{{ plan.created_at|date:"M j, Y H:i" }}</td>
+          <td>
+            <span class="badge bg-{{ plan.status|yesno:'success,warning' }}">{{ plan.get_status_display|default:plan.status }}</span>
+          </td>
+          <td>
+            <a href="{% url 'manufacturing:mrp_detail' plan.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">No MRP Plans generated yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

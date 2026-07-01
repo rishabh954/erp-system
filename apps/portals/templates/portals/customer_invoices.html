@@ -27,8 +27,8 @@
                     <td><strong style="color:var(--primary);">{{ inv.number }}</strong></td>
                     <td>{{ inv.date|date:"d M Y" }}</td>
                     <td>{{ inv.due_date|date:"d M Y"|default:"-" }}</td>
-                    <td>{{ inv.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ inv.total_amount|floatformat:2 }}</td>
-                    <td><strong>{{ inv.currency.symbol|default:"{{ current_company.default_currency.symbol|default:'$' }}" }}{{ inv.balance_due|default:inv.total_amount|floatformat:2 }}</strong></td>
+                    <td>{% firstof inv.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ inv.total_amount|floatformat:2 }}</td>
+                    <td><strong>{% firstof inv.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ inv.balance_due|default:inv.total_amount|floatformat:2 }}</strong></td>
                     <td>
                         {% if inv.status == 'paid' %}<span class="badge badge-green">Paid</span>
                         {% elif inv.status == 'overdue' %}<span class="badge badge-red">Overdue</span>

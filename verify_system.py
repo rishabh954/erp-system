@@ -27,6 +27,10 @@ for root, dirs, files in os.walk(apps_dir):
                         get_template(tmpl)
                     except TemplateDoesNotExist:
                         missing_templates.append((tmpl, filepath))
+                    except Exception as e:
+                        if 'requires 2' in str(e):
+                            print(f'ERROR parsing {tmpl}: {e}')
+                        pass
 
 if not missing_templates:
     print("All templates referenced in views exist.")

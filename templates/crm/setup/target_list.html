@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load currency_tags %}
+
+{% block title %}Sales Targets | CRM{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'crm:dashboard' %}">CRM</a></li>
+<li class="breadcrumb-item active">Sales Targets</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Sales Targets</h1>
+    <p class="text-muted mb-0">Set and track revenue goals</p>
+  </div>
+  <a href="{% url 'crm:target_create' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus me-1"></i>New Target
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" data-datatable>
+      <thead class="table-light">
+        <tr>
+          <th>Period</th>
+          <th>Rep / Territory</th>
+          <th>Target Amount</th>
+          <th>Achieved</th>
+          <th>Progress</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for target in targets %}
+        <tr>
+          <td>{{ target.start_date|date:"M j, Y" }} - {{ target.end_date|date:"M j, Y" }}</td>
+          <td>
+            {% if target.sales_rep %}
+              <i class="fas fa-user text-muted me-1"></i>{{ target.sales_rep.full_name }}
+            {% elif target.territory %}
+              <i class="fas fa-map-marker-alt text-muted me-1"></i>{{ target.territory.name }}
+            {% else %}
+              Company Wide
+            {% endif %}
+          </td>
+          <td>{{ request.user.company.default_currency.symbol|default:'$' }}{{ target.target_amount }}</td>
+          <td>{{ request.user.company.default_currency.symbol|default:'$' }}{{ target.achieved_amount }}</td>
+          <td style="width: 200px;">
+            <div class="progress" style="height: 10px;">
+              {% widthratio target.achieved_amount target.target_amount 100 as pct %}
+              <div class="progress-bar bg-success" role="progressbar" style="width: {{ pct }}%"></div>
+            </div>
+            <div class="small text-muted text-end mt-1">{{ pct }}%</div>
+          </td>
+          <td>
+            <a href="{% url 'crm:target_update' target.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4 text-muted">No sales targets found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

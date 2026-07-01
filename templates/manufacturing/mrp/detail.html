@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}MRP Plan: {{ plan.name }} | Manufacturing{% endblock %}
+{% block nav_manufacturing %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'manufacturing:dashboard' %}">Manufacturing</a></li>
+<li class="breadcrumb-item"><a href="{% url 'manufacturing:mrp_list' %}">MRP Plans</a></li>
+<li class="breadcrumb-item active">{{ plan.name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">{{ plan.name }}</h1>
+    <p class="text-muted mb-0">Created on {{ plan.created_at|date:"M j, Y H:i" }}</p>
+  </div>
+  <div>
+    <form method="post" action="{% url 'manufacturing:mrp_run' plan.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary"><i class="fas fa-play me-2"></i>Run MRP</button>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-light fw-bold">Required Materials</div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Product/Component</th>
+          <th>Required Qty</th>
+          <th>Available Qty</th>
+          <th>Shortage</th>
+          <th>Action Suggested</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in plan.items.all %}
+        <tr>
+          <td>{{ item.product.name }}</td>
+          <td>{{ item.required_quantity }}</td>
+          <td>{{ item.available_quantity }}</td>
+          <td>
+            {% if item.shortage_quantity > 0 %}
+              <span class="text-danger fw-bold">{{ item.shortage_quantity }}</span>
+            {% else %}
+              <span class="text-success">None</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.shortage_quantity > 0 %}
+              <span class="badge bg-warning text-dark">Create PO / MO</span>
+            {% else %}
+              <span class="badge bg-success">Sufficient</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">Run MRP to generate material requirements.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

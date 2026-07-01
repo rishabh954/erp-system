@@ -10,8 +10,8 @@
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent p-0 mb-1">
-                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:dashboard' %}" class="text-primary text-decoration-none">Helpdesk</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:ticket_list' %}" class="text-primary text-decoration-none">Tickets</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:tickets' %}" class="text-primary text-decoration-none">Helpdesk</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'helpdesk:tickets' %}" class="text-primary text-decoration-none">Tickets</a></li>
                     <li class="breadcrumb-item active text-muted" aria-current="page">{{ ticket.number }}</li>
                 </ol>
             </nav>
@@ -20,7 +20,7 @@
         <div>
             {% if ticket.status != 'closed' %}
             <button class="btn btn-sm btn-outline-secondary mr-2 shadow-sm rounded-pill hover-elevate">Edit</button>
-            <form method="post" action="{% url 'helpdesk:ticket_resolve' ticket.pk %}" class="d-inline">
+            <form method="post" action="{% url 'helpdesk:tickets' ticket.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-success shadow-sm rounded-pill hover-elevate">
                     <i class="fas fa-check mr-1"></i> Resolve

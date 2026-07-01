@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Lead Assignment Rules | CRM{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'crm:dashboard' %}">CRM</a></li>
+<li class="breadcrumb-item active">Lead Assignment Rules</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 text-primary mb-1">Lead Assignment Rules</h1>
+    <p class="text-muted mb-0">Automate lead routing to territories</p>
+  </div>
+  <a href="{% url 'crm:rule_create' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus me-1"></i>New Rule
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" data-datatable>
+      <thead class="table-light">
+        <tr>
+          <th>Priority</th>
+          <th>Rule Name</th>
+          <th>Source Criteria</th>
+          <th>Target Territory</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+        <tr>
+          <td>{{ rule.priority }}</td>
+          <td><strong>{{ rule.name }}</strong></td>
+          <td>{{ rule.get_source_criteria_display|default:"Any" }}</td>
+          <td>{{ rule.target_territory.name }}</td>
+          <td>
+            <span class="badge bg-{{ rule.is_active|yesno:'success,secondary' }}">{{ rule.is_active|yesno:'Active,Inactive' }}</span>
+          </td>
+          <td>
+            <a href="{% url 'crm:rule_update' rule.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4 text-muted">No rules configured.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Target | CRM{% endblock %}
+{% block nav_crm %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'crm:dashboard' %}">CRM</a></li>
+<li class="breadcrumb-item"><a href="{% url 'crm:target_list' %}">Sales Targets</a></li>
+<li class="breadcrumb-item active">{% if object %}Edit{% else %}Create{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-primary">{% if object %}Edit Target{% else %}New Sales Target{% endif %}</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          {% if form.errors %}<div class="alert alert-danger">{{ form.errors }}</div>{% endif %}
+          
+          <div class="row mb-3">
+            <div class="col-6">
+              <label class="form-label">Target Amount <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" name="target_amount" class="form-control" value="{{ form.target_amount.value|default:'' }}" required>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-6">
+              <label class="form-label">Start Date <span class="text-danger">*</span></label>
+              <input type="date" name="start_date" class="form-control" value="{{ form.start_date.value|date:'Y-m-d'|default:'' }}" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">End Date <span class="text-danger">*</span></label>
+              <input type="date" name="end_date" class="form-control" value="{{ form.end_date.value|date:'Y-m-d'|default:'' }}" required>
+            </div>
+          </div>
+
+          <h6 class="mt-4 mb-3 text-muted border-bottom pb-2">Target Scope (Pick one)</h6>
+          <div class="mb-3">
+            <label class="form-label">Sales Rep</label>
+            {{ form.sales_rep }}
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Territory</label>
+            {{ form.territory }}
+          </div>
+          
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'crm:target_list' %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Target</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

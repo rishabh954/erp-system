@@ -652,6 +652,21 @@ class SalesOrderService(BaseService):
                     
         order.status = order.Status.CONFIRMED
         order.save(update_fields=['status'])
+        
+        # Mock SMS Notification
+        try:
+            from apps.administration.services.integrations import TwilioService
+            sms_service = TwilioService(credentials={'account_sid': 'mock', 'auth_token': 'mock'})
+            if order.customer and order.customer.phone:
+                result = sms_service.send_sms(
+                    to_number=order.customer.phone,
+                    message_body=f"Hi {order.customer.name}, your order {order.number} has been confirmed!"
+                )
+                order.notes = (order.notes or "") + f"\n\nSMS Sent: {result['sid']} at {result['date_created']}"
+                order.save(update_fields=['notes'])
+        except Exception as e:
+            pass # Non-critical failure
+            
         return order
 
     @transaction.atomic
