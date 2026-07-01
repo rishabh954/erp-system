@@ -96,7 +96,7 @@
               <div class="text-muted" style="font-size: 11px;">{{ movement.created_at|date:"H:i" }}</div>
             </td>
             <td>
-              <span class="fw-bold text-primary">{{ movement.number|default:movement.id|truncatechars:8 }}</span>
+              <span class="fw-bold text-primary">{{ movement.number|default:movement.id }}</span>
             </td>
             <td>
               <div>
@@ -138,8 +138,8 @@
                 <span class="text-muted">0
               {% endif %}</span>
             </td>
-            <td class="text-end small">{{ CURRENCY_SYMBOL }}{{ movement.unit_cost|floatformat:2 }}</td>
-            <td class="text-end small fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ movement.total_cost|floatformat:2 }}</td>
+            <td class="text-end small">{{ current_company.default_currency.symbol|default:'$' }}{{ movement.unit_cost|floatformat:2 }}</td>
+            <td class="text-end small fw-semibold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ movement.total_cost|floatformat:2 }}</td>
             <td class="small">
               {% if movement.reference_type %}
                 <span class="badge bg-light text-dark border fw-normal">{{ movement.reference_type }}</span>

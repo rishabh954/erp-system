@@ -2,10 +2,10 @@
 {% block title %}Quality Checks{% endblock %}
 {% block content %}
 <div class="page-header mb-4"><h1 class="h3 text-primary mb-1">Quality Checks</h1></div>
-<div class="card shadow-sm border-0"><table class="table table-hover mb-0">
+<div class="card shadow-sm border-0"><table class="table table-hover mb-0" data-datatable data-datatable-options='{"searching": false}'>
 <thead class="table-light"><tr><th>Number</th><th>MO</th><th>Date</th><th>Inspector</th><th>Status</th></tr></thead>
 <tbody>
 {% for qc in quality_checks %}<tr><td><a href="{% url 'manufacturing:quality_check_detail' qc.pk %}">{{ qc.number }}</a></td><td>{{ qc.manufacturing_order.number }}</td><td>{{ qc.inspection_date|default:"Pending" }}</td><td>{{ qc.inspector.get_full_name|default:"-" }}</td><td>{{ qc.get_status_display }}</td></tr>
-{% empty %}<tr><td colspan="5" class="text-center py-4">No QC records found.</td></tr>{% endfor %}
+{% endfor %}
 </tbody></table></div>
 {% endblock %}

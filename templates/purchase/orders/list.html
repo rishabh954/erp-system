@@ -28,7 +28,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Outstanding Balance</div>
-          <div class="h3 mb-0 text-warning fw-bold">{{ CURRENCY_SYMBOL }}{{ total_outstanding|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-warning fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_outstanding|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -89,7 +89,7 @@
           {% for order in orders %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ order.number }}</span>
+              <a href="{% url 'purchase:order_detail' order.pk %}" class="fw-bold text-primary text-decoration-none">{{ order.number }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ order.vendor.name }}</div>
@@ -97,10 +97,10 @@
             <td class="small">{{ order.order_date|date:"Y-m-d" }}</td>
             <td class="small">{{ order.expected_delivery|date:"Y-m-d"|default:"-" }}</td>
             <td class="text-end fw-semibold text-dark">
-              {{ CURRENCY_SYMBOL }}{{ order.total|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ order.total|floatformat:2|intcomma }}
             </td>
             <td class="text-end text-danger fw-semibold">
-              {{ CURRENCY_SYMBOL }}{{ order.balance_due|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ order.balance_due|floatformat:2|intcomma }}
             </td>
             <td>
               <span class="badge 

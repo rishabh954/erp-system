@@ -149,7 +149,15 @@
             
             <div class="col-md-4">
               <label class="form-label fw-semibold">Timezone</label>
-              <input type="text" name="timezone" class="form-control" value="{{ company.timezone }}">
+              <select name="timezone" class="form-select" id="timezoneSelect">
+                {% for region, tzlist in tz_groups.items %}
+                <optgroup label="{{ region }}">
+                  {% for tz in tzlist %}
+                  <option value="{{ tz }}" {% if company.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
             </div>
             
             <div class="col-md-4">
@@ -199,5 +207,17 @@
   border-left: 4px solid transparent !important;
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    $('#timezoneSelect').select2({
+      placeholder: 'Search timezone...',
+      theme: 'bootstrap-5',
+      width: '100%'
+    });
+  });
+</script>
 {% endblock %}
 

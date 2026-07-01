@@ -76,17 +76,13 @@
 
 <!-- ═══════════════════════ ATTENDANCE TABLE ═════════════════════════════════ -->
 <div class="card glass-card border-0 shadow-sm">
-  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center" style="position: relative; z-index: 5;">
     <h5 class="fw-bold text-dark mb-0">Today's Log</h5>
-    <div class="input-group" style="max-width: 250px;">
-      <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
-      <input type="text" class="form-control bg-light border-0" id="attSearch" placeholder="Search employees..." onkeyup="filterTable()">
-    </div>
   </div>
   
   <div class="card-body p-0 mt-3">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0" id="attTable">
+    <div class="table-responsive custom-detail-table">
+      <table class="table table-hover align-middle mb-0" id="attTable" data-datatable data-datatable-options='{"pageLength": 10}'>
         <thead class="table-light">
           <tr>
             <th class="ps-4">Employee</th>
@@ -163,13 +159,6 @@
               </button>
             </td>
           </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="text-center py-5 text-muted">
-              <i class="fas fa-calendar-times fa-3x mb-3 opacity-25 d-block"></i>
-              <p>No attendance records logged for today.</p>
-            </td>
-          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -181,16 +170,6 @@
 
 {% block extra_js %}
 <script>
-function filterTable() {
-  const input = document.getElementById("attSearch").value.toLowerCase();
-  const rows = document.querySelectorAll(".att-row");
-  
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = text.includes(input) ? "" : "none";
-  });
-}
-
 function getCSRFToken() {
   const cookies = document.cookie.split(';');
   for (let i = 0; i < cookies.length; i++) {

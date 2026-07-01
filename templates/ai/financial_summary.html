@@ -158,7 +158,7 @@ async function generateSummary() {
         <div class="metric-card bg-success bg-opacity-10 border border-success border-opacity-20">
           <div class="text-muted small mb-1">Monthly Revenue</div>
           <div class="metric-value text-success">₹${(m.monthly_revenue||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div>
-          <div class="text-muted small"> {{ current_company.default_currency.symbol|default:'$' }}{m.period||''}</div>
+          <div class="text-muted small"> ${m.period||''}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -179,7 +179,7 @@ async function generateSummary() {
         <div class="metric-card bg-warning bg-opacity-10 border border-warning border-opacity-20">
           <div class="text-muted small mb-1">Monthly Expenses</div>
           <div class="metric-value text-warning">₹${(m.monthly_expenses||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div>
-          <div class="text-muted small"> {{ current_company.default_currency.symbol|default:'$' }}{m.period||''}</div>
+          <div class="text-muted small"> ${m.period||''}</div>
         </div>
       </div>`;
 

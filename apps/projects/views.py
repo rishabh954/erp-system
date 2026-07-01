@@ -237,7 +237,7 @@ class MyTasksView(CompanyMixin, ListView):
             user=self.request.user, is_deleted=False
         ).aggregate(t=Sum('hours'))['t'] or 0
         ctx['overdue_count'] = self.get_queryset().filter(
-            due_date__lt=date.today()
+            due_date__lt=timezone.localdate()
         ).count()
         return ctx
 
@@ -282,7 +282,7 @@ class LogTimeView(CompanyMixin, View):
                 company=self.company(),
                 task=task,
                 user=request.user,
-                date=date.today(),
+                date=timezone.localdate(),
                 hours=hours,
                 description=request.POST.get('description', ''),
                 is_billable=request.POST.get('is_billable') == 'on',

@@ -83,7 +83,7 @@
       <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
       <div class="stat-card-value">{{ budget_used_pct }}%</div>
       <div class="stat-card-label">Budget Used</div>
-      <div class="stat-card-trend text-white-50">{{ CURRENCY_SYMBOL }}{{ project.actual_cost|floatformat:0|intcomma }} of {{ CURRENCY_SYMBOL }}{{ project.budget|floatformat:0|intcomma }}</div>
+      <div class="stat-card-trend text-white-50">{{ current_company.default_currency.symbol|default:'$' }}{{ project.actual_cost|floatformat:0|intcomma }} of {{ current_company.default_currency.symbol|default:'$' }}{{ project.budget|floatformat:0|intcomma }}</div>
     </div>
   </div>
 </div>
@@ -284,9 +284,9 @@
             {{ project.end_date|default:"—" }}
           </dd>
           <dt>Budget</dt>
-          <dd>{{ CURRENCY_SYMBOL }}{{ project.budget|floatformat:2|intcomma }}</dd>
+          <dd>{{ current_company.default_currency.symbol|default:'$' }}{{ project.budget|floatformat:2|intcomma }}</dd>
           <dt>Actual Cost</dt>
-          <dd>{{ CURRENCY_SYMBOL }}{{ project.actual_cost|floatformat:2|intcomma }}</dd>
+          <dd>{{ current_company.default_currency.symbol|default:'$' }}{{ project.actual_cost|floatformat:2|intcomma }}</dd>
           <dt>Billable</dt>
           <dd>
             {% if project.is_billable %}

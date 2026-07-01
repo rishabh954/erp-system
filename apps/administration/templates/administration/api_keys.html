@@ -28,7 +28,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table mb-0">
+                    <table class="table mb-0" data-datatable data-datatable-options='{"searching": false}'>
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -58,8 +58,6 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center py-3 text-muted">No API tokens generated yet.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

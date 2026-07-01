@@ -26,7 +26,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
             <thead class="table-light"><tr><th class="px-4">Name</th><th>Code</th><th>Level</th><th class="text-end px-4">Actions</th></tr></thead>
             <tbody>
               {% for d in designations %}
@@ -40,7 +40,7 @@
                   </form>
                 </td>
               </tr>
-              {% empty %}<tr><td colspan="4" class="text-center text-muted py-5">No job titles yet. Add one to get started.</td></tr>{% endfor %}
+              {% endfor %}
             </tbody>
           </table>
         </div>

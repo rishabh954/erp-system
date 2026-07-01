@@ -31,7 +31,7 @@
 
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
       <thead class="table-light">
         <tr>
           <th>Applicant Name</th>
@@ -60,8 +60,6 @@
             <a href="{% url 'hrms:application_detail' app.pk %}" class="btn btn-sm btn-outline-primary">View</a>
           </td>
         </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-4">No applications available.</td></tr>
         {% endfor %}
       </tbody>
     </table>

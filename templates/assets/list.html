@@ -41,7 +41,7 @@
   <div class="col-12 col-md-4">
     <div class="card stat-card stat-card-success h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-hand-holding-dollar"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ total_value|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ total_value|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Net Book Value</div>
       <div class="stat-card-trend text-white-50">Current depreciated value</div>
     </div>
@@ -147,8 +147,8 @@
               {% endif %}</span>
             </td>
             
-            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ asset.purchase_cost|floatformat:2|intcomma }}</td>
-            <td class="text-end fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ asset.current_value|floatformat:2|intcomma }}</td>
+            <td class="text-end text-muted">{{ current_company.default_currency.symbol|default:'$' }}{{ asset.purchase_cost|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-bold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ asset.current_value|floatformat:2|intcomma }}</td>
             
             <td>
               {% if asset.status == 'active' %}

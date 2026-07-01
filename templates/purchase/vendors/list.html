@@ -70,7 +70,7 @@
           {% for vendor in vendors %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ vendor.vendor_code|default:"-" }}</span>
+              <a href="{% url 'purchase:vendor_detail' vendor.pk %}" class="fw-bold text-primary text-decoration-none">{{ vendor.vendor_code|default:"-" }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ vendor.name }}</div>

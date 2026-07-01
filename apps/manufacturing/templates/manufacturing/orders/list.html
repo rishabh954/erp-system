@@ -11,7 +11,7 @@
     <div class="card shadow mb-4">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover" data-datatable data-datatable-options='{"searching": false}'>
                     <thead>
                         <tr>
                             <th>Number</th>
@@ -44,8 +44,6 @@
                                 <a href="{% url 'manufacturing:mo_detail' order.pk %}" class="btn btn-sm btn-info text-white">View</a>
                             </td>
                         </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-center">No manufacturing orders found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

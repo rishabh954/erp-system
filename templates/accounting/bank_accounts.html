@@ -35,7 +35,7 @@
   <div class="bank-hero-content">
     <div>
       <div class="bank-hero-label">Total Cash Position</div>
-      <div class="bank-hero-amount">{{ CURRENCY_SYMBOL }}{{ total_balance|floatformat:2|intcomma }}</div>
+      <div class="bank-hero-amount">{{ current_company.default_currency.symbol|default:'$' }}{{ total_balance|floatformat:2|intcomma }}</div>
       <div class="bank-hero-sub">
         <i class="fas fa-university me-1"></i>
         Across {{ bank_accounts|length }} active bank account{{ bank_accounts|length|pluralize }}
@@ -119,14 +119,14 @@
           <div class="bank-balance-label">Current Balance</div>
           <div class="bank-balance-amount {% if account.current_balance < 0 %}text-danger{% endif %}">
             {% if account.current_balance < 0 %}
-              <span class="text-danger">({{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
+              <span class="text-danger">({{ current_company.default_currency.symbol|default:'$' }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
             {% else %}
-              {{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ account.current_balance|floatformat:2|intcomma }}
             {% endif %}
           </div>
           {% if account.opening_balance %}
           <div class="bank-opening-balance">
-            Opening: {{ CURRENCY_SYMBOL }}{{ account.opening_balance|floatformat:2|intcomma }}
+            Opening: {{ current_company.default_currency.symbol|default:'$' }}{{ account.opening_balance|floatformat:2|intcomma }}
           </div>
           {% endif %}
         </div>
@@ -205,7 +205,7 @@
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
         <thead class="table-light">
           <tr>
             <th class="ps-4">Account Name</th>
@@ -240,12 +240,12 @@
               <span class="text-muted ms-1" style="font-size: 11px;">{{ account.gl_account.name|truncatechars:20 }}</span>
               {% else %}—{% endif %}
             </td>
-            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ account.opening_balance|floatformat:2|intcomma }}</td>
+            <td class="text-end text-muted">{{ current_company.default_currency.symbol|default:'$' }}{{ account.opening_balance|floatformat:2|intcomma }}</td>
             <td class="text-end pe-4 fw-bold {% if account.current_balance < 0 %}text-danger{% else %}text-dark{% endif %}">
               {% if account.current_balance < 0 %}
-                ({{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})
+                ({{ current_company.default_currency.symbol|default:'$' }}{{ account.current_balance|floatformat:2|cut:"-"|intcomma }})
               {% else %}
-                {{ CURRENCY_SYMBOL }}{{ account.current_balance|floatformat:2|intcomma }}
+                {{ current_company.default_currency.symbol|default:'$' }}{{ account.current_balance|floatformat:2|intcomma }}
               {% endif %}
             </td>
           </tr>
@@ -255,7 +255,7 @@
           <tr>
             <td colspan="6" class="ps-4 fw-bold text-dark py-3">Total Balance</td>
             <td class="text-end pe-4 fw-bold text-primary py-3">
-              {{ CURRENCY_SYMBOL }}{{ total_balance|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ total_balance|floatformat:2|intcomma }}
             </td>
           </tr>
         </tfoot>
@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ['GL Account',      d.gl],
       ];
       document.getElementById('bankInfoContent').innerHTML = rows.map(function (r) {
-        return `<dt> {{ current_company.default_currency.symbol|default:'$' }}{r[0]}</dt><dd> {{ current_company.default_currency.symbol|default:'$' }}{r[1]}</dd>`;
+        return `<dt> ${r[0]}</dt><dd> ${r[1]}</dd>`;
       }).join('');
     });
   });

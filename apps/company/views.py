@@ -23,10 +23,19 @@ class CompanySettingsView(CompanyMixin, View):
     template_name = 'company/settings.html'
 
     def get(self, request):
+        import zoneinfo
+        from collections import defaultdict
         company = self.company()
+        
+        tz_groups = defaultdict(list)
+        for tz in sorted(zoneinfo.available_timezones()):
+            region = tz.split('/')[0]
+            tz_groups[region].append(tz)
+            
         return render(request, self.template_name, {
             'company': company,
             'currencies': Currency.objects.filter(is_active=True),
+            'tz_groups': dict(sorted(tz_groups.items())),
         })
 
     def post(self, request):
@@ -43,7 +52,15 @@ class CompanySettingsView(CompanyMixin, View):
         company.city = data.get('city', '')
         company.country = data.get('country', '')
         company.language = data.get('language', 'en')
-        company.timezone = data.get('timezone', 'UTC')
+        
+        import zoneinfo
+        tz_input = data.get('timezone', 'UTC')
+        try:
+            zoneinfo.ZoneInfo(tz_input)
+            company.timezone = tz_input
+        except (zoneinfo.ZoneInfoNotFoundError, KeyError):
+            messages.error(request, f'Invalid timezone: {tz_input}. Keeping previous value.')
+            
         company.fiscal_year_start = data.get('fiscal_year_start', '01-01')
         company.primary_color = data.get('primary_color', '#4361ee')
         if 'inventory_valuation_method' in data:

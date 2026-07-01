@@ -208,9 +208,9 @@
               </div>
               <!-- Budget -->
               {% if project.budget %}
-              <div class="project-meta-item" title="Budget: {{ CURRENCY_SYMBOL }}{{ project.budget|intcomma }}">
+              <div class="project-meta-item" title="Budget: {{ current_company.default_currency.symbol|default:'$' }}{{ project.budget|intcomma }}">
                 <i class="fas fa-dollar-sign text-muted me-1" style="font-size: 11px;"></i>
-                <span>{{ CURRENCY_SYMBOL }}{{ project.budget|floatformat:0|intcomma }}</span>
+                <span>{{ current_company.default_currency.symbol|default:'$' }}{{ project.budget|floatformat:0|intcomma }}</span>
               </div>
               {% endif %}
             </div>

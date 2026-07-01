@@ -9,7 +9,7 @@
     <div class="card shadow mb-4">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
                     <thead>
                         <tr>
                             <th>Number</th>
@@ -28,8 +28,6 @@
                             <td>{{ ship.tracking_number }}</td>
                             <td><span class="badge bg-success">{{ ship.get_status_display }}</span></td>
                         </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-center text-muted">No shipments found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

@@ -48,7 +48,7 @@
   <div class="card-header bg-transparent border-0 pt-4 px-4 pb-2"><h6 class="fw-bold mb-0">Recent Import Jobs</h6></div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
         <thead class="table-light"><tr><th class="px-4">Module</th><th>File</th><th>Status</th><th>Total</th><th>Imported</th><th>Failed</th><th>By</th><th>Date</th></tr></thead>
         <tbody>
           {% for j in import_jobs %}
@@ -62,7 +62,7 @@
             <td class="small">{{ j.imported_by }}</td>
             <td class="small text-muted">{{ j.created_at|date:"d M Y" }}</td>
           </tr>
-          {% empty %}<tr><td colspan="8" class="text-center text-muted py-4">No import jobs yet.</td></tr>{% endfor %}
+          {% endfor %}
         </tbody>
       </table>
     </div>

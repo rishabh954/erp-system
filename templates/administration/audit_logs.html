@@ -28,7 +28,7 @@
 <div class="card border-0 shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
         <thead class="table-light"><tr><th class="px-4">Timestamp</th><th>Action</th><th>Model</th><th>Object</th><th>User</th><th>IP</th><th></th></tr></thead>
         <tbody>
           {% for log in logs %}
@@ -43,7 +43,7 @@
               <button class="btn btn-sm btn-outline-secondary" onclick='showChanges({{ log.changes|safe }})' title="View Changes"><i class="fas fa-eye"></i></button>
             </td>
           </tr>
-          {% empty %}<tr><td colspan="7" class="text-center text-muted py-5">No audit logs match your filters.</td></tr>{% endfor %}
+          {% endfor %}
         </tbody>
       </table>
     </div>

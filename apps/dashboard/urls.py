@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     DashboardIndexView, SalesDashboardView, FinanceDashboardView, PurchaseDashboardView,
     WarehouseDashboardView, HRDashboardView, CRMDashboardView, ProjectDashboardView,
-    HelpdeskDashboardView, ExecutiveKPIDashboardView
+    HelpdeskDashboardView, ExecutiveKPIDashboardView, CalendarView, CalendarEventsAPIView
 )
 
 app_name = 'dashboard'
@@ -18,4 +18,6 @@ urlpatterns = [
     path('projects/', ProjectDashboardView.as_view(), name='projects'),
     path('helpdesk/', HelpdeskDashboardView.as_view(), name='helpdesk'),
     path('executive-kpi/', ExecutiveKPIDashboardView.as_view(), name='executive_kpi'),
+    path('calendar/', CalendarView.as_view(), name='calendar'),
+    path('calendar/events/', CalendarEventsAPIView.as_view(), name='calendar_events'),
 ]

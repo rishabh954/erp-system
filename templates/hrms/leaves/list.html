@@ -21,10 +21,10 @@
   </div>
   
   <div class="d-flex gap-2">
-    <a href="{% url 'hrms:attendance' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-clock me-1"></i>Daily Attendance
+    <a href="{% url 'hrms:attendance' %}" class="btn btn-light bg-white border shadow-sm d-inline-flex align-items-center">
+      <i class="fas fa-clock me-2 text-secondary"></i><span class="text-secondary fw-semibold">Daily Attendance</span>
     </a>
-    <a href="{% url 'hrms:leave_request_create' %}" class="btn btn-primary shadow-sm">
+    <a href="{% url 'hrms:leave_request_create' %}" class="btn btn-primary shadow-sm d-inline-flex align-items-center">
       <i class="fas fa-plus me-2"></i>Apply for Leave
     </a>
   </div>
@@ -71,7 +71,7 @@
 <div class="card glass-card border-0 shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;" data-datatable data-datatable-options='{"pageLength": 10, "searching": false}'>
         <thead class="table-light">
           <tr>
             <th class="ps-4">Request #</th>

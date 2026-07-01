@@ -8,11 +8,11 @@
 /* ── Layout ─────────────────────────────────────────────── */
 .builder-wrapper {
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
   align-items: flex-start;
 }
 .builder-sidebar {
-  width: 420px;
+  width: 440px;
   flex-shrink: 0;
   position: sticky;
   top: 80px;
@@ -20,6 +20,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--border-rgb),.3) transparent;
+  padding-right: 0.5rem;
 }
 .builder-preview {
   flex: 1;
@@ -27,165 +28,220 @@
 }
 @media (max-width: 991.98px) {
   .builder-wrapper { flex-direction: column; }
-  .builder-sidebar { width: 100%; position: static; max-height: none; }
+  .builder-sidebar { width: 100%; position: static; max-height: none; padding-right: 0; }
 }
 
 /* ── Steps ──────────────────────────────────────────────── */
 .step-card {
-  background: var(--card-bg);
-  border: 1px solid rgba(var(--border-rgb),.12);
-  border-radius: 14px;
-  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.03);
+  border-radius: 16px;
+  margin-bottom: 1.25rem;
   overflow: hidden;
-  transition: box-shadow .2s;
+  transition: all .35s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.step-card.active { box-shadow: 0 0 0 2px var(--brand-primary); }
+.step-card.active { 
+  box-shadow: 0 12px 30px rgba(67,97,238,0.12); 
+  border: 1px solid rgba(67,97,238,0.4); 
+  transform: translateX(4px); 
+}
 .step-header {
-  display: flex; align-items: center; gap: .75rem;
-  padding: 1rem 1.25rem;
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.1rem 1.4rem;
   cursor: pointer;
   user-select: none;
 }
-.step-header:hover { background: rgba(67,97,238,.04); }
+.step-header:hover { background: rgba(67,97,238,.03); }
 .step-num {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   background: rgba(67,97,238,.12); color: var(--brand-primary);
   display: flex; align-items: center; justify-content: center;
-  font-size: .75rem; font-weight: 700; flex-shrink: 0;
+  font-size: .85rem; font-weight: 700; flex-shrink: 0;
+  transition: all .3s ease;
 }
-.step-num.done { background: #10b981; color: #fff; }
-.step-title { font-weight: 600; font-size: .9rem; flex-grow: 1; }
-.step-subtitle { font-size: .75rem; color: var(--text-muted); }
-.step-body { padding: 0 1.25rem 1.25rem; display: none; }
+.step-num.done { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 4px 10px rgba(16,185,129,0.3); }
+.step-card.active .step-num { background: linear-gradient(135deg, var(--brand-primary), #3b50c9); color: #fff; box-shadow: 0 4px 12px rgba(67,97,238,0.35); transform: scale(1.05); }
+.step-title { font-weight: 700; font-size: .95rem; flex-grow: 1; letter-spacing: -0.01em; color: var(--text-primary); }
+.step-subtitle { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.step-body { padding: 0 1.4rem 1.4rem; display: none; }
 .step-body.open { display: block; }
-.step-chevron { transition: transform .25s; color: var(--text-muted); font-size: .75rem; }
-.step-card.open .step-chevron { transform: rotate(180deg); }
+.step-chevron { transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1); color: var(--text-muted); font-size: .85rem; }
+.step-card.open .step-chevron { transform: rotate(180deg); color: var(--brand-primary); }
 
 /* ── Module grid ─────────────────────────────────────────── */
 .module-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: .6rem;
+  gap: .8rem;
 }
 .module-card {
-  border: 2px solid rgba(var(--border-rgb),.15);
-  border-radius: 10px;
-  padding: .75rem .9rem;
+  border: 1px solid rgba(var(--border-rgb),.1);
+  border-radius: 14px;
+  padding: 1.25rem .75rem;
   cursor: pointer;
-  transition: all .2s;
-  display: flex; align-items: center; gap: .6rem;
-  font-size: .82rem; font-weight: 500;
+  background: var(--card-bg);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem;
+  font-size: .85rem; font-weight: 700; text-align: center; color: var(--text-secondary);
 }
-.module-card:hover { border-color: var(--brand-primary); background: rgba(67,97,238,.04); }
-.module-card.selected { border-color: var(--brand-primary); background: rgba(67,97,238,.08); color: var(--brand-primary); }
+.module-card:hover { 
+  transform: translateY(-4px); 
+  box-shadow: 0 10px 20px rgba(0,0,0,0.06); 
+  border-color: var(--brand-primary); 
+  color: var(--brand-primary);
+}
+.module-card.selected { 
+  border: 2px solid #4361ee !important; 
+  background: rgba(67,97,238,.1) !important; 
+  box-shadow: 0 10px 24px rgba(67,97,238,0.2) !important; 
+  transform: translateY(-4px) !important; 
+  color: #4361ee !important;
+}
 .module-card .mod-icon {
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 46px; height: 46px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: .9rem; flex-shrink: 0;
-  background: rgba(67,97,238,.1); color: var(--brand-primary);
+  font-size: 1.3rem; flex-shrink: 0;
+  background: rgba(67,97,238,.08); color: #4361ee;
+  transition: all .3s ease;
 }
-.module-card.selected .mod-icon { background: var(--brand-primary); color: #fff; }
+.module-card.selected .mod-icon { 
+  background: #4361ee !important; 
+  color: #fff !important; 
+  box-shadow: 0 6px 14px rgba(67,97,238,0.4) !important; 
+  transform: scale(1.1);
+}
 
 /* ── Column picker ───────────────────────────────────────── */
-.col-search { margin-bottom: .6rem; }
+.col-search { margin-bottom: .8rem; }
+.col-search input { border-radius: 10px; background: rgba(var(--border-rgb),.05); border: 1px solid rgba(var(--border-rgb),.1); }
+.col-search input:focus { background: #fff; box-shadow: 0 0 0 4px rgba(67,97,238,.1); }
 .field-list {
-  max-height: 200px; overflow-y: auto;
-  border: 1px solid rgba(var(--border-rgb),.15);
-  border-radius: 8px; padding: .4rem;
+  max-height: 220px; overflow-y: auto;
+  border: 1px solid rgba(var(--border-rgb),.1);
+  border-radius: 12px; padding: .5rem;
+  background: rgba(255,255,255,0.5);
 }
 .field-item {
-  display: flex; align-items: center; gap: .5rem;
-  padding: .3rem .5rem; border-radius: 6px;
-  cursor: pointer; font-size: .82rem;
+  display: flex; align-items: center; gap: .6rem;
+  padding: .4rem .6rem; border-radius: 8px;
+  cursor: pointer; font-size: .85rem; font-weight: 500;
+  transition: background .2s;
 }
-.field-item:hover { background: rgba(67,97,238,.06); }
-.field-item input[type=checkbox] { accent-color: var(--brand-primary); }
+.field-item:hover { background: rgba(67,97,238,.06); color: var(--brand-primary); }
+.field-item input[type=checkbox] { accent-color: var(--brand-primary); width: 16px; height: 16px; }
 .field-item .field-type {
-  margin-left: auto; font-size: .65rem; color: var(--text-muted);
-  background: rgba(var(--border-rgb),.15); padding: .1rem .35rem; border-radius: 4px;
+  margin-left: auto; font-size: .65rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  background: rgba(var(--border-rgb),.1); padding: .15rem .45rem; border-radius: 6px;
 }
 .select-all-bar {
-  display: flex; justify-content: space-between; margin-bottom: .4rem;
-  font-size: .75rem;
+  display: flex; justify-content: space-between; margin-bottom: .6rem;
+  font-size: .8rem; font-weight: 600;
 }
 
 /* ── Filter rows ─────────────────────────────────────────── */
 .filter-row {
   display: grid; grid-template-columns: 1fr 110px 1fr auto;
-  gap: .4rem; align-items: center; margin-bottom: .5rem;
+  gap: .5rem; align-items: center; margin-bottom: .6rem;
 }
 .filter-row select, .filter-row input {
-  font-size: .8rem;
+  font-size: .8rem; border-radius: 8px;
+  background: rgba(var(--border-rgb),.05); border: 1px solid rgba(var(--border-rgb),.1);
 }
 .add-filter-btn {
-  font-size: .8rem; padding: .3rem .7rem;
-  border-style: dashed;
+  font-size: .85rem; padding: .4rem .8rem; border-radius: 8px;
+  border: 1px dashed rgba(var(--border-rgb),.3); font-weight: 600;
+  transition: all .2s;
 }
+.add-filter-btn:hover { background: rgba(67,97,238,.05); border-color: var(--brand-primary); color: var(--brand-primary); }
 
 /* ── Chart type selector ─────────────────────────────────── */
 .chart-type-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem;
 }
 .ct-card {
-  border: 2px solid rgba(var(--border-rgb),.15);
-  border-radius: 8px; padding: .6rem;
+  border: 1px solid rgba(var(--border-rgb),.15);
+  border-radius: 12px; padding: .8rem .5rem;
   cursor: pointer; text-align: center;
-  font-size: .75rem; transition: all .2s;
+  font-size: .8rem; font-weight: 600; transition: all .2s;
+  background: var(--card-bg); color: var(--text-secondary);
 }
-.ct-card:hover { border-color: var(--brand-primary); }
-.ct-card.selected { border-color: var(--brand-primary); background: rgba(67,97,238,.08); color: var(--brand-primary); }
-.ct-card i { font-size: 1.2rem; display: block; margin-bottom: .3rem; }
+.ct-card:hover { border-color: var(--brand-primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.ct-card.selected { 
+  border-color: var(--brand-primary); 
+  background: rgba(67,97,238,.06); 
+  color: var(--brand-primary); 
+  box-shadow: 0 4px 12px rgba(67,97,238,0.15);
+}
+.ct-card i { font-size: 1.4rem; display: block; margin-bottom: .4rem; transition: transform .3s; }
+.ct-card.selected i { transform: scale(1.1); }
 
 /* ── Preview panel ───────────────────────────────────────── */
 .preview-panel {
-  background: var(--card-bg);
-  border: 1px solid rgba(var(--border-rgb),.12);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.04), inset 0 0 0 1px rgba(255,255,255,1);
+  border-radius: 20px;
   overflow: hidden;
 }
 .preview-toolbar {
   display: flex; align-items: center; gap: .75rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(var(--border-rgb),.1);
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid rgba(var(--border-rgb),.08);
+  background: rgba(255,255,255,0.4);
 }
 .preview-body {
-  padding: 1.5rem;
+  padding: 1.75rem;
   min-height: 400px;
 }
 .preview-placeholder {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 300px; text-align: center; color: var(--text-muted);
+  min-height: 350px; text-align: center; color: var(--text-muted);
 }
-.preview-placeholder i { font-size: 2.5rem; margin-bottom: 1rem; opacity: .4; }
+.preview-placeholder i { 
+  font-size: 3.5rem; margin-bottom: 1.25rem; color: var(--brand-primary); opacity: 0.9; 
+  filter: drop-shadow(0 8px 16px rgba(67,97,238,0.3)); 
+}
 
 /* Save panel */
 .save-panel {
-  background: var(--card-bg);
-  border: 1px solid rgba(var(--border-rgb),.12);
-  border-radius: 14px;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 16px;
   padding: 1.5rem;
   margin-top: 1.5rem;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.03);
 }
 
 /* Progress tracker */
 .builder-progress {
-  display: flex; gap: 0; margin-bottom: 1.5rem; overflow: hidden; border-radius: 10px;
+  display: flex; gap: 0.5rem; margin-bottom: 1.75rem; overflow: hidden;
 }
 .bp-step {
-  flex: 1; padding: .5rem .3rem; text-align: center;
-  font-size: .68rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .04em;
-  background: rgba(var(--border-rgb),.08); color: var(--text-muted);
-  border-right: 1px solid rgba(var(--border-rgb),.12);
-  transition: background .3s, color .3s;
+  flex: 1; padding: .6rem .5rem; text-align: center;
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; border-radius: 50rem;
+  background: rgba(var(--border-rgb),.05); color: var(--text-muted);
+  border: 1px solid rgba(var(--border-rgb),.1);
+  transition: all .35s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.bp-step:last-child { border-right: none; }
-.bp-step.done { background: rgba(16,185,129,.12); color: #059669; }
-.bp-step.active { background: rgba(67,97,238,.15); color: var(--brand-primary); }
+.bp-step.done { 
+  background: linear-gradient(135deg, #10b981, #059669); color: #fff; 
+  border-color: transparent; box-shadow: 0 4px 12px rgba(16,185,129,0.25); 
+}
+.bp-step.active { 
+  background: linear-gradient(135deg, var(--brand-primary), #3b50c9); color: #fff; 
+  border-color: transparent; box-shadow: 0 4px 16px rgba(67,97,238,0.3); 
+  transform: translateY(-2px); 
+}
 
 /* Preview table */
-.prev-table th { font-size: .72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
-.prev-table td { font-size: .82rem; }
+.prev-table th { font-size: .72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; background: rgba(var(--border-rgb),.03) !important; border-bottom: 2px solid rgba(var(--border-rgb),.1); padding: 1rem; }
+.prev-table td { font-size: .85rem; padding: 1rem; vertical-align: middle; }
 </style>
 {% endblock %}
 
@@ -241,35 +297,68 @@
       </div>
       <div class="step-body open" id="step1Body">
         <div class="module-grid" id="moduleGrid">
-          <div class="module-card" data-module="sales" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-chart-line"></i></div>Sales
+          <div class="module-card" data-module="sales_orders" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>Sales Orders
           </div>
-          <div class="module-card" data-module="finance" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-coins"></i></div>Finance
+          <div class="module-card" data-module="invoices" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-file-invoice"></i></div>Invoices
           </div>
-          <div class="module-card" data-module="hr" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-users"></i></div>HR
+          <div class="module-card" data-module="customers" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-users"></i></div>Customers
           </div>
-          <div class="module-card" data-module="purchase" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-shopping-bag"></i></div>Purchase
+          <div class="module-card" data-module="leads" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-bullseye"></i></div>Leads
+          </div>
+          <div class="module-card" data-module="purchase_orders" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-cart-shopping"></i></div>Purchase Orders
+          </div>
+          <div class="module-card" data-module="purchase_invoices" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-file-lines"></i></div>Purchase Invoices
+          </div>
+          <div class="module-card" data-module="vendors" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-truck-field"></i></div>Vendors
           </div>
           <div class="module-card" data-module="inventory" onclick="selectModule(this)">
             <div class="mod-icon"><i class="fa-solid fa-boxes-stacked"></i></div>Inventory
           </div>
-          <div class="module-card" data-module="manufacturing" onclick="selectModule(this)">
+          <div class="module-card" data-module="products" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-box"></i></div>Products
+          </div>
+          <div class="module-card" data-module="employees" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-id-card"></i></div>Employees
+          </div>
+          <div class="module-card" data-module="payroll" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-money-check-dollar"></i></div>Payroll
+          </div>
+          <div class="module-card" data-module="attendance" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-clock"></i></div>Attendance
+          </div>
+          <div class="module-card" data-module="leave_requests" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-calendar-minus"></i></div>Leave Requests
+          </div>
+          <div class="module-card" data-module="journal_entries" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-book"></i></div>Journal Entries
+          </div>
+          <div class="module-card" data-module="accounts" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-list-ol"></i></div>Accounts
+          </div>
+          <div class="module-card" data-module="manufacturing_orders" onclick="selectModule(this)">
             <div class="mod-icon"><i class="fa-solid fa-industry"></i></div>Manufacturing
           </div>
           <div class="module-card" data-module="projects" onclick="selectModule(this)">
             <div class="mod-icon"><i class="fa-solid fa-diagram-project"></i></div>Projects
           </div>
-          <div class="module-card" data-module="helpdesk" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-headset"></i></div>Helpdesk
+          <div class="module-card" data-module="tasks" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-list-check"></i></div>Tasks
           </div>
-          <div class="module-card" data-module="crm" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-handshake"></i></div>CRM
+          <div class="module-card" data-module="timesheets" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-business-time"></i></div>Timesheets
+          </div>
+          <div class="module-card" data-module="helpdesk_tickets" onclick="selectModule(this)">
+            <div class="mod-icon"><i class="fa-solid fa-headset"></i></div>Helpdesk Tickets
           </div>
           <div class="module-card" data-module="assets" onclick="selectModule(this)">
-            <div class="mod-icon"><i class="fa-solid fa-building"></i></div>Assets
+            <div class="mod-icon"><i class="fa-solid fa-computer"></i></div>Fixed Assets
           </div>
         </div>
       </div>
@@ -581,16 +670,18 @@
       <!-- Pivot preview -->
       <div id="previewPivotWrapper" style="display:none; padding:1.5rem 1.5rem 0;">
         <div class="table-responsive">
-          <table class="table table-bordered table-sm prev-table" id="previewPivotTable"></table>
+          <table class="table table-bordered table-sm prev-table" id="previewPivotTable" data-datatable data-datatable-options='{"searching": false}'></table>
         </div>
       </div>
 
       <div class="preview-body">
         <div class="preview-placeholder" id="previewPlaceholder">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <p class="mb-1 fw-semibold" style="font-size:.9rem;">No preview yet</p>
-          <p class="text-muted" style="font-size:.82rem; max-width:280px;">
-            Select a module and columns, then click <strong>Run Preview</strong> to see sample data.
+          <div style="width:90px; height:90px; background:linear-gradient(135deg, rgba(67,97,238,0.05), rgba(67,97,238,0.15)); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:1.75rem; box-shadow: 0 12px 32px rgba(67,97,238,0.15); border: 2px solid rgba(255,255,255,0.8);">
+            <i class="fa-solid fa-wand-magic-sparkles" style="font-size:2.2rem; filter:drop-shadow(0 4px 8px rgba(67,97,238,0.4)); margin-bottom:0; color:var(--brand-primary);"></i>
+          </div>
+          <h4 class="mb-2 fw-bold" style="color:var(--text-primary); letter-spacing:-0.02em;">Ready to build</h4>
+          <p class="text-muted" style="font-size:.95rem; max-width:340px; line-height:1.6;">
+            Select a module and columns on the left, then click <strong class="text-dark">Run Preview</strong> to generate sample data.
           </p>
         </div>
 
@@ -600,7 +691,7 @@
 
           <!-- Data table -->
           <div class="table-responsive">
-            <table class="table table-hover table-sm prev-table mb-0" id="previewTable">
+            <table class="table table-hover table-sm prev-table mb-0" id="previewTable" data-datatable data-datatable-options='{"searching": false}'>
               <thead id="previewThead"></thead>
               <tbody id="previewTbody"></tbody>
             </table>
@@ -701,6 +792,7 @@ function updateProgress(current) {
    MODULE SELECTION
 ───────────────────────────────────────────────────────── */
 async function selectModule(el) {
+  console.log("selectModule fired for:", el.dataset.module);
   document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
   state.module = el.dataset.module;
@@ -711,7 +803,11 @@ async function selectModule(el) {
 
   // Load fields
   await loadFields(state.module);
-  moveStep(2);
+  
+  // Delay moving to step 2 slightly so user sees the visual selection
+  setTimeout(() => {
+    moveStep(2);
+  }, 350);
 }
 
 async function loadFields(module) {
@@ -722,7 +818,13 @@ async function loadFields(module) {
     const res  = await fetch(`/analytics/api/fields/?module=${module}`);
     if (!res.ok) throw new Error('API error');
     const data = await res.json();
-    state.fields = data.fields || [];
+    state.fields = (data.fields || []).map(f => {
+      if (typeof f === 'string') {
+        let label = f.split('__').join(' ').split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+        return { key: f, label: label, type: f.includes('date') ? 'date' : (f.includes('total') || f.includes('quantity') || f.includes('balance') || f.includes('cost') || f.includes('price') || f.includes('salary') ? 'number' : 'text') };
+      }
+      return f;
+    });
     renderFieldList();
     populateDynamicSelects();
     updatePreviewBadge();
@@ -739,11 +841,11 @@ function renderFieldList() {
     f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q));
 
   document.getElementById('fieldList').innerHTML = filtered.map(f => `
-    <div class="field-item" onclick="toggleField('${f.key}', this)">
+    <div class="field-item" onclick="toggleField('${f.key}', this, event)">
       <input type="checkbox" ${state.selected.includes(f.key) ? 'checked' : ''}
-             id="fld_${f.key}" class="field-cb" data-key="${f.key}">
-      <label for="fld_${f.key}" style="cursor:pointer;flex-grow:1;"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</label>
-      <span class="field-type"> {{ current_company.default_currency.symbol|default:'$' }}{f.type || 'text'}</span>
+             class="field-cb" data-key="${f.key}">
+      <label style="cursor:pointer;flex-grow:1;margin:0;padding-left:10px;pointer-events:none;"> ${f.label}</label>
+      <span class="field-type"> ${f.type || 'text'}</span>
     </div>`).join('') || '<div class="text-muted text-center py-2">No fields found.</div>';
 
   updateSelectedCount();
@@ -751,9 +853,15 @@ function renderFieldList() {
 
 function filterFields() { renderFieldList(); }
 
-function toggleField(key, row) {
+function toggleField(key, row, e) {
   const cb = row.querySelector('input');
-  cb.checked = !cb.checked;
+  
+  // If the user clicked the checkbox directly, the browser already toggled its checked state.
+  // Otherwise, we toggle it manually.
+  if (!e || e.target.tagName !== 'INPUT') {
+    cb.checked = !cb.checked;
+  }
+  
   if (cb.checked) {
     if (!state.selected.includes(key)) state.selected.push(key);
   } else {
@@ -790,7 +898,7 @@ function updateColOrder() {
     const f = state.fields.find(x => x.key === k);
     return `<span class="badge rounded-pill px-3 py-2 fw-semibold"
               style="background:rgba(67,97,238,.1);color:var(--brand-primary);font-size:.78rem;cursor:grab;">
-              <i class="fa-solid fa-grip-dots-vertical me-1 opacity-50"></i> {{ current_company.default_currency.symbol|default:'$' }}{f ? f.label : k}
+              <i class="fa-solid fa-grip-dots-vertical me-1 opacity-50"></i> ${f ? f.label : k}
             </span>`;
   }).join('');
 }
@@ -801,14 +909,14 @@ function updateColOrder() {
 function populateDynamicSelects() {
   const fields = state.fields;
   const opts = '<option value="">— Select —</option>' +
-    fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
+    fields.map(f => `<option value="${f.key}"> ${f.label}</option>`).join('');
 
   document.getElementById('sortField').innerHTML = '<option value="">— None —</option>' +
-    fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
+    fields.map(f => `<option value="${f.key}"> ${f.label}</option>`).join('');
 
   const dateFields = fields.filter(f => ['date','datetime'].includes(f.type));
   document.getElementById('dateField').innerHTML = '<option value="">— Auto —</option>' +
-    dateFields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
+    dateFields.map(f => `<option value="${f.key}"> ${f.label}</option>`).join('');
 
   ['groupByField','valueField','pivotRowField','pivotColField','pivotValueField'].forEach(id => {
     document.getElementById(id).innerHTML = opts;
@@ -823,13 +931,13 @@ function addFilter() {
   filterCount++;
   const id = `fr${filterCount}`;
   const fields = state.fields;
-  const fieldOpts = fields.map(f => `<option value="${f.key}"> {{ current_company.default_currency.symbol|default:'$' }}{f.label}</option>`).join('');
+  const fieldOpts = fields.map(f => `<option value="${f.key}"> ${f.label}</option>`).join('');
 
   const row = document.createElement('div');
   row.className = 'filter-row';
   row.id = id;
   row.innerHTML = `
-    <select class="form-select form-select-sm filter-field"> {{ current_company.default_currency.symbol|default:'$' }}{fieldOpts}</select>
+    <select class="form-select form-select-sm filter-field"> ${fieldOpts}</select>
     <select class="form-select form-select-sm filter-op">
       <option value="eq">= equals</option>
       <option value="ne">≠ not eq</option>
@@ -1019,36 +1127,38 @@ function renderPreview(data) {
   const rows    = data.rows    || [];
 
   document.getElementById('previewStats').innerHTML = `
-    <span><i class="fa-solid fa-database fa-xs me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{rows.length.toLocaleString()} rows</span>
-    <span><i class="fa-solid fa-table-columns fa-xs me-1"></i> {{ current_company.default_currency.symbol|default:'$' }}{headers.length} columns</span> {{ current_company.default_currency.symbol|default:'$' }}{data.truncated ? '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>Preview truncated</span>' : ''}`;
+    <span><i class="fa-solid fa-database fa-xs me-1"></i> ${rows.length.toLocaleString()} rows</span>
+    <span><i class="fa-solid fa-table-columns fa-xs me-1"></i> ${headers.length} columns</span> ${data.truncated ? '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>Preview truncated</span>' : ''}`;
 
   document.getElementById('previewThead').innerHTML =
-    `<tr> {{ current_company.default_currency.symbol|default:'$' }}{headers.map(h => `<th> {{ current_company.default_currency.symbol|default:'$' }}{h}</th>`).join('')}</tr>`;
+    `<tr> ${headers.map(h => `<th> ${h}</th>`).join('')}</tr>`;
   document.getElementById('previewTbody').innerHTML =
-    rows.map(row => `<tr> {{ current_company.default_currency.symbol|default:'$' }}{row.map(cell => `<td> {{ current_company.default_currency.symbol|default:'$' }}{cell ?? ''}</td>`).join('')}</tr>`).join('');
+    rows.map(row => `<tr> ${row.map(cell => `<td> ${cell ?? ''}</td>`).join('')}</tr>`).join('');
 
   document.getElementById('previewContent').style.display = '';
 }
 
 function renderPivotTable(pivot, table) {
-  const { col_headers, row_headers, cells, totals } = pivot;
+  const { col_headers, rows, col_totals, grand_total } = pivot;
+  
   let html = '<thead><tr><th></th>';
-  col_headers.forEach(c => { html += `<th class="text-center"> {{ current_company.default_currency.symbol|default:'$' }}{c}</th>`; });
+  (col_headers || []).forEach(c => { html += `<th class="text-center"> ${c}</th>`; });
   html += '<th class="text-center fw-bold">Total</th></tr></thead><tbody>';
-  row_headers.forEach((row, ri) => {
-    html += `<tr><td class="fw-semibold"> {{ current_company.default_currency.symbol|default:'$' }}{row}</td>`;
-    col_headers.forEach((_, ci) => {
-      const val = cells[ri]?.[ci];
-      html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{val !== undefined ? val.toLocaleString() : '—'}</td>`;
+  
+  (rows || []).forEach(row => {
+    html += `<tr><td class="fw-semibold"> ${row.label}</td>`;
+    row.values.forEach(val => {
+      html += `<td class="text-end"> ${val !== 0 ? val.toLocaleString() : '—'}</td>`;
     });
-    html += `<td class="text-end fw-bold"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.rows?.[ri] ?? '').toLocaleString()}</td></tr>`;
+    html += `<td class="text-end fw-bold"> ${row.total.toLocaleString()}</td></tr>`;
   });
+  
   // Total row
   html += '<tr class="table-active fw-bold"><td>Total</td>';
-  col_headers.forEach((_, ci) => {
-    html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.cols?.[ci] ?? '').toLocaleString()}</td>`;
+  (col_totals || []).forEach(val => {
+    html += `<td class="text-end"> ${val.toLocaleString()}</td>`;
   });
-  html += `<td class="text-end"> {{ current_company.default_currency.symbol|default:'$' }}{(totals?.grand ?? '').toLocaleString()}</td></tr>`;
+  html += `<td class="text-end"> ${(grand_total || 0).toLocaleString()}</td></tr>`;
   html += '</tbody>';
   table.innerHTML = html;
 }

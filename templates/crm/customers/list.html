@@ -62,7 +62,7 @@
           {% for customer in customers %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ customer.customer_code|default:"-" }}</span>
+              <a href="{% url 'crm:customer_detail' customer.pk %}" class="fw-bold text-primary text-decoration-none">{{ customer.customer_code|default:"-" }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ customer.name }}</div>
@@ -79,13 +79,13 @@
             </td>
             <td>{{ customer.tax_id|default:"-" }}</td>
             <td class="fw-semibold">
-              {{ CURRENCY_SYMBOL }}{{ customer.credit_limit|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ customer.credit_limit|floatformat:2|intcomma }}
             </td>
             <td>
               {% if customer.outstanding_balance > 0 %}
-                <span class="text-danger fw-bold">{{ CURRENCY_SYMBOL }}{{ customer.outstanding_balance|floatformat:2|intcomma }}</span>
+                <span class="text-danger fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ customer.outstanding_balance|floatformat:2|intcomma }}</span>
               {% else %}
-                <span class="text-success fw-semibold">{{ CURRENCY_SYMBOL }}0.00
+                <span class="text-success fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}0.00
               {% endif %}</span>
             </td>
             <td>
@@ -96,25 +96,20 @@
               {% endif %}</span>
             </td>
             <td class="text-center">
-              <a href="{% url 'crm:customer_detail' customer.pk %}" class="btn btn-outline-primary btn-xs" title="View Details">
-                <i class="fas fa-eye"></i> View
-              </a>
-              <a href="{% url 'crm:customer_update' customer.pk %}" class="btn btn-outline-warning btn-xs" title="Edit Customer">
-                <i class="fas fa-edit"></i>
-              </a>
-              <form method="post" action="{% url 'crm:customer_delete' customer.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-xs" data-confirm-delete="Delete this customer?">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="8" class="text-center py-5">
-              <i class="fas fa-users fa-3x text-muted mb-3 d-block opacity-25"></i>
-              <span class="text-muted">No customers found.</span>
+              <div class="d-flex justify-content-center gap-1">
+                <a href="{% url 'crm:customer_detail' customer.pk %}" class="btn btn-primary btn-sm" title="View details" data-bs-toggle="tooltip">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <a href="{% url 'crm:customer_update' customer.pk %}" class="btn btn-warning btn-sm text-white" title="Edit customer" data-bs-toggle="tooltip">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form method="post" action="{% url 'crm:customer_delete' customer.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete customer" data-bs-toggle="tooltip" data-confirm-delete="Delete this customer?">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
           {% endfor %}

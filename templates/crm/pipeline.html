@@ -28,7 +28,7 @@
         <span class="text-muted small" id="count-{{ status_val }}">{{ stage_data.count }} lead{{ stage_data.count|pluralize }}</span>
       </div>
       <div class="text-end">
-        <span class="fw-bold text-success small d-block" id="value-{{ status_val }}">{{ CURRENCY_SYMBOL }}{{ stage_data.value|floatformat:0|intcomma }}</span>
+        <span class="fw-bold text-success small d-block" id="value-{{ status_val }}">{{ current_company.default_currency.symbol|default:'$' }}{{ stage_data.value|floatformat:0|intcomma }}</span>
       </div>
     </div>
 
@@ -55,7 +55,7 @@
           {% endif %}
           
           <div class="d-flex justify-content-between align-items-center mt-3">
-            <span class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ lead.expected_revenue|floatformat:0|intcomma }}</span>
+            <span class="fw-bold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ lead.expected_revenue|floatformat:0|intcomma }}</span>
             
             <div class="d-flex align-items-center gap-1">
               {% if lead.assigned_to %}
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const countEl = document.getElementById(`count-${status}`);
       const valEl = document.getElementById(`value-${status}`);
       if(countEl) countEl.innerText = `${count} lead${count === 1 ? '' : 's'}`;
-      if(valEl) valEl.innerText = `{{ CURRENCY_SYMBOL }}${total.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+      if(valEl) valEl.innerText = `{{ current_company.default_currency.symbol|default:'$' }}${total.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
     });
   }
 });

@@ -7,7 +7,7 @@
 </div>
 <div class="card shadow-sm border-0">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
       <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Manager</th><th>Actions</th></tr></thead>
       <tbody>
         {% for territory in territories %}
@@ -20,8 +20,6 @@
             </form>
           </td>
         </tr>
-        {% empty %}
-        <tr><td colspan="4" class="text-center py-3">No territories found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

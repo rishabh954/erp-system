@@ -8,6 +8,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from core.models import CompanyScoped, BranchScoped, AddressMixin, ContactMixin, SequenceMixin
+from django.utils import timezone
 
 
 class JobTitle(CompanyScoped):
@@ -115,7 +116,7 @@ class Employee(BranchScoped, AddressMixin, ContactMixin):
         from datetime import date
         if not self.joining_date:
             return 0
-        end = self.termination_date or date.today()
+        end = self.termination_date or timezone.localdate()
         return (end - self.joining_date).days // 365
 
 

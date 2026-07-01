@@ -30,6 +30,9 @@ urlpatterns = [
     # Module fields
     path('api/fields/', views.ModuleFieldsAPIView.as_view(), name='api_fields'),
 
+    # Live Preview
+    path('api/preview/', views.PreviewAPIView.as_view(), name='api_preview'),
+
     # Scheduling
     path('reports/<uuid:pk>/schedule/', views.ScheduleReportView.as_view(), name='schedule_report'),
     path('schedules/<uuid:pk>/delete/', views.ScheduleDeleteView.as_view(), name='schedule_delete'),

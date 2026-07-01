@@ -66,7 +66,7 @@
     </div>
     <div class="text-end">
       <div class="text-muted small">Difference</div>
-      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}"> {{ current_company.default_currency.symbol|default:'$' }}{% widthratio total_assets total_liabilities_equity 1 %}
+      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}"> ${% widthratio total_assets total_liabilities_equity 1 %}
       </div>
     </div>
   </div>
@@ -80,10 +80,10 @@
     <div class="card glass-card border-0 h-100 shadow-sm" style="border-top: 4px solid #3b82f6 !important;">
       <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
         <h4 class="fw-bold text-dark mb-0">Assets</h4>
-        <h4 class="fw-bold text-primary mb-0">{{ CURRENCY_SYMBOL }}{{ total_assets|floatformat:2|intcomma }}</h4>
+        <h4 class="fw-bold text-primary mb-0">{{ current_company.default_currency.symbol|default:'$' }}{{ total_assets|floatformat:2|intcomma }}</h4>
       </div>
       <div class="card-body p-0 mt-3">
-        <table class="table table-hover align-middle mb-0 report-table">
+        <table class="table table-hover align-middle mb-0 report-table" data-datatable data-datatable-options='{"searching": false}'>
           <thead class="table-light">
             <tr>
               <th class="ps-4">Account</th>
@@ -100,20 +100,16 @@
                   <span class="fw-semibold text-dark">{{ acc.name }}</span>
                 </a>
               </td>
-              <td class="text-end pe-4 fw-medium text-dark">{{ CURRENCY_SYMBOL }}{{ bal|floatformat:2|intcomma }}</td>
+              <td class="text-end pe-4 fw-medium text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ bal|floatformat:2|intcomma }}</td>
             </tr>
             {% endif %}
-            {% empty %}
-            <tr>
-              <td colspan="2" class="text-center py-4 text-muted">No asset accounts found.</td>
-            </tr>
             {% endfor %}
           </tbody>
           <tfoot class="border-top border-2">
             <tr>
               <td class="ps-4 py-3 fw-bold text-dark text-uppercase" style="font-size: 13px;">Total Assets</td>
               <td class="text-end pe-4 py-3 fw-bold text-primary fs-5 border-bottom border-primary border-3" style="border-bottom-style: double !important;">
-                {{ CURRENCY_SYMBOL }}{{ total_assets|floatformat:2|intcomma }}
+                {{ current_company.default_currency.symbol|default:'$' }}{{ total_assets|floatformat:2|intcomma }}
               </td>
             </tr>
           </tfoot>
@@ -129,10 +125,10 @@
       <!-- LIABILITIES -->
       <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
         <h4 class="fw-bold text-dark mb-0">Liabilities</h4>
-        <h4 class="fw-bold text-danger mb-0">{{ CURRENCY_SYMBOL }}{{ total_liabilities|floatformat:2|intcomma }}</h4>
+        <h4 class="fw-bold text-danger mb-0">{{ current_company.default_currency.symbol|default:'$' }}{{ total_liabilities|floatformat:2|intcomma }}</h4>
       </div>
       <div class="card-body p-0 mt-3 flex-grow-0">
-        <table class="table table-hover align-middle mb-0 report-table">
+        <table class="table table-hover align-middle mb-0 report-table" data-datatable data-datatable-options='{"searching": false}'>
           <thead class="table-light">
             <tr>
               <th class="ps-4">Account</th>
@@ -149,20 +145,16 @@
                   <span class="fw-semibold text-dark">{{ acc.name }}</span>
                 </a>
               </td>
-              <td class="text-end pe-4 fw-medium text-dark">{{ CURRENCY_SYMBOL }}{{ bal|floatformat:2|intcomma }}</td>
+              <td class="text-end pe-4 fw-medium text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ bal|floatformat:2|intcomma }}</td>
             </tr>
             {% endif %}
-            {% empty %}
-            <tr>
-              <td colspan="2" class="text-center py-4 text-muted">No liability accounts found.</td>
-            </tr>
             {% endfor %}
           </tbody>
           <tfoot class="border-top border-2">
             <tr>
               <td class="ps-4 py-3 fw-bold text-dark text-uppercase" style="font-size: 13px;">Total Liabilities</td>
               <td class="text-end pe-4 py-3 fw-bold text-danger fs-6">
-                {{ CURRENCY_SYMBOL }}{{ total_liabilities|floatformat:2|intcomma }}
+                {{ current_company.default_currency.symbol|default:'$' }}{{ total_liabilities|floatformat:2|intcomma }}
               </td>
             </tr>
           </tfoot>
@@ -172,10 +164,10 @@
       <!-- EQUITY -->
       <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center mt-3" style="border-top: 1px solid rgba(0,0,0,0.05) !important;">
         <h4 class="fw-bold text-dark mb-0">Equity</h4>
-        <h4 class="fw-bold text-purple mb-0" style="color:#8b5cf6;">{{ CURRENCY_SYMBOL }}{{ total_equity|floatformat:2|intcomma }}</h4>
+        <h4 class="fw-bold text-purple mb-0" style="color:#8b5cf6;">{{ current_company.default_currency.symbol|default:'$' }}{{ total_equity|floatformat:2|intcomma }}</h4>
       </div>
       <div class="card-body p-0 mt-3 flex-grow-1 d-flex flex-column">
-        <table class="table table-hover align-middle mb-0 report-table flex-grow-1">
+        <table class="table table-hover align-middle mb-0 report-table flex-grow-1" data-datatable data-datatable-options='{"searching": false}'>
           <thead class="table-light">
             <tr>
               <th class="ps-4">Account</th>
@@ -192,26 +184,22 @@
                   <span class="fw-semibold text-dark">{{ acc.name }}</span>
                 </a>
               </td>
-              <td class="text-end pe-4 fw-medium text-dark">{{ CURRENCY_SYMBOL }}{{ bal|floatformat:2|intcomma }}</td>
+              <td class="text-end pe-4 fw-medium text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ bal|floatformat:2|intcomma }}</td>
             </tr>
             {% endif %}
-            {% empty %}
-            <tr>
-              <td colspan="2" class="text-center py-4 text-muted">No equity accounts found.</td>
-            </tr>
             {% endfor %}
           </tbody>
           <tfoot class="border-top border-2 mt-auto">
             <tr>
               <td class="ps-4 py-3 fw-bold text-dark text-uppercase" style="font-size: 13px;">Total Equity</td>
               <td class="text-end pe-4 py-3 fw-bold fs-6" style="color:#8b5cf6;">
-                {{ CURRENCY_SYMBOL }}{{ total_equity|floatformat:2|intcomma }}
+                {{ current_company.default_currency.symbol|default:'$' }}{{ total_equity|floatformat:2|intcomma }}
               </td>
             </tr>
             <tr class="table-light border-top border-2">
               <td class="ps-4 py-3 fw-bold text-dark text-uppercase" style="font-size: 13px;">Total Liab. & Equity</td>
               <td class="text-end pe-4 py-3 fw-bold text-dark fs-5 border-bottom border-dark border-3" style="border-bottom-style: double !important;">
-                {{ CURRENCY_SYMBOL }}{{ total_liabilities_equity|floatformat:2|intcomma }}
+                {{ current_company.default_currency.symbol|default:'$' }}{{ total_liabilities_equity|floatformat:2|intcomma }}
               </td>
             </tr>
           </tfoot>

@@ -47,7 +47,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Spent</div>
-          <div class="h3 mb-0 text-success fw-bold">{{ CURRENCY_SYMBOL }}{{ total_spent|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-success fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_spent|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -62,7 +62,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Outstanding</div>
-          <div class="h3 mb-0 text-danger fw-bold">{{ CURRENCY_SYMBOL }}{{ vendor.outstanding_balance|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-danger fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ vendor.outstanding_balance|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -153,7 +153,7 @@
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Credit Limit</span>
-            <span class="fw-semibold small">{{ CURRENCY_SYMBOL }}{{ vendor.credit_limit|floatformat:2|intcomma }}</span>
+            <span class="fw-semibold small">{{ current_company.default_currency.symbol|default:'$' }}{{ vendor.credit_limit|floatformat:2|intcomma }}</span>
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
             <span class="text-muted small">Vendor Rating</span>
@@ -257,8 +257,8 @@
                     {{ po.get_status_display }}
                   </span>
                 </td>
-                <td class="text-end fw-semibold">{{ CURRENCY_SYMBOL }}{{ po.total|floatformat:2|intcomma }}</td>
-                <td class="text-end text-danger fw-semibold">{{ CURRENCY_SYMBOL }}{{ po.balance_due|floatformat:2|intcomma }}</td>
+                <td class="text-end fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ po.total|floatformat:2|intcomma }}</td>
+                <td class="text-end text-danger fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ po.balance_due|floatformat:2|intcomma }}</td>
                 <td class="text-center">
                   <a href="{% url 'purchase:order_detail' po.pk %}" class="btn btn-outline-primary btn-xs">
                     <i class="fas fa-eye"></i> View

@@ -22,6 +22,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- DataTables -->
   <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <!-- Select2 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-5-theme/1.3.0/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 
   {% load static %}
   <link href="{% static 'css/erp-main.css' %}" rel="stylesheet">
@@ -72,6 +75,13 @@
         <a href="{% url 'dashboard:index' %}" class="nav-link">
           <i class="fas fa-tachometer-alt nav-icon"></i>
           <span class="nav-label">Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item {% block nav_calendar %}{% endblock %}">
+        <a href="{% url 'dashboard:calendar' %}" class="nav-link">
+          <i class="fas fa-calendar-alt nav-icon"></i>
+          <span class="nav-label">Calendar</span>
         </a>
       </li>
 
@@ -488,6 +498,14 @@
         <i class="fas fa-{% if user_theme == 'dark' %}sun{% else %}moon{% endif %}"></i>
       </button>
 
+      <!-- Timezone indicator -->
+      <div class="d-none d-md-flex align-items-center ms-2 me-2">
+        <span class="badge bg-light text-dark border" title="Current Timezone">
+          <i class="fas fa-clock me-1 text-primary"></i>
+          {{ request.user.primary_company.timezone|default:"UTC" }}
+        </span>
+      </div>
+
       <!-- User menu -->
       <div class="dropdown navbar-item">
         <button class="navbar-btn user-menu-btn dropdown-toggle" data-bs-toggle="dropdown">
@@ -554,6 +572,7 @@
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 {% load static %}
 <script src="{% static 'js/erp-main.js' %}"></script>
 {% block extra_js %}{% endblock %}
@@ -639,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Add user message
       messages.innerHTML += `<div class="mb-3 d-flex justify-content-end">
-        <div class="bg-primary text-white p-2 rounded" style="font-size: 0.85rem; max-width: 80%;"> {{ current_company.default_currency.symbol|default:'$' }}{text.replace(/</g, "&lt;")}</div>
+        <div class="bg-primary text-white p-2 rounded" style="font-size: 0.85rem; max-width: 80%;"> ${text.replace(/</g, "&lt;")}</div>
       </div>`;
       input.value = '';
       messages.scrollTop = messages.scrollHeight;
@@ -666,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messages.innerHTML += `<div class="mb-3 d-flex">
           <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:28px; height:28px; font-size:0.75rem;">🤖</div>
-          <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;"> {{ current_company.default_currency.symbol|default:'$' }}{answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g,'<strong>{{ '1'|currency:current_company }}</strong>')}</div>
+          <div class="bg-white p-2 border rounded" style="font-size: 0.85rem; max-width: 80%;"> ${answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g,'<strong>{{ '1'|currency:current_company }}</strong>')}</div>
         </div>`;
         messages.scrollTop = messages.scrollHeight;
       } catch (err) {

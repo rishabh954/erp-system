@@ -126,7 +126,7 @@
                         {% endfor %}
                       </select>
                     </td>
-                    <td class="text-end fw-semibold pt-3 row-total">{{ CURRENCY_SYMBOL }}{{ line.subtotal|default:'0.00' }}</td>
+                    <td class="text-end fw-semibold pt-3 row-total">{{ current_company.default_currency.symbol|default:'$' }}{{ line.subtotal|default:'0.00' }}</td>
                     <td class="text-center">
                       <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRow(this)"><i class="fas fa-trash"></i></button>
                     </td>
@@ -146,20 +146,20 @@
                 <div class="card-body p-3">
                   <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Subtotal</span>
-                    <span class="fw-semibold" id="summarySubtotal">{{ CURRENCY_SYMBOL }}{{ po.subtotal|default:'0.00' }}</span>
+                    <span class="fw-semibold" id="summarySubtotal">{{ current_company.default_currency.symbol|default:'$' }}{{ po.subtotal|default:'0.00' }}</span>
                   </div>
                   <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Total Discount</span>
-                    <span class="fw-semibold text-danger" id="summaryDiscount">-{{ CURRENCY_SYMBOL }}{{ po.discount_amount|default:'0.00' }}</span>
+                    <span class="fw-semibold text-danger" id="summaryDiscount">-{{ current_company.default_currency.symbol|default:'$' }}{{ po.discount_amount|default:'0.00' }}</span>
                   </div>
                   <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Total Tax</span>
-                    <span class="fw-semibold text-success" id="summaryTax">{{ CURRENCY_SYMBOL }}{{ po.tax_amount|default:'0.00' }}</span>
+                    <span class="fw-semibold text-success" id="summaryTax">{{ current_company.default_currency.symbol|default:'$' }}{{ po.tax_amount|default:'0.00' }}</span>
                   </div>
                   <hr class="my-2">
                   <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold text-dark">Grand Total</span>
-                    <span class="h4 mb-0 fw-bold text-primary" id="summaryTotal">{{ CURRENCY_SYMBOL }}{{ po.total|default:'0.00' }}</span>
+                    <span class="h4 mb-0 fw-bold text-primary" id="summaryTotal">{{ current_company.default_currency.symbol|default:'$' }}{{ po.total|default:'0.00' }}</span>
                   </div>
                 </div>
               </div>
@@ -240,7 +240,7 @@ function addRow() {
         {% endfor %}
       </select>
     </td>
-    <td class="text-end fw-semibold pt-3 row-total">{{ CURRENCY_SYMBOL }}0.00</td>
+    <td class="text-end fw-semibold pt-3 row-total">{{ current_company.default_currency.symbol|default:'$' }}0.00</td>
     <td class="text-center">
       <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRow(this)"><i class="fas fa-trash"></i></button>
     </td>
@@ -290,7 +290,7 @@ function calculateRow(input) {
   const taxAmount = taxable * (taxRate / 100);
   const rowTotal = taxable + taxAmount;
 
-  row.querySelector('.row-total').innerText = '{{ CURRENCY_SYMBOL }}' + rowTotal.toFixed(2);
+  row.querySelector('.row-total').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + rowTotal.toFixed(2);
   calculateGrandTotal();
 }
 
@@ -319,10 +319,10 @@ function calculateGrandTotal() {
 
   grandTotal = subtotal - discountTotal + taxTotal;
 
-  document.getElementById('summarySubtotal').innerText = '{{ CURRENCY_SYMBOL }}' + subtotal.toFixed(2);
-  document.getElementById('summaryDiscount').innerText = '-{{ CURRENCY_SYMBOL }}' + discountTotal.toFixed(2);
-  document.getElementById('summaryTax').innerText = '{{ CURRENCY_SYMBOL }}' + taxTotal.toFixed(2);
-  document.getElementById('summaryTotal').innerText = '{{ CURRENCY_SYMBOL }}' + grandTotal.toFixed(2);
+  document.getElementById('summarySubtotal').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + subtotal.toFixed(2);
+  document.getElementById('summaryDiscount').innerText = '-{{ current_company.default_currency.symbol|default:'$' }}' + discountTotal.toFixed(2);
+  document.getElementById('summaryTax').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + taxTotal.toFixed(2);
+  document.getElementById('summaryTotal').innerText = '{{ current_company.default_currency.symbol|default:'$' }}' + grandTotal.toFixed(2);
 }
 </script>
 {% endblock %}

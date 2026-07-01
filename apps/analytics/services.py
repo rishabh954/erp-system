@@ -210,7 +210,7 @@ def export_excel(data: List[Dict], filename: str = 'report.xlsx',
     # Summary row at the bottom
     ws.append([])
     ws.cell(row=len(data) + 3, column=1, value=f'Total Records: {len(data)}').font = Font(bold=True)
-    ws.cell(row=len(data) + 3, column=2, value=f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}').font = Font(italic=True, color='666666')
+    ws.cell(row=len(data) + 3, column=2, value=f'Generated: {timezone.now().strftime("%Y-%m-%d %H:%M")}').font = Font(italic=True, color='666666')
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -231,7 +231,7 @@ def export_pdf(data: List[Dict], report_name: str = 'Report',
             'data': data,
             'headers': list(data[0].keys()) if data else [],
             'total_rows': len(data),
-            'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'generated_at': timezone.now().strftime('%Y-%m-%d %H:%M'),
         })
 
         pdf_bytes = HTML(string=html_content).write_pdf()
@@ -285,7 +285,7 @@ def export_pdf(data: List[Dict], report_name: str = 'Report',
 
         story.append(Spacer(1, 0.2*inch))
         story.append(Paragraph(
-            f'Total: {len(data)} records | Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}',
+            f'Total: {len(data)} records | Generated: {timezone.now().strftime("%Y-%m-%d %H:%M")}',
             styles['Normal']
         ))
 
@@ -318,8 +318,32 @@ def get_pivot_data(data: List[Dict], row_field: str, col_field: str,
             pivot[row_key] = {}
         pivot[row_key][col_key] = pivot[row_key].get(col_key, 0) + val
 
+    col_headers = sorted(list(all_cols))
+    
+    rows = []
+    col_totals = [0] * len(col_headers)
+    grand_total = 0
+
+    for r_key, c_dict in pivot.items():
+        row_vals = []
+        row_total = 0
+        for i, c_key in enumerate(col_headers):
+            v = c_dict.get(c_key, 0)
+            row_vals.append(v)
+            row_total += v
+            col_totals[i] += v
+            grand_total += v
+        rows.append({
+            'label': r_key,
+            'values': row_vals,
+            'total': row_total
+        })
+
     return {
-        'rows': list(pivot.keys()),
-        'columns': sorted(all_cols),
-        'data': pivot,
+        'row_field': row_field,
+        'col_field': col_field,
+        'col_headers': col_headers,
+        'rows': sorted(rows, key=lambda x: str(x['label'])),
+        'col_totals': col_totals,
+        'grand_total': grand_total
     }

@@ -176,8 +176,8 @@
               <tfoot class="table-light border-top border-2">
                 <tr>
                   <td colspan="2" class="ps-4 fw-bold text-dark py-3">Totals</td>
-                  <td class="text-end fw-bold py-3 pe-2" id="totalDebitDisplay">{{ CURRENCY_SYMBOL }}0.00</td>
-                  <td class="text-end fw-bold py-3 pe-2" id="totalCreditDisplay">{{ CURRENCY_SYMBOL }}0.00</td>
+                  <td class="text-end fw-bold py-3 pe-2" id="totalDebitDisplay">{{ current_company.default_currency.symbol|default:'$' }}0.00</td>
+                  <td class="text-end fw-bold py-3 pe-2" id="totalCreditDisplay">{{ current_company.default_currency.symbol|default:'$' }}0.00</td>
                   <td></td>
                 </tr>
                 <!-- Balance indicator -->
@@ -208,18 +208,18 @@
 
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="text-muted" style="font-size: 13px;">Total Debits</span>
-            <span class="fw-bold text-dark" id="sidebarDebit">{{ CURRENCY_SYMBOL }}0.00</span>
+            <span class="fw-bold text-dark" id="sidebarDebit">{{ current_company.default_currency.symbol|default:'$' }}0.00</span>
           </div>
           <div class="d-flex justify-content-between align-items-center mb-3">
             <span class="text-muted" style="font-size: 13px;">Total Credits</span>
-            <span class="fw-bold text-dark" id="sidebarCredit">{{ CURRENCY_SYMBOL }}0.00</span>
+            <span class="fw-bold text-dark" id="sidebarCredit">{{ current_company.default_currency.symbol|default:'$' }}0.00</span>
           </div>
 
           <hr class="my-2 opacity-25">
 
           <div class="d-flex justify-content-between align-items-center">
             <span class="fw-semibold" style="font-size: 13px;">Difference</span>
-            <span class="fw-bold" id="sidebarDiff" style="font-size: 16px;">{{ CURRENCY_SYMBOL }}0.00</span>
+            <span class="fw-bold" id="sidebarDiff" style="font-size: 16px;">{{ current_company.default_currency.symbol|default:'$' }}0.00</span>
           </div>
 
           <div id="balanceStatus" class="mt-3 text-center rounded-3 py-2" style="font-size: 12px; font-weight: 700;">Enter amounts above</div>
@@ -298,7 +298,7 @@
 
 {% block extra_js %}
 <script>
-const fmt = n => '{{ CURRENCY_SYMBOL }}' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = n => '{{ current_company.default_currency.symbol|default:'$' }}' + parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function calcTotals() {
   let totalDr = 0, totalCr = 0;

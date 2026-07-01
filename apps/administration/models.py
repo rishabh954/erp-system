@@ -10,6 +10,7 @@ import secrets
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models import CompanyScoped, TimeStampedModel, UUIDModel
+from django.utils import timezone
 
 
 # ═══════════════════════════════ DESIGNATION ══════════════════════════════════
@@ -88,7 +89,7 @@ class NumberSeries(CompanyScoped):
             seq = str(obj.current_sequence).zfill(obj.padding)
             
             import datetime
-            now = datetime.datetime.now()
+            now = datetime.timezone.now()
             
             prefix = obj.prefix or ""
             suffix = obj.suffix or ""

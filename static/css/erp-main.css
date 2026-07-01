@@ -704,6 +704,111 @@ a:hover { color: var(--brand-secondary); }
 .table-hover tbody tr:hover { background: var(--bg-table-stripe); }
 .table-striped tbody tr:nth-of-type(odd) { background: var(--bg-table-stripe); }
 
+/* ─── DataTables Eye-Catching Enhancements ───────────────────────────────── */
+.dataTables_wrapper {
+  padding: 0.5rem 1rem 1rem 1rem;
+}
+
+.dataTables_wrapper .dataTables_length select,
+.dataTables_wrapper .dataTables_filter input {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  display: inline-block;
+  width: auto;
+}
+
+.dataTables_wrapper .dataTables_length select {
+  min-width: 75px;
+  margin: 0 0.5rem;
+  padding-right: 1.75rem; /* extra space for the native browser arrow */
+}
+
+.dataTables_wrapper .dataTables_filter input {
+  margin-left: 0.5rem;
+}
+
+.dataTables_wrapper .dataTables_length select:focus,
+.dataTables_wrapper .dataTables_filter input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+  outline: none;
+}
+
+.dataTables_wrapper .dataTables_info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding-top: 1rem !important;
+}
+
+.dataTables_wrapper .pagination {
+  margin-top: 0.75rem;
+  gap: 0.25rem;
+}
+
+.dataTables_wrapper .page-item .page-link {
+  border-radius: var(--radius-sm);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  transition: all var(--transition-fast);
+}
+
+.dataTables_wrapper .page-item.active .page-link {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-colored);
+  border-radius: var(--radius-sm);
+}
+
+.dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
+  background: var(--bg-table-stripe);
+  color: var(--brand-primary);
+}
+
+.dataTables_wrapper .page-item.disabled .page-link {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+/* Table header enhancements */
+table.dataTable thead th, table.dataTable thead td {
+  border-bottom: 2px solid var(--border-color) !important;
+}
+table.dataTable.no-footer {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Custom alignment for detail pages where card-header is static */
+.custom-detail-table .dataTables_wrapper {
+  padding-top: 0;
+}
+.custom-detail-table .dt-toolbar {
+  margin-top: -46px; /* Pull it up into the card-header exactly */
+  padding-right: 1.5rem;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 20;
+}
+
+/* Custom alignment for datatables that are inside tabs, aligned with the nav-pills */
+.tabs-datatable-inline .dataTables_wrapper {
+  padding-top: 0;
+}
+.tabs-datatable-inline .dt-toolbar {
+  margin-top: -55px; /* Pull up to align perfectly with the tabs */
+  justify-content: flex-end;
+  position: relative;
+  z-index: 20;
+}
+
 /* ─── Badges ─────────────────────────────────────────────────────────────── */
 .badge {
   font-size: 11px;

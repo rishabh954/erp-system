@@ -89,18 +89,18 @@
         <div class="row g-4 mb-4">
           <div class="col-4">
             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Purchase Cost</div>
-            <div class="fw-bold fs-5 text-dark">{{ CURRENCY_SYMBOL }}{{ asset.purchase_cost|floatformat:2|intcomma }}</div>
+            <div class="fw-bold fs-5 text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ asset.purchase_cost|floatformat:2|intcomma }}</div>
             <div class="text-muted" style="font-size: 11px;">Purchased: {{ asset.purchase_date|date:"d M Y" }}</div>
           </div>
           <div class="col-4">
             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Current Book Value</div>
-            <div class="fw-bold fs-5 text-success">{{ CURRENCY_SYMBOL }}{{ asset.current_value|floatformat:2|intcomma }}</div>
+            <div class="fw-bold fs-5 text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ asset.current_value|floatformat:2|intcomma }}</div>
             <div class="text-muted" style="font-size: 11px;">Depreciated from Cost</div>
           </div>
           <div class="col-4 border-start ps-4">
             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Useful Life</div>
             <div class="fw-bold fs-6 text-dark">{{ asset.useful_life_years }} Years</div>
-            <div class="text-muted" style="font-size: 11px;">Scrap Value: {{ CURRENCY_SYMBOL }}{{ asset.salvage_value|floatformat:2|intcomma }}</div>
+            <div class="text-muted" style="font-size: 11px;">Scrap Value: {{ current_company.default_currency.symbol|default:'$' }}{{ asset.salvage_value|floatformat:2|intcomma }}</div>
           </div>
         </div>
         
@@ -121,8 +121,8 @@
               <tr>
                 <td>{{ d.period_start|date:"d M Y" }}</td>
                 <td>{{ d.period_end|date:"d M Y" }}</td>
-                <td class="text-end text-danger">{{ CURRENCY_SYMBOL }}{{ d.amount|floatformat:2|intcomma }}</td>
-                <td class="text-end fw-bold">{{ CURRENCY_SYMBOL }}{{ d.book_value_after|floatformat:2|intcomma }}</td>
+                <td class="text-end text-danger">{{ current_company.default_currency.symbol|default:'$' }}{{ d.amount|floatformat:2|intcomma }}</td>
+                <td class="text-end fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ d.book_value_after|floatformat:2|intcomma }}</td>
               </tr>
               {% empty %}
               <tr>

@@ -38,7 +38,7 @@
     <div class="card stat-card stat-card-primary h-100 border-0 report-kpi-card">
       <div class="stat-card-icon"><i class="fas fa-dollar-sign"></i></div>
       <div class="stat-card-value kpi-animated" data-value="{{ total_value|floatformat:0 }}">
-        {{ CURRENCY_SYMBOL }}{{ total_value|floatformat:2|intcomma }}
+        {{ current_company.default_currency.symbol|default:'$' }}{{ total_value|floatformat:2|intcomma }}
       </div>
       <div class="stat-card-label">Total Inventory Value</div>
       <div class="stat-card-trend text-white-50">
@@ -92,7 +92,7 @@
     <div class="card stat-card stat-card-danger h-100 border-0 report-kpi-card">
       <div class="stat-card-icon"><i class="fas fa-skull-crossbones"></i></div>
       <div class="stat-card-value kpi-animated" data-value="{{ dead_stock_value|floatformat:0 }}">
-        {{ CURRENCY_SYMBOL }}{{ dead_stock_value|floatformat:2|intcomma }}
+        {{ current_company.default_currency.symbol|default:'$' }}{{ dead_stock_value|floatformat:2|intcomma }}
       </div>
       <div class="stat-card-label">Dead Stock Value</div>
       <div class="stat-card-trend text-white-50">
@@ -156,7 +156,7 @@
                 <span class="badge bg-light text-muted border ms-2" style="font-size: 10px;">{{ wh.warehouse__code }}</span>
               </div>
               <div class="text-end">
-                <span class="fw-bold text-primary" style="font-size: 13px;">{{ CURRENCY_SYMBOL }}{{ wh.total_value|default:0|floatformat:2|intcomma }}</span>
+                <span class="fw-bold text-primary" style="font-size: 13px;">{{ current_company.default_currency.symbol|default:'$' }}{{ wh.total_value|default:0|floatformat:2|intcomma }}</span>
                 <div class="text-muted" style="font-size: 11px;">{{ wh.sku_count }} SKU{{ wh.sku_count|pluralize }} · {{ wh.total_qty|default:0|floatformat:0|intcomma }} units</div>
               </div>
             </div>
@@ -242,7 +242,7 @@
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
             <thead class="table-light">
               <tr>
                 <th class="ps-4">Product</th>
@@ -273,13 +273,6 @@
                   {% endif %}</span>
                 </td>
               </tr>
-              {% empty %}
-              <tr>
-                <td colspan="4" class="text-center py-5">
-                  <i class="fas fa-check-circle fa-3x text-success mb-3 d-block opacity-50"></i>
-                  <span class="text-muted">All products are well stocked!</span>
-                </td>
-              </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -299,7 +292,7 @@
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
             <thead class="table-light">
               <tr>
                 <th class="ps-4">#</th>
@@ -322,15 +315,8 @@
                   <div class="text-muted" style="font-size: 11px;">{{ rec.warehouse.name }}</div>
                 </td>
                 <td class="text-center">{{ rec.quantity_on_hand|floatformat:0|intcomma }}</td>
-                <td class="text-center text-muted">{{ CURRENCY_SYMBOL }}{{ rec.average_cost|floatformat:2|intcomma }}</td>
-                <td class="text-end pe-4 fw-bold text-primary">{{ CURRENCY_SYMBOL }}{{ rec.value|floatformat:2|intcomma }}</td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="5" class="text-center py-5">
-                  <i class="fas fa-box-open fa-3x text-muted mb-3 d-block opacity-25"></i>
-                  <span class="text-muted">No stock records found.</span>
-                </td>
+                <td class="text-center text-muted">{{ current_company.default_currency.symbol|default:'$' }}{{ rec.average_cost|floatformat:2|intcomma }}</td>
+                <td class="text-end pe-4 fw-bold text-primary">{{ current_company.default_currency.symbol|default:'$' }}{{ rec.value|floatformat:2|intcomma }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -359,7 +345,7 @@
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+      <table class="table table-hover align-middle mb-0" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
         <thead class="table-light">
           <tr>
             <th class="ps-4">Date</th>
@@ -399,13 +385,6 @@
               </span>
             </td>
             <td class="text-end pe-4 text-muted small">{{ mv.reference|default:"—" }}</td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="text-center py-5">
-              <i class="fas fa-history fa-3x text-muted mb-3 d-block opacity-25"></i>
-              <span class="text-muted">No stock movements recorded.</span>
-            </td>
           </tr>
           {% endfor %}
         </tbody>

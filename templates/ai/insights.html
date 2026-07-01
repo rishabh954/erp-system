@@ -170,13 +170,13 @@ async function generateInsights() {
     for (const [seg, customers] of Object.entries(details)) {
       if (!customers.length) continue;
       html += `<div class="p-3 border-bottom">
-        <div class="fw-600 mb-2 text-${segColors[seg]||'secondary'}"> {{ current_company.default_currency.symbol|default:'$' }}{seg.replace('_',' ').toUpperCase()} (Top ${customers.length})</div>
-        <div class="table-responsive"><table class="table table-sm mb-0">
+        <div class="fw-600 mb-2 text-${segColors[seg]||'secondary'}"> ${seg.replace('_',' ').toUpperCase()} (Top ${customers.length})</div>
+        <div class="table-responsive"><table class="table table-sm mb-0" data-datatable data-datatable-options='{"searching": false}'>
           <thead><tr><th>Customer</th><th>Last Order</th><th>Orders</th><th>Revenue</th></tr></thead>
-          <tbody> {{ current_company.default_currency.symbol|default:'$' }}{customers.map(c => `<tr>
-              <td class="fw-600 small"> {{ current_company.default_currency.symbol|default:'$' }}{c.name||'—'}</td>
-              <td class="small text-muted"> {{ current_company.default_currency.symbol|default:'$' }}{c.recency_days} days ago</td>
-              <td class="small"> {{ current_company.default_currency.symbol|default:'$' }}{c.frequency}</td>
+          <tbody> ${customers.map(c => `<tr>
+              <td class="fw-600 small"> ${c.name||'—'}</td>
+              <td class="small text-muted"> ${c.recency_days} days ago</td>
+              <td class="small"> ${c.frequency}</td>
               <td class="small fw-600">₹${(c.monetary||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</td>
             </tr>`).join('')}
           </tbody>

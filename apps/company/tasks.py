@@ -13,7 +13,7 @@ def update_exchange_rates():
     from apps.company.models import Currency, ExchangeRate
     from datetime import date
 
-    today = date.today()
+    today = timezone.localdate()
     base_currency = Currency.objects.filter(is_base=True).first()
     if not base_currency:
         logger.warning('No base currency configured. Skipping exchange rate update.')

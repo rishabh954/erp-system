@@ -12,8 +12,8 @@
 {% block content %}</li>
 <div class="page-header">
   <div class="page-header-title">
-    <h1>Good {% now "H" as hour %}{% if hour < 12 %}Morning{% elif hour < 17 %}Afternoon{% else %}Evening{% endif %}, {{ request.user.first_name }} 👋</h1>
-    <p>Here's what's happening in your business today — {% now "l, F j, Y" %}</p>
+    <h1>Good {% now "G" as hour %}{% if hour|add:"0" < 12 %}Morning{% elif hour|add:"0" < 17 %}Afternoon{% else %}Evening{% endif %}, {{ request.user.first_name }} 👋</h1>
+    <p>Here's what's happening in your business today — {% now "l, F j, Y \a\t g:i A" %}</p>
   </div>
   <div class="d-flex gap-2">
     <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
@@ -205,7 +205,7 @@
               <tr>
                 <td><a href="{% url 'sales:invoice_detail' invoice.pk %}" class="fw-600">{{ invoice.number }}</a></td>
                 <td>{{ invoice.customer.name|truncatechars:22 }}</td>
-                <td class="fw-600">{{ invoice.total|floatformat:2|intcomma }}</td>
+                <td class="fw-600">{% if invoice.total %}{{ current_company.default_currency.symbol|default:'$' }}{{ invoice.total|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
                 <td><span class="badge badge-{{ invoice.status }}">{{ invoice.get_status_display }}</span></td>
               </tr>
               {% empty %}
@@ -241,7 +241,7 @@
                   </div>
                 </td>
                 <td>{{ c.order_count }}</td>
-                <td class="fw-600">{{ c.total_revenue|floatformat:0|intcomma }}</td>
+                <td class="fw-600">{% if c.total_revenue %}{{ current_company.default_currency.symbol|default:'$' }}{{ c.total_revenue|floatformat:0|intcomma }}{% else %}-{% endif %}</td>
                 <td>
                   <span class="text-{% if c.growth >= 0 %}success{% else %}danger{% endif %}">
                     <i class="fas fa-arrow-{% if c.growth >= 0 %}up{% else %}down{% endif %}"></i>

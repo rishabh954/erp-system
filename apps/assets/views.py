@@ -165,7 +165,7 @@ class CompleteMaintenanceView(CompanyMixin, View):
         maint = get_object_or_404(AssetMaintenance, pk=maint_pk,
                                    company=self.company(), is_deleted=False)
         maint.status = 'completed'
-        maint.completed_date = date.today()
+        maint.completed_date = timezone.localdate()
         maint.save(update_fields=['status', 'completed_date'])
 
         # Restore asset status
@@ -179,6 +179,7 @@ class CompleteMaintenanceView(CompanyMixin, View):
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
 from django.urls import path
+from django.utils import timezone
 
 app_name = 'assets'
 

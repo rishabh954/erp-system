@@ -22,7 +22,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Received</div>
-          <div class="h3 mb-0 text-success fw-bold">{{ CURRENCY_SYMBOL }}{{ total_received|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-success fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_received|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -37,7 +37,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Pending</div>
-          <div class="h3 mb-0 text-warning fw-bold">{{ CURRENCY_SYMBOL }}{{ total_pending|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-warning fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_pending|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -136,7 +136,7 @@
             </td>
             <td class="small text-muted">{{ payment.reference|default:"-" }}</td>
             <td class="fw-bold text-success">
-              {{ CURRENCY_SYMBOL }}{{ payment.amount|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ payment.amount|floatformat:2|intcomma }}
             </td>
             <td>
               <span class="badge 

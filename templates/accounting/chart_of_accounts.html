@@ -37,7 +37,7 @@
     <div class="coa-type-card coa-asset {% if request.GET.type == 'asset' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-building-columns"></i></div>
       <div class="coa-type-label">Assets</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.asset|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-asset">— accounts</div>
     </div>
   </div>
@@ -47,7 +47,7 @@
     <div class="coa-type-card coa-liability {% if request.GET.type == 'liability' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-scale-balanced"></i></div>
       <div class="coa-type-label">Liabilities</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.liability|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-liability">— accounts</div>
     </div>
   </div>
@@ -57,7 +57,7 @@
     <div class="coa-type-card coa-equity {% if request.GET.type == 'equity' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-landmark"></i></div>
       <div class="coa-type-label">Equity</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.equity|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-equity">— accounts</div>
     </div>
   </div>
@@ -67,7 +67,7 @@
     <div class="coa-type-card coa-revenue {% if request.GET.type == 'revenue' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-arrow-trend-up"></i></div>
       <div class="coa-type-label">Revenue</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.revenue|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-revenue">— accounts</div>
     </div>
   </div>
@@ -77,7 +77,7 @@
     <div class="coa-type-card coa-expense {% if request.GET.type == 'expense' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-receipt"></i></div>
       <div class="coa-type-label">Expenses</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.expense|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-expense">— accounts</div>
     </div>
   </div>
@@ -87,7 +87,7 @@
     <div class="coa-type-card coa-bank {% if request.GET.type == 'bank' %}active{% endif %}">
       <div class="coa-type-icon"><i class="fas fa-piggy-bank"></i></div>
       <div class="coa-type-label">Bank & Cash</div>
-      <div class="coa-type-balance">{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:0|intcomma }}</div>
+      <div class="coa-type-balance">{{ current_company.default_currency.symbol|default:'$' }}{{ totals.bank|default:0|floatformat:0|intcomma }}</div>
       <div class="coa-type-count" id="cnt-bank">— accounts</div>
     </div>
   </div>
@@ -169,7 +169,7 @@
   <div class="card glass-card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 coa-table" id="coaTable" style="font-size: 13px;">
+        <table class="table table-hover align-middle mb-0 coa-table" id="coaTable" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
           <thead class="table-light">
             <tr>
               <th class="ps-4" style="width: 110px;">Code</th>
@@ -253,9 +253,9 @@
               <td class="text-end pe-4">
                 <span class="fw-bold {% if acc.current_balance < 0 %}text-danger{% elif acc.current_balance > 0 %}text-dark{% else %}text-muted{% endif %}">
                   {% if acc.current_balance < 0 %}
-                    <span class="text-danger">({{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
+                    <span class="text-danger">({{ current_company.default_currency.symbol|default:'$' }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})</span>
                   {% else %}
-                    {{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|intcomma }}
+                    {{ current_company.default_currency.symbol|default:'$' }}{{ acc.current_balance|floatformat:2|intcomma }}
                   {% endif %}
                 </span>
               </td>
@@ -274,7 +274,7 @@
           <tfoot class="table-light border-top border-2">
             <tr>
               <td colspan="6" class="ps-4 fw-bold text-dark py-3">Total Balance (all accounts)</td>
-              <td class="text-end pe-4 fw-bold text-primary py-3" id="grandTotal"> {{ current_company.default_currency.symbol|default:'$' }}{% with total=totals.asset|add:totals.bank|add:totals.revenue %}{{ total|floatformat:2|intcomma }}{% endwith %}
+              <td class="text-end pe-4 fw-bold text-primary py-3" id="grandTotal"> ${% with total=totals.asset|add:totals.bank|add:totals.revenue %}{{ total|floatformat:2|intcomma }}{% endwith %}
               </td>
               <td></td>
             </tr>
@@ -330,20 +330,20 @@
         </div>
       </div>
       <div class="coa-group-total">
-        {% if group.grouper == 'asset' %}{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'liability' %}{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'equity' %}{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'revenue' %}{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'expense' %}{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'cogs' %}{{ CURRENCY_SYMBOL }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
-        {% elif group.grouper == 'bank' %}{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:2|intcomma }}
-        {% else %}{{ CURRENCY_SYMBOL }}0.00{% endif %}
+        {% if group.grouper == 'asset' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.asset|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'liability' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.liability|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'equity' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.equity|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'revenue' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'expense' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.expense|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'cogs' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
+        {% elif group.grouper == 'bank' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.bank|default:0|floatformat:2|intcomma }}
+        {% else %}{{ current_company.default_currency.symbol|default:'$' }}0.00{% endif %}
       </div>
     </div>
 
     <div class="card border-0 shadow-sm" style="border-radius: 0 0 14px 14px; overflow: hidden;">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+        <table class="table table-hover align-middle mb-0" style="font-size: 13px;" data-datatable data-datatable-options='{"searching": false}'>
           <tbody>
             {% for acc in group.list %}
             <tr class="coa-row"
@@ -375,9 +375,9 @@
               </td>
               <td class="text-end pe-4 fw-bold {% if acc.current_balance < 0 %}text-danger{% else %}text-dark{% endif %}">
                 {% if acc.current_balance < 0 %}
-                  ({{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})
+                  ({{ current_company.default_currency.symbol|default:'$' }}{{ acc.current_balance|floatformat:2|cut:"-"|intcomma }})
                 {% else %}
-                  {{ CURRENCY_SYMBOL }}{{ acc.current_balance|floatformat:2|intcomma }}
+                  {{ current_company.default_currency.symbol|default:'$' }}{{ acc.current_balance|floatformat:2|intcomma }}
                 {% endif %}
               </td>
               <td class="text-center pe-3">
@@ -394,14 +394,14 @@
                 Subtotal — {{ group.grouper|capfirst }}
               </td>
               <td class="text-end pe-4 fw-bold text-primary py-2">
-                {% if group.grouper == 'asset' %}{{ CURRENCY_SYMBOL }}{{ totals.asset|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'liability' %}{{ CURRENCY_SYMBOL }}{{ totals.liability|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'equity' %}{{ CURRENCY_SYMBOL }}{{ totals.equity|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'revenue' %}{{ CURRENCY_SYMBOL }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'expense' %}{{ CURRENCY_SYMBOL }}{{ totals.expense|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'cogs' %}{{ CURRENCY_SYMBOL }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
-                {% elif group.grouper == 'bank' %}{{ CURRENCY_SYMBOL }}{{ totals.bank|default:0|floatformat:2|intcomma }}
-                {% else %}{{ CURRENCY_SYMBOL }}0.00{% endif %}
+                {% if group.grouper == 'asset' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.asset|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'liability' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.liability|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'equity' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.equity|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'revenue' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.revenue|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'expense' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.expense|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'cogs' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.cogs|default:0|floatformat:2|intcomma }}
+                {% elif group.grouper == 'bank' %}{{ current_company.default_currency.symbol|default:'$' }}{{ totals.bank|default:0|floatformat:2|intcomma }}
+                {% else %}{{ current_company.default_currency.symbol|default:'$' }}0.00{% endif %}
               </td>
               <td></td>
             </tr>

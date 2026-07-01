@@ -6,7 +6,7 @@
 {% for acc_data in ledger_data %}
 <div class="card shadow-sm border-0 mb-4">
   <div class="card-header bg-light"><strong>{{ acc_data.account.code }} - {{ acc_data.account.name }}</strong></div>
-  <table class="table table-sm table-hover mb-0">
+  <table class="table table-sm table-hover mb-0" data-datatable data-datatable-options='{"searching": false}'>
     <thead><tr><th>Date</th><th>Entry</th><th>Debit</th><th>Credit</th></tr></thead>
     <tbody>
       {% for item in acc_data.items %}

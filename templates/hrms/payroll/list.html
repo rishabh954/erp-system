@@ -60,11 +60,11 @@
         <div class="row g-0 text-center mb-3">
           <div class="col-6 border-end">
             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Gross Total</div>
-            <div class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</div>
+            <div class="fw-bold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_gross|floatformat:2|intcomma }}</div>
           </div>
           <div class="col-6">
             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">Net Total</div>
-            <div class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</div>
+            <div class="fw-bold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_net|floatformat:2|intcomma }}</div>
           </div>
         </div>
         

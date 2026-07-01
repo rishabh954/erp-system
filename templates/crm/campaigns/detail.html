@@ -1,32 +1,189 @@
 {% extends "base.html" %}
 {% load humanize %}
-{% block title %}Campaign: {{ campaign.name }}{% endblock %}
+
+{% block title %}Campaign - {{ campaign.name }}{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4">
-  <h1 class="h3 text-primary mb-1">{{ campaign.name }}</h1>
-  <span class="badge bg-info">{{ campaign.get_status_display }}</span>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div class="page-header-title">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'crm:campaigns' %}" class="text-decoration-none">Campaigns</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ campaign.name }}</li>
+      </ol>
+    </nav>
+    <div class="d-flex align-items-center gap-2">
+      <h1 class="h3 text-primary mb-0 fw-bold">{{ campaign.name }}</h1>
+      <span class="badge {% if campaign.status == 'active' %}bg-success{% elif campaign.status == 'completed' %}bg-primary{% elif campaign.status == 'cancelled' %}bg-danger{% else %}bg-info{% endif %}">{{ campaign.get_status_display }}</span>
+    </div>
+  </div>
+
 </div>
-<div class="card shadow-sm border-0 mb-4">
-  <div class="card-body">
-    <p><strong>Budget:</strong> {{ CURRENCY_SYMBOL }}{{ campaign.budget|intcomma }}</p>
-    <p><strong>Expected Revenue:</strong> {{ CURRENCY_SYMBOL }}{{ campaign.expected_revenue|intcomma }}</p>
+
+<!-- Key Performance Indicators -->
+<div class="row g-4 mb-4">
+  <!-- Budget vs Expected -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted mb-0 fw-bold text-uppercase">Budget</h6>
+          <div class="icon-circle bg-light text-primary">
+            <i class="fas fa-wallet"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1">{{ current_company.default_currency.symbol|default:'$' }}{{ campaign.budget|floatformat:2|intcomma }}</h3>
+        {% if campaign.start_date and campaign.end_date %}
+          <small class="text-muted">{{ campaign.start_date|date:"M d, Y" }} - {{ campaign.end_date|date:"M d, Y" }}</small>
+        {% else %}
+          <small class="text-muted">No dates set</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted mb-0 fw-bold text-uppercase">Expected Revenue</h6>
+          <div class="icon-circle bg-light text-info">
+            <i class="fas fa-chart-line"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1">{{ current_company.default_currency.symbol|default:'$' }}{{ campaign.expected_revenue|floatformat:2|intcomma }}</h3>
+        <small class="text-muted">Projected value</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actual Revenue & ROI -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted mb-0 fw-bold text-uppercase">Actual Revenue</h6>
+          <div class="icon-circle bg-light text-success">
+            <i class="fas fa-money-bill-wave"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1 text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ campaign.actual_revenue_generated|floatformat:2|intcomma }}</h3>
+        <small class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>From Won Leads</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted mb-0 fw-bold text-uppercase">ROI</h6>
+          <div class="icon-circle bg-light {% if campaign.roi_percentage > 0 %}text-success{% elif campaign.roi_percentage < 0 %}text-danger{% else %}text-secondary{% endif %}">
+            <i class="fas fa-percentage"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-1 {% if campaign.roi_percentage > 0 %}text-success{% elif campaign.roi_percentage < 0 %}text-danger{% else %}text-secondary{% endif %}">
+          {% if campaign.roi_percentage > 0 %}+{% endif %}{{ campaign.roi_percentage|floatformat:1 }}%
+        </h3>
+        <small class="text-muted">Return on Investment</small>
+      </div>
+    </div>
   </div>
 </div>
-<h5 class="mb-3">Leads & Opportunities</h5>
-<div class="card shadow-sm border-0">
-  <table class="table table-hover mb-0">
-    <thead class="table-light"><tr><th>Lead/Opp</th><th>Score</th><th>Status</th></tr></thead>
-    <tbody>
-      {% for lead in campaign.leads.all %}
-      <tr>
-        <td><a href="{% url 'crm:lead_detail' lead.pk %}">{{ lead.name }}</a></td>
-        <td>{{ lead.lead_score }}</td>
-        <td>{{ lead.get_status_display }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="3" class="text-center py-3">No leads linked to this campaign.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+<!-- Conversion Stats -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-0 bg-primary text-white overflow-hidden">
+      <div class="card-body p-4 position-relative">
+        <i class="fas fa-bullseye position-absolute text-white opacity-10" style="font-size: 8rem; right: -20px; bottom: -20px;"></i>
+        <h5 class="fw-bold mb-4">Conversion Funnel</h5>
+        <div class="row text-center">
+          <div class="col-4 border-end border-white border-opacity-25">
+            <h2 class="fw-bold mb-0">{{ campaign.total_leads_count }}</h2>
+            <span class="small opacity-75 text-uppercase fw-semibold">Total Leads</span>
+          </div>
+          <div class="col-4 border-end border-white border-opacity-25">
+            <h2 class="fw-bold mb-0">{{ campaign.opportunities_count }}</h2>
+            <span class="small opacity-75 text-uppercase fw-semibold">Opportunities</span>
+          </div>
+          <div class="col-4">
+            <h2 class="fw-bold mb-0">{{ campaign.won_count }}</h2>
+            <span class="small opacity-75 text-uppercase fw-semibold">Won Deals</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leads List Table -->
+<div class="card shadow-sm border-0 mb-4 position-relative">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0" style="position: relative; z-index: 5;">
+    <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-users me-2"></i>Leads & Opportunities</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive custom-detail-table">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"pageLength": 10}'>
+        <thead class="table-light">
+          <tr class="text-muted small">
+            <th>Lead Number</th>
+            <th>Name</th>
+            <th>Expected Revenue</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lead in campaign.leads.all %}
+          <tr>
+            <td>
+              <a href="{% url 'crm:lead_detail' lead.pk %}" class="fw-bold text-primary text-decoration-none">{{ lead.number|default:lead.id }}</a>
+            </td>
+            <td>
+              <div class="fw-bold">{{ lead.name }}</div>
+              {% if lead.email %}<div class="small text-muted"><i class="fas fa-envelope me-1"></i>{{ lead.email }}</div>{% endif %}
+            </td>
+            <td class="fw-semibold text-success">
+              {{ current_company.default_currency.symbol|default:'$' }}{{ lead.expected_revenue|floatformat:2|intcomma }}
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-fill" style="height: 6px; width: 60px; margin-bottom: 0;">
+                  <div class="progress-bar {% if lead.lead_score >= 80 %}bg-success{% elif lead.lead_score >= 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ lead.lead_score }}%"></div>
+                </div>
+                <span class="small fw-bold">{{ lead.lead_score }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge {% if lead.status == 'won' %}bg-success{% elif lead.status == 'lost' %}bg-danger{% elif lead.status == 'qualified' %}bg-primary{% else %}bg-secondary{% endif %}">
+                {{ lead.get_status_display }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="d-flex justify-content-center gap-1">
+                <a href="{% url 'crm:lead_detail' lead.pk %}" class="btn btn-primary btn-sm" title="View details" data-bs-toggle="tooltip">
+                  <i class="fas fa-eye"></i>
+                </a>
+                {% if lead.status != 'won' %}
+                <a href="{% url 'crm:lead_update' lead.pk %}" class="btn btn-warning btn-sm text-white" title="Edit lead" data-bs-toggle="tooltip">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <form method="post" action="{% url 'crm:lead_delete' lead.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete lead" data-bs-toggle="tooltip" data-confirm-delete="Delete this lead?">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -98,7 +98,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def get_is_overdue(self, obj):
         from datetime import date
-        return obj.status in ('sent', 'partial') and obj.due_date < date.today()
+        return obj.status in ('sent', 'partial') and obj.due_date < timezone.localdate()
 
 
 class PaymentSerializer(serializers.ModelSerializer):

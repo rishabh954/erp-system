@@ -61,7 +61,7 @@
               <td>{{ comp.get_calc_type_display }}</td>
               <td>
                 {% if comp.calc_type == 'fixed' %}
-                  {{ CURRENCY_SYMBOL }}{{ comp.amount }}
+                  {{ current_company.default_currency.symbol|default:'$' }}{{ comp.amount }}
                 {% elif comp.calc_type == 'percentage' %}
                   {{ comp.percentage }}% of Basic
                 {% else %}

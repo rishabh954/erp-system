@@ -1012,8 +1012,8 @@ class POSAPIView(CompanyScopedMixin, View):
             invoice = Invoice.objects.create(
                 company=company,
                 customer=customer,
-                invoice_date=date.today(),
-                due_date=date.today(),
+                invoice_date=timezone.localdate(),
+                due_date=timezone.localdate(),
                 status=Invoice.Status.DRAFT,
             )
 
@@ -1048,7 +1048,7 @@ class POSAPIView(CompanyScopedMixin, View):
                     customer=customer,
                     amount=Decimal(str(amount_paid)),
                     currency=currency,
-                    payment_date=date.today(),
+                    payment_date=timezone.localdate(),
                     method=payment_method,
                     status=Payment.Status.COMPLETED,
                 )

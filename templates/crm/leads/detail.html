@@ -147,7 +147,7 @@
         <div class="row g-3">
           <div class="col-6 col-md-4">
             <span class="text-muted small d-block">Expected Revenue</span>
-            <span class="fs-5 fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ lead.expected_revenue|floatformat:2|intcomma }}</span>
+            <span class="fs-5 fw-bold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ lead.expected_revenue|floatformat:2|intcomma }}</span>
           </div>
           <div class="col-6 col-md-4">
             <span class="text-muted small d-block">Probability</span>

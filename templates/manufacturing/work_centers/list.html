@@ -4,7 +4,7 @@
 <h1 class="h3 mb-4">Work Centers</h1>
 <div class="card shadow">
     <div class="card-body">
-        <table class="table">
+        <table class="table" data-datatable data-datatable-options='{"searching": false}'>
             <thead><tr><th>Code</th><th>Name</th><th>Cost / Hr</th><th>Capacity</th></tr></thead>
             <tbody>
                 {% for wc in work_centers %}

@@ -14,7 +14,7 @@ def process_depreciation():
     """Calculate and record monthly depreciation for all active assets."""
     from apps.assets.models import Asset, DepreciationEntry
 
-    today = date.today()
+    today = timezone.localdate()
     period_start = today.replace(day=1)
     import calendar
     last_day = calendar.monthrange(today.year, today.month)[1]

@@ -4,6 +4,7 @@ Sales Celery Tasks
 from celery import shared_task
 from datetime import date
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ def check_overdue_invoices():
     from apps.sales.models import Invoice
     from apps.notifications.tasks import send_email_task
 
-    today = date.today()
+    today = timezone.localdate()
     overdue = Invoice.objects.filter(
         status__in=['sent', 'partial'],
         due_date__lt=today,

@@ -105,6 +105,7 @@ MIDDLEWARE = [
     'core.middleware.TenantMiddleware',
     'core.middleware.ActiveUserMiddleware',
     'apps.authentication.middleware.SecurityMiddleware',
+    'apps.company.middleware.TimezoneMiddleware',
 ]
 
 if not DEBUG:

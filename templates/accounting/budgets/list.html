@@ -16,7 +16,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
                 <thead class="table-light">
                     <tr>
                         <th>Name</th>
@@ -45,13 +45,6 @@
                         </td>
                         <td class="text-end">
                             <a href="{% url 'accounting:budget_detail' b.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i> View</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
-                            <i class="fas fa-bullseye fa-3x mb-3"></i>
-                            <p>No Budgets configured.</p>
                         </td>
                     </tr>
                     {% endfor %}

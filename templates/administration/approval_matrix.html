@@ -35,7 +35,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
             <thead class="table-light"><tr><th class="px-4">Rule</th><th>Doc Type</th><th>Range</th><th>Approver</th><th>Level</th><th></th></tr></thead>
             <tbody>
               {% for m in matrix %}
@@ -51,7 +51,7 @@
                   </form>
                 </td>
               </tr>
-              {% empty %}<tr><td colspan="6" class="text-center text-muted py-5">No approval rules defined.</td></tr>{% endfor %}
+              {% endfor %}
             </tbody>
           </table>
         </div>

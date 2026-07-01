@@ -7,7 +7,7 @@
 <div class="page-header d-flex justify-content-between align-items-center mb-4">
   <div class="page-header-title">
     <h1 class="h3 text-primary mb-1">Leads</h1>
-    <p class="text-muted mb-0">Total pipeline value: <span class="fw-bold text-success">{{ CURRENCY_SYMBOL }}{{ total_value|floatformat:2|intcomma }}</span></p>
+    <p class="text-muted mb-0">Total pipeline value: <span class="fw-bold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ total_value|floatformat:2|intcomma }}</span></p>
   </div>
   <div>
     <a href="{% url 'crm:lead_create' %}" class="btn btn-primary">
@@ -103,7 +103,7 @@
           {% for lead in leads %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ lead.number }}</span>
+              <a href="{% url 'crm:lead_detail' lead.pk %}" class="fw-bold text-primary text-decoration-none">{{ lead.number }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ lead.name }}</div>
@@ -123,7 +123,7 @@
               {% endif %}</span>
             </td>
             <td class="fw-bold text-success">
-              {{ CURRENCY_SYMBOL }}{{ lead.expected_revenue|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ lead.expected_revenue|floatformat:2|intcomma }}
             </td>
             <td>
               <div class="d-flex align-items-center gap-2">

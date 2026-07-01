@@ -123,8 +123,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 aggSelect.innerHTML = '<option value="">Select Field...</option>';
                 
                 fields.forEach(field => {
-                    groupSelect.innerHTML += `<option value="${field}"> {{ current_company.default_currency.symbol|default:'$' }}{field}</option>`;
-                    aggSelect.innerHTML += `<option value="${field}"> {{ current_company.default_currency.symbol|default:'$' }}{field}</option>`;
+                    groupSelect.innerHTML += `<option value="${field}"> ${field}</option>`;
+                    aggSelect.innerHTML += `<option value="${field}"> ${field}</option>`;
                 });
 
                 groupSelect.disabled = false;

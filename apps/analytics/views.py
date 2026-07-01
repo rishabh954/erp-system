@@ -150,7 +150,7 @@ class ReportDetailView(ReportsMixin, DetailView):
 
         # Pivot table
         if report.enable_pivot and report.pivot_row and report.pivot_col:
-            ctx['pivot'] = get_pivot_data(data, report.pivot_row, report.pivot_col, report.pivot_value)
+            ctx['pivot_data'] = get_pivot_data(data, report.pivot_row, report.pivot_col, report.pivot_value)
 
         ctx['schedules'] = report.schedules.filter(is_active=True)
         ctx['executions'] = report.executions.order_by('-started_at')[:10]
@@ -173,7 +173,7 @@ class ReportExportView(ReportsMixin, View):
             limit=10000,
         )
         safe_name = report.name.replace(' ', '_')
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M')
         filename = f"{safe_name}_{timestamp}"
 
         # Log execution
@@ -216,7 +216,7 @@ class QuickExportView(ReportsMixin, View):
         )
 
         safe_module = module.replace('_', '-')
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M')
         filename = f"{safe_module}_{timestamp}"
 
         if fmt == 'csv':
@@ -258,6 +258,85 @@ class ReportDataAPIView(ReportsMixin, View):
             'page_size': page_size,
             'total_pages': (total + page_size - 1) // page_size,
         })
+
+
+class PreviewAPIView(ReportsMixin, View):
+    """Generates preview data for the Report Builder."""
+    
+    def post(self, request):
+        try:
+            payload = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+            
+        module = payload.get('module', '')
+        columns = payload.get('columns', [])
+        limit = payload.get('preview_limit', 25)
+        
+        # Build sort_by string
+        sort_field = payload.get('sort_field', '')
+        sort_order = payload.get('sort_order', 'asc')
+        sort_by = f"-{sort_field}" if sort_order == 'desc' and sort_field else sort_field
+
+        # For simplicity in the preview, we just fetch basic data.
+        # More advanced filtering can be mapped here if needed.
+        data = get_data(
+            module=module,
+            company_id=self.company_id,
+            columns=columns,
+            filters={},  # Can be expanded based on payload.get('filters')
+            sort_by=sort_by,
+            limit=limit
+        )
+        
+        # Format rows as lists corresponding to the columns order
+        rows = []
+        for d in data:
+            row = []
+            for col in columns:
+                row.append(d.get(col, ''))
+            rows.append(row)
+            
+        response_data = {
+            'headers': columns,
+            'rows': rows,
+            'truncated': len(data) == limit,
+            'chart': {'type': 'none'},
+        }
+        
+        # Basic chart handling if requested
+        chart_type = payload.get('chart_type', 'none')
+        if chart_type != 'none':
+            group_by = payload.get('group_by', '')
+            val_field = payload.get('value_field', '')
+            if group_by:
+                from collections import Counter
+                labels_dict = {}
+                for r in data:
+                    k = str(r.get(group_by, 'N/A'))
+                    try:
+                        v = float(r.get(val_field, 1)) if val_field else 1
+                    except:
+                        v = 1
+                    labels_dict[k] = labels_dict.get(k, 0) + v
+                
+                response_data['chart'] = {
+                    'type': chart_type,
+                    'labels': list(labels_dict.keys()),
+                    'values': list(labels_dict.values()),
+                    'value_label': val_field or 'Count'
+                }
+                
+        # Basic pivot handling if requested
+        if payload.get('is_pivot'):
+            pivot_row = payload.get('pivot_row')
+            pivot_col = payload.get('pivot_col')
+            pivot_val = payload.get('pivot_value')
+            if pivot_row and pivot_col:
+                response_data['pivot'] = get_pivot_data(data, pivot_row, pivot_col, pivot_val)
+
+        return JsonResponse(response_data)
+
 
 
 class ModuleFieldsAPIView(ReportsMixin, View):

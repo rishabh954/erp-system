@@ -130,7 +130,7 @@
           <tr class="transfer-row" data-status="{{ tr.status }}">
             <td class="small fw-semibold text-dark">{{ tr.transfer_date }}</td>
             <td>
-              <span class="fw-bold text-primary">{{ tr.number|default:tr.id|truncatechars:8 }}</span>
+              <a href="{% url 'inventory:transfer_detail' tr.pk %}" class="fw-bold text-primary text-decoration-none">{{ tr.number|default:tr.id }}</a>
             </td>
             <td>
               <span class="fw-semibold">{{ tr.from_warehouse.name }}</span>

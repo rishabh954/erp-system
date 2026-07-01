@@ -75,7 +75,7 @@ class EmployeeDetailView(CompanyMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         emp = self.object
-        today = date.today()
+        today = timezone.localdate()
         ctx['attendance_this_month'] = Attendance.objects.filter(
             employee=emp,
             date__year=today.year, date__month=today.month
@@ -328,7 +328,7 @@ class AttendanceView(CompanyMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         company = self.company()
-        today = date.today()
+        today = timezone.localdate()
         ctx['today'] = today
         ctx['attendance_today'] = Attendance.objects.filter(
             company=company, date=today

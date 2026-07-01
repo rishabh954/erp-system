@@ -39,7 +39,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
             <thead class="table-light"><tr><th class="px-4">Document Type</th><th>Prefix</th><th>Suffix</th><th>Padding</th><th>Current Seq.</th><th>Reset</th></tr></thead>
             <tbody>
               {% for s in series %}
@@ -51,7 +51,7 @@
                 <td><span class="badge bg-success">{{ s.current_sequence }}</span></td>
                 <td class="text-capitalize">{{ s.reset_period }}</td>
               </tr>
-              {% empty %}<tr><td colspan="6" class="text-center text-muted py-5">No series configured. Use the form to add one.</td></tr>{% endfor %}
+              {% endfor %}
             </tbody>
           </table>
         </div>

@@ -132,7 +132,7 @@
               </div>
             </td>
             <td>
-              <span class="fw-bold text-primary">{{ product.sku }}</span>
+              <a href="{% url 'inventory:product_detail' product.pk %}" class="fw-bold text-primary text-decoration-none">{{ product.sku }}</a>
             </td>
             <td>
               <span class="small">{{ product.category.name|default:"-" }}</span>
@@ -140,8 +140,8 @@
             <td>
               <span class="small text-muted">{{ product.uom.abbreviation|default:"Units" }}</span>
             </td>
-            <td class="text-end small">{{ CURRENCY_SYMBOL }}{{ product.cost_price|floatformat:2 }}</td>
-            <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ product.sale_price|floatformat:2 }}</td>
+            <td class="text-end small">{{ current_company.default_currency.symbol|default:'$' }}{{ product.cost_price|floatformat:2 }}</td>
+            <td class="text-end fw-semibold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ product.sale_price|floatformat:2 }}</td>
             <td class="text-center">
               {% if product.is_low_stock %}
                 <span class="badge bg-danger-subtle text-danger fw-bold" title="Low Stock! Reorder point: {{ product.reorder_point|floatformat:0 }}">

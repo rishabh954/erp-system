@@ -61,8 +61,8 @@
           <tr>
             <td><a href="{% url 'crm:campaign_detail' c.pk %}" class="fw-bold">{{ c.name }}</a></td>
             <td><span class="badge bg-info">{{ c.get_status_display }}</span></td>
-            <td>{{ CURRENCY_SYMBOL }}{{ c.budget|intcomma }}</td>
-            <td>{{ CURRENCY_SYMBOL }}{{ c.expected_revenue|intcomma }}</td>
+            <td>{{ current_company.default_currency.symbol|default:'$' }}{{ c.budget|intcomma }}</td>
+            <td>{{ current_company.default_currency.symbol|default:'$' }}{{ c.expected_revenue|intcomma }}</td>
             <td class="text-center">
                 <a href="{% url 'crm:campaign_detail' c.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
             </td>

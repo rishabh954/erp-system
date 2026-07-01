@@ -73,7 +73,7 @@ class EmployeeService(BaseService):
 
 class AttendanceService(BaseService):
     def check_in(self, employee):
-        today = date.today()
+        today = timezone.localdate()
         att, created = Attendance.objects.get_or_create(
             company=self.company, employee=employee, date=today,
             defaults={'status': 'present', 'check_in': timezone.now()}
@@ -85,7 +85,7 @@ class AttendanceService(BaseService):
         return att
 
     def check_out(self, employee):
-        today = date.today()
+        today = timezone.localdate()
         try:
             att = Attendance.objects.get(company=self.company, employee=employee, date=today)
             att.check_out = timezone.now()
@@ -157,7 +157,7 @@ class LeaveService(BaseService):
             bal = LeaveBalance.objects.filter(
                 employee=leave.employee,
                 leave_type=leave.leave_type,
-                year=date.today().year
+                year=timezone.localdate().year
             ).first()
             if bal:
                 bal.used += leave.total_days

@@ -19,7 +19,7 @@
 <div class="card shadow-sm border-0 mb-4">
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false}'>
         <thead class="table-light">
           <tr>
             <th>RFQ Number</th>
@@ -56,13 +56,6 @@
                 </form>
                 {% endif %}
               </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" class="text-center py-5">
-              <i class="fas fa-file-invoice fa-3x text-muted opacity-25 mb-3 d-block"></i>
-              <span class="text-muted">No RFQs found.</span>
             </td>
           </tr>
           {% endfor %}

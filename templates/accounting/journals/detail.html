@@ -84,7 +84,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-primary h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-arrow-down"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_debit|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Total Debit</div>
       <div class="stat-card-trend text-white-50">Dr side</div>
     </div>
@@ -93,7 +93,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-success h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-arrow-up"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_credit|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Total Credit</div>
       <div class="stat-card-trend text-white-50">Cr side</div>
     </div>
@@ -173,7 +173,7 @@
                 <!-- Debit -->
                 <td class="text-end">
                   {% if item.debit %}
-                  <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ item.debit|floatformat:2|intcomma }}</span>
+                  <span class="fw-bold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ item.debit|floatformat:2|intcomma }}</span>
                   {% else %}
                   <span class="text-muted">—
                   {% endif %}</span>
@@ -182,7 +182,7 @@
                 <!-- Credit -->
                 <td class="text-end pe-4">
                   {% if item.credit %}
-                  <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ item.credit|floatformat:2|intcomma }}</span>
+                  <span class="fw-bold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ item.credit|floatformat:2|intcomma }}</span>
                   {% else %}
                   <span class="text-muted">—
                   {% endif %}</span>
@@ -202,10 +202,10 @@
               <tr>
                 <td colspan="3" class="ps-4 fw-bold text-dark py-3">Totals</td>
                 <td class="text-end fw-bold py-3 text-primary">
-                  {{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}
+                  {{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_debit|floatformat:2|intcomma }}
                 </td>
                 <td class="text-end fw-bold py-3 pe-4 text-primary">
-                  {{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}
+                  {{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_credit|floatformat:2|intcomma }}
                 </td>
               </tr>
               <!-- Balance check row -->

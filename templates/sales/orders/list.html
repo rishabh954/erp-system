@@ -69,7 +69,7 @@
           {% for order in orders %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ order.number }}</span>
+              <a href="{% url 'sales:order_detail' order.pk %}" class="fw-bold text-primary text-decoration-none">{{ order.number }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ order.customer.name }}</div>
@@ -79,7 +79,7 @@
               <span class="small">{{ order.sales_rep.full_name|default:"-" }}</span>
             </td>
             <td class="fw-bold text-success">
-              {{ CURRENCY_SYMBOL }}{{ order.total|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ order.total|floatformat:2|intcomma }}
             </td>
             <td>
               <span class="badge 
@@ -89,6 +89,7 @@
                 {% elif order.status == 'shipped' %}bg-warning text-dark
                 {% elif order.status == 'delivered' %}bg-success
                 {% elif order.status == 'invoiced' %}bg-dark
+                {% elif order.status == 'completed' %}bg-success
                 {% elif order.status == 'cancelled' %}bg-danger
                 {% endif %}">
                 {{ order.get_status_display }}

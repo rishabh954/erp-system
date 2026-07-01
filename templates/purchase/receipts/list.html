@@ -56,7 +56,7 @@
           {% for receipt in receipts %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ receipt.number }}</span>
+              <a href="{% url 'purchase:receipt_detail' receipt.pk %}" class="fw-bold text-primary text-decoration-none">{{ receipt.number }}</a>
             </td>
             <td>
               <a href="{% url 'purchase:order_detail' receipt.purchase_order.pk %}" class="fw-bold text-decoration-none">

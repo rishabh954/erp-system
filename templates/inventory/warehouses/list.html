@@ -47,7 +47,7 @@
   <!-- Total Inventory Valuation -->
   <div class="col-12 col-md-4">
     <div class="card stat-card stat-card-warning h-100 border-0">
-      <div class="stat-card-value" id="stat-total-value">{{ CURRENCY_SYMBOL }}0.00</div>
+      <div class="stat-card-value" id="stat-total-value">{{ current_company.default_currency.symbol|default:'$' }}0.00</div>
       <div class="stat-card-label">Total Stock Valuation</div>
       <div class="stat-card-icon">
         <i class="fas fa-dollar-sign"></i>
@@ -196,7 +196,7 @@
             </div>
             <div class="col-6">
               <div class="text-muted small mb-1">Stock Valuation</div>
-              <div class="fw-bold h5 text-primary mb-0">{{ CURRENCY_SYMBOL }}{{ wh.stock_value|default:0|floatformat:2|intcomma }}</div>
+              <div class="fw-bold h5 text-primary mb-0">{{ current_company.default_currency.symbol|default:'$' }}{{ wh.stock_value|default:0|floatformat:2|intcomma }}</div>
             </div>
           </div>
         </div>
@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (statActive) statActive.textContent = activeCount;
     if (statProducts) statProducts.textContent = totalUniqueProducts.toLocaleString();
-    if (statValue) statValue.textContent = '{{ CURRENCY_SYMBOL }}' + totalStockValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (statValue) statValue.textContent = '{{ current_company.default_currency.symbol|default:'$' }}' + totalStockValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   // Filter function

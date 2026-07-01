@@ -71,7 +71,7 @@
         <tbody>
           {% for delivery in deliveries %}
           <tr>
-            <td><span class="fw-bold text-primary">{{ delivery.number }}</span></td>
+            <td><a href="{% url 'inventory:delivery_detail' delivery.pk %}" class="fw-bold text-primary text-decoration-none">{{ delivery.number }}</a></td>
             <td><a href="{% url 'sales:order_detail' delivery.sales_order.pk %}" class="fw-bold">{{ delivery.sales_order.number }}</a></td>
             <td>{{ delivery.warehouse.name }}</td>
             <td>{{ delivery.scheduled_date|date:"Y-m-d"|default:"-" }}</td>

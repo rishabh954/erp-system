@@ -303,7 +303,18 @@ class AddActivityView(CompanyMixin, View):
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
         duration = request.POST.get('duration_minutes')
-        scheduled_at = request.POST.get('scheduled_at')
+        scheduled_at_str = request.POST.get('scheduled_at')
+        
+        scheduled_at = None
+        if scheduled_at_str:
+            from django.utils.dateparse import parse_datetime
+            from django.utils import timezone
+            dt = parse_datetime(scheduled_at_str)
+            if dt is not None:
+                if timezone.is_naive(dt):
+                    scheduled_at = timezone.make_aware(dt)
+                else:
+                    scheduled_at = dt
         
         LeadActivity.objects.create(
             company=self.company(),
@@ -312,7 +323,7 @@ class AddActivityView(CompanyMixin, View):
             subject=request.POST.get('subject', ''),
             description=request.POST.get('description', ''),
             duration_minutes=int(duration) if duration else None,
-            scheduled_at=scheduled_at if scheduled_at else None,
+            scheduled_at=scheduled_at,
             assigned_to=request.user,
         )
         messages.success(request, 'Activity logged.')

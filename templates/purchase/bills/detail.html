@@ -95,7 +95,7 @@
                 <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
                 <td class="small">{{ line.description }}</td>
                 <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
-                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end">{{ current_company.default_currency.symbol|default:'$' }}{{ line.unit_price|floatformat:2|intcomma }}</td>
                 <td class="text-end text-danger">
                   {% if line.discount_percent > 0 %}
                     -{{ line.discount_percent }}%
@@ -110,7 +110,7 @@
                     -
                   {% endif %}
                 </td>
-                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.total|floatformat:2|intcomma }}</td>
+                <td class="text-end fw-semibold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ line.total|floatformat:2|intcomma }}</td>
               </tr>
               {% empty %}
               <tr>
@@ -127,23 +127,23 @@
             <ul class="list-group list-group-flush bg-transparent">
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
                 <span class="text-muted">Subtotal</span>
-                <span class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ bill.subtotal|floatformat:2|intcomma }}</span>
+                <span class="fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ bill.subtotal|floatformat:2|intcomma }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
                 <span class="text-muted">Total Discount</span>
-                <span class="fw-semibold text-danger">-{{ CURRENCY_SYMBOL }}{{ bill.discount_amount|floatformat:2|intcomma }}</span>
+                <span class="fw-semibold text-danger">-{{ current_company.default_currency.symbol|default:'$' }}{{ bill.discount_amount|floatformat:2|intcomma }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
                 <span class="text-muted">Total Tax</span>
-                <span class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ bill.tax_amount|floatformat:2|intcomma }}</span>
+                <span class="fw-semibold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ bill.tax_amount|floatformat:2|intcomma }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
                 <span class="text-muted">Amount billd</span>
-                <span class="fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ bill.total|floatformat:2|intcomma }}</span>
+                <span class="fw-bold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ bill.total|floatformat:2|intcomma }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
                 <span class="fw-bold text-dark">Balance Due</span>
-                <span class="h4 mb-0 fw-bold text-danger">{{ CURRENCY_SYMBOL }}{{ bill.balance_due|floatformat:2|intcomma }}</span>
+                <span class="h4 mb-0 fw-bold text-danger">{{ current_company.default_currency.symbol|default:'$' }}{{ bill.balance_due|floatformat:2|intcomma }}</span>
               </li>
             </ul>
           </div>
@@ -200,7 +200,7 @@
               <i class="fas fa-check"></i>
             </span>
             <div class="d-flex justify-content-between align-items-center">
-              <span class="fw-bold text-success small">{{ CURRENCY_SYMBOL }}{{ pay.amount|floatformat:2|intcomma }}</span>
+              <span class="fw-bold text-success small">{{ current_company.default_currency.symbol|default:'$' }}{{ pay.amount|floatformat:2|intcomma }}</span>
               <span class="text-muted" style="font-size:11px">{{ pay.payment_date|date:"Y-m-d" }}</span>
             </div>
             <div class="text-muted small my-1">{{ pay.get_method_display }}</div>

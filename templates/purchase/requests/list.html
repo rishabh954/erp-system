@@ -82,7 +82,7 @@
           {% for pr in requests %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ pr.number }}</span>
+              <a href="{% url 'purchase:request_detail' pr.pk %}" class="fw-bold text-primary text-decoration-none">{{ pr.number }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ pr.title }}</div>
@@ -105,7 +105,7 @@
               </span>
             </td>
             <td class="text-end fw-semibold text-dark">
-              {{ CURRENCY_SYMBOL }}{{ pr.estimated_cost|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ pr.estimated_cost|floatformat:2|intcomma }}
             </td>
             <td>
               <span class="badge 

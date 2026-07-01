@@ -3,6 +3,7 @@
 
 {% block title %}Customer - {{ customer.name }}{% endblock %}
 
+
 {% block content %}
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
   <div class="page-header-title">
@@ -34,7 +35,7 @@
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body p-3">
         <div class="text-muted small text-uppercase fw-bold mb-1">Total Revenue</div>
-        <div class="h3 mb-0 text-success">{{ CURRENCY_SYMBOL }}{{ total_revenue|floatformat:2|intcomma }}</div>
+        <div class="h3 mb-0 text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ total_revenue|floatformat:2|intcomma }}</div>
       </div>
     </div>
   </div>
@@ -44,7 +45,7 @@
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body p-3">
         <div class="text-muted small text-uppercase fw-bold mb-1">Outstanding Balance</div>
-        <div class="h3 mb-0 {% if outstanding > 0 %}text-danger{% else %}text-muted{% endif %}">{{ CURRENCY_SYMBOL }}{{ outstanding|floatformat:2|intcomma }}</div>
+        <div class="h3 mb-0 {% if outstanding > 0 %}text-danger{% else %}text-muted{% endif %}">{{ current_company.default_currency.symbol|default:'$' }}{{ outstanding|floatformat:2|intcomma }}</div>
       </div>
     </div>
   </div>
@@ -54,7 +55,7 @@
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body p-3">
         <div class="text-muted small text-uppercase fw-bold mb-1">Credit Limit</div>
-        <div class="h3 mb-0 text-primary">{{ CURRENCY_SYMBOL }}{{ customer.credit_limit|floatformat:2|intcomma }}</div>
+        <div class="h3 mb-0 text-primary">{{ current_company.default_currency.symbol|default:'$' }}{{ customer.credit_limit|floatformat:2|intcomma }}</div>
       </div>
     </div>
   </div>
@@ -146,15 +147,15 @@
     <!-- Transactions Tabs -->
     <div class="card shadow-sm border-0">
       <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-        <ul class="nav nav-tabs border-bottom-0" id="customerTabs" role="tablist">
-          <li class="nav-item">
-            <button class="nav-link active fw-bold" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab"><i class="fas fa-file-invoice-dollar me-2"></i>Invoices</button>
+        <ul class="nav nav-pills bg-light p-2 rounded-3 d-inline-flex gap-2" id="customerTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-4 rounded-3" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab"><i class="fas fa-file-invoice-dollar me-2"></i>Invoices</button>
           </li>
-          <li class="nav-item">
-            <button class="nav-link fw-bold" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab"><i class="fas fa-shopping-bag me-2"></i>Sales Orders</button>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 rounded-3 text-muted" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab"><i class="fas fa-shopping-bag me-2"></i>Sales Orders</button>
           </li>
-          <li class="nav-item">
-            <button class="nav-link fw-bold" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads" type="button" role="tab"><i class="fas fa-user-tag me-2"></i>Opportunities</button>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 rounded-3 text-muted" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads" type="button" role="tab"><i class="fas fa-user-tag me-2"></i>Opportunities</button>
           </li>
         </ul>
       </div>
@@ -162,8 +163,8 @@
         <div class="tab-content" id="customerTabsContent">
           <!-- Invoices Tab -->
           <div class="tab-pane fade show active" id="invoices" role="tabpanel">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+            <div class="table-responsive tabs-datatable-inline">
+              <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false, "pageLength": 5}'>
                 <thead>
                   <tr class="text-muted small">
                     <th>Invoice Number</th>
@@ -177,22 +178,16 @@
                   {% for inv in invoices %}
                   <tr>
                     <td>
-                      <span class="fw-bold text-primary">{{ inv.number|default:inv.id|truncatechars:8 }}</span>
+                      <a href="{% url 'sales:invoice_detail' inv.pk %}" class="fw-bold text-primary text-decoration-none">{{ inv.number|default:inv.id }}</a>
                     </td>
                     <td class="small">{{ inv.invoice_date|date:"Y-m-d" }}</td>
-                    <td class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ inv.total|floatformat:2|intcomma }}</td>
-                    <td class="text-danger fw-semibold">{{ CURRENCY_SYMBOL }}{{ inv.balance_due|floatformat:2|intcomma }}</td>
+                    <td class="fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ inv.total|floatformat:2|intcomma }}</td>
+                    <td class="text-danger fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ inv.balance_due|floatformat:2|intcomma }}</td>
                     <td>
                       <span class="badge {% if inv.status == 'paid' %}bg-success{% elif inv.status == 'partial' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ inv.get_status_display }}</span>
                     </td>
                   </tr>
-                  {% empty %}
-                  <tr>
-                    <td colspan="5" class="text-center py-4 text-muted">
-                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
-                      <p class="small mb-0">No invoices generated for this client yet.</p>
-                    </td>
-                  </tr>
+                  
                   {% endfor %}
                 </tbody>
               </table>
@@ -201,8 +196,8 @@
 
           <!-- Orders Tab -->
           <div class="tab-pane fade" id="orders" role="tabpanel">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+            <div class="table-responsive tabs-datatable-inline">
+              <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false, "pageLength": 5}'>
                 <thead>
                   <tr class="text-muted small">
                     <th>Order Number</th>
@@ -215,21 +210,15 @@
                   {% for ord in orders %}
                   <tr>
                     <td>
-                      <span class="fw-bold text-primary">{{ ord.number|default:ord.id|truncatechars:8 }}</span>
+                      <a href="{% url 'sales:order_detail' ord.pk %}" class="fw-bold text-primary text-decoration-none">{{ ord.number|default:ord.id }}</a>
                     </td>
                     <td class="small">{{ ord.order_date|date:"Y-m-d" }}</td>
-                    <td class="fw-semibold">{{ CURRENCY_SYMBOL }}{{ ord.total|floatformat:2|intcomma }}</td>
+                    <td class="fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}{{ ord.total|floatformat:2|intcomma }}</td>
                     <td>
-                      <span class="badge {% if ord.status == 'completed' %}bg-success{% elif ord.status == 'pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ ord.get_status_display }}</span>
+                      <span class="badge {% if ord.status == 'draft' %}bg-secondary{% elif ord.status == 'confirmed' %}bg-info{% elif ord.status == 'processing' %}bg-primary{% elif ord.status == 'shipped' %}bg-warning text-dark{% elif ord.status == 'delivered' %}bg-success{% elif ord.status == 'invoiced' %}bg-dark{% elif ord.status == 'completed' %}bg-success{% elif ord.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ord.get_status_display }}</span>
                     </td>
                   </tr>
-                  {% empty %}
-                  <tr>
-                    <td colspan="4" class="text-center py-4 text-muted">
-                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
-                      <p class="small mb-0">No sales orders found for this client.</p>
-                    </td>
-                  </tr>
+                  
                   {% endfor %}
                 </tbody>
               </table>
@@ -238,8 +227,8 @@
 
           <!-- Leads Tab -->
           <div class="tab-pane fade" id="leads" role="tabpanel">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+            <div class="table-responsive tabs-datatable-inline">
+              <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false, "pageLength": 5}'>
                 <thead>
                   <tr class="text-muted small">
                     <th>Opportunity Code</th>
@@ -253,24 +242,18 @@
                   {% for ld in leads %}
                   <tr>
                     <td>
-                      <span class="fw-bold text-primary">{{ ld.number }}</span>
+                      <a href="{% url 'crm:lead_detail' ld.pk %}" class="fw-bold text-primary text-decoration-none">{{ ld.number }}</a>
                     </td>
                     <td>
                       <a href="{% url 'crm:lead_detail' ld.pk %}" class="fw-bold text-dark">{{ ld.name }}</a>
                     </td>
-                    <td class="fw-semibold text-success">{{ CURRENCY_SYMBOL }}{{ ld.expected_revenue|floatformat:2|intcomma }}</td>
+                    <td class="fw-semibold text-success">{{ current_company.default_currency.symbol|default:'$' }}{{ ld.expected_revenue|floatformat:2|intcomma }}</td>
                     <td>{{ ld.probability }}%</td>
                     <td>
                       <span class="badge {% if ld.status == 'won' %}bg-success{% elif ld.status == 'lost' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ld.get_status_display }}</span>
                     </td>
                   </tr>
-                  {% empty %}
-                  <tr>
-                    <td colspan="5" class="text-center py-4 text-muted">
-                      <i class="fas fa-info-circle mb-2 opacity-50"></i>
-                      <p class="small mb-0">No lead opportunity records linked.</p>
-                    </td>
-                  </tr>
+                  
                   {% endfor %}
                 </tbody>
               </table>
@@ -281,4 +264,30 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // When tabs switch, adjust DataTables to prevent squished headers
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(function(tab) {
+      tab.addEventListener('shown.bs.tab', function() {
+        if ($.fn.dataTable) {
+          $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+        }
+      });
+    });
+    
+    // Add dynamic styling for nav-pills
+    tabEls.forEach(function(tab) {
+      tab.addEventListener('show.bs.tab', function(e) {
+        e.target.classList.remove('text-muted');
+        if(e.relatedTarget) {
+          e.relatedTarget.classList.add('text-muted');
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

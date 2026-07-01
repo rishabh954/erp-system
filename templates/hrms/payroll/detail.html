@@ -71,7 +71,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-info h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-plus-circle"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_gross|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Gross Payroll</div>
       <div class="stat-card-trend text-white-50">Before deductions</div>
     </div>
@@ -80,7 +80,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-danger h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-minus-circle"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_deductions|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_deductions|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Total Deductions</div>
       <div class="stat-card-trend text-white-50">Taxes, benefits, etc.</div>
     </div>
@@ -89,7 +89,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-success h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-money-bill-wave"></i></div>
-      <div class="stat-card-value">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</div>
+      <div class="stat-card-value">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_net|floatformat:2|intcomma }}</div>
       <div class="stat-card-label">Net Payroll</div>
       <div class="stat-card-trend text-white-50">Total cash disbursed</div>
     </div>
@@ -143,10 +143,10 @@
               <span class="badge bg-danger-subtle text-danger border">{{ slip.absent_days|floatformat:1 }}</span>
             </td>
             
-            <td class="text-end text-muted">{{ CURRENCY_SYMBOL }}{{ slip.basic_salary|floatformat:2|intcomma }}</td>
-            <td class="text-end fw-medium text-dark">{{ CURRENCY_SYMBOL }}{{ slip.gross_salary|floatformat:2|intcomma }}</td>
-            <td class="text-end text-danger">{{ CURRENCY_SYMBOL }}{{ slip.total_deductions|floatformat:2|intcomma }}</td>
-            <td class="text-end fw-bold text-success fs-6">{{ CURRENCY_SYMBOL }}{{ slip.net_salary|floatformat:2|intcomma }}</td>
+            <td class="text-end text-muted">{{ current_company.default_currency.symbol|default:'$' }}{{ slip.basic_salary|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-medium text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ slip.gross_salary|floatformat:2|intcomma }}</td>
+            <td class="text-end text-danger">{{ current_company.default_currency.symbol|default:'$' }}{{ slip.total_deductions|floatformat:2|intcomma }}</td>
+            <td class="text-end fw-bold text-success fs-6">{{ current_company.default_currency.symbol|default:'$' }}{{ slip.net_salary|floatformat:2|intcomma }}</td>
             
             <td>
               {% if slip.status == 'draft' %}
@@ -185,9 +185,9 @@
           <tr>
             <td colspan="3" class="ps-4 py-3 fw-bold text-dark text-uppercase text-end" style="font-size: 12px;">Period Totals</td>
             <td class="text-end py-3 fw-bold text-muted">—</td>
-            <td class="text-end py-3 fw-bold text-dark">{{ CURRENCY_SYMBOL }}{{ period.total_gross|floatformat:2|intcomma }}</td>
-            <td class="text-end py-3 fw-bold text-danger">{{ CURRENCY_SYMBOL }}{{ period.total_deductions|floatformat:2|intcomma }}</td>
-            <td class="text-end py-3 fw-bold text-success fs-5 border-bottom border-success border-3" style="border-bottom-style: double !important;">{{ CURRENCY_SYMBOL }}{{ period.total_net|floatformat:2|intcomma }}</td>
+            <td class="text-end py-3 fw-bold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_gross|floatformat:2|intcomma }}</td>
+            <td class="text-end py-3 fw-bold text-danger">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_deductions|floatformat:2|intcomma }}</td>
+            <td class="text-end py-3 fw-bold text-success fs-5 border-bottom border-success border-3" style="border-bottom-style: double !important;">{{ current_company.default_currency.symbol|default:'$' }}{{ period.total_net|floatformat:2|intcomma }}</td>
             <td colspan="2"></td>
           </tr>
         </tfoot>

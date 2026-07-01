@@ -18,7 +18,7 @@ from django.views.decorators.cache import cache_page
 
 
 def get_period_dates(period='month'):
-    today = date.today()
+    today = timezone.localdate()
     if period == 'today':
         return today, today
     if period == 'week':
@@ -129,7 +129,7 @@ class CEODashboardAPIView(APIView):
         expense_data = []
 
         # Build monthly chart for last 12 months
-        today = date.today()
+        today = timezone.localdate()
         for i in range(11, -1, -1):
             m_date = today.replace(day=1) - timedelta(days=i * 28)
             m_date = m_date.replace(day=1)
@@ -218,7 +218,7 @@ class HRDashboardAPIView(APIView):
         from apps.hrms.models import Employee, Attendance, LeaveRequest, PayrollPeriod
 
         total_employees = Employee.objects.filter(company=company, status='active', is_deleted=False).count()
-        today = date.today()
+        today = timezone.localdate()
 
         # Attendance today
         present_today = Attendance.objects.filter(
@@ -327,7 +327,7 @@ class FinanceDashboardAPIView(APIView):
 
         overdue = Invoice.objects.filter(
             company=company, status__in=['sent', 'partial'],
-            due_date__lt=date.today()
+            due_date__lt=timezone.localdate()
         ).aggregate(t=Sum('balance_due'))['t'] or 0
 
         return Response({
@@ -476,3 +476,121 @@ class HelpdeskDashboardView(LoginRequiredMixin, TemplateView):
 
 class ExecutiveKPIDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/executive_kpi.html'
+
+from django.http import JsonResponse
+from django.views import View
+from apps.hrms.models import LeaveRequest
+from apps.crm.models import Lead, LeadActivity
+from apps.sales.models import Invoice
+from apps.purchase.models import Bill
+from apps.projects.models import Task as ProjectTask, Milestone
+from datetime import datetime
+
+class CalendarView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/calendar.html'
+
+class CalendarEventsAPIView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        start_str = request.GET.get('start')
+        end_str = request.GET.get('end')
+        
+        events = []
+        company = getattr(request.user, 'primary_company', None)
+        if not company:
+            return JsonResponse(events, safe=False)
+
+        if start_str and end_str:
+            start_date = datetime.fromisoformat(start_str.replace('Z', '+00:00')).date()
+            end_date = datetime.fromisoformat(end_str.replace('Z', '+00:00')).date()
+            
+            # HRMS Leaves
+            if request.GET.get('leaves') == 'true':
+                leaves = LeaveRequest.objects.filter(employee__company=company, status='approved', start_date__lt=end_date, end_date__gte=start_date)
+                for leave in leaves:
+                    events.append({
+                        'id': f'leave_{leave.id}',
+                        'title': f'{leave.employee.user.full_name} (Leave)',
+                        'start': leave.start_date.isoformat(),
+                        'end': (leave.end_date + timezone.timedelta(days=1)).isoformat(), # exclusive end
+                        'color': '#17a2b8', # info blue
+                        'url': f'/hrms/leaves/'
+                    })
+                
+            # CRM Leads closing
+            if request.GET.get('crm_leads') == 'true':
+                leads = Lead.objects.filter(company=company, expected_close_date__range=[start_date, end_date])
+                for lead in leads:
+                    events.append({
+                        'id': f'lead_{lead.id}',
+                        'title': f'Close: {lead.name}',
+                        'start': lead.expected_close_date.isoformat(),
+                        'color': '#28a745', # success green
+                        'url': f'/crm/leads/{lead.id}/'
+                    })
+                
+            # CRM Activities
+            if request.GET.get('crm_activities') == 'true':
+                from django.db.models import Q
+                crm_activities = LeadActivity.objects.filter(
+                    Q(lead__company=company) & 
+                    (Q(scheduled_at__date__range=[start_date, end_date]) | Q(created_at__date__range=[start_date, end_date]))
+                )
+                for act in crm_activities:
+                    act_date = act.scheduled_at if act.scheduled_at else act.created_at
+                    events.append({
+                        'id': f'crmact_{act.id}',
+                        'title': f'{act.get_activity_type_display()}: {act.lead.name}',
+                        'start': act_date.isoformat() if act_date else None,
+                        'color': '#20c997', # teal
+                        'url': f'/crm/leads/{act.lead.id}/'
+                    })
+                
+            # Invoices Due
+            if request.GET.get('invoices') == 'true':
+                invoices = Invoice.objects.filter(company=company, due_date__range=[start_date, end_date]).exclude(status='paid')
+                for inv in invoices:
+                    events.append({
+                        'id': f'inv_{inv.id}',
+                        'title': f'Inv Due: {inv.number}',
+                        'start': inv.due_date.isoformat(),
+                        'color': '#dc3545', # danger red
+                        'url': f'/sales/invoices/{inv.id}/'
+                    })
+                
+            # Bills Due
+            if request.GET.get('bills') == 'true':
+                bills = Bill.objects.filter(company=company, due_date__range=[start_date, end_date]).exclude(status='paid')
+                for bill in bills:
+                    events.append({
+                        'id': f'bill_{bill.id}',
+                        'title': f'Bill Due: {bill.number}',
+                        'start': bill.due_date.isoformat(),
+                        'color': '#fd7e14', # warning orange
+                        'url': f'/purchase/bills/{bill.id}/'
+                    })
+                
+            # Project Tasks
+            if request.GET.get('project_tasks') == 'true':
+                tasks = ProjectTask.objects.filter(project__company=company, due_date__range=[start_date, end_date]).exclude(status='completed')
+                for task in tasks:
+                    events.append({
+                        'id': f'task_{task.id}',
+                        'title': f'Task: {task.title}',
+                        'start': task.due_date.isoformat(),
+                        'color': '#6f42c1', # purple
+                        'url': f'/projects/{task.project.id}/'
+                    })
+                
+            # Project Milestones
+            if request.GET.get('project_milestones') == 'true':
+                milestones = Milestone.objects.filter(project__company=company, due_date__range=[start_date, end_date], is_completed=False)
+                for m in milestones:
+                    events.append({
+                        'id': f'milestone_{m.id}',
+                        'title': f'Milestone: {m.name}',
+                        'start': m.due_date.isoformat(),
+                        'color': '#e83e8c', # pink
+                        'url': f'/projects/{m.project.id}/'
+                    })
+                
+        return JsonResponse(events, safe=False)

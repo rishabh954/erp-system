@@ -795,7 +795,7 @@ function renderPagination(current, total) {
   for (let p = 1; p <= total; p++) {
     if (p === 1 || p === total || Math.abs(p - current) <= 1) {
       html += `<button class="btn btn-sm rounded-3 px-3 ${p===current ? 'btn-primary' : 'btn-outline-secondary'}"
-        onclick="renderPage(${p})"> {{ current_company.default_currency.symbol|default:'$' }}{p}</button>`;
+        onclick="renderPage(${p})"> ${p}</button>`;
     } else if (Math.abs(p - current) === 2) {
       html += `<span class="text-muted px-1" style="line-height:2rem;">…</span>`;
     }

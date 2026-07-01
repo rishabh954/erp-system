@@ -7,7 +7,7 @@
 </div>
 <div class="card shadow">
     <div class="card-body">
-        <table class="table">
+        <table class="table" data-datatable data-datatable-options='{"searching": false}'>
             <thead>
                 <tr>
                     <th>Number</th>
@@ -26,8 +26,6 @@
                     <td>{{ bom.routing.name|default:"-" }}</td>
                     <td><a href="{% url 'manufacturing:bom_detail' bom.pk %}" class="btn btn-sm btn-info">View</a></td>
                 </tr>
-                {% empty %}
-                <tr><td colspan="5">No BOMs found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

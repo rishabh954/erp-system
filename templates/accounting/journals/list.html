@@ -58,7 +58,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card stat-card-info h-100 border-0">
       <div class="stat-card-icon"><i class="fas fa-arrow-right-arrow-left"></i></div>
-      <div class="stat-card-value" id="kpi-total-dr">{{ CURRENCY_SYMBOL }}0</div>
+      <div class="stat-card-value" id="kpi-total-dr">{{ current_company.default_currency.symbol|default:'$' }}0</div>
       <div class="stat-card-label">Total Debits</div>
       <div class="stat-card-trend text-white-50">This page</div>
     </div>
@@ -206,12 +206,12 @@
 
             <!-- Debit -->
             <td class="text-end fw-semibold text-dark">
-              {{ CURRENCY_SYMBOL }}{{ entry.total_debit|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_debit|floatformat:2|intcomma }}
             </td>
 
             <!-- Credit -->
             <td class="text-end fw-semibold text-dark">
-              {{ CURRENCY_SYMBOL }}{{ entry.total_credit|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ entry.total_credit|floatformat:2|intcomma }}
             </td>
 
             <!-- Balanced indicator -->
@@ -251,8 +251,8 @@
             <td colspan="5" class="ps-4 fw-bold text-dark py-3" style="font-size: 12px;">
               Page Total <span class="text-muted fw-normal">({{ entries|length }} entries)</span>
             </td>
-            <td class="text-end fw-bold text-primary py-3" id="footerDebit">{{ CURRENCY_SYMBOL }}0.00</td>
-            <td class="text-end fw-bold text-primary py-3" id="footerCredit">{{ CURRENCY_SYMBOL }}0.00</td>
+            <td class="text-end fw-bold text-primary py-3" id="footerDebit">{{ current_company.default_currency.symbol|default:'$' }}0.00</td>
+            <td class="text-end fw-bold text-primary py-3" id="footerCredit">{{ current_company.default_currency.symbol|default:'$' }}0.00</td>
             <td colspan="2"></td>
           </tr>
         </tfoot>
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
     totalCr += cr;
   });
 
-  const fmt = n => '{{ CURRENCY_SYMBOL }}' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = n => '{{ current_company.default_currency.symbol|default:'$' }}' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const el = id => document.getElementById(id);
   if (el('kpi-draft'))   el('kpi-draft').textContent   = draft;

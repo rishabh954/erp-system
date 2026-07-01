@@ -93,8 +93,8 @@
                 <td class="fw-bold text-dark">{{ line.product.name|default:"Custom Item" }}</td>
                 <td class="small">{{ line.description }}</td>
                 <td class="text-end">{{ line.quantity|floatformat:0 }}</td>
-                <td class="text-end">{{ CURRENCY_SYMBOL }}{{ line.estimated_unit_price|floatformat:2|intcomma }}</td>
-                <td class="text-end fw-semibold text-dark">{{ CURRENCY_SYMBOL }}{{ line.estimated_total|floatformat:2|intcomma }}</td>
+                <td class="text-end">{{ current_company.default_currency.symbol|default:'$' }}{{ line.estimated_unit_price|floatformat:2|intcomma }}</td>
+                <td class="text-end fw-semibold text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ line.estimated_total|floatformat:2|intcomma }}</td>
               </tr>
               {% empty %}
               <tr>
@@ -111,7 +111,7 @@
             <ul class="list-group list-group-flush bg-transparent">
               <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
                 <span class="fw-bold text-dark h5 mb-0">Total Estimated Cost</span>
-                <span class="h4 mb-0 fw-bold text-primary">{{ CURRENCY_SYMBOL }}{{ pr.estimated_cost|floatformat:2|intcomma }}</span>
+                <span class="h4 mb-0 fw-bold text-primary">{{ current_company.default_currency.symbol|default:'$' }}{{ pr.estimated_cost|floatformat:2|intcomma }}</span>
               </li>
             </ul>
           </div>

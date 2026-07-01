@@ -266,9 +266,9 @@ function appendBubble(text, role) {
 
   if (role === 'assistant') {
     wrap.innerHTML = `<div class="me-2 mt-1"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">🤖</div></div>
-    <div class="msg-bubble msg-assistant"> {{ current_company.default_currency.symbol|default:'$' }}{renderMarkdown(text)}</div>`;
+    <div class="msg-bubble msg-assistant"> ${renderMarkdown(text)}</div>`;
   } else {
-    wrap.innerHTML = `<div class="msg-bubble msg-user"> {{ current_company.default_currency.symbol|default:'$' }}{escapeHtml(text)}</div>
+    wrap.innerHTML = `<div class="msg-bubble msg-user"> ${escapeHtml(text)}</div>
     <div class="ms-2 mt-1"><div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;font-size:.75rem">{{ request.user.get_full_name|slice:":1"|upper }}</div></div>`;
   }
   messages.appendChild(wrap);

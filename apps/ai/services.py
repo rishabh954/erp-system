@@ -719,7 +719,7 @@ Use clear business language. Format with markdown headers."""
     def _gather_metrics(cls, company) -> dict:
         from django.db.models import Sum, Count
         from datetime import date
-        now = date.today()
+        now = timezone.localdate()
         month_start = now.replace(day=1)
 
         metrics = {}

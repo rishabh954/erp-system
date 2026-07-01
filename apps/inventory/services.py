@@ -155,7 +155,7 @@ class StockService(BaseService):
             quantity=actual_qty,
             unit_cost=unit_cost,
             total_cost=Decimal(abs(actual_qty)) * unit_cost,
-            movement_date=date.today(),
+            movement_date=timezone.localdate(),
             notes=notes,
             stock_after=stock.quantity_on_hand,
         )
@@ -199,7 +199,7 @@ class StockService(BaseService):
             quantity=qty,
             unit_cost=unit_cost,
             total_cost=qty * unit_cost,
-            movement_date=date.today(),
+            movement_date=timezone.localdate(),
             reference_type=reference_type,
             reference_id=str(reference_id),
             notes=notes,

@@ -37,7 +37,7 @@ def auto_mark_attendance():
     from apps.hrms.models import Employee, Attendance, WorkSchedule
     from apps.company.models import Company
 
-    today = date.today()
+    today = timezone.localdate()
     weekday = today.weekday()  # 0=Mon
 
     for company in Company.objects.filter(status='active', is_deleted=False):
@@ -64,7 +64,7 @@ def reset_annual_leave_balances(company_id=None):
     if company_id:
         companies = companies.filter(pk=company_id)
 
-    year = date.today().year
+    year = timezone.localdate().year
     for company in companies:
         leave_types = LeaveType.objects.filter(company=company, is_active=True, is_deleted=False)
         employees = Employee.objects.filter(company=company, status='active', is_deleted=False)

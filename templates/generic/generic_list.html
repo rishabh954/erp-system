@@ -63,7 +63,7 @@
           {% for obj in object_list %}
           <tr>
             <td>
-              <span class="fw-bold">{{ obj.number|default:obj.id|truncatechars:8 }}</span>
+              <span class="fw-bold">{{ obj.number|default:obj.id }}</span>
             </td>
             <td>
               <div>{{ obj.name|default:obj.title|default:obj|truncatechars:50 }}</div>

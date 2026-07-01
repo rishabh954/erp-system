@@ -28,7 +28,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Outstanding</div>
-          <div class="h3 mb-0 text-dark fw-bold">{{ CURRENCY_SYMBOL }}{{ total_outstanding|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-dark fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_outstanding|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -43,7 +43,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Total Overdue</div>
-          <div class="h3 mb-0 text-danger fw-bold">{{ CURRENCY_SYMBOL }}{{ total_overdue|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-danger fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ total_overdue|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -104,7 +104,7 @@
           {% for bill in bills %}
           <tr>
             <td>
-              <span class="fw-bold text-primary">{{ bill.number }}</span>
+              <a href="{% url 'purchase:bill_detail' bill.pk %}" class="fw-bold text-primary text-decoration-none">{{ bill.number }}</a>
             </td>
             <td>
               <div class="fw-bold">{{ bill.vendor.name }}</div>
@@ -114,13 +114,13 @@
               {{ bill.due_date|date:"Y-m-d" }}
             </td>
             <td class="fw-semibold text-dark">
-              {{ CURRENCY_SYMBOL }}{{ bill.total|floatformat:2|intcomma }}
+              {{ current_company.default_currency.symbol|default:'$' }}{{ bill.total|floatformat:2|intcomma }}
             </td>
             <td>
               {% if bill.status != 'paid' and bill.balance_due > 0 %}
-                <span class="text-danger fw-bold">{{ CURRENCY_SYMBOL }}{{ bill.balance_due|floatformat:2|intcomma }}</span>
+                <span class="text-danger fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ bill.balance_due|floatformat:2|intcomma }}</span>
               {% else %}
-                <span class="text-success fw-semibold">{{ CURRENCY_SYMBOL }}0.00
+                <span class="text-success fw-semibold">{{ current_company.default_currency.symbol|default:'$' }}0.00
               {% endif %}</span>
             </td>
             <td>

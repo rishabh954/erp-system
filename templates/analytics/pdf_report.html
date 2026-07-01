@@ -465,7 +465,7 @@
       </span>
     </div>
 
-    <table class="pivot-table">
+    <table class="pivot-table" data-datatable data-datatable-options='{"searching": false}'>
       <thead>
         <tr>
           <th style="width:25%;">{{ pivot_data.row_field|default:"Row" }}</th>
@@ -514,7 +514,7 @@
     </div>
 
     {% if data %}
-    <table class="data-table">
+    <table class="data-table" data-datatable data-datatable-options='{"searching": false}'>
       <thead>
         <tr>
           <th style="width:26pt; text-align:right;">#</th>

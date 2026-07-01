@@ -63,8 +63,8 @@ class AccountDetailView(CompanyMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         acc = self.object
-        from_date = self.request.GET.get('from_date', (date.today().replace(day=1)).isoformat())
-        to_date = self.request.GET.get('to_date', date.today().isoformat())
+        from_date = self.request.GET.get('from_date', (timezone.localdate().replace(day=1)).isoformat())
+        to_date = self.request.GET.get('to_date', timezone.localdate().isoformat())
         ctx['journal_items'] = JournalItem.objects.filter(
             account=acc,
             journal_entry__status='posted',
@@ -226,7 +226,7 @@ class BalanceSheetView(CompanyMixin, View):
 
     def get(self, request):
         company = self.company()
-        as_of = request.GET.get('as_of', date.today().isoformat())
+        as_of = request.GET.get('as_of', timezone.localdate().isoformat())
 
         def get_accounts(account_type):
             return Account.objects.filter(
@@ -277,8 +277,8 @@ class ProfitAndLossView(CompanyMixin, View):
 
     def get(self, request):
         company = self.company()
-        from_date = request.GET.get('from_date', date.today().replace(month=1, day=1).isoformat())
-        to_date   = request.GET.get('to_date', date.today().isoformat())
+        from_date = request.GET.get('from_date', timezone.localdate().replace(month=1, day=1).isoformat())
+        to_date   = request.GET.get('to_date', timezone.localdate().isoformat())
 
         def get_type_total(account_type):
             return JournalItem.objects.filter(
@@ -341,7 +341,7 @@ class TrialBalanceView(CompanyMixin, View):
 
     def get(self, request):
         company = self.company()
-        as_of = request.GET.get('as_of', date.today().isoformat())
+        as_of = request.GET.get('as_of', timezone.localdate().isoformat())
         accounts = Account.objects.filter(
             company=company, is_active=True, is_deleted=False
         ).order_by('code')
@@ -405,8 +405,8 @@ class AccountingDashboardView(CompanyMixin, TemplateView):
         ctx['open_ap'] = get_open_balance(ap_accs)
         
         # Net Profit YTD
-        ytd_start = date.today().replace(month=1, day=1)
-        ytd_end = date.today()
+        ytd_start = timezone.localdate().replace(month=1, day=1)
+        ytd_end = timezone.localdate()
         
         from .services import FinancialReportingService
         pl = FinancialReportingService.get_profit_and_loss(company, start_date=ytd_start, end_date=ytd_end)
@@ -561,8 +561,8 @@ class IssueCreditNoteView(CompanyMixin, View):
                 customer=customer,
                 document_type=Invoice.DocumentType.CREDIT_NOTE,
                 status=Invoice.Status.DRAFT,
-                invoice_date=date.today(),
-                due_date=date.today(),
+                invoice_date=timezone.localdate(),
+                due_date=timezone.localdate(),
                 subtotal=-amount_val,
                 total=-amount_val,
                 notes=reason
@@ -634,6 +634,7 @@ class BudgetDetailView(CompanyMixin, DetailView):
 
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
+from django.utils import timezone
 
 class CostCenterCreateView(CompanyMixin, CreateView):
     model = CostCenter
@@ -667,8 +668,8 @@ class GeneralLedgerView(CompanyMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         company = self.company()
-        from_date = self.request.GET.get('from_date', (date.today().replace(day=1)).isoformat())
-        to_date = self.request.GET.get('to_date', date.today().isoformat())
+        from_date = self.request.GET.get('from_date', (timezone.localdate().replace(day=1)).isoformat())
+        to_date = self.request.GET.get('to_date', timezone.localdate().isoformat())
         
         # Group by account
         accounts = Account.objects.filter(company=company, is_deleted=False).order_by('code')
@@ -704,7 +705,7 @@ class ARAgingReportView(CompanyMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         company = self.company()
-        as_of = self.request.GET.get('as_of', date.today().isoformat())
+        as_of = self.request.GET.get('as_of', timezone.localdate().isoformat())
         as_of_date = date.fromisoformat(as_of)
         
         from apps.sales.models import Invoice
@@ -748,7 +749,7 @@ class APAgingReportView(CompanyMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         company = self.company()
-        as_of = self.request.GET.get('as_of', date.today().isoformat())
+        as_of = self.request.GET.get('as_of', timezone.localdate().isoformat())
         as_of_date = date.fromisoformat(as_of)
         
         from apps.purchase.models import PurchaseOrder

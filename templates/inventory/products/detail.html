@@ -67,7 +67,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Valuation (Avg Cost)</div>
-          <div class="h3 mb-0 text-success fw-bold">{{ CURRENCY_SYMBOL }}{{ stock_value|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-success fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ stock_value|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -82,7 +82,7 @@
         </div>
         <div>
           <div class="text-muted small text-uppercase fw-bold">Sale Price</div>
-          <div class="h3 mb-0 text-dark fw-bold">{{ CURRENCY_SYMBOL }}{{ product.sale_price|floatformat:2|intcomma }}</div>
+          <div class="h3 mb-0 text-dark fw-bold">{{ current_company.default_currency.symbol|default:'$' }}{{ product.sale_price|floatformat:2|intcomma }}</div>
         </div>
       </div>
     </div>
@@ -131,11 +131,11 @@
         <ul class="list-group list-group-flush bg-transparent">
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Standard Cost Price</span>
-            <span class="fw-semibold small">{{ CURRENCY_SYMBOL }}{{ product.cost_price|floatformat:2|intcomma }}</span>
+            <span class="fw-semibold small">{{ current_company.default_currency.symbol|default:'$' }}{{ product.cost_price|floatformat:2|intcomma }}</span>
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Standard Sale Price</span>
-            <span class="fw-semibold small">{{ CURRENCY_SYMBOL }}{{ product.sale_price|floatformat:2|intcomma }}</span>
+            <span class="fw-semibold small">{{ current_company.default_currency.symbol|default:'$' }}{{ product.sale_price|floatformat:2|intcomma }}</span>
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Customer Tax</span>
@@ -181,12 +181,12 @@
   <div class="col-12 col-lg-8">
     <!-- Current Stock Records -->
     <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0" style="position: relative; z-index: 5;">
         <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-warehouse me-2"></i>Current Stock per Warehouse</h5>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+        <div class="table-responsive custom-detail-table">
+          <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false, "pageLength": 5}'>
             <thead class="table-light">
               <tr class="small text-uppercase">
                 <th>Warehouse</th>
@@ -206,15 +206,11 @@
                 <td class="text-end fw-semibold">{{ record.quantity_on_hand|floatformat:0 }}</td>
                 <td class="text-end text-muted">{{ record.quantity_reserved|floatformat:0 }}</td>
                 <td class="text-end text-success fw-semibold">{{ record.quantity_available|floatformat:0 }}</td>
-                <td class="text-end small">{{ CURRENCY_SYMBOL }}{{ record.average_cost|floatformat:2 }}</td>
+                <td class="text-end small">{{ current_company.default_currency.symbol|default:'$' }}{{ record.average_cost|floatformat:2 }}</td>
                 <td class="small">
                   {% if record.batch_number %}<span class="badge bg-info">Batch: {{ record.batch_number }}</span>{% endif %}
                   {% if record.serial_number %}<span class="badge bg-secondary">Serial: {{ record.serial_number }}</span>{% endif %}
                 </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="6" class="text-center py-4 text-muted">No stock records registered in warehouses for this product.</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -225,12 +221,12 @@
 
     <!-- Recent Stock Movements -->
     <div class="card shadow-sm border-0">
-      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0" style="position: relative; z-index: 5;">
         <h5 class="card-title text-primary mb-0 fw-bold"><i class="fas fa-exchange-alt me-2"></i>Recent Stock Movements</h5>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+        <div class="table-responsive custom-detail-table">
+          <table class="table table-hover align-middle mb-0" data-datatable data-datatable-options='{"searching": false, "pageLength": 10}'>
             <thead class="table-light">
               <tr class="small text-uppercase">
                 <th>Movement Date</th>
@@ -267,10 +263,6 @@
                   {% if mvt.batch_number %}<span class="badge bg-info">Batch: {{ mvt.batch_number }}</span>{% endif %}
                   {% if mvt.serial_numbers %}<span class="badge bg-secondary">Serial: {{ mvt.serial_numbers|join:", " }}</span>{% endif %}
                 </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="6" class="text-center py-4 text-muted">No stock movement history found.</td>
               </tr>
               {% endfor %}
             </tbody>
