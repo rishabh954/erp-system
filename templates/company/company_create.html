@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Create Company{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card glass-card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-4 pb-0 text-center">
+        <h4 class="fw-bold mb-1">Setup Your Company</h4>
+        <p class="text-muted small">Let's get started by creating your primary company profile.</p>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-medium">Company Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. Acme Corp">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium">Legal Name</label>
+            <input type="text" name="legal_name" class="form-control" placeholder="e.g. Acme Corporation LLC">
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Company Type</label>
+              <select name="company_type" class="form-select">
+                <option value="">Select Type</option>
+                <option value="LLC">LLC</option>
+                <option value="Corporation">Corporation</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Sole Proprietorship">Sole Proprietorship</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Industry</label>
+              <input type="text" name="industry" class="form-control" placeholder="e.g. Retail, IT">
+            </div>
+          </div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-medium">Default Currency</label>
+              <select name="default_currency" class="form-select">
+                <option value="">Select Currency</option>
+                {% for curr in currencies %}
+                <option value="{{ curr.id }}">{{ curr.code }} - {{ curr.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium">Fiscal Year Start</label>
+              <input type="text" name="fiscal_year_start" class="form-control" value="01-01" placeholder="MM-DD">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-medium">Timezone</label>
+              <select name="timezone" class="form-select">
+                {% for region, tzs in tz_groups.items %}
+                <optgroup label="{{ region }}">
+                  {% for tz in tzs %}
+                  <option value="{{ tz }}" {% if tz == 'UTC' %}selected{% endif %}>{{ tz }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2"><i class="fas fa-building me-2"></i>Create Company</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -18,7 +18,7 @@ class POSIndexView(CompanyMixin, View):
             warehouse = Warehouse.objects.filter(company=self.company()).first()
             if not warehouse:
                 # You'd typically show an error, but let's pass a flag
-                return render(request, 'pos/index.html', {'error': 'No warehouse configured for this company.'})
+                return render(request, 'sales/pos.html', {'error': 'No warehouse configured for this company.'})
             
             session = POSSession.objects.create(
                 company=self.company(),
@@ -46,7 +46,7 @@ class POSIndexView(CompanyMixin, View):
             'categories': categories,
             'products_json': json.dumps(products_data)
         }
-        return render(request, 'pos/index.html', context)
+        return render(request, 'sales/pos.html', context)
 
 
 class POSCheckoutAPIView(CompanyMixin, View):

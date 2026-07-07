@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
@@ -389,6 +389,11 @@ class GlobalSearchAPIView(APIView):
 
 class DashboardIndexView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not request.user.primary_company:
+            return redirect('company:create')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

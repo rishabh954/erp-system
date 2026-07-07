@@ -17,6 +17,62 @@ class CompanyMixin(LoginRequiredMixin):
         return self.request.user.primary_company
 
 
+from apps.authentication.models import UserCompany
+
+# ── Settings ──────────────────────────────────────────────────────────────────
+
+class CompanyCreateView(LoginRequiredMixin, View):
+    template_name = 'company/company_create.html'
+
+    def get(self, request):
+        if request.user.primary_company:
+            return redirect('dashboard:index')
+            
+        import zoneinfo
+        from collections import defaultdict
+        
+        tz_groups = defaultdict(list)
+        for tz in sorted(zoneinfo.available_timezones()):
+            region = tz.split('/')[0]
+            tz_groups[region].append(tz)
+            
+        return render(request, self.template_name, {
+            'currencies': Currency.objects.filter(is_active=True),
+            'tz_groups': dict(sorted(tz_groups.items())),
+        })
+
+    def post(self, request):
+        if request.user.primary_company:
+            return redirect('dashboard:index')
+            
+        data = request.POST
+        company = Company.objects.create(
+            name=data.get('name'),
+            legal_name=data.get('legal_name', ''),
+            company_type=data.get('company_type', ''),
+            industry=data.get('industry', ''),
+            fiscal_year_start=data.get('fiscal_year_start', '01-01'),
+            timezone=data.get('timezone', 'UTC')
+        )
+        if data.get('default_currency'):
+            company.default_currency_id = data.get('default_currency')
+            company.save(update_fields=['default_currency'])
+            
+        UserCompany.objects.create(
+            user=request.user,
+            company=company,
+            role='company_admin',
+            is_active=True
+        )
+        
+        if not request.user.primary_company:
+            request.user.primary_company = company
+            request.user.save(update_fields=['primary_company'])
+            
+        messages.success(request, 'Company created successfully.')
+        return redirect('dashboard:index')
+
+
 # ── Settings ──────────────────────────────────────────────────────────────────
 
 class CompanySettingsView(CompanyMixin, View):

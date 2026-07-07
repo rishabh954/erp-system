@@ -77,8 +77,7 @@ python manage.py compilemessages
 
 ### Load initial data (optional)
 ```bash
-python manage.py loaddata fixtures/currencies.json
-python manage.py loaddata fixtures/default_permissions.json
+python manage.py setup_permissions
 ```
 
 ### Start development servers

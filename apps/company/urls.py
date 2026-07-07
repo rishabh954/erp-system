@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    CompanySettingsView, SwitchCompanyView,
+    CompanyCreateView, CompanySettingsView, SwitchCompanyView,
     BranchListView, BranchCreateView,
     DepartmentListView, DepartmentCreateView,
     UserManagementView, InviteUserView, UserUpdateView, UserRemoveView,
@@ -12,6 +12,7 @@ from .views import (
 )
 app_name = 'company'
 urlpatterns = [
+    path('create/', CompanyCreateView.as_view(), name='create'),
     path('settings/', CompanySettingsView.as_view(), name='settings'),
     path('switch/<uuid:company_id>/', SwitchCompanyView.as_view(), name='switch'),
     path('branches/', BranchListView.as_view(), name='branches'),
