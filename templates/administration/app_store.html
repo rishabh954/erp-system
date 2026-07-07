@@ -3,24 +3,36 @@
 {% block content %}
 <div class="page-header mb-4">
     <h1 class="h3 text-primary mb-1">App Store</h1>
+    <p class="text-muted">Enable or disable system modules and extensions.</p>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage App Store</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in apps %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row g-4">
+    {% for app in apps %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0 fw-bold">{{ app.name }}</h5>
+                    {% if app.is_enabled %}
+                    <span class="badge bg-success">Enabled</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Disabled</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-4">{{ app.description }}</p>
+                
+                <form method="post" action="{% url 'administration:app_toggle' app.pk %}">
+                    {% csrf_token %}
+                    {% if app.is_enabled %}
+                    <button type="submit" class="btn btn-outline-danger w-100">Disable Module</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary w-100">Enable Module</button>
+                    {% endif %}
+                </form>
+            </div>
         </div>
     </div>
+    {% empty %}
+    <div class="col-12"><div class="alert alert-light text-center py-5">No modules found in the store.</div></div>
+    {% endfor %}
 </div>
 {% endblock %}

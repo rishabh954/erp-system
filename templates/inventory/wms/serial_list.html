@@ -1,22 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Serial List{% endblock %}
+{% block title %}Serial Numbers{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Serial List</h1>
+    <h1 class="h3 text-primary mb-1">Serial Numbers</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Serial List</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Serial #</th><th>Product</th><th>Status</th><th>Warehouse</th><th></th></tr>
                 </thead>
                 <tbody>
-                    {% for item in serials %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for serial in serials %}
+                    <tr>
+                        <td class="fw-bold">{{ serial.number }}</td>
+                        <td>{{ serial.product.name }}</td>
+                        <td><span class="badge bg-{{ serial.status|slugify }}">{{ serial.get_status_display }}</span></td>
+                        <td>{{ serial.warehouse.name|default:"-" }}</td>
+                        <td class="text-end"><a href="{% url 'inventory:serial_detail' serial.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">No serial numbers found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

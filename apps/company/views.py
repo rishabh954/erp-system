@@ -36,8 +36,17 @@ class CompanyCreateView(LoginRequiredMixin, View):
             region = tz.split('/')[0]
             tz_groups[region].append(tz)
             
+        currencies = Currency.objects.filter(is_active=True)
+        if not currencies.exists():
+            from django.core.management import call_command
+            try:
+                call_command('seed_currencies')
+                currencies = Currency.objects.filter(is_active=True)
+            except Exception:
+                pass
+            
         return render(request, self.template_name, {
-            'currencies': Currency.objects.filter(is_active=True),
+            'currencies': currencies,
             'tz_groups': dict(sorted(tz_groups.items())),
         })
 

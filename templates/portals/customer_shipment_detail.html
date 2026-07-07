@@ -1,25 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Customer Shipment Detail{% endblock %}
+{% block title %}Shipment Tracking{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Customer Shipment Detail</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <h1 class="h3 text-primary mb-1">Shipment {{ shipment.tracking_number|default:shipment.pk }}</h1>
+    <a href="{% url 'portals:customer_shipments' %}" class="btn btn-outline-secondary btn-sm">Back</a>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Customer Shipment Detail</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in shipment %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Shipment Info</h5>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><strong>Carrier:</strong> {{ shipment.carrier|default:"N/A" }}</li>
+                    <li class="mb-2"><strong>Status:</strong> <span class="badge bg-{{ shipment.status|slugify }}">{{ shipment.get_status_display }}</span></li>
+                    <li class="mb-2"><strong>Ship Date:</strong> {{ shipment.date|date:"M j, Y" }}</li>
+                    <li><strong>Order Reference:</strong> {{ shipment.sales_order.number }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Tracking Timeline</h5>
+                <div class="timeline mt-3">
+                    <div class="timeline-item pb-3 border-start border-primary border-2 ps-3 position-relative">
+                        <div class="position-absolute bg-primary rounded-circle" style="width: 12px; height: 12px; left: -7px; top: 0;"></div>
+                        <p class="mb-0 fw-bold">Current Status: {{ shipment.get_status_display }}</p>
+                        <small class="text-muted">No further updates</small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

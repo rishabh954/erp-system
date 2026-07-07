@@ -1,25 +1,40 @@
 {% extends "base.html" %}
-{% block title %}2Fa Setup{% endblock %}
+{% block title %}Two-Factor Authentication{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">2Fa Setup</h1>
+    <h1 class="h3 text-primary mb-1">Two-Factor Authentication</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage 2Fa Setup</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in setup %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-5 text-center">
+                {% if setup.is_enabled %}
+                <div class="mb-4 text-success"><i class="fas fa-shield-check fa-4x"></i></div>
+                <h4 class="mb-3">2FA is Enabled</h4>
+                <p class="text-muted mb-4">Your account is secured with two-factor authentication.</p>
+                <form method="post" action="{% url 'auth:2fa_disable' %}" onsubmit="return confirm('Are you sure you want to disable 2FA? This will reduce your account security.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger">Disable 2FA</button>
+                </form>
+                {% else %}
+                <h4 class="mb-3">Set Up Authenticator App</h4>
+                <p class="text-muted mb-4">Scan the QR code below using an authenticator app (like Google Authenticator or Authy).</p>
+                
+                <div class="bg-white p-3 d-inline-block border rounded mb-4">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ setup.provisioning_uri|urlencode }}" alt="QR Code" width="200" height="200">
+                </div>
+                
+                <p class="small text-muted mb-4">Manual Code: <code class="bg-light px-2 py-1">{{ setup.secret }}</code></p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="input-group mb-3 mx-auto" style="max-width: 250px;">
+                        <input type="text" name="code" class="form-control text-center fs-4 letter-spacing-2" placeholder="000000" maxlength="6" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn btn-primary px-5">Verify & Enable</button>
+                </form>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

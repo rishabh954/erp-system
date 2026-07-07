@@ -1,22 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Customer Contracts{% endblock %}
+{% load humanize %}
+{% block title %}My Contracts{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Customer Contracts</h1>
+    <h1 class="h3 text-primary mb-1">My Contracts</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Customer Contracts</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Contract Name</th><th>Start Date</th><th>End Date</th><th>Value</th><th>Status</th></tr>
                 </thead>
                 <tbody>
-                    {% for item in contracts %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for contract in contracts %}
+                    <tr>
+                        <td class="fw-bold">{{ contract.title }}</td>
+                        <td>{{ contract.start_date|date:"M j, Y" }}</td>
+                        <td>{{ contract.end_date|date:"M j, Y" }}</td>
+                        <td>{{ contract.value|intcomma }}</td>
+                        <td><span class="badge bg-{{ contract.status|slugify }}">{{ contract.get_status_display }}</span></td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">No contracts found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

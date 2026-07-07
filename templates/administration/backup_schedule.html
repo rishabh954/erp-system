@@ -1,25 +1,56 @@
 {% extends "base.html" %}
 {% block title %}Backup Schedule{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Backup Schedule</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h3 text-primary mb-1">Database Backups</h1>
+        <p class="text-muted mb-0">Manage automatic backup schedules.</p>
+    </div>
+    <form method="post" action="{% url 'administration:backup_run_now' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary"><i class="fas fa-play"></i> Run Backup Now</button>
+    </form>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Backup Schedule</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in backups %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent fw-bold pt-4 pb-0">Schedule Details</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Frequency</label>
+                        <select name="frequency" class="form-select">
+                            <option value="daily" {% if backups.frequency == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if backups.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if backups.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Time (UTC)</label>
+                        <input type="time" name="time" class="form-control" value="{{ backups.time|default:'00:00' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Schedule</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100 bg-light">
+            <div class="card-body text-center d-flex flex-column justify-content-center align-items-center py-5">
+                <i class="fas fa-database fa-3x text-muted mb-3 opacity-50"></i>
+                <h5 class="text-muted">Last Backup Status</h5>
+                {% if backups.last_status == 'success' %}
+                <h3 class="text-success fw-bold">Successful</h3>
+                <p class="text-muted mb-0">Run at {{ backups.last_run|date:"M j, Y, g:i a" }}</p>
+                {% elif backups.last_status == 'failed' %}
+                <h3 class="text-danger fw-bold">Failed</h3>
+                <p class="text-muted mb-0">Run at {{ backups.last_run|date:"M j, Y, g:i a" }}</p>
+                {% else %}
+                <h3 class="text-secondary fw-bold">No Records</h3>
+                <p class="text-muted mb-0">A backup has never run automatically.</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

@@ -1,25 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Customer Profile{% endblock %}
+{% block title %}My Profile{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Customer Profile</h1>
+    <h1 class="h3 text-primary mb-1">My Profile</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Customer Profile</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in customer %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Name / Company Name</label>
+                        <input type="text" class="form-control bg-light" value="{{ customer.name }}" disabled>
+                        <small class="text-muted">Contact support to change your registered name.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control bg-light" value="{{ customer.email }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" name="phone" class="form-control" value="{{ customer.phone }}">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Billing Address</label>
+                        <textarea name="billing_address" class="form-control" rows="4">{{ customer.billing_address }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

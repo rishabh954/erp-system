@@ -1,22 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Landed Cost List{% endblock %}
+{% load humanize %}
+{% block title %}Landed Costs{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Landed Cost List</h1>
+    <h1 class="h3 text-primary mb-1">Landed Costs</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Landed Cost List</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>PO Reference</th><th>Cost Type</th><th>Amount</th><th>Method</th></tr>
                 </thead>
                 <tbody>
-                    {% for item in landed_costs %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for lc in landed_costs %}
+                    <tr>
+                        <td>{{ lc.date|date:"M j, Y" }}</td>
+                        <td class="fw-bold">{{ lc.purchase_order.number|default:"-" }}</td>
+                        <td>{{ lc.get_cost_type_display }}</td>
+                        <td>{{ lc.amount|intcomma }}</td>
+                        <td>{{ lc.get_allocation_method_display }}</td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">No landed costs found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

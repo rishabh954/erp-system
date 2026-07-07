@@ -1,22 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Api Keys{% endblock %}
+{% block title %}API Keys{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Api Keys</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h3 text-primary mb-1">API Keys</h1>
+        <p class="text-muted mb-0">Manage access keys for developers and integrations.</p>
+    </div>
+    <form method="post" action="{% url 'administration:api_key_create' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Generate New Key</button>
+    </form>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Api Keys</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Name</th><th>Key (Masked)</th><th>Created</th><th>Last Used</th><th></th></tr>
                 </thead>
                 <tbody>
-                    {% for item in api_keys %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for key in api_keys %}
+                    <tr>
+                        <td class="fw-bold">{{ key.name }}</td>
+                        <td><code class="bg-light px-2 py-1 rounded">{{ key.prefix }}••••••••{{ key.suffix }}</code></td>
+                        <td>{{ key.created_at|date:"M j, Y" }}</td>
+                        <td>{{ key.last_used|date:"M j, Y"|default:"Never" }}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'administration:api_key_revoke' key.pk %}" onsubmit="return confirm('Revoke this key? It will immediately stop working.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                            </form>
+                        </td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">No API keys generated.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

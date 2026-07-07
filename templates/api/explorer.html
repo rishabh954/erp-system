@@ -1,26 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Explorer{% endblock %}
+{% block title %}API Explorer{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Explorer</h1>
-</div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Explorer</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in explorer %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="page-header mb-3 d-flex justify-content-between align-items-end">
+    <div>
+        <h1 class="h3 text-primary mb-1">API Explorer</h1>
+        <p class="text-muted mb-0">Interactive OpenAPI documentation for Enterprise ERP.</p>
     </div>
+    <a href="{% url 'api:swagger-ui' %}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> Open Fullscreen</a>
+</div>
+<div class="card shadow-sm border-0 overflow-hidden" style="height: calc(100vh - 200px); min-height: 600px;">
+    <iframe src="{% url 'api:swagger-ui' %}" style="width: 100%; height: 100%; border: none;"></iframe>
 </div>
 {% endblock %}

@@ -1,22 +1,38 @@
 {% extends "base.html" %}
-{% block title %}List{% endblock %}
+{% load humanize %}
+{% block title %}Bank Statements{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">List</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h3 text-primary mb-1">Bank Statements</h1>
+        <p class="text-muted mb-0">Reconcile imported transactions.</p>
+    </div>
+    <a href="{% url 'accounting:statement_import' %}" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Statement</a>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage List</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Date Range</th><th>Bank Account</th><th>Total Txns</th><th>Reconciled</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    {% for item in statements %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for stmt in statements %}
+                    <tr>
+                        <td class="fw-bold">{{ stmt.start_date|date:"M j" }} – {{ stmt.end_date|date:"M j, Y" }}</td>
+                        <td>{{ stmt.bank_account.name }}</td>
+                        <td>{{ stmt.transaction_count }}</td>
+                        <td>
+                            <div class="progress" style="height: 6px; width: 60px; display: inline-flex; vertical-align: middle; margin-right: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stmt.reconciled_count stmt.transaction_count 100 %}%;"></div>
+                            </div>
+                            <small class="text-muted">{{ stmt.reconciled_count }}/{{ stmt.transaction_count }}</small>
+                        </td>
+                        <td><span class="badge bg-{{ stmt.status|slugify }}">{{ stmt.get_status_display }}</span></td>
+                        <td class="text-end"><a href="{% url 'accounting:statement_detail' stmt.pk %}" class="btn btn-sm btn-outline-primary">View / Reconcile</a></td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">No bank statements imported.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

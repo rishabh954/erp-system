@@ -7,8 +7,9 @@ def create_default_permissions(sender, **kwargs):
     from django.core.management import call_command
     try:
         call_command('setup_permissions')
+        call_command('seed_currencies')
     except Exception as e:
-        logger.error(f"Failed to setup permissions during migration: {e}")
+        logger.error(f"Failed to run post-migrate setups: {e}")
 
 class AuthenticationConfig(AppConfig):
     name = 'apps.authentication'

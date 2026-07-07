@@ -1,22 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Customer Documents{% endblock %}
+{% block title %}My Documents{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Customer Documents</h1>
+    <h1 class="h3 text-primary mb-1">My Documents</h1>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Customer Documents</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Name</th><th>Category</th><th>Date Uploaded</th><th></th></tr>
                 </thead>
                 <tbody>
-                    {% for item in documents %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for doc in documents %}
+                    <tr>
+                        <td><i class="fas fa-file text-muted me-2"></i>{{ doc.title }}</td>
+                        <td><span class="badge bg-light text-dark">{{ doc.category.name|default:"General" }}</span></td>
+                        <td>{{ doc.created_at|date:"M j, Y" }}</td>
+                        <td class="text-end">
+                            {% if doc.file %}
+                            <a href="{{ doc.file.url }}" class="btn btn-sm btn-outline-secondary" download><i class="fas fa-download"></i> Download</a>
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-4">No documents found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

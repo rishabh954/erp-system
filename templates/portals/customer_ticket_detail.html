@@ -1,26 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Customer Ticket Detail{% endblock %}
+{% block title %}Ticket {{ ticket.number }}{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Customer Ticket Detail</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h3 text-primary mb-1">{{ ticket.title }} <span class="badge bg-{{ ticket.status|slugify }} ms-2">{{ ticket.get_status_display }}</span></h1>
+        <p class="text-muted mb-0">Ticket #{{ ticket.number }} · {{ ticket.get_priority_display }} priority</p>
+    </div>
+    <a href="{% url 'portals:customer_tickets' %}" class="btn btn-outline-secondary">Back</a>
 </div>
-<div class="card shadow-sm border-0 glass-card">
+
+<div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
-        <h5 class="card-title text-muted">Manage Customer Ticket Detail</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in ticket %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="d-flex mb-3">
+            <div class="me-3"><div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">U</div></div>
+            <div>
+                <h6 class="mb-0">{{ ticket.customer.name }}</h6>
+                <small class="text-muted">{{ ticket.created_at|date:"M j, Y, g:i a" }}</small>
+            </div>
         </div>
+        <p>{{ ticket.description|linebreaks }}</p>
     </div>
 </div>
+
+<h5 class="mb-3">Replies</h5>
+{% for reply in ticket.replies.all %}
+    {% if not reply.is_internal %}
+    <div class="card shadow-sm border-0 mb-3 {% if reply.author %}border-start border-primary border-4{% endif %}">
+        <div class="card-body">
+            <div class="d-flex mb-2">
+                <div class="me-2"><div class="rounded-circle bg-light text-dark d-flex align-items-center justify-content-center border" style="width: 32px; height: 32px;"><i class="fas fa-user"></i></div></div>
+                <div>
+                    <h6 class="mb-0">{{ reply.author.get_full_name|default:"Agent" }}</h6>
+                    <small class="text-muted">{{ reply.created_at|timesince }} ago</small>
+                </div>
+            </div>
+            <p class="mb-0">{{ reply.content|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+{% if ticket.status != 'closed' %}
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-body">
+        <h6 class="card-title">Leave a Reply</h6>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <textarea name="content" class="form-control" rows="4" required placeholder="Type your reply..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Send Reply</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

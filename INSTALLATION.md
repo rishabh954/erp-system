@@ -76,8 +76,11 @@ python manage.py compilemessages
 ```
 
 ### Load initial data (optional)
+*Note: Basic currencies (USD, EUR, GBP, etc.) and RBAC permissions are seeded automatically during the `migrate` step.*
+
+If you have additional custom fixtures (e.g., demo data):
 ```bash
-python manage.py setup_permissions
+python manage.py loaddata fixtures/demo_data.json
 ```
 
 ### Start development servers

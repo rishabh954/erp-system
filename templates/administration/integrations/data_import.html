@@ -3,23 +3,58 @@
 {% block content %}
 <div class="page-header mb-4">
     <h1 class="h3 text-primary mb-1">Data Import</h1>
+    <p class="text-muted">Import CSV/Excel files into the system.</p>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Data Import</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in import %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent fw-bold pt-4 pb-0">New Import</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Import Type</label>
+                        <select name="import_type" class="form-select" required>
+                            <option value="">Select data to import...</option>
+                            <option value="customers">Customers</option>
+                            <option value="products">Products</option>
+                            <option value="employees">Employees</option>
+                            <option value="journal_entries">Journal Entries</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Upload File (CSV/XLSX)</label>
+                        <input type="file" name="file" class="form-control" accept=".csv, .xlsx" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Start Import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-transparent fw-bold pt-4 pb-0">Recent Imports</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 mt-3">
+                        <thead class="table-light">
+                            <tr><th>Date</th><th>Type</th><th>Rows</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for imp in imports %}
+                            <tr>
+                                <td>{{ imp.created_at|date:"M j, Y, g:i a" }}</td>
+                                <td>{{ imp.get_import_type_display }}</td>
+                                <td>{{ imp.rows_processed }}/{{ imp.total_rows }}</td>
+                                <td><span class="badge bg-{{ imp.status|slugify }}">{{ imp.get_status_display }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">No recent imports.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>

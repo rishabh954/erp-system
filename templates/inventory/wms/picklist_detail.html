@@ -1,22 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Picklist Detail{% endblock %}
+{% block title %}Pick List {{ picklist.number }}{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Picklist Detail</h1>
+<div class="page-header mb-4 d-flex justify-content-between align-items-center">
+    <h1 class="h3 text-primary mb-1">Pick List {{ picklist.number }} <span class="badge bg-{{ picklist.status|slugify }} ms-2">{{ picklist.get_status_display }}</span></h1>
+    <a href="{% url 'inventory:picklist_list' %}" class="btn btn-outline-secondary btn-sm">Back</a>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Picklist Detail</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-transparent fw-bold">Items to Pick</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Product</th><th>Location</th><th>Qty to Pick</th><th>Qty Picked</th></tr>
                 </thead>
                 <tbody>
-                    {% for item in picklist %}
-                    <tr><td>{{ item }}</td></tr>
+                    {% for item in picklist.items.all %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.location.name|default:"-" }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.picked_quantity }}</td>
+                    </tr>
                     {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-4">No items.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

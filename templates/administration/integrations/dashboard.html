@@ -1,26 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Integrations Dashboard{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
-    <h1 class="h3 text-primary mb-1">Dashboard</h1>
+    <h1 class="h3 text-primary mb-1">Integrations</h1>
+    <p class="text-muted">Manage connections to third-party services.</p>
 </div>
-<div class="card shadow-sm border-0 glass-card">
-    <div class="card-body">
-        <h5 class="card-title text-muted">Manage Dashboard</h5>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Item</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in integrations %}
-                    <tr><td>{{ item }}</td></tr>
-                    {% empty %}
-                    <tr><td class="text-muted">No records found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="row g-4">
+    {% for integration in integrations %}
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0 fw-bold">{{ integration.name }}</h5>
+                    {% if integration.is_connected %}
+                    <span class="badge bg-success">Connected</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Disconnected</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-3">Last Sync: {{ integration.last_sync|timesince|default:"Never" }} ago</p>
+                
+                <div class="d-flex gap-2">
+                    <a href="{% url 'administration:integration_setup' integration.pk %}" class="btn btn-sm btn-outline-primary flex-grow-1">Configure</a>
+                    {% if integration.is_connected %}
+                    <form method="post" action="{% url 'administration:integration_disconnect' integration.pk %}" onsubmit="return confirm('Are you sure you want to disconnect?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Disconnect"><i class="fas fa-unlink"></i></button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
+    {% empty %}
+    <div class="col-12"><div class="alert alert-light text-center py-5">No integrations available for configuration.</div></div>
+    {% endfor %}
 </div>
 {% endblock %}
