@@ -54,7 +54,7 @@
                             {{ order.get_status_display }}
                         </span>
                     </td>
-                    <td class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ order.total }}</td>
+                    <td class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ order.total }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="4" class="text-center py-4">No recent purchase orders found.</td></tr>
@@ -91,7 +91,7 @@
                             {{ bill.get_status_display }}
                         </span>
                     </td>
-                    <td class="font-weight-600">{% firstof bill.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ bill.total }}</td>
+                    <td class="font-weight-600">{% firstof bill.currency.symbol current_company.default_currency.symbol "$" %}{{ bill.total }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="text-center py-4">No recent bills found.</td></tr>

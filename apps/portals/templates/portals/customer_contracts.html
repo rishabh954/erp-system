@@ -28,7 +28,7 @@
                     </td>
                     <td>{{ contract.start_date|date:"M d, Y" }}</td>
                     <td>{{ contract.end_date|date:"M d, Y" }}</td>
-                    <td class="font-weight-600">{% firstof contract.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ contract.value }}</td>
+                    <td class="font-weight-600">{% firstof contract.currency.symbol current_company.default_currency.symbol "$" %}{{ contract.value }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="text-center py-4 text-muted">No contracts found.</td></tr>

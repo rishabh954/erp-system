@@ -41,8 +41,8 @@
                         <td class="font-weight-600">{{ item.product.name }}</td>
                         <td class="text-muted small">{{ item.description }}</td>
                         <td style="text-align:right">{{ item.quantity }}</td>
-                        <td style="text-align:right">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ item.unit_price }}</td>
-                        <td style="text-align:right" class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ item.subtotal }}</td>
+                        <td style="text-align:right">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ item.unit_price }}</td>
+                        <td style="text-align:right" class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ item.subtotal }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="5" class="text-center py-4">No items found.</td></tr>
@@ -55,15 +55,15 @@
             <div style="display:inline-block; width: 250px;">
                 <div style="display:flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
                     <span class="text-muted">Subtotal:</span>
-                    <span class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ order.subtotal }}</span>
+                    <span class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ order.subtotal }}</span>
                 </div>
                 <div style="display:flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
                     <span class="text-muted">Tax:</span>
-                    <span class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ order.tax_amount }}</span>
+                    <span class="font-weight-600">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ order.tax_amount }}</span>
                 </div>
                 <div style="display:flex; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); font-size: 1.1rem;">
                     <span class="font-weight-600">Total:</span>
-                    <span class="font-weight-700">{% firstof order.currency.symbol current_company.default_currency.symbol \'$\' %}" }}{{ order.total }}</span>
+                    <span class="font-weight-700">{% firstof order.currency.symbol current_company.default_currency.symbol "$" %}{{ order.total }}</span>
                 </div>
             </div>
         </div>

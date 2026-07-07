@@ -10,7 +10,7 @@ class VendorPortalMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not hasattr(request.user, 'vendor_profile'):
             messages.error(request, 'Access denied. Vendor portal only.')
-            return redirect('dashboard')
+            return redirect('dashboard:index')
         return super().dispatch(request, *args, **kwargs)
         
     def get_vendor(self):
