@@ -33,12 +33,12 @@ urlpatterns = [
     
     # WMS Phase 7
     path('wms/picklists/', PickListListView.as_view(), name='picklists'),
-    path('wms/picklists/<int:pk>/', PickListDetailView.as_view(), name='picklist_detail'),
+    path('wms/picklists/<uuid:pk>/', PickListDetailView.as_view(), name='picklist_detail'),
     path('wms/shipments/', ShipmentListView.as_view(), name='shipments'),
     path('wms/lots/', LotBatchListView.as_view(), name='lots'),
-    path('wms/lots/<int:pk>/', LotBatchDetailView.as_view(), name='lot_detail'),
+    path('wms/lots/<uuid:pk>/', LotBatchDetailView.as_view(), name='lot_detail'),
     path('wms/serials/', SerialNumberListView.as_view(), name='serials'),
-    path('wms/serials/<int:pk>/', SerialNumberDetailView.as_view(), name='serial_detail'),
+    path('wms/serials/<uuid:pk>/', SerialNumberDetailView.as_view(), name='serial_detail'),
     path('wms/landed-costs/', LandedCostListView.as_view(), name='landed_costs'),
     
     path('reports/', InventoryReportsView.as_view(), name='reports'),

@@ -15,7 +15,7 @@
                 <tbody>
                     {% for payment in payments %}
                     <tr>
-                        <td>{{ payment.date|date:"M j, Y" }}</td>
+                        <td>{{ payment.payment_date|date:"M j, Y" }}</td>
                         <td class="fw-bold">{{ payment.reference }}</td>
                         <td>{{ payment.invoice.number|default:"-" }}</td>
                         <td>{{ payment.amount|intcomma }}</td>

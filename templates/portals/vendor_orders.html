@@ -16,7 +16,7 @@
                     {% for order in orders %}
                     <tr>
                         <td class="fw-bold">{{ order.number }}</td>
-                        <td>{{ order.date|date:"M j, Y" }}</td>
+                        <td>{{ order.order_date|date:"M j, Y" }}</td>
                         <td><span class="badge bg-{{ order.status|slugify }}">{{ order.get_status_display }}</span></td>
                         <td>{{ order.total|intcomma }}</td>
                         <td class="text-end"><a href="{% url 'portals:vendor_order_detail' order.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>

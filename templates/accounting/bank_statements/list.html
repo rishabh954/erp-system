@@ -19,7 +19,7 @@
                 <tbody>
                     {% for stmt in statements %}
                     <tr>
-                        <td class="fw-bold">{{ stmt.start_date|date:"M j" }} – {{ stmt.end_date|date:"M j, Y" }}</td>
+                        <td class="fw-bold">{{ stmt.date_start|date:"M j" }} – {{ stmt.date_end|date:"M j, Y" }}</td>
                         <td>{{ stmt.bank_account.name }}</td>
                         <td>{{ stmt.transaction_count }}</td>
                         <td>

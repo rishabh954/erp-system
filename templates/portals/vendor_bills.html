@@ -16,7 +16,7 @@
                     {% for bill in bills %}
                     <tr>
                         <td class="fw-bold">{{ bill.number }}</td>
-                        <td>{{ bill.date|date:"M j, Y" }}</td>
+                        <td>{{ bill.bill_date|date:"M j, Y" }}</td>
                         <td>{{ bill.due_date|date:"M j, Y" }}</td>
                         <td>{{ bill.total|intcomma }}</td>
                         <td><span class="badge bg-{{ bill.status|slugify }}">{{ bill.get_status_display }}</span></td>
