@@ -92,10 +92,61 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
 class DataImportView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'administration/integrations/data_import.html'
     
-    # In a real app, POST would process Excel/Tally XML files and create ImportJob.
     def post(self, request):
         file = request.FILES.get('import_file')
         import_type = request.POST.get('import_type')
-        if file:
-            messages.success(request, f"{import_type.title()} import job queued successfully. It will be processed in the background.")
+        
+        if not file:
+            messages.error(request, "No file uploaded.")
+            return redirect('administration:data_import')
+            
+        if not file.name.endswith('.csv'):
+            messages.error(request, "Only CSV files are supported.")
+            return redirect('administration:data_import')
+
+        try:
+            import csv
+            from io import StringIO
+            from apps.inventory.models import Product
+            from apps.crm.models import Customer
+            from apps.purchase.models import Vendor
+            
+            csv_file = file.read().decode('utf-8-sig')
+            reader = csv.DictReader(StringIO(csv_file))
+            
+            success_count = 0
+            company = request.user.primary_company
+            
+            for row in reader:
+                if import_type == 'product':
+                    Product.objects.create(
+                        company=company,
+                        name=row.get('name', 'Unknown Product'),
+                        sku=row.get('sku', ''),
+                        description=row.get('description', ''),
+                        cost_price=row.get('cost_price', 0) or 0,
+                        sale_price=row.get('sale_price', 0) or 0
+                    )
+                elif import_type == 'customer':
+                    Customer.objects.create(
+                        company=company,
+                        name=row.get('name', 'Unknown Customer'),
+                        email=row.get('email', ''),
+                        phone=row.get('phone', ''),
+                        address_line1=row.get('address', '')
+                    )
+                elif import_type == 'vendor':
+                    Vendor.objects.create(
+                        company=company,
+                        name=row.get('name', 'Unknown Vendor'),
+                        email=row.get('email', ''),
+                        phone=row.get('phone', ''),
+                        address_line1=row.get('address', '')
+                    )
+                success_count += 1
+                
+            messages.success(request, f"Successfully imported {success_count} {import_type}(s).")
+        except Exception as e:
+            messages.error(request, f"Error processing file: {str(e)}")
+            
         return redirect('administration:data_import')

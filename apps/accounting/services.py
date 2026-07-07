@@ -69,7 +69,7 @@ class AutoJournalService:
             journal=journal,
             date=invoice.invoice_date or timezone.now().date(),
             reference=f"INV: {invoice.number}",
-            status=JournalEntry.Status.POSTED,
+            status=JournalEntry.Status.DRAFT,
             currency=invoice.currency,
             total_debit=invoice.total,
             total_credit=invoice.total
@@ -112,6 +112,8 @@ class AutoJournalService:
                 credit=invoice.tax_amount
             )
             
+        entry.post()
+            
         return entry
 
     @staticmethod
@@ -128,7 +130,7 @@ class AutoJournalService:
             journal=journal,
             date=payment.payment_date,
             reference=f"PAY: {payment.number}",
-            status=JournalEntry.Status.POSTED,
+            status=JournalEntry.Status.DRAFT,
             currency=payment.currency,
             total_debit=payment.amount,
             total_credit=payment.amount
@@ -157,6 +159,7 @@ class AutoJournalService:
             partner_type='customer',
             partner_id=str(payment.invoice.customer.id) if payment.invoice else ''
         )
+        entry.post()
         return entry
 
     @staticmethod
@@ -180,7 +183,7 @@ class AutoJournalService:
             journal=journal,
             date=bill.bill_date or timezone.now().date(),
             reference=f"BILL: {bill.number}",
-            status=JournalEntry.Status.POSTED,
+            status=JournalEntry.Status.DRAFT,
             currency=bill.currency,
             total_debit=bill.total,
             total_credit=bill.total
@@ -223,6 +226,8 @@ class AutoJournalService:
                 credit=0
             )
             
+        entry.post()
+            
         return entry
 
     @staticmethod
@@ -239,7 +244,7 @@ class AutoJournalService:
             journal=journal,
             date=payment.payment_date,
             reference=f"VPAY: {payment.number}",
-            status=JournalEntry.Status.POSTED,
+            status=JournalEntry.Status.DRAFT,
             currency=payment.currency,
             total_debit=payment.amount,
             total_credit=payment.amount
@@ -268,6 +273,7 @@ class AutoJournalService:
             partner_type='vendor',
             partner_id=str(payment.vendor.id) if payment.vendor else ''
         )
+        entry.post()
         return entry
 
 class FinancialReportingService:
@@ -441,6 +447,8 @@ class JournalEntryService(BaseService):
         entry.total_debit = total_debit
         entry.total_credit = total_credit
         entry.save(update_fields=['total_debit', 'total_credit'])
+        
+        entry.post()
         
         return entry
 

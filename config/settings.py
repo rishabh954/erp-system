@@ -26,9 +26,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 if not DEBUG:
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    if not SECRET_KEY:
+    if not SECRET_KEY or SECRET_KEY == 'change-me-in-production-use-50+-chars' or SECRET_KEY == 'your-very-long-random-secret-key-50-chars-minimum-change-me':
         from django.core.exceptions import ImproperlyConfigured
-        raise ImproperlyConfigured("SECRET_KEY environment variable must be set when DEBUG is False")
+        raise ImproperlyConfigured("SECRET_KEY environment variable must be set securely when DEBUG is False")
 else:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
