@@ -16,7 +16,7 @@
                 <tr><th>Date</th><th>Action</th><th>Reference</th></tr>
             </thead>
             <tbody>
-                {% for mov in serial.movements.all %}
+                {% for mov in movements.all %}
                 <tr>
                     <td>{{ mov.date|date:"M j, Y" }}</td>
                     <td>{{ mov.get_movement_type_display }}</td>

@@ -17,7 +17,7 @@
                         <td class="fw-bold">{{ serial.number }}</td>
                         <td>{{ serial.product.name }}</td>
                         <td><span class="badge bg-{{ serial.status|slugify }}">{{ serial.get_status_display }}</span></td>
-                        <td>{{ serial.warehouse.name|default:"-" }}</td>
+                        <td>{{ serial.status.name|default:"-" }}</td>
                         <td class="text-end"><a href="{% url 'inventory:serial_detail' serial.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
                     </tr>
                     {% empty %}

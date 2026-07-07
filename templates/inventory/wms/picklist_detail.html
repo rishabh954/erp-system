@@ -14,7 +14,7 @@
                     <tr><th>Product</th><th>Location</th><th>Qty to Pick</th><th>Qty Picked</th></tr>
                 </thead>
                 <tbody>
-                    {% for item in picklist.items.all %}
+                    {% for item in picklist.lines.all.all %}
                     <tr>
                         <td>{{ item.product.name }}</td>
                         <td>{{ item.location.name|default:"-" }}</td>

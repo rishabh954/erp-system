@@ -167,18 +167,18 @@
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Payment Terms</span>
-            <span class="fw-semibold small">Net {{ bill.payment_terms }} Days</span>
+            <span class="fw-semibold small">Net {{ bill.terms_conditions }} Days</span>
           </li>
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-bottom">
             <span class="text-muted small">Currency</span>
             <span class="fw-semibold small">{{ bill.currency|default:"USD" }}</span>
           </li>
-          {% if bill.sales_order %}
+          {% if bill.purchase_order %}
           <li class="list-group-item d-flex justify-content-between px-0 bg-transparent py-2 border-0">
             <span class="text-muted small">Source Order</span>
             <span class="fw-semibold small">
-              <a href="{% url 'purchase:order_detail' bill.sales_order.pk %}" class="fw-bold text-primary">
-                {{ bill.sales_order.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
+              <a href="{% url 'purchase:order_detail' bill.purchase_order.pk %}" class="fw-bold text-primary">
+                {{ bill.purchase_order.number }}<i class="fas fa-external-link-alt ms-1 small"></i>
               </a>
             </span>
           </li>

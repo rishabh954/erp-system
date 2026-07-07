@@ -54,7 +54,7 @@
                             {{ order.get_status_display }}
                         </span>
                     </td>
-                    <td class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ order.total_amount }}</td>
+                    <td class="font-weight-600">{{ order.currency.symbol|default:"$" }}{{ order.total }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="4" class="text-center py-4">No recent purchase orders found.</td></tr>

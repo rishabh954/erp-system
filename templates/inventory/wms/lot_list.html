@@ -16,8 +16,8 @@
                     <tr>
                         <td class="fw-bold">{{ lot.number }}</td>
                         <td>{{ lot.product.name }}</td>
-                        <td>{{ lot.quantity }}</td>
-                        <td>{{ lot.expiry_date|date:"M j, Y"|default:"-" }}</td>
+                        <td>{{ lot.status }}</td>
+                        <td>{{ lot.expiration_date|date:"M j, Y"|default:"-" }}</td>
                         <td class="text-end"><a href="{% url 'inventory:lot_detail' lot.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
                     </tr>
                     {% empty %}

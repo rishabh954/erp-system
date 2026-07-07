@@ -18,7 +18,7 @@
                         <tr><th>Date</th><th>Type</th><th>Qty</th><th>Reference</th></tr>
                     </thead>
                     <tbody>
-                        {% for mov in lot.movements.all %}
+                        {% for mov in movements.all %}
                         <tr>
                             <td>{{ mov.date|date:"M j, Y" }}</td>
                             <td>{{ mov.get_movement_type_display }}</td>
@@ -37,10 +37,10 @@
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h6 class="text-muted mb-2">Quantity Remaining</h6>
-                <h4>{{ lot.quantity }}</h4>
+                <h4>{{ quantity }}</h4>
                 <hr>
                 <h6 class="text-muted mb-2">Expiry Date</h6>
-                <p>{{ lot.expiry_date|date:"M j, Y"|default:"Does not expire" }}</p>
+                <p>{{ lot.expiration_date|date:"M j, Y"|default:"Does not expire" }}</p>
             </div>
         </div>
     </div>

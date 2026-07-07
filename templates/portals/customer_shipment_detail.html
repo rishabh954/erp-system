@@ -13,7 +13,7 @@
                 <ul class="list-unstyled mb-0">
                     <li class="mb-2"><strong>Carrier:</strong> {{ shipment.carrier|default:"N/A" }}</li>
                     <li class="mb-2"><strong>Status:</strong> <span class="badge bg-{{ shipment.status|slugify }}">{{ shipment.get_status_display }}</span></li>
-                    <li class="mb-2"><strong>Ship Date:</strong> {{ shipment.date|date:"M j, Y" }}</li>
+                    <li class="mb-2"><strong>Ship Date:</strong> {{ shipment.shipped_date|date:"M j, Y" }}</li>
                     <li><strong>Order Reference:</strong> {{ shipment.sales_order.number }}</li>
                 </ul>
             </div>

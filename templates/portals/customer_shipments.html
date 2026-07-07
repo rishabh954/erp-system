@@ -18,7 +18,7 @@
                         <td>{{ shipment.carrier|default:"-" }}</td>
                         <td>{{ shipment.sales_order.number }}</td>
                         <td><span class="badge bg-{{ shipment.status|slugify }}">{{ shipment.get_status_display }}</span></td>
-                        <td>{{ shipment.date|date:"M j, Y" }}</td>
+                        <td>{{ shipment.shipped_date|date:"M j, Y" }}</td>
                         <td class="text-end"><a href="{% url 'portals:customer_shipment_detail' shipment.pk %}" class="btn btn-sm btn-outline-primary">Track</a></td>
                     </tr>
                     {% empty %}

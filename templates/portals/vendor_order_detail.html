@@ -14,7 +14,7 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light"><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
                     <tbody>
-                        {% for item in order.items.all %}
+                        {% for item in order.lines.all.all %}
                         <tr>
                             <td>{{ item.product.name }}</td>
                             <td>{{ item.quantity }}</td>

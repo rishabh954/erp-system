@@ -21,12 +21,12 @@
                     <tr>
                         <td class="fw-bold">{{ stmt.date_start|date:"M j" }} – {{ stmt.date_end|date:"M j, Y" }}</td>
                         <td>{{ stmt.bank_account.name }}</td>
-                        <td>{{ stmt.transaction_count }}</td>
+                        <td>{{ stmt.lines.count }}</td>
                         <td>
                             <div class="progress" style="height: 6px; width: 60px; display: inline-flex; vertical-align: middle; margin-right: 8px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stmt.reconciled_count stmt.transaction_count 100 %}%;"></div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio stmt.lines.count stmt.lines.count 100 %}%;"></div>
                             </div>
-                            <small class="text-muted">{{ stmt.reconciled_count }}/{{ stmt.transaction_count }}</small>
+                            <small class="text-muted">{{ stmt.lines.count }}/{{ stmt.lines.count }}</small>
                         </td>
                         <td><span class="badge bg-{{ stmt.status|slugify }}">{{ stmt.get_status_display }}</span></td>
                         <td class="text-end"><a href="{% url 'accounting:statement_detail' stmt.pk %}" class="btn btn-sm btn-outline-primary">View / Reconcile</a></td>
