@@ -142,20 +142,6 @@ paths:
                 $ref: '#/components/schemas/User'
           description: ''
   /api/v1/auth/users/me/:
-    get:
-      operationId: api_v1_auth_users_me_retrieve
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
     patch:
       operationId: api_v1_auth_users_me_partial_update
       tags:
@@ -181,7 +167,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+    get:
+      operationId: api_v1_auth_users_me_retrieve
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
   /api/v1/auth/users/{id}/:
+    patch:
+      operationId: api_v1_auth_users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this User.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpdate'
+          description: ''
     get:
       operationId: api_v1_auth_users_retrieve
       parameters:
@@ -228,39 +261,6 @@ paths:
             schema:
               $ref: '#/components/schemas/UserUpdateRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserUpdate'
-          description: ''
-    patch:
-      operationId: api_v1_auth_users_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this User.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUserUpdateRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUserUpdateRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUserUpdateRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -427,6 +427,37 @@ paths:
                 $ref: '#/components/schemas/Role'
           description: ''
   /api/v1/auth/roles/{id}/:
+    patch:
+      operationId: api_v1_auth_roles_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
     get:
       operationId: api_v1_auth_roles_retrieve
       parameters:
@@ -469,37 +500,6 @@ paths:
             schema:
               $ref: '#/components/schemas/RoleRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Role'
-          description: ''
-    patch:
-      operationId: api_v1_auth_roles_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedRoleRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedRoleRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedRoleRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -593,6 +593,39 @@ paths:
                 $ref: '#/components/schemas/ModulePermission'
           description: ''
   /api/v1/auth/module-permissions/{id}/:
+    patch:
+      operationId: api_v1_auth_module_permissions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this module permission.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedModulePermissionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedModulePermissionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedModulePermissionRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModulePermission'
+          description: ''
     get:
       operationId: api_v1_auth_module_permissions_retrieve
       parameters:
@@ -639,39 +672,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ModulePermissionRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModulePermission'
-          description: ''
-    patch:
-      operationId: api_v1_auth_module_permissions_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this module permission.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedModulePermissionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedModulePermissionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedModulePermissionRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -828,6 +828,39 @@ paths:
                 $ref: '#/components/schemas/Lead'
           description: ''
   /api/v1/crm/leads/{id}/:
+    patch:
+      operationId: api_v1_crm_leads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lead.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
     get:
       operationId: api_v1_crm_leads_retrieve
       parameters:
@@ -874,39 +907,6 @@ paths:
             schema:
               $ref: '#/components/schemas/LeadRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Lead'
-          description: ''
-    patch:
-      operationId: api_v1_crm_leads_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this lead.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1072,6 +1072,39 @@ paths:
                 $ref: '#/components/schemas/Campaign'
           description: ''
   /api/v1/crm/campaigns/{id}/:
+    patch:
+      operationId: api_v1_crm_campaigns_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this campaign.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
     get:
       operationId: api_v1_crm_campaigns_retrieve
       parameters:
@@ -1118,39 +1151,6 @@ paths:
             schema:
               $ref: '#/components/schemas/CampaignRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Campaign'
-          description: ''
-    patch:
-      operationId: api_v1_crm_campaigns_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this campaign.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedCampaignRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedCampaignRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedCampaignRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1246,6 +1246,39 @@ paths:
                 $ref: '#/components/schemas/Contract'
           description: ''
   /api/v1/crm/contracts/{id}/:
+    patch:
+      operationId: api_v1_crm_contracts_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contract.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
     get:
       operationId: api_v1_crm_contracts_retrieve
       parameters:
@@ -1292,39 +1325,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ContractRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Contract'
-          description: ''
-    patch:
-      operationId: api_v1_crm_contracts_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this contract.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1420,6 +1420,37 @@ paths:
                 $ref: '#/components/schemas/Quotation'
           description: ''
   /api/v1/sales/quotations/{id}/:
+    patch:
+      operationId: api_v1_sales_quotations_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuotationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuotationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuotationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quotation'
+          description: ''
     get:
       operationId: api_v1_sales_quotations_retrieve
       parameters:
@@ -1462,37 +1493,6 @@ paths:
             schema:
               $ref: '#/components/schemas/QuotationRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Quotation'
-          description: ''
-    patch:
-      operationId: api_v1_sales_quotations_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedQuotationRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedQuotationRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedQuotationRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1685,6 +1685,37 @@ paths:
                 $ref: '#/components/schemas/SalesOrder'
           description: ''
   /api/v1/sales/orders/{id}/:
+    patch:
+      operationId: api_v1_sales_orders_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSalesOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSalesOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSalesOrderRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesOrder'
+          description: ''
     get:
       operationId: api_v1_sales_orders_retrieve
       parameters:
@@ -1727,37 +1758,6 @@ paths:
             schema:
               $ref: '#/components/schemas/SalesOrderRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SalesOrder'
-          description: ''
-    patch:
-      operationId: api_v1_sales_orders_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSalesOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSalesOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSalesOrderRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1917,6 +1917,37 @@ paths:
                 $ref: '#/components/schemas/Invoice'
           description: ''
   /api/v1/sales/invoices/{id}/:
+    patch:
+      operationId: api_v1_sales_invoices_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
     get:
       operationId: api_v1_sales_invoices_retrieve
       parameters:
@@ -1959,37 +1990,6 @@ paths:
             schema:
               $ref: '#/components/schemas/InvoiceRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-    patch:
-      operationId: api_v1_sales_invoices_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoiceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoiceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoiceRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2231,6 +2231,39 @@ paths:
                 $ref: '#/components/schemas/Product'
           description: ''
   /api/v1/inventory/products/{id}/:
+    patch:
+      operationId: api_v1_inventory_products_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this product.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProductRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
     get:
       operationId: api_v1_inventory_products_retrieve
       parameters:
@@ -2277,39 +2310,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ProductRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-          description: ''
-    patch:
-      operationId: api_v1_inventory_products_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this product.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedProductRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedProductRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedProductRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2463,6 +2463,39 @@ paths:
                 $ref: '#/components/schemas/Warehouse'
           description: ''
   /api/v1/inventory/warehouses/{id}/:
+    patch:
+      operationId: api_v1_inventory_warehouses_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this warehouse.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWarehouseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWarehouseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWarehouseRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Warehouse'
+          description: ''
     get:
       operationId: api_v1_inventory_warehouses_retrieve
       parameters:
@@ -2509,39 +2542,6 @@ paths:
             schema:
               $ref: '#/components/schemas/WarehouseRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Warehouse'
-          description: ''
-    patch:
-      operationId: api_v1_inventory_warehouses_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this warehouse.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedWarehouseRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedWarehouseRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedWarehouseRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2763,6 +2763,39 @@ paths:
                 $ref: '#/components/schemas/InventoryTransfer'
           description: ''
   /api/v1/inventory/transfers/{id}/:
+    patch:
+      operationId: api_v1_inventory_transfers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this inventory transfer.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryTransfer'
+          description: ''
     get:
       operationId: api_v1_inventory_transfers_retrieve
       parameters:
@@ -2809,39 +2842,6 @@ paths:
             schema:
               $ref: '#/components/schemas/InventoryTransferRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InventoryTransfer'
-          description: ''
-    patch:
-      operationId: api_v1_inventory_transfers_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this inventory transfer.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedInventoryTransferRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3436,6 +3436,41 @@ paths:
                 $ref: '#/components/schemas/Lead'
           description: ''
   /api/crm/leads/{id}/:
+    patch:
+      operationId: api_crm_leads_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lead.
+        required: true
+      tags:
+      - CRM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
     get:
       operationId: api_crm_leads_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -3486,41 +3521,6 @@ paths:
             schema:
               $ref: '#/components/schemas/LeadRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Lead'
-          description: ''
-    patch:
-      operationId: api_crm_leads_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this lead.
-        required: true
-      tags:
-      - CRM
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3636,6 +3636,41 @@ paths:
                 $ref: '#/components/schemas/Customer'
           description: ''
   /api/crm/customers/{id}/:
+    patch:
+      operationId: api_crm_customers_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer.
+        required: true
+      tags:
+      - CRM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
     get:
       operationId: api_crm_customers_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -3686,41 +3721,6 @@ paths:
             schema:
               $ref: '#/components/schemas/CustomerRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-    patch:
-      operationId: api_crm_customers_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this customer.
-        required: true
-      tags:
-      - CRM
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3845,6 +3845,41 @@ paths:
                 $ref: '#/components/schemas/ErpQuotation'
           description: ''
   /api/sales/quotations/{id}/:
+    patch:
+      operationId: api_sales_quotations_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quotation.
+        required: true
+      tags:
+      - Sales
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpQuotationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpQuotationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpQuotationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpQuotation'
+          description: ''
     get:
       operationId: api_sales_quotations_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -3895,41 +3930,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpQuotationRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpQuotation'
-          description: ''
-    patch:
-      operationId: api_sales_quotations_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this quotation.
-        required: true
-      tags:
-      - Sales
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpQuotationRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpQuotationRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpQuotationRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4058,6 +4058,41 @@ paths:
                 $ref: '#/components/schemas/ErpSalesOrder'
           description: ''
   /api/sales/orders/{id}/:
+    patch:
+      operationId: api_sales_orders_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sales order.
+        required: true
+      tags:
+      - Sales
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpSalesOrder'
+          description: ''
     get:
       operationId: api_sales_orders_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -4108,41 +4143,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpSalesOrderRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpSalesOrder'
-          description: ''
-    patch:
-      operationId: api_sales_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this sales order.
-        required: true
-      tags:
-      - Sales
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpSalesOrderRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4269,6 +4269,41 @@ paths:
                 $ref: '#/components/schemas/ErpInvoice'
           description: ''
   /api/sales/invoices/{id}/:
+    patch:
+      operationId: api_sales_invoices_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this invoice.
+        required: true
+      tags:
+      - Sales
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpInvoice'
+          description: ''
     get:
       operationId: api_sales_invoices_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -4319,41 +4354,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpInvoiceRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpInvoice'
-          description: ''
-    patch:
-      operationId: api_sales_invoices_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this invoice.
-        required: true
-      tags:
-      - Sales
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpInvoiceRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4467,6 +4467,41 @@ paths:
                 $ref: '#/components/schemas/ErpVendor'
           description: ''
   /api/purchase/vendors/{id}/:
+    patch:
+      operationId: api_purchase_vendors_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this vendor.
+        required: true
+      tags:
+      - Purchase
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpVendorRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpVendorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpVendorRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpVendor'
+          description: ''
     get:
       operationId: api_purchase_vendors_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -4517,41 +4552,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpVendorRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpVendor'
-          description: ''
-    patch:
-      operationId: api_purchase_vendors_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this vendor.
-        required: true
-      tags:
-      - Purchase
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpVendorRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpVendorRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpVendorRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4682,6 +4682,41 @@ paths:
                 $ref: '#/components/schemas/ErpPurchaseOrder'
           description: ''
   /api/purchase/orders/{id}/:
+    patch:
+      operationId: api_purchase_orders_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this purchase order.
+        required: true
+      tags:
+      - Purchase
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpPurchaseOrder'
+          description: ''
     get:
       operationId: api_purchase_orders_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -4732,41 +4767,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpPurchaseOrderRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpPurchaseOrder'
-          description: ''
-    patch:
-      operationId: api_purchase_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this purchase order.
-        required: true
-      tags:
-      - Purchase
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpPurchaseOrderRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4891,6 +4891,41 @@ paths:
                 $ref: '#/components/schemas/ErpBill'
           description: ''
   /api/purchase/bills/{id}/:
+    patch:
+      operationId: api_purchase_bills_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bill.
+        required: true
+      tags:
+      - Purchase
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpBillRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpBillRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpBillRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpBill'
+          description: ''
     get:
       operationId: api_purchase_bills_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -4941,41 +4976,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpBillRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpBill'
-          description: ''
-    patch:
-      operationId: api_purchase_bills_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this bill.
-        required: true
-      tags:
-      - Purchase
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpBillRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpBillRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpBillRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5108,6 +5108,41 @@ paths:
                 $ref: '#/components/schemas/ErpProduct'
           description: ''
   /api/inventory/products/{id}/:
+    patch:
+      operationId: api_inventory_products_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this product.
+        required: true
+      tags:
+      - Inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpProductRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpProduct'
+          description: ''
     get:
       operationId: api_inventory_products_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -5158,41 +5193,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpProductRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpProduct'
-          description: ''
-    patch:
-      operationId: api_inventory_products_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this product.
-        required: true
-      tags:
-      - Inventory
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpProductRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpProductRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpProductRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5294,6 +5294,41 @@ paths:
                 $ref: '#/components/schemas/ErpWarehouse'
           description: ''
   /api/inventory/warehouses/{id}/:
+    patch:
+      operationId: api_inventory_warehouses_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this warehouse.
+        required: true
+      tags:
+      - Inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErpWarehouse'
+          description: ''
     get:
       operationId: api_inventory_warehouses_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -5344,41 +5379,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ErpWarehouseRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErpWarehouse'
-          description: ''
-    patch:
-      operationId: api_inventory_warehouses_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this warehouse.
-        required: true
-      tags:
-      - Inventory
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedErpWarehouseRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5503,6 +5503,41 @@ paths:
                 $ref: '#/components/schemas/Employee'
           description: ''
   /api/hrms/employees/{id}/:
+    patch:
+      operationId: api_hrms_employees_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this employee.
+        required: true
+      tags:
+      - HRMS
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmployeeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEmployeeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEmployeeRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+          description: ''
     get:
       operationId: api_hrms_employees_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -5553,41 +5588,6 @@ paths:
             schema:
               $ref: '#/components/schemas/EmployeeRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Employee'
-          description: ''
-    patch:
-      operationId: api_hrms_employees_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this employee.
-        required: true
-      tags:
-      - HRMS
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedEmployeeRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedEmployeeRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedEmployeeRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5710,6 +5710,41 @@ paths:
                 $ref: '#/components/schemas/LeaveRequest'
           description: ''
   /api/hrms/leaves/{id}/:
+    patch:
+      operationId: api_hrms_leaves_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this leave request.
+        required: true
+      tags:
+      - HRMS
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequest'
+          description: ''
     get:
       operationId: api_hrms_leaves_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -5760,41 +5795,6 @@ paths:
             schema:
               $ref: '#/components/schemas/LeaveRequestRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LeaveRequest'
-          description: ''
-    patch:
-      operationId: api_hrms_leaves_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this leave request.
-        required: true
-      tags:
-      - HRMS
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedLeaveRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5917,6 +5917,41 @@ paths:
                 $ref: '#/components/schemas/ManufacturingOrder'
           description: ''
   /api/manufacturing/orders/{id}/:
+    patch:
+      operationId: api_manufacturing_orders_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this manufacturing order.
+        required: true
+      tags:
+      - Manufacturing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManufacturingOrder'
+          description: ''
     get:
       operationId: api_manufacturing_orders_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -5967,41 +6002,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ManufacturingOrderRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ManufacturingOrder'
-          description: ''
-    patch:
-      operationId: api_manufacturing_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this manufacturing order.
-        required: true
-      tags:
-      - Manufacturing
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedManufacturingOrderRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6112,6 +6112,41 @@ paths:
                 $ref: '#/components/schemas/BOM'
           description: ''
   /api/manufacturing/boms/{id}/:
+    patch:
+      operationId: api_manufacturing_boms_partial_update
+      description: Base viewset that automatically filters queryset to the authenticated
+        user's company.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bill of material.
+        required: true
+      tags:
+      - Manufacturing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBOMRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBOMRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBOMRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOM'
+          description: ''
     get:
       operationId: api_manufacturing_boms_retrieve
       description: Base viewset that automatically filters queryset to the authenticated
@@ -6162,41 +6197,6 @@ paths:
             schema:
               $ref: '#/components/schemas/BOMRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BOM'
-          description: ''
-    patch:
-      operationId: api_manufacturing_boms_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this bill of material.
-        required: true
-      tags:
-      - Manufacturing
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedBOMRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedBOMRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedBOMRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6294,6 +6294,39 @@ paths:
                 $ref: '#/components/schemas/Lead'
           description: ''
   /crm/api/leads/{id}/:
+    patch:
+      operationId: crm_api_leads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lead.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
     get:
       operationId: crm_api_leads_retrieve
       parameters:
@@ -6340,39 +6373,6 @@ paths:
             schema:
               $ref: '#/components/schemas/LeadRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Lead'
-          description: ''
-    patch:
-      operationId: crm_api_leads_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this lead.
-        required: true
-      tags:
-      - crm
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedLeadRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6538,6 +6538,39 @@ paths:
                 $ref: '#/components/schemas/Customer'
           description: ''
   /crm/api/customers/{id}/:
+    patch:
+      operationId: crm_api_customers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this customer.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
     get:
       operationId: crm_api_customers_retrieve
       parameters:
@@ -6584,39 +6617,6 @@ paths:
             schema:
               $ref: '#/components/schemas/CustomerRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-    patch:
-      operationId: crm_api_customers_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this customer.
-        required: true
-      tags:
-      - crm
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6758,6 +6758,39 @@ paths:
                 $ref: '#/components/schemas/Contract'
           description: ''
   /crm/api/contracts/{id}/:
+    patch:
+      operationId: crm_api_contracts_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contract.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
     get:
       operationId: crm_api_contracts_retrieve
       parameters:
@@ -6804,39 +6837,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ContractRequest'
         required: true
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Contract'
-          description: ''
-    patch:
-      operationId: crm_api_contracts_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this contract.
-        required: true
-      tags:
-      - crm
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedContractRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []

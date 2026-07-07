@@ -205,7 +205,7 @@ class PayrollService(BaseService):
 
         employees = Employee.objects.filter(
             company=period.company, status__in=['active', 'probation'], is_deleted=False
-        ).select_related('salary_structure')
+        )
 
         total_gross = Decimal('0')
         total_deductions = Decimal('0')

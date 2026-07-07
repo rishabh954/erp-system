@@ -109,6 +109,11 @@ def test_sales_order_cancellation_releases_reservation(setup_data):
         sales_order=order, product=product, quantity=Decimal('30'), unit_price=Decimal('60'), description='Test'
     )
     
+    StockService(user=user, company=company).receive_stock(
+        product=product, warehouse=warehouse, qty=Decimal('50'), unit_cost=Decimal('50'),
+        reference_type='Initial', reference_id='INV-INIT-1'
+    )
+    
     SalesOrderService(user=user, company=company).confirm_order(order)
     stock = StockRecord.objects.get(product=product, warehouse=warehouse)
     assert stock.quantity_reserved == Decimal('30')

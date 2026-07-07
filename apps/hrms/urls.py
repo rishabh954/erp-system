@@ -30,6 +30,7 @@ urlpatterns = [
     path('attendance/check-out/', CheckOutView.as_view(), name='check_out'),
     path('leaves/', LeaveListView.as_view(), name='leaves'),
     path('leaves/create/', LeaveRequestCreateView.as_view(), name='leave_request_create'),
+    path('leaves/<uuid:pk>/approve/', LeaveApproveView.as_view(), name='leave_approve'),
     path('salary-structures/', SalaryStructureListView.as_view(), name='salary_structures'),
     path('salary-structures/create/', SalaryStructureCreateView.as_view(), name='salary_structure_create'),
     path('salary-structures/<uuid:pk>/', SalaryStructureDetailView.as_view(), name='salary_structure_detail'),

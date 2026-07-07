@@ -143,8 +143,17 @@ erp_system/
 ├── requirements.txt                 # All Python dependencies
 ├── .env.example                     # Environment variables template
 ├── INSTALLATION.md                  # Complete setup & deployment guide
+├── verify_system.py                 # Connectivity verification script
 └── manage.py
 ```
+
+---
+
+## 🛠️ Verification & Capabilities
+
+- **System Verification**: Use `python verify_system.py` to validate database, redis, and celery worker connectivity post-deployment.
+- **Automated Seeding**: Default Chart of Accounts and currencies are automatically bootstrapped during migrations (`apps/company/management/commands/seed_default_coa.py`).
+- **CSV Import**: Full support for importing CSV data (e.g. Customers, Inventory, Chart of Accounts) directly through the admin panels or dedicated import endpoints.
 
 ---
 

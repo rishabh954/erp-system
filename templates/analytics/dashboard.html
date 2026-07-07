@@ -29,15 +29,16 @@
 
   /* ── Stat cards ──────────────────────────────────────────── */
   .stat-card {
-    background: var(--card-bg);
-    border-radius: 14px;
-    padding: 1.5rem;
-    border: 1px solid rgba(var(--border-rgb), .12);
-    transition: transform .2s, box-shadow .2s;
+    background: var(--card-bg, #ffffff);
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    border: 1px solid rgba(var(--border-rgb, 0,0,0), .08);
+    transition: all .3s ease;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,.02);
   }
-  .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+  .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.08); border-color: rgba(67,97,238,.3); }
   .stat-card .icon-wrap {
     width: 52px; height: 52px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
@@ -99,10 +100,11 @@
 
   /* ── Quick export panel ──────────────────────────────────── */
   .quick-export-card {
-    background: var(--card-bg);
-    border-radius: 14px;
-    border: 1px solid rgba(var(--border-rgb), .12);
+    background: var(--card-bg, #ffffff);
+    border-radius: 16px;
+    border: 1px solid rgba(var(--border-rgb, 0,0,0), .08);
     padding: 1.75rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,.02);
   }
 
   /* ── Empty state ─────────────────────────────────────────── */
@@ -160,8 +162,8 @@
   <!-- Saved reports -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="stat-card">
-      <div class="icon-wrap" style="background:rgba(67,97,238,.12); color:var(--brand-primary);">
-        <i class="fa-solid fa-file-chart-column"></i>
+      <div class="icon-wrap" style="background:rgba(67,97,238,.12); color:var(--brand-primary, #4361ee);">
+        <i class="fa-solid fa-chart-pie"></i>
       </div>
       <div class="stat-value">{{ saved_reports_count|default:"0" }}</div>
       <div class="stat-label">Saved Reports</div>
@@ -209,13 +211,22 @@
 <!-- ═══════════════════════════════════════════════════════════
      SAVED REPORT CARDS  /  EMPTY STATE
 ═══════════════════════════════════════════════════════════ -->
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h5 class="fw-bold mb-0">
-    <i class="fa-solid fa-layer-group me-2 text-primary"></i>Saved Reports
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <h5 class="fw-bold mb-0 d-flex align-items-center">
+    <div class="icon-wrap-sm me-2" style="background:rgba(67,97,238,.1); color:var(--brand-primary, #4361ee); padding: 6px 10px; border-radius:8px;">
+      <i class="fa-solid fa-layer-group"></i>
+    </div>
+    Saved Reports
   </h5>
-  <a href="{% url 'analytics:saved_reports' %}" class="btn btn-link btn-sm text-decoration-none fw-semibold">
-    View All <i class="fa-solid fa-chevron-right fa-xs ms-1"></i>
-  </a>
+  <div class="d-flex align-items-center gap-3">
+    <div class="search-wrap" style="position:relative;">
+      <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.85rem;"></i>
+      <input type="search" id="reportSearch" class="form-control form-control-sm" placeholder="Filter reports…" style="padding-left: 2.2rem; min-width:240px; border-radius:8px; border-color: rgba(var(--border-rgb), 0.15); box-shadow: inset 0 1px 2px rgba(0,0,0,.02);">
+    </div>
+    <a href="{% url 'analytics:saved_reports' %}" class="btn btn-primary btn-sm fw-semibold rounded-pill px-4 shadow-sm" style="transition: all 0.2s;">
+      View All <i class="fa-solid fa-chevron-right fa-xs ms-1"></i>
+    </a>
+  </div>
 </div>
 
 {% if saved_reports %}
@@ -301,7 +312,7 @@
 
 {% else %}
 <!-- Empty state -->
-<div class="card border-0 shadow-sm rounded-4 mb-5" style="background:var(--card-bg);">
+<div class="card shadow-sm rounded-4 mb-5" style="background:var(--card-bg, #ffffff); border: 1px solid rgba(var(--border-rgb, 0,0,0), .08);">
   <div class="card-body empty-state">
     <div class="empty-icon">
       <i class="fa-solid fa-chart-column"></i>
@@ -322,12 +333,12 @@
 
   <!-- Recent Executions -->
   <div class="col-12 col-xl-8">
-    <div class="card border-0 shadow-sm rounded-4 h-100" style="background:var(--card-bg);">
+    <div class="card border-0 shadow-sm rounded-4 h-100" style="background:var(--card-bg, #ffffff);">
       <div class="card-header bg-transparent border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
         <h6 class="fw-bold mb-0">
           <i class="fa-solid fa-list-check me-2 text-primary"></i>Recent Executions
         </h6>
-        <a href="{% url 'analytics:execution_log' %}" class="btn btn-link btn-sm text-decoration-none fw-semibold p-0">
+        <a href="{% url 'analytics:execution_log' %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold" style="transition: all 0.2s;">
           Full Log <i class="fa-solid fa-arrow-right fa-xs ms-1"></i>
         </a>
       </div>
@@ -568,23 +579,16 @@ function confirmDelete(pk, name) {
   new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 
-/* ── Card search (inline) ─────────────────────────────────── */
-const searchInput = document.createElement('input');
-searchInput.type = 'search';
-searchInput.className = 'form-control form-control-sm';
-searchInput.placeholder = 'Filter reports…';
-searchInput.style.cssText = 'max-width:220px;';
-
-const headerRow = document.querySelector('.d-flex.align-items-center.justify-content-between.mb-3');
-if (headerRow) headerRow.prepend(searchInput);
-
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.toLowerCase();
-  document.querySelectorAll('.report-card-col').forEach(col => {
-    const name = col.dataset.name || '';
-    const mod  = col.dataset.module || '';
-    col.style.display = (name.includes(q) || mod.includes(q)) ? '' : 'none';
+const searchInput = document.getElementById('reportSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase();
+    document.querySelectorAll('.report-card-col').forEach(col => {
+      const name = col.dataset.name || '';
+      const mod  = col.dataset.module || '';
+      col.style.display = (name.includes(q) || mod.includes(q)) ? '' : 'none';
+    });
   });
-});
+}
 </script>
 {% endblock %}

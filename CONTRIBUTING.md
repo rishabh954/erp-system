@@ -1,0 +1,49 @@
+# Contributing to Enterprise ERP
+
+Welcome to the Enterprise ERP project! 
+
+## Testing Pattern
+
+This project strictly follows a unified testing pattern using `pytest` and Django. 
+When writing new tests, please adhere to the following guidelines to ensure consistency, speed, and reliability.
+
+### 1. Test Organization
+- All tests should reside in the `apps/<app_name>/tests/` directory.
+- Test files should be named `test_<feature>.py` (e.g., `test_views.py`, `test_services.py`).
+- **CRITICAL**: Every `tests/` directory MUST have an `__init__.py` file to prevent `pytest` import module collisions. Do not create a single `tests.py` file if a `tests/` directory exists.
+
+### 2. Utilizing `conftest.py` Fixtures
+Do not manually create `User`, `Company`, `Currency`, or other core dependency records inside individual test functions unless specifically testing that creation logic. 
+Instead, utilize the globally available `pytest` fixtures defined in the root `conftest.py`.
+
+Available fixtures include:
+- `db`: Activates database access.
+- `client`: Django test client.
+- `company`: A pre-configured `Company` instance.
+- `user`: A standard `User` instance linked to the `company`.
+- `currency`: A default `Currency` (USD) instance.
+- `tax`: A default `Tax` instance.
+- `product`: A pre-configured `Product` item.
+- `warehouse`: A pre-configured `Warehouse` instance.
+- `vendor`: A pre-configured `Vendor` instance.
+- `department`: A pre-configured `Department` instance.
+- `employee`: A standard `Employee` instance mapped to the `user`.
+
+**Example:**
+```python
+import pytest
+from django.urls import reverse
+
+pytestmark = pytest.mark.django_db
+
+def test_product_list_view(client, user, company, product):
+    client.force_login(user)
+    response = client.get(reverse('inventory:product_list'))
+    
+    assert response.status_code == 200
+    assert product.name in str(response.content)
+```
+
+### 3. E2E and Multi-tenancy Testing
+- End-to-end (E2E) workflow tests reside in the root `tests/` directory (e.g., `test_e2e_walkthrough.py`). We use Django's `LiveServerTestCase` and `django.test.Client` for fast, headless E2E verification rather than heavy Selenium/Playwright suites.
+- Ensure all detail views strictly enforce multi-tenancy constraints (e.g., `get_queryset` isolating objects by `self.request.user.primary_company`). Boundary violation tests are tracked in `tests/test_multitenant_boundary.py`.

@@ -3,6 +3,7 @@ from core.factories import CompanyFactory, UserFactory
 from apps.authentication.models import UserCompany
 from apps.company.models import Currency, Tax
 from decimal import Decimal
+from datetime import date
 
 @pytest.fixture
 def company(db):
@@ -16,12 +17,15 @@ def user(db, company):
 
 @pytest.fixture
 def currency(db):
-    return Currency.objects.create(
+    currency, created = Currency.objects.get_or_create(
         code='USD',
-        name='US Dollar',
-        symbol='$',
-        is_base=True
+        defaults={
+            'name': 'US Dollar',
+            'symbol': '$',
+            'is_base': True
+        }
     )
+    return currency
 
 @pytest.fixture
 def tax(db, company):
@@ -60,3 +64,26 @@ def vendor(db, company):
         name='Test Vendor',
         email='vendor@test.com'
     )
+
+@pytest.fixture
+def department(db, company):
+    from apps.company.models import Department
+    return Department.objects.create(
+        company=company,
+        name='Test Department',
+        code='DEPT-01'
+    )
+
+@pytest.fixture
+def employee(db, company, user, department):
+    from apps.hrms.models import Employee
+    return Employee.objects.create(
+        company=company,
+        user=user,
+        department=department,
+        employee_id='EMP-001',
+        first_name='John',
+        last_name='Doe',
+        joining_date=date.today()
+    )
+

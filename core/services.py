@@ -140,16 +140,19 @@ class BaseService:
         )
 
     @staticmethod
-    def generate_sequence_number(prefix: str, model_class, company_id) -> str:
+    def generate_sequence_number(prefix: str, model_class, company_id, field_name: str = 'number') -> str:
         """Thread-safe sequence number generation."""
         with transaction.atomic():
+            filter_kwargs = {
+                'company_id': company_id,
+                f"{field_name}__startswith": f"{prefix}-"
+            }
             last = model_class.all_objects.select_for_update().filter(
-                company_id=company_id,
-                number__startswith=f"{prefix}-"
-            ).order_by('-number').first()
-            if last and last.number:
+                **filter_kwargs
+            ).order_by(f"-{field_name}").first()
+            if last and getattr(last, field_name):
                 try:
-                    seq = int(last.number.split('-')[-1]) + 1
+                    seq = int(getattr(last, field_name).split('-')[-1]) + 1
                 except (ValueError, IndexError):
                     seq = 1
             else:

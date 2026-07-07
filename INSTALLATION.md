@@ -98,6 +98,13 @@ celery -A config.celery beat -l info
 celery -A config.celery flower --port=5555
 ```
 
+### Verify Installation
+To verify that everything is running correctly, use the built-in verification script:
+```bash
+python verify_system.py
+```
+This script will test database connectivity, Celery worker status, and Redis cache.
+
 Open: http://localhost:8000
 
 ---
