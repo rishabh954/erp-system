@@ -136,7 +136,7 @@ Format responses using markdown. Use tables for comparisons. Be professional and
                     yield delta.content
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}")
-            yield f"\n\n⚠️ Stream error: {str(e)}"
+            yield f"\n\n⚠️ Stream error: {"An unexpected error occurred."}"
 
     @classmethod
     def _gemini_chat(cls, model, messages: list):
@@ -238,7 +238,7 @@ Return ONLY the JSON object, no explanation."""
 
         except Exception as e:
             logger.error(f"OCR error: {e}")
-            result["error"] = str(e)
+            result["error"] = "An unexpected error occurred."
 
         result["processing_time_ms"] = int((time.time() - start) * 1000)
         return result
@@ -441,7 +441,7 @@ class ForecastingService:
             }
         except Exception as e:
             logger.error(f"Inventory forecast error: {e}")
-            return {"type": "inventory", "alerts": [], "error": str(e)}
+            return {"type": "inventory", "alerts": [], "error": "An unexpected error occurred."}
 
     @classmethod
     def demand_prediction(cls, company, product_id=None, days_ahead: int = 30) -> dict:
@@ -619,7 +619,7 @@ Focus on retention, growth opportunities, and risk mitigation. Be specific and p
             }
         except Exception as e:
             logger.error(f"Customer insight error: {e}")
-            return {"segments": {}, "narrative": f"Error: {e}", "error": str(e)}
+            return {"segments": {}, "narrative": f"Error: {e}", "error": "An unexpected error occurred."}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -846,7 +846,7 @@ Use clear business language. Format with markdown headers."""
             }
         except Exception as e:
             logger.error(f"Financial summary error: {e}")
-            return {"narrative": AI_NOT_CONFIGURED_MSG, "metrics": {}, "error": str(e)}
+            return {"narrative": AI_NOT_CONFIGURED_MSG, "metrics": {}, "error": "An unexpected error occurred."}
 
     @classmethod
     def _gather_metrics(cls, company) -> dict:

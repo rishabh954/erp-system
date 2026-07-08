@@ -334,7 +334,7 @@ class LeadConvertView(CompanyMixin, View):
 
 
 class LeadToggleOpportunityView(CompanyMixin, View):
-    required_permission = "crm.read"
+    required_permission = "crm.update"
     """Toggle a lead's status as an Opportunity."""
 
     def post(self, request, pk):
@@ -349,7 +349,7 @@ class LeadToggleOpportunityView(CompanyMixin, View):
 
 
 class AddActivityView(CompanyMixin, View):
-    required_permission = "crm.read"
+    required_permission = "crm.create"
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
         duration = request.POST.get("duration_minutes")

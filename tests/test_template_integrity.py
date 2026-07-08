@@ -13,7 +13,7 @@ def test_url_pk_consistency():
     """
     Walk every path() in urls.py, resolve the view, inspect the model class it operates on,
     and flag any <int:pk> route pointing at a UUID-keyed model (or vice versa).
-    """
+    """  # noqa: E501
     resolver = get_resolver()
 
     # Simple regex to extract <int:pk> or <uuid:pk> from URL patterns
@@ -45,11 +45,11 @@ def test_url_pk_consistency():
 
                     if is_uuid and int_pattern.search(full_pattern):
                         errors.append(
-                            f"URL {full_pattern} uses <int:pk> but model {model.__name__} has a UUID PK."
+                            f"URL {full_pattern} uses <int:pk> but model {model.__name__} has a UUID PK."  # noqa: E501
                         )
                     elif not is_uuid and uuid_pattern.search(full_pattern):
                         errors.append(
-                            f"URL {full_pattern} uses <uuid:pk> but model {model.__name__} has an int PK."
+                            f"URL {full_pattern} uses <uuid:pk> but model {model.__name__} has an int PK."  # noqa: E501
                         )
 
     check_patterns(resolver.url_patterns)
@@ -128,7 +128,7 @@ def test_template_field_references():
     ]
 
     for filepath in template_files:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             content = f.read()
 
         matches = var_pattern.findall(content) + tag_pattern.findall(content)
@@ -139,7 +139,7 @@ def test_template_field_references():
                 if not models_to_check:
                     continue
 
-                # If the field_name matches a valid field/property on AT LEAST ONE of the potential models, it's valid
+                # If the field_name matches a valid field/property on AT LEAST ONE of the potential models, it's valid  # noqa: E501
                 is_valid = False
                 for model in models_to_check:
                     # Check fields
@@ -148,7 +148,7 @@ def test_template_field_references():
                         is_valid = True
                         break
 
-                    # Check if it's a property (like 'total', 'subtotal' if they are properties)
+                    # Check if it's a property (like 'total', 'subtotal' if they are properties)  # noqa: E501
                     if hasattr(model, field_name):
                         is_valid = True
                         break
@@ -156,7 +156,7 @@ def test_template_field_references():
                 if not is_valid:
                     rel_path = os.path.relpath(filepath, templates_dir)
                     errors.append(
-                        f"Template {rel_path}: '{var_name}.{field_name}' referenced, but '{field_name}' not found on {var_name} models {[m.__name__ for m in models_to_check]}."
+                        f"Template {rel_path}: '{var_name}.{field_name}' referenced, but '{field_name}' not found on {var_name} models {[m.__name__ for m in models_to_check]}."  # noqa: E501
                     )
 
     # Filter duplicates

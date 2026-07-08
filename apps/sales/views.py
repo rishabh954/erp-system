@@ -3,6 +3,7 @@ Sales Module Views
 Quotations, Sales Orders, Invoices, Payments — list/create/detail/update
 """
 
+import logging
 from decimal import Decimal
 
 from core.permissions import PermissionRequiredMixin
@@ -29,6 +30,9 @@ from .models import (
 )
 
 # ─── Mixin: company scoping ───────────────────────────────────────────────────
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyScopedMixin(PermissionRequiredMixin):
@@ -312,7 +316,8 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
             )
             return redirect("sales:order_detail", pk=so.pk)
         except Exception as e:
-            messages.error(request, f"Error converting quotation: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            messages.error(request, f"Error converting quotation: {"An unexpected error occurred."}")
             return redirect("sales:quotation_detail", pk=pk)
 
 
@@ -1282,7 +1287,7 @@ class POSView(CompanyScopedMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         import json
-
+        import logging
         from apps.company.models import Tax
         from apps.crm.models import Customer
         from apps.inventory.models import Product
@@ -1305,12 +1310,13 @@ class POSView(CompanyScopedMixin, TemplateView):
 
 
 import json
+import logging
 
 from django.http import JsonResponse
 
 
 class POSAPIView(CompanyScopedMixin, View):
-    required_permission = "sales.read"
+    required_permission = "sales.create"
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -1426,9 +1432,8 @@ class POSAPIView(CompanyScopedMixin, View):
                 {"success": False, "error": "Customer not found."}, status=400
             )
         except Exception as e:
-            import traceback
-
+            logger.error("Unexpected error", exc_info=True)
             return JsonResponse(
-                {"success": False, "error": str(e), "detail": traceback.format_exc()},
+                {"success": False, "error": "An unexpected error occurred."},
                 status=400,
             )

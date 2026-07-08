@@ -26,25 +26,25 @@ class RequestLoggingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        from core.logging import set_logging_context, clear_logging_context
-        
-        user_id = str(request.user.pk) if hasattr(request, "user") and request.user.is_authenticated else "anonymous"
-        company_id = str(request.company.pk) if hasattr(request, "company") and request.company else "none"
-        
-        # In case the company is set in another middleware running AFTER this one, 
-        # we still do our best here, or we place RequestLoggingMiddleware after TenantMiddleware.
-        
+        from core.logging import clear_logging_context, set_logging_context
+
+        user_id = str(request.user.pk) if hasattr(request, "user") and request.user.is_authenticated else "anonymous"  # noqa: E501
+        company_id = str(request.company.pk) if hasattr(request, "company") and request.company else "none"  # noqa: E501
+
+        # In case the company is set in another middleware running AFTER this one,
+        # we still do our best here, or we place RequestLoggingMiddleware after TenantMiddleware.  # noqa: E501
+
         set_logging_context(
             user_id=user_id,
             company_id=company_id,
             request_path=request.path,
             client_ip=AuditLogMiddleware.get_client_ip(request)
         )
-        
+
         response = self.get_response(request)
-        
+
         clear_logging_context()
-        
+
         return response
 
 

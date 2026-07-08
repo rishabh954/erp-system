@@ -1,3 +1,4 @@
+import logging
 import csv
 from datetime import datetime
 from decimal import Decimal
@@ -9,6 +10,9 @@ from django.views.generic import CreateView, ListView
 from apps.company.views import CompanyMixin
 
 from .models import BankStatement, BankStatementLine
+
+
+logger = logging.getLogger(__name__)
 
 
 class BankStatementListView(CompanyMixin, ListView):
@@ -56,7 +60,8 @@ class BankStatementCreateView(CompanyMixin, CreateView):
                         reference=row.get("Reference", ""),
                     )
             except Exception as e:
-                messages.error(self.request, f"Failed to process CSV: {str(e)}")
+                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                messages.error(self.request, f"Failed to process CSV: {"An unexpected error occurred."}")
 
         return response
 

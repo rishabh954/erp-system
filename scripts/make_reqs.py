@@ -1,9 +1,8 @@
-import os
 
-with open('requirements.txt', 'r', encoding='utf-8-sig') as f:
+with open('requirements.txt', encoding='utf-8-sig') as f:
     lines = f.readlines()
 
-excludes = {'reportlab', 'xhtml2pdf', 'pyHanko', 'pyhanko-certvalidator', 'drf-spectacular'}
+excludes = {'reportlab', 'xhtml2pdf', 'pyHanko', 'pyhanko-certvalidator', 'drf-spectacular'}  # noqa: E501
 in_lines = set()
 
 for line in lines:

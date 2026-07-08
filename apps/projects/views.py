@@ -222,7 +222,7 @@ class KanbanBoardView(CompanyMixin, DetailView):
 
 
 class TaskMoveView(CompanyMixin, View):
-    required_permission = "projects.read"
+    required_permission = "projects.update"
     """AJAX endpoint to move task between Kanban columns."""
 
     def post(self, request, pk):
@@ -347,7 +347,7 @@ class TaskDetailView(CompanyMixin, DetailView):
 
 
 class AddCommentView(CompanyMixin, View):
-    required_permission = "projects.read"
+    required_permission = "projects.create"
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk, company=self.company(), is_deleted=False)
         content = request.POST.get("content", "").strip()
@@ -362,7 +362,7 @@ class AddCommentView(CompanyMixin, View):
 
 
 class LogTimeView(CompanyMixin, View):
-    required_permission = "projects.read"
+    required_permission = "projects.create"
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk, company=self.company(), is_deleted=False)
         hours = float(request.POST.get("hours", 0))

@@ -78,7 +78,7 @@ class DocumentDetailView(CompanyMixin, DetailView):
 
 
 class DocumentUploadView(CompanyMixin, View):
-    required_permission = "documents.read"
+    required_permission = "documents.create"
     template_name = "documents/upload.html"
 
     def get(self, request):

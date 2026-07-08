@@ -1,9 +1,13 @@
+import logging
 import sys
 import time
 
 from django.core.management.base import BaseCommand
 
 from apps.company.tasks import update_exchange_rates
+
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -16,7 +20,8 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(
                 self.style.ERROR(
-                    f"Failed to submit task to broker. Is Redis/Celery running? Error: {str(e)}"
+                    logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                    f"Failed to submit task to broker. Is Redis/Celery running? Error: {"An unexpected error occurred."}"
                 )
             )
             sys.exit(1)

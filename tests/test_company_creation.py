@@ -16,7 +16,7 @@ def test_company_create_view_get():
     client = Client()
 
     # Create user with NO primary company
-    user = User.objects.create_user(
+    user = User.objects.create_user(  # noqa: F841
         email="newuser@example.com",
         password="password123",
         first_name="New",
@@ -81,7 +81,7 @@ def test_company_create_view_redirects_if_already_has_company():
     client = Client()
 
     company = Company.objects.create(name="Existing Company", timezone="UTC")
-    user = User.objects.create_user(
+    user = User.objects.create_user(  # noqa: F841
         email="existing@example.com", password="password123", primary_company=company
     )
 

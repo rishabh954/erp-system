@@ -1,3 +1,4 @@
+import logging
 """
 Accounting Views
 Chart of Accounts, Journal Entries, Bank Accounts, Financial Reports
@@ -23,6 +24,9 @@ from .models import (
     JournalEntry,
     JournalItem,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -591,7 +595,8 @@ class BankReconciliationView(CompanyMixin, View):
                 service.reconcile_transaction(line_id, journal_item_id)
                 messages.success(request, "Successfully reconciled transaction.")
             except Exception as e:
-                messages.error(request, f"Reconciliation failed: {str(e)}")
+                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                messages.error(request, f"Reconciliation failed: {"An unexpected error occurred."}")
 
         elif action == "create_transaction":
             # Manual creation of a bank transaction for demo purposes
@@ -613,7 +618,8 @@ class BankReconciliationView(CompanyMixin, View):
                 )
                 messages.success(request, "Bank transaction created manually.")
             except Exception as e:
-                messages.error(request, f"Failed to create transaction: {str(e)}")
+                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                messages.error(request, f"Failed to create transaction: {"An unexpected error occurred."}")
 
         return redirect(
             f"{request.path}?bank_account={request.POST.get('bank_account', '')}"
@@ -714,7 +720,8 @@ class IssueCreditNoteView(CompanyMixin, View):
             return redirect("sales:invoice_detail", pk=cn.pk)
 
         except Exception as e:
-            messages.error(request, f"Error creating Credit Note: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            messages.error(request, f"Error creating Credit Note: {"An unexpected error occurred."}")
             return redirect("accounting:issue_credit_note")
 
 

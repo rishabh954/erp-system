@@ -44,12 +44,12 @@ class HasModulePermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-            
+
         required_perm = getattr(view, 'required_permission', None)
         if not required_perm:
             # If no permission is explicitly required, fallback to basic auth check
             return True
-            
+
         try:
             module, action = required_perm.split('.')
             return request.user.has_module_permission(module, action)
@@ -57,8 +57,9 @@ class HasModulePermission(permissions.BasePermission):
             return False
 
 
-from django.contrib.auth.mixins import AccessMixin
-from django.core.exceptions import ImproperlyConfigured
+from django.contrib.auth.mixins import AccessMixin  # noqa: E402
+from django.core.exceptions import ImproperlyConfigured  # noqa: E402
+
 
 class PermissionRequiredMixin(AccessMixin):
     """
@@ -70,7 +71,7 @@ class PermissionRequiredMixin(AccessMixin):
     def get_required_permission(self):
         if self.required_permission is None:
             raise ImproperlyConfigured(
-                f"{self.__class__.__name__} is missing the required_permission attribute. "
+                f"{self.__class__.__name__} is missing the required_permission attribute. "  # noqa: E501
                 "Define required_permission = 'module.action'."
             )
         return self.required_permission

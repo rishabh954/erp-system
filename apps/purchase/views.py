@@ -1,3 +1,4 @@
+import logging
 """
 Purchase Management Views
 Vendors, Purchase Requests, Purchase Orders, Goods Receipts
@@ -13,6 +14,9 @@ from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 
 from .models import GoodsReceipt, PurchaseOrder, PurchaseRequest, Vendor
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -533,7 +537,7 @@ class PurchaseOrderDeleteView(CompanyMixin, View):
 
 
 class PurchaseOrderSubmitView(CompanyMixin, View):
-    required_permission = "purchase.read"
+    required_permission = "purchase.update"
     def post(self, request, pk):
         po = get_object_or_404(
             PurchaseOrder, pk=pk, company=self.company(), is_deleted=False
@@ -1035,7 +1039,7 @@ class VendorBidCreateView(CompanyMixin, View):
 
 
 class VendorBidActionView(CompanyMixin, View):
-    required_permission = "purchase.read"
+    required_permission = "purchase.approve"
     def post(self, request, pk):
         bid = get_object_or_404(VendorBid, pk=pk, company=self.company())
         action = request.POST.get("action")
@@ -1129,7 +1133,7 @@ class PurchaseDashboardView(CompanyMixin, TemplateView):
 
 
 class VendorEvaluateView(CompanyMixin, View):
-    required_permission = "purchase.read"
+    required_permission = "purchase.create"
     def get(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
 

@@ -36,7 +36,7 @@ def sales_invoice(company):
 
 @pytest.mark.django_db
 def test_post_sales_invoice_balances_and_updates(company, sales_invoice):
-    """Test that AutoJournalService correctly posts an invoice, balances it, and updates A/R and Revenue."""
+    """Test that AutoJournalService correctly posts an invoice, balances it, and updates A/R and Revenue."""  # noqa: E501
     entry = AutoJournalService.post_sales_invoice(sales_invoice)
 
     # Assert entry is balanced and posted

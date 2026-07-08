@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import models
@@ -6,6 +7,9 @@ from django.http import JsonResponse
 from django.views import View
 
 from .models import Product, StockRecord
+
+
+logger = logging.getLogger(__name__)
 
 
 class BarcodeScanAPIView(LoginRequiredMixin, View):
@@ -78,4 +82,5 @@ class BarcodeScanAPIView(LoginRequiredMixin, View):
             )
 
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)

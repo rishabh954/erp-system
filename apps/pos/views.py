@@ -1,3 +1,4 @@
+import logging
 import json
 
 from core.permissions import PermissionRequiredMixin
@@ -11,7 +12,10 @@ from apps.inventory.models import Product, ProductCategory, StockMovement, Wareh
 from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
 
 
-class POSIndexView(CompanyMixin, View):
+logger = logging.getLogger(__name__)
+
+
+class POSIndexView(PermissionRequiredMixin, CompanyMixin, View):
     required_permission = "pos.read"
     def get(self, request, *args, **kwargs):
         # Ensure there is an open session for the user
@@ -62,8 +66,8 @@ class POSIndexView(CompanyMixin, View):
         return render(request, "sales/pos.html", context)
 
 
-class POSCheckoutAPIView(CompanyMixin, View):
-    required_permission = "pos.read"
+class POSCheckoutAPIView(PermissionRequiredMixin, CompanyMixin, View):
+    required_permission = "pos.create"
     def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)
@@ -155,13 +159,12 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 status=400,
             )
         except Exception as e:
-            import traceback
-
+            logger.error("POS checkout failed", exc_info=True)
             return JsonResponse(
                 {
                     "status": "error",
-                    "message": str(e),
-                    "detail": traceback.format_exc(),
+                    "message": "Transaction failed",
+                    "error": "An unexpected error occurred."
                 },
-                status=400,
+                status=500,
             )

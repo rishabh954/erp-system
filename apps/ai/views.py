@@ -4,6 +4,7 @@ All 13 AI features with streaming chat, SSE, OCR, forecasting, insights, and NLP
 """
 
 import json
+import logging
 
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
@@ -14,6 +15,9 @@ from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from apps.ai.models import AIConversation, AIInsight, AIMessage, NLPReport, OCRDocument
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -135,7 +139,8 @@ class ChatSendMessageView(CompanyMixin, View):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                yield f"data: {json.dumps({'error': "An unexpected error occurred."})}\n\n"
             finally:
                 # Save assistant message
                 if full_response:
@@ -230,7 +235,8 @@ class NLPReportQueryView(CompanyMixin, View):
                 }
             )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -278,7 +284,8 @@ class ForecastDataView(CompanyMixin, View):
 
             return JsonResponse(data)
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -437,7 +444,8 @@ class GenerateCustomerInsightsView(CompanyMixin, View):
                 }
             )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -466,7 +474,8 @@ class GeneratePurchaseRecommendationsView(CompanyMixin, View):
                 {"recommendations": recommendations, "count": len(recommendations)}
             )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -493,7 +502,8 @@ class CategoriseExpensesView(CompanyMixin, View):
             results = ExpenseCategorisationService.categorise(descriptions)
             return JsonResponse({"results": results})
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -541,7 +551,8 @@ class GenerateFinancialSummaryView(CompanyMixin, View):
                 }
             )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -569,7 +580,8 @@ class DashboardAssistantView(CompanyMixin, View):
             )
             return JsonResponse({"answer": answer})
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

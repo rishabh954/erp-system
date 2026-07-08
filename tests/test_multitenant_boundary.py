@@ -62,7 +62,7 @@ def test_multitenant_boundary(client, user_a, company_a, company_b):
 
     # 5. PurchaseOrder (Purchase)
     po_b = PurchaseOrder.objects.create(
-        company=company_b, vendor=vend_b, order_date=date.today(), expected_delivery=date.today()
+        company=company_b, vendor=vend_b, order_date=date.today(), expected_delivery=date.today()  # noqa: E501
     )
     res = client.get(reverse("purchase:order_detail", kwargs={"pk": po_b.pk}))
     assert res.status_code == 404

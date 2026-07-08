@@ -1,3 +1,4 @@
+import logging
 """
 Sales REST API
 Quotations, Sales Orders, Invoices, Payments
@@ -21,6 +22,9 @@ from ..models import (
 )
 
 # ─── Serializers ──────────────────────────────────────────────────────────────
+
+
+logger = logging.getLogger(__name__)
 
 
 class QuotationLineSerializer(serializers.ModelSerializer):
@@ -311,7 +315,8 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             ).confirm_order(order)
             return Response(SalesOrderSerializer(order).data)
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred."}, status=400)
 
     @action(detail=True, methods=["post"])
     def create_invoice(self, request, pk=None):

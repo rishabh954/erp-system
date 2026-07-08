@@ -93,7 +93,7 @@ class NotificationListView(LoginRequiredMixin, ListView):
 
 
 class MarkReadView(LoginRequiredMixin, View):
-    required_permission = "notifications.read"
+    required_permission = "notifications.update"
     def post(self, request, pk):
         from django.shortcuts import get_object_or_404
 

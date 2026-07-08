@@ -1,3 +1,4 @@
+import logging
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import redirect, render
@@ -10,6 +11,9 @@ from apps.administration.models import (
     WebhookEndpoint,
     WhatsAppConfig,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -174,6 +178,7 @@ class DataImportView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
                 request, f"Successfully imported {success_count} {import_type}(s)."
             )
         except Exception as e:
-            messages.error(request, f"Error processing file: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            messages.error(request, f"Error processing file: {"An unexpected error occurred."}")
 
         return redirect("administration:data_import")

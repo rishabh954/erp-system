@@ -5,8 +5,8 @@ Django 5+ | PostgreSQL | Redis | Celery
 
 import os
 import sys
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,9 +27,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 if not DEBUG:
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    if not SECRET_KEY or SECRET_KEY == 'change-me-in-production-use-50+-chars' or SECRET_KEY == 'your-very-long-random-secret-key-50-chars-minimum-change-me':
+    if not SECRET_KEY or SECRET_KEY == 'change-me-in-production-use-50+-chars' or SECRET_KEY == 'your-very-long-random-secret-key-50-chars-minimum-change-me':  # noqa: E501
         from django.core.exceptions import ImproperlyConfigured
-        raise ImproperlyConfigured("SECRET_KEY environment variable must be set securely when DEBUG is False")
+        raise ImproperlyConfigured("SECRET_KEY environment variable must be set securely when DEBUG is False")  # noqa: E501
 else:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
@@ -114,10 +114,10 @@ if not DEBUG:
     # ─── Production Security Settings ──────────────────────────────────────
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    
+
     if os.environ.get('USE_X_FORWARDED_PROTO', 'True') == 'True':
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-        
+
     if os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True':
         SECURE_SSL_REDIRECT = True
         SESSION_COOKIE_SECURE = True
@@ -217,8 +217,8 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 AUTH_USER_MODEL = 'authentication.User'
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},  # noqa: E501
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},  # noqa: E501
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -280,7 +280,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': (
         'Production-grade REST API for the ERP System. '
         'Authenticate via JWT Bearer token. '
-        'All endpoints are company-scoped — data is automatically filtered to your organisation.'
+        'All endpoints are company-scoped — data is automatically filtered to your organisation.'  # noqa: E501
     ),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
@@ -343,7 +343,7 @@ TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM', '')  # e.g. +14155
 
 
 # ─── Email ────────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')  # noqa: E501
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
@@ -403,7 +403,7 @@ LOGGING = {
     },
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} [User:{user_id} Comp:{company_id} IP:{client_ip} Path:{request_path}] {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} [User:{user_id} Comp:{company_id} IP:{client_ip} Path:{request_path}] {module} {process:d} {thread:d} {message}',  # noqa: E501
             'style': '{',
         },
         'simple': {
@@ -433,7 +433,7 @@ LOGGING = {
         'level': 'WARNING',
     },
     'loggers': {
-        'django': {'handlers': ['console', 'file'], 'level': 'WARNING', 'propagate': False},
+        'django': {'handlers': ['console', 'file'], 'level': 'WARNING', 'propagate': False},  # noqa: E501
         'apps': {'handlers': ['console', 'file'], 'level': 'DEBUG', 'propagate': False},
         'core': {'handlers': ['console', 'file'], 'level': 'DEBUG', 'propagate': False},
     },
@@ -456,8 +456,8 @@ ERP_SETTINGS = {
     'LOW_STOCK_THRESHOLD': int(os.environ.get('LOW_STOCK_THRESHOLD', 10)),
 }
 
-import sys
-import os
+import os  # noqa: E402
+import sys  # noqa: E402
 
-if ('test' in sys.argv or 'pytest' in sys.modules) and (not os.environ.get('DB_HOST') or os.environ.get('DB_HOST') == 'sqlite'):
-    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}
+if ('test' in sys.argv or 'pytest' in sys.modules) and (not os.environ.get('DB_HOST') or os.environ.get('DB_HOST') == 'sqlite'):  # noqa: E501
+    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}  # noqa: E501

@@ -1,100 +1,99 @@
 import os
-import re
 
 base_dir = r"c:\Users\OM\erp_system\erp_system\templates"
 
 templates_to_create = [
     # Company
-    {'path': 'company/settings.html', 'module': 'company', 'title': 'Company Settings', 'type': 'form'},
-    {'path': 'company/branches/list.html', 'module': 'company', 'title': 'Branches', 'type': 'list'},
-    {'path': 'company/branches/form.html', 'module': 'company', 'title': 'Branch Form', 'type': 'form'},
-    {'path': 'company/departments/list.html', 'module': 'company', 'title': 'Departments', 'type': 'list'},
-    {'path': 'company/users/list.html', 'module': 'company', 'title': 'Users & Roles', 'type': 'list'},
-    {'path': 'company/fiscal_years/list.html', 'module': 'company', 'title': 'Fiscal Years', 'type': 'list'},
-    {'path': 'company/currencies/list.html', 'module': 'company', 'title': 'Currencies', 'type': 'list'},
+    {'path': 'company/settings.html', 'module': 'company', 'title': 'Company Settings', 'type': 'form'},  # noqa: E501
+    {'path': 'company/branches/list.html', 'module': 'company', 'title': 'Branches', 'type': 'list'},  # noqa: E501
+    {'path': 'company/branches/form.html', 'module': 'company', 'title': 'Branch Form', 'type': 'form'},  # noqa: E501
+    {'path': 'company/departments/list.html', 'module': 'company', 'title': 'Departments', 'type': 'list'},  # noqa: E501
+    {'path': 'company/users/list.html', 'module': 'company', 'title': 'Users & Roles', 'type': 'list'},  # noqa: E501
+    {'path': 'company/fiscal_years/list.html', 'module': 'company', 'title': 'Fiscal Years', 'type': 'list'},  # noqa: E501
+    {'path': 'company/currencies/list.html', 'module': 'company', 'title': 'Currencies', 'type': 'list'},  # noqa: E501
 
     # CRM
     {'path': 'crm/leads/list.html', 'module': 'crm', 'title': 'Leads', 'type': 'list'},
-    {'path': 'crm/leads/form.html', 'module': 'crm', 'title': 'Lead Form', 'type': 'form'},
-    {'path': 'crm/leads/detail.html', 'module': 'crm', 'title': 'Lead Details', 'type': 'detail'},
-    {'path': 'crm/pipeline.html', 'module': 'crm', 'title': 'Pipeline', 'type': 'kanban'},
-    {'path': 'crm/customers/list.html', 'module': 'crm', 'title': 'Customers', 'type': 'list'},
-    {'path': 'crm/customers/form.html', 'module': 'crm', 'title': 'Customer Form', 'type': 'form'},
-    {'path': 'crm/customers/detail.html', 'module': 'crm', 'title': 'Customer Details', 'type': 'detail'},
+    {'path': 'crm/leads/form.html', 'module': 'crm', 'title': 'Lead Form', 'type': 'form'},  # noqa: E501
+    {'path': 'crm/leads/detail.html', 'module': 'crm', 'title': 'Lead Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'crm/pipeline.html', 'module': 'crm', 'title': 'Pipeline', 'type': 'kanban'},  # noqa: E501
+    {'path': 'crm/customers/list.html', 'module': 'crm', 'title': 'Customers', 'type': 'list'},  # noqa: E501
+    {'path': 'crm/customers/form.html', 'module': 'crm', 'title': 'Customer Form', 'type': 'form'},  # noqa: E501
+    {'path': 'crm/customers/detail.html', 'module': 'crm', 'title': 'Customer Details', 'type': 'detail'},  # noqa: E501
 
     # Sales
-    {'path': 'sales/quotations/list.html', 'module': 'sales', 'title': 'Quotations', 'type': 'list'},
-    {'path': 'sales/quotations/form.html', 'module': 'sales', 'title': 'Quotation Form', 'type': 'form'},
-    {'path': 'sales/quotations/detail.html', 'module': 'sales', 'title': 'Quotation Details', 'type': 'detail'},
-    {'path': 'sales/orders/list.html', 'module': 'sales', 'title': 'Sales Orders', 'type': 'list'},
-    {'path': 'sales/orders/detail.html', 'module': 'sales', 'title': 'Sales Order Details', 'type': 'detail'},
-    {'path': 'sales/invoices/list.html', 'module': 'sales', 'title': 'Invoices', 'type': 'list'},
+    {'path': 'sales/quotations/list.html', 'module': 'sales', 'title': 'Quotations', 'type': 'list'},  # noqa: E501
+    {'path': 'sales/quotations/form.html', 'module': 'sales', 'title': 'Quotation Form', 'type': 'form'},  # noqa: E501
+    {'path': 'sales/quotations/detail.html', 'module': 'sales', 'title': 'Quotation Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'sales/orders/list.html', 'module': 'sales', 'title': 'Sales Orders', 'type': 'list'},  # noqa: E501
+    {'path': 'sales/orders/detail.html', 'module': 'sales', 'title': 'Sales Order Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'sales/invoices/list.html', 'module': 'sales', 'title': 'Invoices', 'type': 'list'},  # noqa: E501
 
     # Purchase
-    {'path': 'purchase/vendors/list.html', 'module': 'purchase', 'title': 'Vendors', 'type': 'list'},
-    {'path': 'purchase/vendors/form.html', 'module': 'purchase', 'title': 'Vendor Form', 'type': 'form'},
-    {'path': 'purchase/vendors/detail.html', 'module': 'purchase', 'title': 'Vendor Details', 'type': 'detail'},
-    {'path': 'purchase/requests/list.html', 'module': 'purchase', 'title': 'Purchase Requests', 'type': 'list'},
-    {'path': 'purchase/requests/form.html', 'module': 'purchase', 'title': 'Purchase Request Form', 'type': 'form'},
-    {'path': 'purchase/requests/detail.html', 'module': 'purchase', 'title': 'Purchase Request Details', 'type': 'detail'},
-    {'path': 'purchase/orders/list.html', 'module': 'purchase', 'title': 'Purchase Orders', 'type': 'list'},
-    {'path': 'purchase/orders/form.html', 'module': 'purchase', 'title': 'Purchase Order Form', 'type': 'form'},
-    {'path': 'purchase/orders/detail.html', 'module': 'purchase', 'title': 'Purchase Order Details', 'type': 'detail'},
+    {'path': 'purchase/vendors/list.html', 'module': 'purchase', 'title': 'Vendors', 'type': 'list'},  # noqa: E501
+    {'path': 'purchase/vendors/form.html', 'module': 'purchase', 'title': 'Vendor Form', 'type': 'form'},  # noqa: E501
+    {'path': 'purchase/vendors/detail.html', 'module': 'purchase', 'title': 'Vendor Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'purchase/requests/list.html', 'module': 'purchase', 'title': 'Purchase Requests', 'type': 'list'},  # noqa: E501
+    {'path': 'purchase/requests/form.html', 'module': 'purchase', 'title': 'Purchase Request Form', 'type': 'form'},  # noqa: E501
+    {'path': 'purchase/requests/detail.html', 'module': 'purchase', 'title': 'Purchase Request Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'purchase/orders/list.html', 'module': 'purchase', 'title': 'Purchase Orders', 'type': 'list'},  # noqa: E501
+    {'path': 'purchase/orders/form.html', 'module': 'purchase', 'title': 'Purchase Order Form', 'type': 'form'},  # noqa: E501
+    {'path': 'purchase/orders/detail.html', 'module': 'purchase', 'title': 'Purchase Order Details', 'type': 'detail'},  # noqa: E501
 
     # Inventory
-    {'path': 'inventory/products/list.html', 'module': 'inventory', 'title': 'Products', 'type': 'list'},
-    {'path': 'inventory/products/form.html', 'module': 'inventory', 'title': 'Product Form', 'type': 'form'},
-    {'path': 'inventory/products/detail.html', 'module': 'inventory', 'title': 'Product Details', 'type': 'detail'},
-    {'path': 'inventory/warehouses/list.html', 'module': 'inventory', 'title': 'Warehouses', 'type': 'list'},
-    {'path': 'inventory/movements/list.html', 'module': 'inventory', 'title': 'Stock Movements', 'type': 'list'},
-    {'path': 'inventory/movements/adjustment.html', 'module': 'inventory', 'title': 'Stock Adjustment', 'type': 'form'},
-    {'path': 'inventory/reports/index.html', 'module': 'inventory', 'title': 'Inventory Reports', 'type': 'dashboard'},
+    {'path': 'inventory/products/list.html', 'module': 'inventory', 'title': 'Products', 'type': 'list'},  # noqa: E501
+    {'path': 'inventory/products/form.html', 'module': 'inventory', 'title': 'Product Form', 'type': 'form'},  # noqa: E501
+    {'path': 'inventory/products/detail.html', 'module': 'inventory', 'title': 'Product Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'inventory/warehouses/list.html', 'module': 'inventory', 'title': 'Warehouses', 'type': 'list'},  # noqa: E501
+    {'path': 'inventory/movements/list.html', 'module': 'inventory', 'title': 'Stock Movements', 'type': 'list'},  # noqa: E501
+    {'path': 'inventory/movements/adjustment.html', 'module': 'inventory', 'title': 'Stock Adjustment', 'type': 'form'},  # noqa: E501
+    {'path': 'inventory/reports/index.html', 'module': 'inventory', 'title': 'Inventory Reports', 'type': 'dashboard'},  # noqa: E501
 
     # HRMS
-    {'path': 'hrms/employees/detail.html', 'module': 'hrms', 'title': 'Employee Details', 'type': 'detail'},
-    {'path': 'hrms/employees/form.html', 'module': 'hrms', 'title': 'Employee Form', 'type': 'form'},
-    {'path': 'hrms/attendance/index.html', 'module': 'hrms', 'title': 'Attendance', 'type': 'list'},
-    {'path': 'hrms/leaves/list.html', 'module': 'hrms', 'title': 'Leaves', 'type': 'list'},
-    {'path': 'hrms/leaves/form.html', 'module': 'hrms', 'title': 'Leave Form', 'type': 'form'},
-    {'path': 'hrms/payroll/list.html', 'module': 'hrms', 'title': 'Payroll', 'type': 'list'},
+    {'path': 'hrms/employees/detail.html', 'module': 'hrms', 'title': 'Employee Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'hrms/employees/form.html', 'module': 'hrms', 'title': 'Employee Form', 'type': 'form'},  # noqa: E501
+    {'path': 'hrms/attendance/index.html', 'module': 'hrms', 'title': 'Attendance', 'type': 'list'},  # noqa: E501
+    {'path': 'hrms/leaves/list.html', 'module': 'hrms', 'title': 'Leaves', 'type': 'list'},  # noqa: E501
+    {'path': 'hrms/leaves/form.html', 'module': 'hrms', 'title': 'Leave Form', 'type': 'form'},  # noqa: E501
+    {'path': 'hrms/payroll/list.html', 'module': 'hrms', 'title': 'Payroll', 'type': 'list'},  # noqa: E501
 
     # Helpdesk
-    {'path': 'helpdesk/tickets/list.html', 'module': 'helpdesk', 'title': 'Tickets', 'type': 'list'},
-    {'path': 'helpdesk/tickets/form.html', 'module': 'helpdesk', 'title': 'Ticket Form', 'type': 'form'},
-    {'path': 'helpdesk/tickets/detail.html', 'module': 'helpdesk', 'title': 'Ticket Details', 'type': 'detail'},
-    {'path': 'helpdesk/kb/list.html', 'module': 'helpdesk', 'title': 'Knowledge Base', 'type': 'list'},
-    {'path': 'helpdesk/kb/form.html', 'module': 'helpdesk', 'title': 'KB Article Form', 'type': 'form'},
-    {'path': 'helpdesk/kb/detail.html', 'module': 'helpdesk', 'title': 'KB Article Details', 'type': 'detail'},
+    {'path': 'helpdesk/tickets/list.html', 'module': 'helpdesk', 'title': 'Tickets', 'type': 'list'},  # noqa: E501
+    {'path': 'helpdesk/tickets/form.html', 'module': 'helpdesk', 'title': 'Ticket Form', 'type': 'form'},  # noqa: E501
+    {'path': 'helpdesk/tickets/detail.html', 'module': 'helpdesk', 'title': 'Ticket Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'helpdesk/kb/list.html', 'module': 'helpdesk', 'title': 'Knowledge Base', 'type': 'list'},  # noqa: E501
+    {'path': 'helpdesk/kb/form.html', 'module': 'helpdesk', 'title': 'KB Article Form', 'type': 'form'},  # noqa: E501
+    {'path': 'helpdesk/kb/detail.html', 'module': 'helpdesk', 'title': 'KB Article Details', 'type': 'detail'},  # noqa: E501
 
     # Documents
-    {'path': 'documents/list.html', 'module': 'documents', 'title': 'Documents', 'type': 'list'},
-    {'path': 'documents/form.html', 'module': 'documents', 'title': 'Document Form', 'type': 'form'},
-    {'path': 'documents/detail.html', 'module': 'documents', 'title': 'Document Details', 'type': 'detail'},
-    
+    {'path': 'documents/list.html', 'module': 'documents', 'title': 'Documents', 'type': 'list'},  # noqa: E501
+    {'path': 'documents/form.html', 'module': 'documents', 'title': 'Document Form', 'type': 'form'},  # noqa: E501
+    {'path': 'documents/detail.html', 'module': 'documents', 'title': 'Document Details', 'type': 'detail'},  # noqa: E501
+
     # Notifications
-    {'path': 'notifications/list.html', 'module': 'notifications', 'title': 'Notifications', 'type': 'list'},
+    {'path': 'notifications/list.html', 'module': 'notifications', 'title': 'Notifications', 'type': 'list'},  # noqa: E501
 
     # Accounting
-    {'path': 'accounting/dashboard/index.html', 'module': 'accounting', 'title': 'Accounting Dashboard', 'type': 'dashboard'},
-    {'path': 'accounting/journals/list.html', 'module': 'accounting', 'title': 'Journals', 'type': 'list'},
-    {'path': 'accounting/journals/form.html', 'module': 'accounting', 'title': 'Journal Entry', 'type': 'form'},
-    {'path': 'accounting/journals/detail.html', 'module': 'accounting', 'title': 'Journal Details', 'type': 'detail'},
-    {'path': 'accounting/ledgers/list.html', 'module': 'accounting', 'title': 'General Ledger', 'type': 'list'},
-    {'path': 'accounting/reports/trial_balance.html', 'module': 'accounting', 'title': 'Trial Balance', 'type': 'list'},
-    {'path': 'accounting/reports/balance_sheet.html', 'module': 'accounting', 'title': 'Balance Sheet', 'type': 'list'},
-    {'path': 'accounting/reports/profit_and_loss.html', 'module': 'accounting', 'title': 'Profit & Loss', 'type': 'list'},
-    {'path': 'accounting/taxes/list.html', 'module': 'accounting', 'title': 'Taxes', 'type': 'list'},
-    {'path': 'accounting/bank_accounts.html', 'module': 'accounting', 'title': 'Bank Accounts', 'type': 'list'},
-    {'path': 'accounting/chart_of_accounts.html', 'module': 'accounting', 'title': 'Chart of Accounts', 'type': 'list'},
+    {'path': 'accounting/dashboard/index.html', 'module': 'accounting', 'title': 'Accounting Dashboard', 'type': 'dashboard'},  # noqa: E501
+    {'path': 'accounting/journals/list.html', 'module': 'accounting', 'title': 'Journals', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/journals/form.html', 'module': 'accounting', 'title': 'Journal Entry', 'type': 'form'},  # noqa: E501
+    {'path': 'accounting/journals/detail.html', 'module': 'accounting', 'title': 'Journal Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'accounting/ledgers/list.html', 'module': 'accounting', 'title': 'General Ledger', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/reports/trial_balance.html', 'module': 'accounting', 'title': 'Trial Balance', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/reports/balance_sheet.html', 'module': 'accounting', 'title': 'Balance Sheet', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/reports/profit_and_loss.html', 'module': 'accounting', 'title': 'Profit & Loss', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/taxes/list.html', 'module': 'accounting', 'title': 'Taxes', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/bank_accounts.html', 'module': 'accounting', 'title': 'Bank Accounts', 'type': 'list'},  # noqa: E501
+    {'path': 'accounting/chart_of_accounts.html', 'module': 'accounting', 'title': 'Chart of Accounts', 'type': 'list'},  # noqa: E501
 
     # Projects
-    {'path': 'projects/list.html', 'module': 'projects', 'title': 'Projects', 'type': 'list'},
-    {'path': 'projects/form.html', 'module': 'projects', 'title': 'Project Form', 'type': 'form'},
-    {'path': 'projects/detail.html', 'module': 'projects', 'title': 'Project Details', 'type': 'detail'},
-    {'path': 'projects/tasks/form.html', 'module': 'projects', 'title': 'Task Form', 'type': 'form'},
-    {'path': 'projects/tasks/detail.html', 'module': 'projects', 'title': 'Task Details', 'type': 'detail'},
-    {'path': 'projects/kanban.html', 'module': 'projects', 'title': 'Project Kanban', 'type': 'kanban'},
-    {'path': 'projects/timesheets/list.html', 'module': 'projects', 'title': 'Timesheets', 'type': 'list'},
+    {'path': 'projects/list.html', 'module': 'projects', 'title': 'Projects', 'type': 'list'},  # noqa: E501
+    {'path': 'projects/form.html', 'module': 'projects', 'title': 'Project Form', 'type': 'form'},  # noqa: E501
+    {'path': 'projects/detail.html', 'module': 'projects', 'title': 'Project Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'projects/tasks/form.html', 'module': 'projects', 'title': 'Task Form', 'type': 'form'},  # noqa: E501
+    {'path': 'projects/tasks/detail.html', 'module': 'projects', 'title': 'Task Details', 'type': 'detail'},  # noqa: E501
+    {'path': 'projects/kanban.html', 'module': 'projects', 'title': 'Project Kanban', 'type': 'kanban'},  # noqa: E501
+    {'path': 'projects/timesheets/list.html', 'module': 'projects', 'title': 'Timesheets', 'type': 'list'},  # noqa: E501
 ]
 
 def get_base_html(module, title, ptype):
@@ -130,7 +129,7 @@ def get_base_html(module, title, ptype):
 </div>
 
 """
-    
+
     if ptype == 'list':
         content += """<div class="card">
   <div class="card-header d-flex align-items-center justify-content-between">
@@ -181,7 +180,7 @@ def get_base_html(module, title, ptype):
     </div>
   </div>
 </div>
-"""
+"""  # noqa: E501
     elif ptype == 'form':
         content += """<div class="card">
   <div class="card-header">
@@ -222,7 +221,7 @@ def get_base_html(module, title, ptype):
     </form>
   </div>
 </div>
-"""
+"""  # noqa: E501
     elif ptype == 'detail':
         content += """<!-- Header card -->
 <div class="card mb-3">
@@ -256,7 +255,7 @@ def get_base_html(module, title, ptype):
     <p>Detailed information will be rendered here.</p>
   </div>
 </div>
-"""
+"""  # noqa: E501
     else:
         content += """<div class="card">
   <div class="card-body text-center py-5">
@@ -264,7 +263,7 @@ def get_base_html(module, title, ptype):
     <p class="text-muted">This view requires custom frontend logic (e.g., Kanban, Chart.js, etc.)</p>
   </div>
 </div>
-"""
+"""  # noqa: E501
 
     content += """{% endblock %}
 
@@ -279,7 +278,7 @@ def get_base_html(module, title, ptype):
 count = 0
 for t in templates_to_create:
     filepath = os.path.join(base_dir, os.path.normpath(t['path']))
-    # Always create basic scaffold if file is missing, but if it exists, leave it alone to avoid breaking hand-written ones
+    # Always create basic scaffold if file is missing, but if it exists, leave it alone to avoid breaking hand-written ones  # noqa: E501
     if not os.path.exists(filepath):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:

@@ -4,6 +4,7 @@ Includes: Designer, Pending Approvals, History, Delegation, Visual Flow API
 """
 
 import json
+import logging
 
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
@@ -23,6 +24,9 @@ from apps.workflow.models import (
     WorkflowNotificationTemplate,
     WorkflowStep,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -149,7 +153,7 @@ class WorkflowDesignerView(CompanyMixin, DetailView):
 
 
 class WorkflowDesignerSaveAPI(CompanyMixin, View):
-    required_permission = "workflow.read"
+    required_permission = "workflow.update"
     """AJAX endpoint: saves the visual designer canvas layout."""
 
     def post(self, request, pk):
@@ -167,7 +171,8 @@ class WorkflowDesignerSaveAPI(CompanyMixin, View):
 
             return JsonResponse({"status": "ok"})
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=400)
 
 
 class WorkflowVisualFlowAPI(CompanyMixin, View):
@@ -313,7 +318,7 @@ class StepDeleteView(CompanyMixin, View):
 
 
 class StepReorderView(CompanyMixin, View):
-    required_permission = "workflow.read"
+    required_permission = "workflow.update"
     """AJAX: reorder steps by posting a list of IDs."""
 
     def post(self, request, workflow_pk):
@@ -325,7 +330,8 @@ class StepReorderView(CompanyMixin, View):
                 ).update(step_order=i)
             return JsonResponse({"status": "ok"})
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=400)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -370,7 +376,7 @@ class PendingApprovalsListView(CompanyMixin, ListView):
 
 
 class WorkflowActionAPIView(LoginRequiredMixin, View):
-    required_permission = "workflow.read"
+    required_permission = "workflow.approve"
     """Handle approve / reject / delegate / return actions."""
 
     def post(self, request, instance_id):

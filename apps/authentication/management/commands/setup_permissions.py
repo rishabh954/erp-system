@@ -54,6 +54,7 @@ class Command(BaseCommand):
             User.Role.SALES_MANAGER: {
                 "sales": (True, True, True, True, True, True, True),
                 "crm": (True, True, True, True, True, True, True),
+                "pos": (True, True, True, True, True, True, True),
                 "inventory": (False, True, False, False, False, False, False),
             },
             User.Role.PURCHASE_MANAGER: {
@@ -90,6 +91,7 @@ class Command(BaseCommand):
                     False,
                     False,
                 ),  # Can update assigned tasks
+                "pos": (True, True, False, False, False, False, False),
                 "company": (False, True, False, False, False, False, False),
             },
             User.Role.CUSTOMER_PORTAL: {

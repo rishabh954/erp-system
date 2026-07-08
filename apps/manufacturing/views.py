@@ -195,7 +195,7 @@ class MOCreateView(CompanyMixin, View):
 
 
 class MOActionView(CompanyMixin, View):
-    required_permission = "manufacturing.read"
+    required_permission = "manufacturing.approve"
     def post(self, request, pk):
         mo = get_object_or_404(ManufacturingOrder, pk=pk, company=self.company())
         action = request.POST.get("action")
@@ -291,7 +291,7 @@ class WorkOrderDetailView(CompanyMixin, DetailView):
 
 
 class WorkOrderStartView(CompanyMixin, View):
-    required_permission = "manufacturing.read"
+    required_permission = "manufacturing.update"
     def post(self, request, pk):
         wo = get_object_or_404(WorkOrder, pk=pk, company=self.company())
         if wo.status in [WorkOrder.Status.PENDING, WorkOrder.Status.READY]:
@@ -430,7 +430,7 @@ class MaterialPlanDetailView(CompanyMixin, DetailView):
 
 
 class MaterialPlanRunView(CompanyMixin, View):
-    required_permission = "manufacturing.read"
+    required_permission = "manufacturing.create"
     def post(self, request, pk):
         plan = get_object_or_404(MaterialPlan, pk=pk, company=self.company())
         MRPService.run_mrp(plan.id)

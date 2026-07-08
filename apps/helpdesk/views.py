@@ -163,7 +163,7 @@ class TicketCreateView(CompanyMixin, View):
 
 
 class AddReplyView(CompanyMixin, View):
-    required_permission = "helpdesk.read"
+    required_permission = "helpdesk.create"
     def post(self, request, pk):
         ticket = get_object_or_404(
             Ticket, pk=pk, company=self.company(), is_deleted=False

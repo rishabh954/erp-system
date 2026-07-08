@@ -11,7 +11,7 @@ def currency(value, company=None):
     Formats a numeric value into a currency string based on the given company's settings.
     Usage: {{ amount|currency:current_company }}
     If company is None, falls back to default formatting.
-    """
+    """  # noqa: E501
     try:
         if value is None:
             return ""

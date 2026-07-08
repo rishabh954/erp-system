@@ -1,3 +1,4 @@
+import logging
 """
 HRMS Views
 Employees, Attendance, Leave Management, Payroll
@@ -27,6 +28,9 @@ from .models import (
     SalaryComponent,
     SalaryStructure,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -442,7 +446,7 @@ class AttendanceView(CompanyMixin, TemplateView):
 
 
 class CheckInView(CompanyMixin, View):
-    required_permission = "hrms.read"
+    required_permission = "hrms.create"
     def post(self, request):
         try:
             emp = Employee.objects.get(user=request.user, is_deleted=False)
@@ -460,7 +464,7 @@ class CheckInView(CompanyMixin, View):
 
 
 class CheckOutView(CompanyMixin, View):
-    required_permission = "hrms.read"
+    required_permission = "hrms.create"
     def post(self, request):
         try:
             emp = Employee.objects.get(user=request.user, is_deleted=False)
@@ -734,7 +738,7 @@ class PayrollDetailView(CompanyMixin, DetailView):
 
 
 class PayrollProcessView(CompanyMixin, View):
-    required_permission = "hrms.read"
+    required_permission = "hrms.approve"
     def post(self, request, pk):
         period = get_object_or_404(
             PayrollPeriod, pk=pk, company=self.company(), is_deleted=False

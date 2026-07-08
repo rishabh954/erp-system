@@ -1,3 +1,4 @@
+import logging
 """
 Inventory Views
 Products, Warehouses, Stock Movements, Transfers, Reports
@@ -20,6 +21,9 @@ from .models import (
     StockRecord,
     Warehouse,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyMixin(PermissionRequiredMixin):
@@ -312,7 +316,7 @@ class StockMovementListView(CompanyMixin, ListView):
 
 
 class StockAdjustmentView(CompanyMixin, View):
-    required_permission = "inventory.read"
+    required_permission = "inventory.create"
     template_name = "inventory/movements/adjustment.html"
 
     def get(self, request):
@@ -466,7 +470,7 @@ class TransferDetailView(CompanyMixin, DetailView):
 
 
 class TransferActionView(CompanyMixin, View):
-    required_permission = "inventory.read"
+    required_permission = "inventory.approve"
     def post(self, request, pk):
         transfer = get_object_or_404(
             InventoryTransfer, pk=pk, company=self.company(), is_deleted=False
@@ -533,7 +537,8 @@ class ProductCategoryAjaxCreateView(CompanyMixin, View):
                 {"status": "success", "category": {"id": str(cat.id), "name": cat.name}}
             )
         except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
 class ProductCategoryListView(CompanyMixin, ListView):
@@ -787,7 +792,7 @@ class DeliveryOrderDetailView(CompanyMixin, DetailView):
 
 
 class ShipDeliveryView(CompanyMixin, View):
-    required_permission = "inventory.read"
+    required_permission = "inventory.approve"
     def post(self, request, pk):
         delivery = get_object_or_404(
             DeliveryOrder, pk=pk, company=self.company(), is_deleted=False

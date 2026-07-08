@@ -1,13 +1,3 @@
-[tool.ruff]
-# Enable Pyflakes (F) and a subset of the pycodestyle (E)  codes by default.
-select = ["E", "F", "W", "I", "UP", "DJ"]
-ignore = []
-
-# Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["ALL"]
-unfixable = []
-
-# Exclude a variety of commonly ignored directories.
 exclude = [
     ".bzr",
     ".direnv",
@@ -33,15 +23,20 @@ exclude = [
     "migrations",
 ]
 line-length = 88
+target-version = "py312"
+
+[lint]
+# Enable Pyflakes (F) and a subset of the pycodestyle (E)  codes by default.
+select = ["E", "F", "W", "I", "UP", "DJ"]
+ignore = ["E501"]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-target-version = "py312"
-
-[tool.ruff.mccabe]
+[lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
-
-[tool.ruff.flake8-django]
-# Settings for Django specific rules

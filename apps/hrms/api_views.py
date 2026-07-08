@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.http import JsonResponse
 from django.utils.dateparse import parse_datetime
@@ -7,6 +8,9 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import Attendance, BiometricLog, Employee
+
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -63,4 +67,5 @@ class BiometricSyncAPIView(View):
             return JsonResponse({"success": True, "processed": created_count})
 
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)}, status=500)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)

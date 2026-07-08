@@ -144,7 +144,7 @@ def process_ocr_document(doc_id: str):
             from apps.ai.models import OCRDocument
 
             OCRDocument.objects.filter(id=doc_id).update(
-                status=OCRDocument.Status.FAILED, error_message=str(e)
+                status=OCRDocument.Status.FAILED, error_message="An unexpected error occurred."
             )
         except Exception:
             pass

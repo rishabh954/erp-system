@@ -1,3 +1,4 @@
+import logging
 from core.permissions import PermissionRequiredMixin
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -19,6 +20,9 @@ from apps.inventory.models import (
     Warehouse,
 )
 from core.pagination import StandardResultsSetPagination
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -224,7 +228,8 @@ class BarcodeScanViewSet(viewsets.ViewSet):
                 {"status": "success", "product": product.name, "quantity": qty}
             )
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred."}, status=400)
 
     @action(detail=False, methods=["post"], url_path="scan-pick")
     def scan_pick(self, request):

@@ -4,6 +4,7 @@ All report CRUD, export (Excel/CSV/PDF), pivot, chart, and scheduling.
 """
 
 import json
+import logging
 
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
@@ -15,6 +16,9 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 
 from .models import CustomReport, ReportExecution, SavedReport, ScheduledReport
 from .services import export_csv, export_excel, export_pdf, get_data, get_pivot_data
+
+
+logger = logging.getLogger(__name__)
 
 
 class ReportsMixin(LoginRequiredMixin):
@@ -643,7 +647,8 @@ class GenerateReportAPIView(ReportsMixin, View):
                 }
             )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return JsonResponse({"error": "An unexpected error occurred."}, status=400)
 
 
 class GetModuleFieldsAPIView(ReportsMixin, View):

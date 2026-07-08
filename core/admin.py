@@ -157,7 +157,7 @@ class ModulePermissionAdmin(admin.ModelAdmin):
 
 # ─── Company ───────────────────────────────────────────────────────────────────
 
-from apps.company.models import (
+from apps.company.models import (  # noqa: E402
     Branch,
     Company,
     Currency,
@@ -260,7 +260,7 @@ class TaxAdmin(admin.ModelAdmin):
 
 # ─── HRMS ──────────────────────────────────────────────────────────────────────
 
-from apps.hrms.models import (
+from apps.hrms.models import (  # noqa: E402
     Attendance,
     Employee,
     JobTitle,
@@ -349,7 +349,7 @@ class PayslipAdmin(admin.ModelAdmin):
 
 # ─── CRM ───────────────────────────────────────────────────────────────────────
 
-from apps.crm.models import Customer, Lead
+from apps.crm.models import Customer, Lead  # noqa: E402
 
 
 @admin.register(Lead)
@@ -383,7 +383,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 # ─── Sales ─────────────────────────────────────────────────────────────────────
 
-from apps.sales.models import Invoice, Payment, Quotation, SalesOrder
+from apps.sales.models import Invoice, Payment, Quotation, SalesOrder  # noqa: E402
 
 
 @admin.register(Quotation)
@@ -425,7 +425,7 @@ class PaymentAdmin(admin.ModelAdmin):
 
 # ─── Purchase ──────────────────────────────────────────────────────────────────
 
-from apps.purchase.models import PurchaseOrder, PurchaseRequest, Vendor
+from apps.purchase.models import PurchaseOrder, PurchaseRequest, Vendor  # noqa: E402
 
 
 @admin.register(Vendor)
@@ -444,7 +444,7 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
 
 # ─── Inventory ─────────────────────────────────────────────────────────────────
 
-from apps.inventory.models import (
+from apps.inventory.models import (  # noqa: E402
     Product,
     ProductCategory,
     StockMovement,
@@ -503,7 +503,12 @@ class StockMovementAdmin(admin.ModelAdmin):
 
 # ─── Accounting ────────────────────────────────────────────────────────────────
 
-from apps.accounting.models import Account, BankAccount, Journal, JournalEntry
+from apps.accounting.models import (  # noqa: E402
+    Account,
+    BankAccount,
+    Journal,
+    JournalEntry,
+)
 
 
 @admin.register(Account)
@@ -544,7 +549,7 @@ class BankAccountAdmin(admin.ModelAdmin):
 
 # ─── Projects ──────────────────────────────────────────────────────────────────
 
-from apps.projects.models import Project, Task
+from apps.projects.models import Project, Task  # noqa: E402
 
 
 @admin.register(Project)
@@ -571,7 +576,7 @@ class TaskAdmin(admin.ModelAdmin):
 
 # ─── HelpDesk ──────────────────────────────────────────────────────────────────
 
-from apps.helpdesk.models import Ticket, TicketCategory
+from apps.helpdesk.models import Ticket, TicketCategory  # noqa: E402
 
 
 @admin.register(Ticket)
@@ -598,7 +603,7 @@ class TicketCategoryAdmin(admin.ModelAdmin):
 
 # ─── Notifications ─────────────────────────────────────────────────────────────
 
-from apps.notifications.models import EmailLog, Notification
+from apps.notifications.models import EmailLog, Notification  # noqa: E402
 
 
 @admin.register(Notification)
@@ -628,12 +633,8 @@ class EmailLogAdmin(admin.ModelAdmin):
 
 # --- Automatically Generated Admin Registrations ---
 
-from apps.authentication.models import (
+from apps.authentication.models import (  # noqa: E402
     EmailVerificationToken,
-    PasswordResetToken,
-    Permission,
-    Role,
-    UserSession,
 )
 
 
@@ -669,7 +670,7 @@ class UserSessionAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.company.models import CompanySettings, ExchangeRate, TaxGroup
+from apps.company.models import CompanySettings  # noqa: E402
 
 
 @admin.register(ExchangeRate)
@@ -687,14 +688,11 @@ class CompanySettingsAdmin(admin.ModelAdmin):
     list_display = ["company", "key", "value", "value_type"]
 
 
-from apps.hrms.models import (
+from apps.hrms.models import (  # noqa: E402
     EmployeeDocument,
     EmployeeSalary,
     EmployeeSkill,
     ExperienceRecord,
-    JobTitle,
-    LeaveBalance,
-    LeaveType,
     SalaryComponent,
     SalaryStructure,
     WorkSchedule,
@@ -814,7 +812,7 @@ class EmployeeSalaryAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.crm.models import LeadActivity
+from apps.crm.models import LeadActivity  # noqa: E402
 
 
 @admin.register(LeadActivity)
@@ -829,7 +827,7 @@ class LeadActivityAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.sales.models import InvoiceLine, QuotationLine, SalesOrder, SalesOrderLine
+from apps.sales.models import InvoiceLine, QuotationLine, SalesOrderLine  # noqa: E402
 
 
 @admin.register(QuotationLine)
@@ -880,11 +878,10 @@ class InvoiceLineAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.purchase.models import (
+from apps.purchase.models import (  # noqa: E402
     GoodsReceipt,
     GoodsReceiptLine,
     PurchaseOrderLine,
-    PurchaseRequest,
     PurchaseRequestLine,
 )
 
@@ -942,7 +939,7 @@ class GoodsReceiptLineAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.inventory.models import (
+from apps.inventory.models import (  # noqa: E402
     BinLocation,
     Brand,
     InventoryTransfer,
@@ -1003,7 +1000,7 @@ class InventoryTransferLineAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.accounting.models import BankTransaction, Journal, JournalItem, TaxReturn
+from apps.accounting.models import BankTransaction, JournalItem, TaxReturn  # noqa: E402
 
 
 @admin.register(Journal)
@@ -1054,7 +1051,12 @@ class TaxReturnAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.projects.models import Milestone, ProjectMember, TaskComment, TimeLog
+from apps.projects.models import (  # noqa: E402
+    Milestone,
+    ProjectMember,
+    TaskComment,
+    TimeLog,
+)
 
 
 @admin.register(ProjectMember)
@@ -1084,7 +1086,12 @@ class TimeLogAdmin(admin.ModelAdmin):
     list_display = ["created_by", "updated_by", "company", "task", "user", "date"]
 
 
-from apps.assets.models import Asset, AssetCategory, AssetMaintenance, DepreciationEntry
+from apps.assets.models import (  # noqa: E402
+    Asset,
+    AssetCategory,
+    AssetMaintenance,
+    DepreciationEntry,
+)
 
 
 @admin.register(AssetCategory)
@@ -1121,7 +1128,7 @@ class DepreciationEntryAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.helpdesk.models import KnowledgeBaseArticle, TicketReply
+from apps.helpdesk.models import KnowledgeBaseArticle, TicketReply  # noqa: E402
 
 
 @admin.register(TicketReply)
@@ -1141,7 +1148,11 @@ class KnowledgeBaseArticleAdmin(admin.ModelAdmin):
     list_display = ["created_by", "updated_by", "company", "title", "slug", "content"]
 
 
-from apps.documents.models import Document, DocumentCategory, DocumentVersion
+from apps.documents.models import (  # noqa: E402
+    Document,
+    DocumentCategory,
+    DocumentVersion,
+)
 
 
 @admin.register(DocumentCategory)
@@ -1173,7 +1184,7 @@ class DocumentVersionAdmin(admin.ModelAdmin):
     ]
 
 
-from apps.workflow.models import (
+from apps.workflow.models import (  # noqa: E402
     WorkflowAction,
     WorkflowDefinition,
     WorkflowInstance,

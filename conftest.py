@@ -1,9 +1,12 @@
+from datetime import date
+from decimal import Decimal
+
 import pytest
-from core.factories import CompanyFactory, UserFactory
+
 from apps.authentication.models import UserCompany
 from apps.company.models import Currency, Tax
-from decimal import Decimal
-from datetime import date
+from core.factories import CompanyFactory, UserFactory
+
 
 @pytest.fixture
 def company(db):

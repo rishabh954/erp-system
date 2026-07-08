@@ -164,7 +164,7 @@ class AssetCreateView(CompanyMixin, View):
 
 
 class ScheduleMaintenanceView(CompanyMixin, View):
-    required_permission = "assets.read"
+    required_permission = "assets.create"
     def post(self, request, pk):
         asset = get_object_or_404(
             Asset, pk=pk, company=self.company(), is_deleted=False

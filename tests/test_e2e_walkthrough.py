@@ -25,7 +25,7 @@ class SmokeTest(LiveServerTestCase):
         Register -> Create Company -> Create Product -> Create Customer
         -> Create Sales Order -> Confirm -> Invoice -> Pay
         """
-        # 1. Create initial user (User creation would normally go via signup, but we'll create directly here for the test)
+        # 1. Create initial user (User creation would normally go via signup, but we'll create directly here for the test)  # noqa: E501
         user = User.objects.create_user(
             email="e2e@example.com",
             password="password123",
@@ -53,7 +53,7 @@ class SmokeTest(LiveServerTestCase):
         resp = self.client.post(reverse("company:create"), company_data)
         self.assertEqual(resp.status_code, 302)  # Redirects to dashboard
 
-        # Update our reference to the logged in user to reflect the newly assigned primary_company
+        # Update our reference to the logged in user to reflect the newly assigned primary_company  # noqa: E501
         user.refresh_from_db()
         company = user.primary_company
         self.assertIsNotNone(company)
@@ -99,7 +99,7 @@ class SmokeTest(LiveServerTestCase):
         customer = Customer.objects.get(email="customer@e2e.com")
 
         # 7. Create Sales Order
-        # A Sales Order view usually requires inline formsets for lines. We'll simulate the POST payload.
+        # A Sales Order view usually requires inline formsets for lines. We'll simulate the POST payload.  # noqa: E501
         # Ensure we have stock first if we are confirming immediately
         from apps.inventory.models import Warehouse
         from apps.inventory.services import StockService
@@ -139,7 +139,7 @@ class SmokeTest(LiveServerTestCase):
         so = SalesOrder.objects.first()
         self.assertIsNotNone(so)
 
-        # 8. Confirm Sales Order programmatically as normally done in the service layer when converting or via an action
+        # 8. Confirm Sales Order programmatically as normally done in the service layer when converting or via an action  # noqa: E501
         from apps.sales.services import SalesOrderService
 
         so = SalesOrderService(user=user, company=company).confirm_order(so)
@@ -170,7 +170,7 @@ class SmokeTest(LiveServerTestCase):
 
         invoice = Invoice.objects.first()
 
-        # Ensure invoice has a total so payment doesn't fail or result in negative balance
+        # Ensure invoice has a total so payment doesn't fail or result in negative balance  # noqa: E501
         InvoiceLine.objects.create(
             invoice=invoice,
             product=product,

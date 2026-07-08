@@ -1,6 +1,6 @@
 import logging
 from decimal import Decimal
-from typing import Any, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
@@ -14,19 +14,19 @@ T = TypeVar("T", bound=models.Model)
 # ─── Base Repository ──────────────────────────────────────────────────────────
 
 
-class BaseRepository(Generic[T]):
+class BaseRepository(Generic[T]):  # noqa: UP046
     """
     Generic repository providing standard CRUD operations.
     All app-specific repositories extend this.
     """
 
-    def __init__(self, model: Type[T]):
+    def __init__(self, model: type[T]):
         self.model = model
 
     def get_queryset(self) -> models.QuerySet:
         return self.model.objects.all()
 
-    def get_by_id(self, pk) -> Optional[T]:
+    def get_by_id(self, pk) -> T | None:
         try:
             return self.get_queryset().get(pk=pk)
         except self.model.DoesNotExist:
@@ -54,7 +54,7 @@ class BaseRepository(Generic[T]):
         else:
             instance.delete()
 
-    def bulk_create(self, instances: List[T]) -> List[T]:
+    def bulk_create(self, instances: list[T]) -> list[T]:
         return self.model.objects.bulk_create(instances)
 
     def filter(self, **kwargs) -> models.QuerySet:
@@ -204,7 +204,7 @@ class CurrencyService:
     """
 
     @classmethod
-    def get_company_currency(cls, company: Optional[Any]) -> Optional[Any]:
+    def get_company_currency(cls, company: Any | None) -> Any | None:
         """Retrieves the default currency for a given company."""
         if (
             company
@@ -217,8 +217,8 @@ class CurrencyService:
     @classmethod
     def format(
         cls,
-        amount: Union[Decimal, float, int, str, None],
-        company: Optional[Any] = None,
+        amount: Decimal | float | int | str | None,
+        company: Any | None = None,
     ) -> str:
         """
         Format a monetary amount according to the company's currency settings.
@@ -282,7 +282,7 @@ class CurrencyService:
         )
 
     @classmethod
-    def format_for_pdf(cls, amount: Decimal, company: Optional[Any]) -> str:
+    def format_for_pdf(cls, amount: Decimal, company: Any | None) -> str:
         return cls.format(amount, company)
 
     @classmethod

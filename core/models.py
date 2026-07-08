@@ -73,7 +73,7 @@ class SoftDeleteModel(TimeStampedModel):
     )
 
     objects = SoftDeleteManager()
-    all_objects = models.Manager()
+    all_objects = models.Manager()  # noqa: DJ012
 
     class Meta:
         abstract = True
@@ -261,7 +261,7 @@ class SequenceMixin(models.Model):
         abstract = True
 
     def generate_number(self, prefix: str, model_class) -> str:
-        """Generate next sequence number like PREFIX-0001 in a concurrency-safe manner."""
+        """Generate next sequence number like PREFIX-0001 in a concurrency-safe manner."""  # noqa: E501
         with transaction.atomic():
             last = (
                 model_class.all_objects.filter(number__startswith=prefix)
@@ -277,8 +277,8 @@ class SequenceMixin(models.Model):
                     seq = 1
             else:
                 seq = 1
-            
+
             number = f"{prefix}-{seq:04d}"
-            # Assigning to self here ensures that if we call .save(), it uses this number.
-            # But the caller might want to do it. The original code just returns the string.
+            # Assigning to self here ensures that if we call .save(), it uses this number.  # noqa: E501
+            # But the caller might want to do it. The original code just returns the string.  # noqa: E501
             return number

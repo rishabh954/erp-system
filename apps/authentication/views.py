@@ -370,7 +370,7 @@ class ProfileUpdateView(LoginRequiredMixin, View):
 
 
 class ChangePasswordView(LoginRequiredMixin, View):
-    required_permission = "authentication.read"
+    required_permission = "authentication.update"
     def post(self, request):
         form = ChangePasswordForm(user=request.user, data=request.POST)
         if form.is_valid():
@@ -392,7 +392,7 @@ class ChangePasswordView(LoginRequiredMixin, View):
 
 
 class RevokeSessionView(LoginRequiredMixin, View):
-    required_permission = "authentication.read"
+    required_permission = "authentication.delete"
     def post(self, request, session_id):
         session = get_object_or_404(UserSession, pk=session_id, user=request.user)
         session.is_active = False
@@ -402,7 +402,7 @@ class RevokeSessionView(LoginRequiredMixin, View):
 
 
 class RevokeAllSessionsView(LoginRequiredMixin, View):
-    required_permission = "authentication.read"
+    required_permission = "authentication.delete"
     def post(self, request):
         current_key = request.session.session_key
         UserSession.objects.filter(user=request.user, is_active=True).exclude(

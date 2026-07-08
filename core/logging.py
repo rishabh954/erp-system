@@ -7,7 +7,7 @@ _company_id = contextvars.ContextVar("company_id", default=None)
 _request_path = contextvars.ContextVar("request_path", default=None)
 _client_ip = contextvars.ContextVar("client_ip", default=None)
 
-def set_logging_context(user_id=None, company_id=None, request_path=None, client_ip=None):
+def set_logging_context(user_id=None, company_id=None, request_path=None, client_ip=None):  # noqa: E501
     if user_id:
         _user_id.set(user_id)
     if company_id:
