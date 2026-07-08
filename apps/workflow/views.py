@@ -41,6 +41,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class WorkflowListView(CompanyMixin, ListView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     template_name = "workflow/workflow_list.html"
     context_object_name = "workflows"
 
@@ -98,6 +108,16 @@ class WorkflowCreateView(CompanyMixin, View):
 
 class WorkflowDesignerView(CompanyMixin, DetailView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     """Visual workflow designer — renders the canvas UI."""
 
     template_name = "workflow/designer.html"
@@ -177,6 +197,16 @@ class WorkflowDesignerSaveAPI(CompanyMixin, View):
 
 class WorkflowVisualFlowAPI(CompanyMixin, View):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     """Returns the workflow as a JSON graph for front-end rendering."""
 
     def get(self, request, pk):
@@ -341,6 +371,16 @@ class StepReorderView(CompanyMixin, View):
 
 class PendingApprovalsListView(CompanyMixin, ListView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     template_name = "workflow/pending_approvals.html"
     context_object_name = "instances"
 
@@ -428,6 +468,16 @@ class WorkflowActionAPIView(LoginRequiredMixin, View):
 
 class ApprovalHistoryListView(CompanyMixin, ListView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     template_name = "workflow/approval_history.html"
     context_object_name = "actions"
     paginate_by = 50
@@ -461,6 +511,16 @@ class ApprovalHistoryListView(CompanyMixin, ListView):
 
 class WorkflowInstanceDetailView(CompanyMixin, DetailView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     """Full audit timeline for one workflow instance."""
 
     template_name = "workflow/instance_detail.html"
@@ -493,6 +553,16 @@ class WorkflowInstanceDetailView(CompanyMixin, DetailView):
 
 class DelegatedApprovalsListView(CompanyMixin, ListView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     template_name = "workflow/delegations.html"
     context_object_name = "delegations"
 
@@ -566,6 +636,16 @@ class ApprovalDelegationDeleteView(CompanyMixin, View):
 
 class NotificationTemplateView(CompanyMixin, View):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     """Create/update email or WhatsApp notification templates per workflow."""
 
     template_name = "workflow/notification_templates.html"
@@ -616,6 +696,16 @@ class NotificationTemplateView(CompanyMixin, View):
 
 class WorkflowDashboardView(CompanyMixin, TemplateView):
     required_permission = "workflow.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "workflow.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "workflow.update"
+            elif request.method == "DELETE":
+                return "workflow.delete"
+        return self.required_permission
     template_name = "workflow/dashboard.html"
 
     def get_context_data(self, **kwargs):

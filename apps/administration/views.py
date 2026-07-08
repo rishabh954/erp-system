@@ -236,6 +236,11 @@ class HRManagerOrAdminMixin(LoginRequiredMixin):
 
 class DesignationListView(HRManagerOrAdminMixin, View):
     required_permission = "administration.read"
+
+    def get_required_permission(self, request=None):
+        if request and request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            return "administration.create"
+        return self.required_permission
     template_name = "administration/designations.html"
 
     def get(self, request):

@@ -35,6 +35,16 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     required_permission = "notifications.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "notifications.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "notifications.update"
+            elif request.method == "DELETE":
+                return "notifications.delete"
+        return self.required_permission
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -76,6 +86,16 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 # Web view
 class NotificationListView(LoginRequiredMixin, ListView):
     required_permission = "notifications.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "notifications.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "notifications.update"
+            elif request.method == "DELETE":
+                return "notifications.delete"
+        return self.required_permission
     template_name = "notifications/list.html"
     context_object_name = "notifications"
     paginate_by = 30
@@ -139,6 +159,16 @@ class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
 
 class AdminEmailLogListView(LoginRequiredMixin, ListView):
     required_permission = "notifications.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "notifications.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "notifications.update"
+            elif request.method == "DELETE":
+                return "notifications.delete"
+        return self.required_permission
     template_name = "notifications/logs/email.html"
     context_object_name = "logs"
     paginate_by = 50
@@ -151,6 +181,16 @@ class AdminEmailLogListView(LoginRequiredMixin, ListView):
 
 class AdminSMSLogListView(LoginRequiredMixin, ListView):
     required_permission = "notifications.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "notifications.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "notifications.update"
+            elif request.method == "DELETE":
+                return "notifications.delete"
+        return self.required_permission
     template_name = "notifications/logs/sms.html"
     context_object_name = "logs"
     paginate_by = 50
@@ -163,6 +203,16 @@ class AdminSMSLogListView(LoginRequiredMixin, ListView):
 
 class AdminWhatsAppLogListView(LoginRequiredMixin, ListView):
     required_permission = "notifications.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "notifications.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "notifications.update"
+            elif request.method == "DELETE":
+                return "notifications.delete"
+        return self.required_permission
     template_name = "notifications/logs/whatsapp.html"
     context_object_name = "logs"
     paginate_by = 50

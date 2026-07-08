@@ -29,6 +29,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class LeadListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/leads/list.html"
     context_object_name = "leads"
     paginate_by = 25
@@ -88,6 +98,16 @@ class LeadListView(CompanyMixin, ListView):
 
 class LeadDetailView(CompanyMixin, DetailView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/leads/detail.html"
     context_object_name = "lead"
 
@@ -237,6 +257,16 @@ class LeadUpdateStatusView(CompanyMixin, View):
 
 class CampaignListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/campaigns/list.html"
     context_object_name = "campaigns"
     paginate_by = 25
@@ -262,6 +292,16 @@ class CampaignListView(CompanyMixin, ListView):
 
 class CampaignDetailView(CompanyMixin, DetailView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/campaigns/detail.html"
     context_object_name = "campaign"
 
@@ -293,6 +333,16 @@ class CampaignCreateView(CompanyMixin, View):
 
 class MeetingSchedulerView(CompanyMixin, TemplateView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/meeting_scheduler.html"
 
     def get_context_data(self, **kwargs):
@@ -386,6 +436,16 @@ class AddActivityView(CompanyMixin, View):
 
 class PipelineView(CompanyMixin, TemplateView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/pipeline.html"
 
     def get_context_data(self, **kwargs):
@@ -415,6 +475,16 @@ class PipelineView(CompanyMixin, TemplateView):
 
 class CustomerListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/customers/list.html"
     context_object_name = "customers"
     paginate_by = 25
@@ -443,6 +513,16 @@ class CustomerListView(CompanyMixin, ListView):
 
 class CustomerDetailView(CompanyMixin, DetailView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/customers/detail.html"
     context_object_name = "customer"
 
@@ -654,6 +734,16 @@ class CustomerDeleteView(CompanyMixin, View):
 
 class OpportunityListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/opportunities/list.html"
     context_object_name = "opportunities"
     paginate_by = 25
@@ -705,6 +795,16 @@ class OpportunityListView(CompanyMixin, ListView):
 
 class ContractListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/contracts/list.html"
     context_object_name = "contracts"
     paginate_by = 25
@@ -738,6 +838,16 @@ class ContractListView(CompanyMixin, ListView):
 
 class ContractDetailView(CompanyMixin, DetailView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/contracts/detail.html"
     context_object_name = "contract"
 
@@ -843,6 +953,16 @@ class ContractDeleteView(CompanyMixin, View):
 
 class InteractionListView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/interactions/list.html"
     context_object_name = "interactions"
     paginate_by = 50
@@ -886,6 +1006,16 @@ class InteractionListView(CompanyMixin, ListView):
 
 class CampaignReportView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/campaigns/report.html"
     context_object_name = "campaigns"
 
@@ -923,6 +1053,16 @@ class CampaignReportView(CompanyMixin, ListView):
 
 class ContractReportView(CompanyMixin, ListView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/contracts/report.html"
     context_object_name = "contracts"
 
@@ -972,6 +1112,16 @@ class ContractReportView(CompanyMixin, ListView):
 
 class CRMDashboardView(CompanyMixin, TemplateView):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     template_name = "crm/dashboard.html"
 
     def get_context_data(self, **kwargs):

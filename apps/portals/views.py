@@ -44,6 +44,16 @@ class CustomerPortalMixin(LoginRequiredMixin):
 
 class CustomerPortalView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -67,6 +77,16 @@ class CustomerPortalView(CustomerPortalMixin, TemplateView):
 
 class CustomerOrderListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_orders.html"
 
     def get_context_data(self, **kwargs):
@@ -79,6 +99,16 @@ class CustomerOrderListView(CustomerPortalMixin, TemplateView):
 
 class CustomerOrderDetailView(CustomerPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_order_detail.html"
 
     def get(self, request, pk):
@@ -89,6 +119,16 @@ class CustomerOrderDetailView(CustomerPortalMixin, View):
 
 class CustomerInvoiceListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_invoices.html"
 
     def get_context_data(self, **kwargs):
@@ -113,6 +153,16 @@ class CustomerPaymentListView(CustomerPortalMixin, TemplateView):
 
 class CustomerTicketListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_tickets.html"
 
     def get_context_data(self, **kwargs):
@@ -125,6 +175,16 @@ class CustomerTicketListView(CustomerPortalMixin, TemplateView):
 
 class CustomerTicketDetailView(CustomerPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_ticket_detail.html"
 
     def get(self, request, pk):
@@ -193,6 +253,16 @@ class CustomerTicketCreateView(CustomerPortalMixin, View):
 
 class CustomerDocumentListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_documents.html"
 
     def get_context_data(self, **kwargs):
@@ -205,6 +275,16 @@ class CustomerDocumentListView(CustomerPortalMixin, TemplateView):
 
 class CustomerContractListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_contracts.html"
 
     def get_context_data(self, **kwargs):
@@ -217,6 +297,16 @@ class CustomerContractListView(CustomerPortalMixin, TemplateView):
 
 class CustomerShipmentListView(CustomerPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_shipments.html"
 
     def get_context_data(self, **kwargs):
@@ -230,6 +320,16 @@ class CustomerShipmentListView(CustomerPortalMixin, TemplateView):
 
 class CustomerShipmentDetailView(CustomerPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_shipment_detail.html"
 
     def get(self, request, pk):
@@ -243,6 +343,16 @@ class CustomerShipmentDetailView(CustomerPortalMixin, View):
 
 class CustomerProfileView(CustomerPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/customer_profile.html"
 
     def get(self, request):
@@ -286,6 +396,16 @@ class VendorPortalMixin(LoginRequiredMixin):
 
 class VendorPortalView(VendorPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/vendor_dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -303,6 +423,16 @@ class VendorPortalView(VendorPortalMixin, TemplateView):
 
 class VendorOrderListView(VendorPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/vendor_orders.html"
 
     def get_context_data(self, **kwargs):
@@ -315,6 +445,16 @@ class VendorOrderListView(VendorPortalMixin, TemplateView):
 
 class VendorOrderDetailView(VendorPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/vendor_order_detail.html"
 
     def get(self, request, pk):
@@ -325,6 +465,16 @@ class VendorOrderDetailView(VendorPortalMixin, View):
 
 class VendorBillListView(VendorPortalMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/vendor_bills.html"
 
     def get_context_data(self, **kwargs):
@@ -347,6 +497,16 @@ class VendorPaymentListView(VendorPortalMixin, TemplateView):
 
 class VendorProfileView(VendorPortalMixin, View):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/vendor_profile.html"
 
     def get(self, request):
@@ -367,6 +527,16 @@ class VendorProfileView(VendorPortalMixin, View):
 
 class EmployeePortalView(LoginRequiredMixin, TemplateView):
     required_permission = "portals.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "portals.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "portals.update"
+            elif request.method == "DELETE":
+                return "portals.delete"
+        return self.required_permission
     template_name = "portals/employee_dashboard.html"
 
     def get_context_data(self, **kwargs):

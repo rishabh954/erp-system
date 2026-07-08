@@ -32,6 +32,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class AIHubView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -69,6 +79,16 @@ class AIHubView(CompanyMixin, TemplateView):
 
 class ChatView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/chat.html"
 
     def get_context_data(self, **kwargs):
@@ -179,6 +199,16 @@ class ChatDeleteConversationView(CompanyMixin, View):
 
 class NLPReportView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/nlp_report.html"
 
     def get_context_data(self, **kwargs):
@@ -199,6 +229,16 @@ class NLPReportView(CompanyMixin, TemplateView):
 
 class NLPReportQueryView(CompanyMixin, View):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     """AJAX: process an NL question and return results."""
 
     def post(self, request):
@@ -246,6 +286,16 @@ class NLPReportQueryView(CompanyMixin, View):
 
 class ForecastView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/forecast.html"
 
     def get_context_data(self, **kwargs):
@@ -257,6 +307,16 @@ class ForecastView(CompanyMixin, TemplateView):
 
 class ForecastDataView(CompanyMixin, View):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     """AJAX: return forecast data JSON for Chart.js."""
 
     def get(self, request):
@@ -295,6 +355,16 @@ class ForecastDataView(CompanyMixin, View):
 
 class OCRUploadView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/ocr_upload.html"
 
     def get_context_data(self, **kwargs):
@@ -347,6 +417,16 @@ class OCRUploadView(CompanyMixin, TemplateView):
 
 class OCRResultView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/ocr_result.html"
 
     def get_context_data(self, **kwargs):
@@ -359,6 +439,16 @@ class OCRResultView(CompanyMixin, TemplateView):
 
 class OCRStatusView(CompanyMixin, View):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     """AJAX: poll OCR status."""
 
     def get(self, request, pk):
@@ -379,6 +469,16 @@ class OCRStatusView(CompanyMixin, View):
 
 class CustomerInsightsView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/insights.html"
 
     def get_context_data(self, **kwargs):
@@ -455,6 +555,16 @@ class GenerateCustomerInsightsView(CompanyMixin, View):
 
 class PurchaseRecommendationView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/purchase_recommendations.html"
 
     def get_context_data(self, **kwargs):
@@ -485,11 +595,31 @@ class GeneratePurchaseRecommendationsView(CompanyMixin, View):
 
 class ExpenseCategorisationView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/expense_categorisation.html"
 
 
 class CategoriseExpensesView(CompanyMixin, View):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     def post(self, request):
         from apps.ai.services import ExpenseCategorisationService
 
@@ -513,6 +643,16 @@ class CategoriseExpensesView(CompanyMixin, View):
 
 class FinancialSummaryView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/financial_summary.html"
 
     def get_context_data(self, **kwargs):
@@ -562,6 +702,16 @@ class GenerateFinancialSummaryView(CompanyMixin, View):
 
 class DashboardAssistantView(CompanyMixin, View):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     """AJAX endpoint for the floating dashboard assistant widget."""
 
     def post(self, request):
@@ -591,6 +741,16 @@ class DashboardAssistantView(CompanyMixin, View):
 
 class AISettingsView(CompanyMixin, TemplateView):
     required_permission = "ai.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "ai.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "ai.update"
+            elif request.method == "DELETE":
+                return "ai.delete"
+        return self.required_permission
     template_name = "ai/settings.html"
 
     def get_context_data(self, **kwargs):

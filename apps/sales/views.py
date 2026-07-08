@@ -50,6 +50,16 @@ class CompanyScopedMixin(PermissionRequiredMixin):
 
 class QuotationListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/quotations/list.html"
     context_object_name = "quotations"
     paginate_by = 25
@@ -188,6 +198,16 @@ class QuotationDeleteView(CompanyScopedMixin, View):
 
 class QuotationDetailView(CompanyScopedMixin, DetailView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/quotations/detail.html"
     context_object_name = "quotation"
 
@@ -326,6 +346,16 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
 
 class SalesOrderListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/orders/list.html"
     context_object_name = "orders"
     paginate_by = 25
@@ -496,6 +526,16 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
 
 class SalesOrderDetailView(CompanyScopedMixin, DetailView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/orders/detail.html"
     context_object_name = "order"
 
@@ -560,6 +600,16 @@ class CreateInvoiceFromSOView(CompanyScopedMixin, View):
 
 class InvoiceListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/invoices/list.html"
     context_object_name = "invoices"
     paginate_by = 25
@@ -722,6 +772,16 @@ class InvoiceDeleteView(CompanyScopedMixin, View):
 
 class InvoiceDetailView(CompanyScopedMixin, DetailView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/invoices/detail.html"
     context_object_name = "invoice"
 
@@ -787,6 +847,16 @@ class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
 
 class InvoicePDFView(CompanyScopedMixin, View):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     def get(self, request, pk):
         invoice = get_object_or_404(
             Invoice, pk=pk, company=self.get_company(), is_deleted=False
@@ -937,6 +1007,16 @@ from .models import CreditNote, PriceList, SalesCommission, Subscription
 
 class PriceListListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/price_lists/list.html"
     context_object_name = "price_lists"
 
@@ -946,6 +1026,16 @@ class PriceListListView(CompanyScopedMixin, ListView):
 
 class PriceListDetailView(CompanyScopedMixin, DetailView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/price_lists/detail.html"
     context_object_name = "price_list"
 
@@ -955,6 +1045,16 @@ class PriceListDetailView(CompanyScopedMixin, DetailView):
 
 class SubscriptionListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/subscriptions/list.html"
     context_object_name = "subscriptions"
 
@@ -989,6 +1089,16 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
 
 class SubscriptionDetailView(CompanyScopedMixin, DetailView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/subscriptions/detail.html"
     context_object_name = "subscription"
 
@@ -1018,6 +1128,16 @@ class CreditNoteDetailView(CompanyScopedMixin, DetailView):
 
 class SalesCommissionListView(CompanyScopedMixin, ListView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/commissions/list.html"
     context_object_name = "commissions"
 
@@ -1231,6 +1351,16 @@ class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
 
 class SalesDashboardView(CompanyScopedMixin, TemplateView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -1282,6 +1412,16 @@ class SalesDashboardView(CompanyScopedMixin, TemplateView):
 
 class POSView(CompanyScopedMixin, TemplateView):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     template_name = "sales/pos.html"
 
     def get_context_data(self, **kwargs):

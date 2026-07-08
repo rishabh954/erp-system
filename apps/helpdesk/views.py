@@ -22,6 +22,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class TicketListView(CompanyMixin, ListView):
     required_permission = "helpdesk.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "helpdesk.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "helpdesk.update"
+            elif request.method == "DELETE":
+                return "helpdesk.delete"
+        return self.required_permission
     template_name = "helpdesk/tickets/list.html"
     context_object_name = "tickets"
     paginate_by = 25
@@ -69,6 +79,16 @@ class TicketListView(CompanyMixin, ListView):
 
 class TicketDetailView(CompanyMixin, DetailView):
     required_permission = "helpdesk.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "helpdesk.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "helpdesk.update"
+            elif request.method == "DELETE":
+                return "helpdesk.delete"
+        return self.required_permission
     template_name = "helpdesk/tickets/detail.html"
     context_object_name = "ticket"
 

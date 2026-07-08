@@ -41,6 +41,16 @@ from apps.crm.models import Customer, Lead
 @extend_schema(tags=["CRM"])
 class LeadViewSet(CompanyScopedViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Lead.objects.select_related("assigned_to").all()
     serializer_class = serializers.LeadSerializer
     filterset_fields = ["status", "source", "assigned_to"]
@@ -52,6 +62,16 @@ class LeadViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["CRM"])
 class CustomerViewSet(CompanyScopedViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     filterset_fields = ["customer_type", "is_active"]
@@ -67,6 +87,16 @@ from apps.sales.models import Invoice, Quotation, SalesOrder
 @extend_schema(tags=["Sales"])
 class QuotationViewSet(CompanyScopedViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     queryset = Quotation.objects.select_related("customer").all()
     serializer_class = serializers.ErpQuotationSerializer
     filterset_fields = ["status", "customer"]
@@ -78,6 +108,16 @@ class QuotationViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Sales"])
 class SalesOrderViewSet(CompanyScopedViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     queryset = SalesOrder.objects.select_related("customer").all()
     serializer_class = serializers.ErpSalesOrderSerializer
     filterset_fields = ["status", "customer"]
@@ -89,6 +129,16 @@ class SalesOrderViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Sales"])
 class InvoiceViewSet(CompanyScopedViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     queryset = Invoice.objects.select_related("customer").all()
     serializer_class = serializers.ErpInvoiceSerializer
     filterset_fields = ["status", "customer"]
@@ -104,6 +154,16 @@ from apps.purchase.models import Bill, PurchaseOrder, Vendor
 @extend_schema(tags=["Purchase"])
 class VendorViewSet(CompanyScopedViewSet):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     queryset = Vendor.objects.all()
     serializer_class = serializers.ErpVendorSerializer
     filterset_fields = ["vendor_type"]
@@ -115,6 +175,16 @@ class VendorViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Purchase"])
 class PurchaseOrderViewSet(CompanyScopedViewSet):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     queryset = PurchaseOrder.objects.select_related("vendor").all()
     serializer_class = serializers.ErpPurchaseOrderSerializer
     filterset_fields = ["status", "vendor"]
@@ -126,6 +196,16 @@ class PurchaseOrderViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Purchase"])
 class BillViewSet(CompanyScopedViewSet):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     queryset = Bill.objects.select_related("vendor").all()
     serializer_class = serializers.ErpBillSerializer
     filterset_fields = ["status", "vendor"]
@@ -141,6 +221,16 @@ from apps.inventory.models import Product, Warehouse
 @extend_schema(tags=["Inventory"])
 class ProductViewSet(CompanyScopedViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = Product.objects.select_related("category", "uom").all()
     serializer_class = serializers.ErpProductSerializer
     filterset_fields = ["product_type", "tracking_method", "category"]
@@ -152,6 +242,16 @@ class ProductViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Inventory"])
 class WarehouseViewSet(CompanyScopedViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = Warehouse.objects.all()
     serializer_class = serializers.ErpWarehouseSerializer
     filterset_fields = []
@@ -167,6 +267,16 @@ from apps.hrms.models import Employee, LeaveRequest
 @extend_schema(tags=["HRMS"])
 class EmployeeViewSet(CompanyScopedViewSet):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     queryset = Employee.objects.select_related("department").all()
     serializer_class = serializers.EmployeeSerializer
     filterset_fields = ["department", "status"]
@@ -178,6 +288,16 @@ class EmployeeViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["HRMS"])
 class LeaveRequestViewSet(CompanyScopedViewSet):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     queryset = LeaveRequest.objects.select_related("employee").all()
     serializer_class = serializers.LeaveRequestSerializer
     filterset_fields = ["status", "employee"]
@@ -193,6 +313,16 @@ from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder
 @extend_schema(tags=["Manufacturing"])
 class ManufacturingOrderViewSet(CompanyScopedViewSet):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     queryset = ManufacturingOrder.objects.select_related("product", "bom").all()
     serializer_class = serializers.ManufacturingOrderSerializer
     filterset_fields = ["status", "product"]
@@ -204,6 +334,16 @@ class ManufacturingOrderViewSet(CompanyScopedViewSet):
 @extend_schema(tags=["Manufacturing"])
 class BOMViewSet(CompanyScopedViewSet):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     queryset = BillOfMaterial.objects.select_related("product").all()
     serializer_class = serializers.BOMSerializer
     filterset_fields = ["is_active", "product"]

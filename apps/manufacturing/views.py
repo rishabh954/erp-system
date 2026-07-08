@@ -24,6 +24,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class WorkCenterListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/work_centers/list.html"
     context_object_name = "work_centers"
 
@@ -33,6 +43,16 @@ class WorkCenterListView(CompanyMixin, ListView):
 
 class RoutingListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/routings/list.html"
     context_object_name = "routings"
 
@@ -45,6 +65,16 @@ class RoutingListView(CompanyMixin, ListView):
 
 class BOMListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/boms/list.html"
     context_object_name = "boms"
 
@@ -58,6 +88,16 @@ class BOMListView(CompanyMixin, ListView):
 
 class BOMDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/boms/detail.html"
     context_object_name = "bom"
 
@@ -129,6 +169,16 @@ class BOMCreateView(CompanyMixin, View):
 
 class MOListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/orders/list.html"
     context_object_name = "orders"
 
@@ -146,6 +196,16 @@ class MOListView(CompanyMixin, ListView):
 
 class MODetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/orders/detail.html"
     context_object_name = "order"
 
@@ -226,6 +286,16 @@ from .models import DowntimeLog, ScrapOrder
 
 class ScrapOrderListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/scrap/list.html"
     context_object_name = "scrap_orders"
 
@@ -237,6 +307,16 @@ class ScrapOrderListView(CompanyMixin, ListView):
 
 class ScrapOrderDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/scrap/detail.html"
     context_object_name = "scrap_order"
 
@@ -248,6 +328,16 @@ class ScrapOrderDetailView(CompanyMixin, DetailView):
 
 class DowntimeLogListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/downtime/list.html"
     context_object_name = "downtime_logs"
 
@@ -259,6 +349,16 @@ class DowntimeLogListView(CompanyMixin, ListView):
 
 class DowntimeLogDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/downtime/detail.html"
     context_object_name = "downtime_log"
 
@@ -270,6 +370,16 @@ class DowntimeLogDetailView(CompanyMixin, DetailView):
 
 class WorkOrderListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/work_orders/list.html"
     context_object_name = "work_orders"
 
@@ -281,6 +391,16 @@ class WorkOrderListView(CompanyMixin, ListView):
 
 class WorkOrderDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/work_orders/detail.html"
     context_object_name = "work_order"
 
@@ -318,6 +438,16 @@ from .models import ProductionCosting, QualityCheck
 
 class QualityCheckListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/qc/list.html"
     context_object_name = "quality_checks"
 
@@ -329,6 +459,16 @@ class QualityCheckListView(CompanyMixin, ListView):
 
 class QualityCheckDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/qc/detail.html"
     context_object_name = "quality_check"
 
@@ -340,6 +480,16 @@ class QualityCheckDetailView(CompanyMixin, DetailView):
 
 class ProductionCostingListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/costing/list.html"
     context_object_name = "costings"
 
@@ -351,6 +501,16 @@ class ProductionCostingListView(CompanyMixin, ListView):
 
 class ProductionCostingDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/costing/detail.html"
     context_object_name = "costing"
 
@@ -370,6 +530,16 @@ from .services import MRPService
 
 class ManufacturingDashboardView(CompanyMixin, TemplateView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -411,6 +581,16 @@ class ManufacturingDashboardView(CompanyMixin, TemplateView):
 
 class MaterialPlanListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/mrp/list.html"
     context_object_name = "plans"
 
@@ -420,6 +600,16 @@ class MaterialPlanListView(CompanyMixin, ListView):
 
 class MaterialPlanDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/mrp/detail.html"
     context_object_name = "plan"
 
@@ -440,6 +630,16 @@ class MaterialPlanRunView(CompanyMixin, View):
 
 class MaintenanceRequestListView(CompanyMixin, ListView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/maintenance/list.html"
     context_object_name = "requests"
 
@@ -451,6 +651,16 @@ class MaintenanceRequestListView(CompanyMixin, ListView):
 
 class MaintenanceRequestDetailView(CompanyMixin, DetailView):
     required_permission = "manufacturing.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "manufacturing.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "manufacturing.update"
+            elif request.method == "DELETE":
+                return "manufacturing.delete"
+        return self.required_permission
     template_name = "manufacturing/maintenance/detail.html"
     context_object_name = "maintenance_request"
 

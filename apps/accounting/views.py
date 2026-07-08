@@ -531,6 +531,11 @@ from .models import BankStatementLine
 
 class BankReconciliationView(CompanyMixin, View):
     required_permission = "accounting.read"
+
+    def get_required_permission(self, request=None):
+        if request and request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            return "accounting.create"
+        return self.required_permission
     template_name = "accounting/reconciliation.html"
 
     def get(self, request):
@@ -661,6 +666,11 @@ from core.services import BaseService
 
 class IssueCreditNoteView(CompanyMixin, View):
     required_permission = "accounting.read"
+
+    def get_required_permission(self, request=None):
+        if request and request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            return "accounting.create"
+        return self.required_permission
     def get(self, request):
         company = self.company()
         customers = Customer.objects.filter(company=company, is_deleted=False)

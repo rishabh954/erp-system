@@ -16,6 +16,16 @@ from core.pagination import StandardResultsSetPagination
 
 class CampaignViewSet(viewsets.ModelViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Campaign.objects.all()
     serializer_class = CampaignSerializer
     pagination_class = StandardResultsSetPagination
@@ -29,6 +39,16 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
 class LeadViewSet(viewsets.ModelViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Lead.objects.all()
     serializer_class = LeadSerializer
     pagination_class = StandardResultsSetPagination
@@ -88,6 +108,16 @@ class LeadViewSet(viewsets.ModelViewSet):
 
 class CustomerViewSet(viewsets.ModelViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
@@ -129,6 +159,16 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 class LeadActivityViewSet(viewsets.ModelViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = LeadActivity.objects.all()
     serializer_class = LeadActivitySerializer
     pagination_class = StandardResultsSetPagination
@@ -152,6 +192,16 @@ class LeadActivityViewSet(viewsets.ModelViewSet):
 
 class ContractViewSet(viewsets.ModelViewSet):
     required_permission = "crm.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "crm.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "crm.update"
+            elif request.method == "DELETE":
+                return "crm.delete"
+        return self.required_permission
     queryset = Contract.objects.all()
     serializer_class = ContractSerializer
     pagination_class = StandardResultsSetPagination

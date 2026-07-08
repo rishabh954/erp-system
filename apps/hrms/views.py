@@ -43,6 +43,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class EmployeeListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/employees/list.html"
     context_object_name = "employees"
     paginate_by = 25
@@ -99,6 +109,16 @@ class EmployeeListView(CompanyMixin, ListView):
 
 class EmployeeDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/employees/detail.html"
     context_object_name = "employee"
 
@@ -418,6 +438,16 @@ class ExperienceRecordDeleteView(CompanyMixin, View):
 
 class AttendanceView(CompanyMixin, TemplateView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/attendance/index.html"
 
     def get_context_data(self, **kwargs):
@@ -489,6 +519,16 @@ class CheckOutView(CompanyMixin, View):
 
 class LeaveListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/leaves/list.html"
     context_object_name = "leaves"
     paginate_by = 25
@@ -593,6 +633,16 @@ class LeaveApproveView(CompanyMixin, View):
 
 class SalaryStructureListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/salary_structures/list.html"
     context_object_name = "structures"
 
@@ -622,6 +672,16 @@ class SalaryStructureCreateView(CompanyMixin, View):
 
 class SalaryStructureDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/salary_structures/detail.html"
     context_object_name = "structure"
 
@@ -704,6 +764,16 @@ class EmployeeSalaryCreateView(CompanyMixin, View):
 
 class PayrollListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/payroll/list.html"
     context_object_name = "periods"
     paginate_by = 12
@@ -716,6 +786,16 @@ class PayrollListView(CompanyMixin, ListView):
 
 class PayrollDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/payroll/detail.html"
     context_object_name = "period"
 
@@ -865,6 +945,16 @@ class JobPostingDetailView(CompanyMixin, DetailView):
 
 class JobApplicationListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/recruitment/applications.html"
     context_object_name = "applications"
 
@@ -905,6 +995,16 @@ class JobApplicationListView(CompanyMixin, ListView):
 
 class JobApplicationDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/recruitment/application_detail.html"
     context_object_name = "application"
 
@@ -936,6 +1036,16 @@ from .models import ExpenseClaim, PerformanceAppraisal, TrainingProgram
 
 class PerformanceAppraisalListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/appraisals/list.html"
     context_object_name = "appraisals"
 
@@ -978,6 +1088,16 @@ class PerformanceAppraisalListView(CompanyMixin, ListView):
 
 class PerformanceAppraisalDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/appraisals/detail.html"
     context_object_name = "appraisal"
 
@@ -1012,6 +1132,16 @@ class PerformanceAppraisalDetailView(CompanyMixin, DetailView):
 
 class TrainingProgramListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/training/list.html"
     context_object_name = "programs"
 
@@ -1039,6 +1169,16 @@ class TrainingProgramListView(CompanyMixin, ListView):
 
 class TrainingProgramDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/training/detail.html"
     context_object_name = "program"
 
@@ -1081,6 +1221,16 @@ class TrainingProgramDetailView(CompanyMixin, DetailView):
 
 class ExpenseClaimListView(CompanyMixin, ListView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/expenses/list.html"
     context_object_name = "claims"
 
@@ -1131,6 +1281,16 @@ class ExpenseClaimListView(CompanyMixin, ListView):
 
 class ExpenseClaimDetailView(CompanyMixin, DetailView):
     required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "hrms.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "hrms.update"
+            elif request.method == "DELETE":
+                return "hrms.delete"
+        return self.required_permission
     template_name = "hrms/expenses/detail.html"
     context_object_name = "claim"
 

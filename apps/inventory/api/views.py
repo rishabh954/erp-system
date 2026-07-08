@@ -27,6 +27,16 @@ logger = logging.getLogger(__name__)
 
 class ProductViewSet(viewsets.ModelViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     pagination_class = StandardResultsSetPagination
@@ -89,6 +99,16 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class WarehouseViewSet(viewsets.ModelViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     pagination_class = StandardResultsSetPagination
@@ -124,6 +144,16 @@ class StockRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StockMovementViewSet(viewsets.ReadOnlyModelViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer
     pagination_class = StandardResultsSetPagination
@@ -137,6 +167,16 @@ class StockMovementViewSet(viewsets.ReadOnlyModelViewSet):
 
 class InventoryTransferViewSet(viewsets.ModelViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     queryset = InventoryTransfer.objects.all()
     serializer_class = InventoryTransferSerializer
     pagination_class = StandardResultsSetPagination
@@ -184,6 +224,16 @@ class InventoryTransferViewSet(viewsets.ModelViewSet):
 
 class BarcodeScanViewSet(viewsets.ViewSet):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     @action(detail=False, methods=["post"], url_path="scan-receive")
     def scan_receive(self, request):
         barcode = request.data.get("barcode")

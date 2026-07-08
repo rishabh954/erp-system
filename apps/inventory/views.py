@@ -36,6 +36,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class ProductListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/products/list.html"
     context_object_name = "products"
     paginate_by = 30
@@ -89,6 +99,16 @@ class ProductListView(CompanyMixin, ListView):
 
 class ProductDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/products/detail.html"
     context_object_name = "product"
 
@@ -181,6 +201,16 @@ class ProductCreateView(CompanyMixin, View):
 
 class WarehouseListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/warehouses/list.html"
     context_object_name = "warehouses"
 
@@ -279,6 +309,16 @@ class WarehouseDeleteView(CompanyMixin, View):
 
 class StockMovementListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/movements/list.html"
     context_object_name = "movements"
     paginate_by = 50
@@ -368,6 +408,16 @@ class StockAdjustmentView(CompanyMixin, View):
 
 class TransferListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/transfers/list.html"
     context_object_name = "transfers"
     paginate_by = 25
@@ -452,6 +502,16 @@ class TransferCreateView(CompanyMixin, View):
 
 class TransferDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/transfers/detail.html"
     context_object_name = "transfer"
 
@@ -543,6 +603,16 @@ class ProductCategoryAjaxCreateView(CompanyMixin, View):
 
 class ProductCategoryListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     model = ProductCategory
     template_name = "inventory/categories/list.html"
     context_object_name = "categories"
@@ -610,6 +680,16 @@ class ProductCategoryDeleteView(CompanyMixin, DeleteView):
 
 class InventoryReportsView(CompanyMixin, TemplateView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/reports/index.html"
 
     def get_context_data(self, **kwargs):
@@ -748,6 +828,16 @@ from .models import DeliveryOrder
 
 class DeliveryOrderListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/deliveries/list.html"
     context_object_name = "deliveries"
     paginate_by = 25
@@ -779,6 +869,16 @@ class DeliveryOrderListView(CompanyMixin, ListView):
 
 class DeliveryOrderDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/deliveries/detail.html"
     context_object_name = "delivery"
 
@@ -820,6 +920,16 @@ from .models import ReorderRule
 
 class ReorderRuleListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/reorder_rules/list.html"
     context_object_name = "rules"
 
@@ -831,6 +941,16 @@ class ReorderRuleListView(CompanyMixin, ListView):
 
 class ReorderRuleDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/reorder_rules/detail.html"
     context_object_name = "rule"
 
@@ -845,6 +965,16 @@ class ReorderRuleDetailView(CompanyMixin, DetailView):
 
 class PickListListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/picklist_list.html"
     context_object_name = "picklists"
     paginate_by = 30
@@ -865,6 +995,16 @@ class PickListListView(CompanyMixin, ListView):
 
 class PickListDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/picklist_detail.html"
     context_object_name = "picklist"
 
@@ -876,6 +1016,16 @@ class PickListDetailView(CompanyMixin, DetailView):
 
 class ShipmentListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/shipment_list.html"
     context_object_name = "shipments"
     paginate_by = 30
@@ -896,6 +1046,16 @@ class ShipmentListView(CompanyMixin, ListView):
 
 class LotBatchListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/lot_list.html"
     context_object_name = "lots"
     paginate_by = 50
@@ -916,6 +1076,16 @@ class LotBatchListView(CompanyMixin, ListView):
 
 class LandedCostListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/landed_cost_list.html"
     context_object_name = "landed_costs"
     paginate_by = 30
@@ -936,6 +1106,16 @@ class LandedCostListView(CompanyMixin, ListView):
 
 class LotBatchDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/lot_detail.html"
     context_object_name = "lot"
 
@@ -949,6 +1129,16 @@ class LotBatchDetailView(CompanyMixin, DetailView):
 
 class SerialNumberListView(CompanyMixin, ListView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/serial_list.html"
     context_object_name = "serials"
     paginate_by = 50
@@ -969,6 +1159,16 @@ class SerialNumberListView(CompanyMixin, ListView):
 
 class SerialNumberDetailView(CompanyMixin, DetailView):
     required_permission = "inventory.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "inventory.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "inventory.update"
+            elif request.method == "DELETE":
+                return "inventory.delete"
+        return self.required_permission
     template_name = "inventory/wms/serial_detail.html"
     context_object_name = "serial"
 

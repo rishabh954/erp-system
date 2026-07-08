@@ -40,6 +40,16 @@ def get_period_dates(period="month"):
 
 class CEODashboardAPIView(APIView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     permission_classes = [permissions.IsAuthenticated]
 
     @method_decorator(cache_page(60 * 15))
@@ -259,6 +269,16 @@ class CEODashboardAPIView(APIView):
 
 class HRDashboardAPIView(APIView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     permission_classes = [permissions.IsAuthenticated]
 
     @method_decorator(cache_page(60 * 15))
@@ -329,6 +349,16 @@ class HRDashboardAPIView(APIView):
 
 class SalesDashboardAPIView(APIView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     permission_classes = [permissions.IsAuthenticated]
 
     @method_decorator(cache_page(60 * 15))
@@ -380,6 +410,16 @@ class SalesDashboardAPIView(APIView):
 
 class FinanceDashboardAPIView(APIView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     permission_classes = [permissions.IsAuthenticated]
 
     @method_decorator(cache_page(60 * 15))
@@ -440,6 +480,16 @@ class FinanceDashboardAPIView(APIView):
 
 class GlobalSearchAPIView(APIView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -524,6 +574,16 @@ class GlobalSearchAPIView(APIView):
 
 class DashboardIndexView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/index.html"
 
     def dispatch(self, request, *args, **kwargs):
@@ -631,46 +691,136 @@ class DashboardIndexView(LoginRequiredMixin, TemplateView):
 
 class SalesDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/sales.html"
 
 
 class FinanceDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/finance.html"
 
 
 class PurchaseDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/purchase.html"
 
 
 class WarehouseDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/warehouse.html"
 
 
 class HRDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/hr.html"
 
 
 class CRMDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/crm.html"
 
 
 class ProjectDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/projects.html"
 
 
 class HelpdeskDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/helpdesk.html"
 
 
 class ExecutiveKPIDashboardView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/executive_kpi.html"
 
 
@@ -689,11 +839,31 @@ from apps.sales.models import Invoice
 
 class CalendarView(LoginRequiredMixin, TemplateView):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     template_name = "dashboard/calendar.html"
 
 
 class CalendarEventsAPIView(LoginRequiredMixin, View):
     required_permission = "dashboard.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "dashboard.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "dashboard.update"
+            elif request.method == "DELETE":
+                return "dashboard.delete"
+        return self.required_permission
     def get(self, request, *args, **kwargs):
         start_str = request.GET.get("start")
         end_str = request.GET.get("end")

@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 
 class POSIndexView(PermissionRequiredMixin, CompanyMixin, View):
     required_permission = "pos.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "pos.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "pos.update"
+            elif request.method == "DELETE":
+                return "pos.delete"
+        return self.required_permission
     def get(self, request, *args, **kwargs):
         # Ensure there is an open session for the user
         session = POSSession.objects.filter(

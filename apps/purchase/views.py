@@ -29,6 +29,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class VendorListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/vendors/list.html"
     context_object_name = "vendors"
     paginate_by = 25
@@ -60,6 +70,16 @@ class VendorListView(CompanyMixin, ListView):
 
 class VendorDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/vendors/detail.html"
     context_object_name = "vendor"
 
@@ -190,6 +210,16 @@ class VendorDeleteView(CompanyMixin, View):
 
 class PurchaseRequestListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/requests/list.html"
     context_object_name = "requests"
     paginate_by = 25
@@ -334,6 +364,16 @@ class PurchaseRequestDeleteView(CompanyMixin, View):
 
 class PurchaseRequestDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/requests/detail.html"
     context_object_name = "pr"
 
@@ -381,6 +421,16 @@ class ApprovePurchaseRequestView(CompanyMixin, View):
 
 class PurchaseOrderListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/orders/list.html"
     context_object_name = "orders"
     paginate_by = 25
@@ -587,6 +637,16 @@ class PurchaseOrderConfirmView(CompanyMixin, View):
 
 class PurchaseOrderDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/orders/detail.html"
     context_object_name = "order"
 
@@ -697,6 +757,16 @@ class BillDeleteView(CompanyMixin, View):
 
 class BillListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     model = Bill
     template_name = "purchase/bills/list.html"
     context_object_name = "bills"
@@ -711,6 +781,16 @@ class BillListView(CompanyMixin, ListView):
 
 class BillDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     model = Bill
     template_name = "purchase/bills/detail.html"
     context_object_name = "bill"
@@ -751,6 +831,16 @@ class RecordVendorPaymentView(CompanyMixin, View):
 
 class GoodsReceiptListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     model = GoodsReceipt
     template_name = "purchase/receipts/list.html"
     context_object_name = "receipts"
@@ -830,6 +920,16 @@ class GoodsReceiptDeleteView(CompanyMixin, View):
 
 class GoodsReceiptDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     model = GoodsReceipt
     template_name = "purchase/receipts/detail.html"
     context_object_name = "receipt"
@@ -874,6 +974,16 @@ from .models import RequestForQuotation, VendorBid
 
 class RFQListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/rfqs/list.html"
     context_object_name = "rfqs"
 
@@ -885,6 +995,16 @@ class RFQListView(CompanyMixin, ListView):
 
 class RFQDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/rfqs/detail.html"
     context_object_name = "rfq"
 
@@ -979,6 +1099,16 @@ class RFQDeleteView(CompanyMixin, View):
 
 class VendorBidListView(CompanyMixin, ListView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/bids/list.html"
     context_object_name = "bids"
 
@@ -990,6 +1120,16 @@ class VendorBidListView(CompanyMixin, ListView):
 
 class VendorBidDetailView(CompanyMixin, DetailView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/bids/detail.html"
     context_object_name = "bid"
 
@@ -1075,6 +1215,16 @@ class VendorBidActionView(CompanyMixin, View):
 
 class PurchaseDashboardView(CompanyMixin, TemplateView):
     required_permission = "purchase.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "purchase.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "purchase.update"
+            elif request.method == "DELETE":
+                return "purchase.delete"
+        return self.required_permission
     template_name = "purchase/dashboard.html"
 
     def get_context_data(self, **kwargs):

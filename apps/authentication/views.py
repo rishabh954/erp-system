@@ -156,7 +156,8 @@ class LoginView(View):
 
 
 class LogoutView(LoginRequiredMixin, View):
-    required_permission = "authentication.read"
+    """Any authenticated user can log out — no module permission required."""
+
     def post(self, request):
         ActivityLog.objects.create(
             user=request.user,
@@ -336,6 +337,16 @@ class PasswordResetConfirmView(View):
 
 class ProfileView(LoginRequiredMixin, TemplateView):
     required_permission = "authentication.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "authentication.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "authentication.update"
+            elif request.method == "DELETE":
+                return "authentication.delete"
+        return self.required_permission
     template_name = "authentication/profile.html"
 
     def get_context_data(self, **kwargs):
@@ -417,6 +428,16 @@ class RevokeAllSessionsView(LoginRequiredMixin, View):
 
 class ActivityLogView(LoginRequiredMixin, View):
     required_permission = "authentication.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "authentication.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "authentication.update"
+            elif request.method == "DELETE":
+                return "authentication.delete"
+        return self.required_permission
     def get(self, request):
         logs = (
             ActivityLog.objects.filter(user=request.user)

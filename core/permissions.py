@@ -45,7 +45,11 @@ class HasModulePermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        required_perm = getattr(view, 'required_permission', None)
+        if hasattr(view, 'get_required_permission'):
+            required_perm = view.get_required_permission(request)
+        else:
+            required_perm = getattr(view, 'required_permission', None)
+        
         if not required_perm:
             # If no permission is explicitly required, fallback to basic auth check
             return True
@@ -68,11 +72,11 @@ class PermissionRequiredMixin(AccessMixin):
     """
     required_permission = None
 
-    def get_required_permission(self):
+    def get_required_permission(self, request=None):
         if self.required_permission is None:
             raise ImproperlyConfigured(
                 f"{self.__class__.__name__} is missing the required_permission attribute. "  # noqa: E501
-                "Define required_permission = 'module.action'."
+                "Define required_permission = 'module.action' or override get_required_permission()."
             )
         return self.required_permission
 
@@ -80,7 +84,7 @@ class PermissionRequiredMixin(AccessMixin):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
 
-        required_perm = self.get_required_permission()
+        required_perm = self.get_required_permission(request)
         try:
             module, action = required_perm.split('.')
             if not request.user.has_module_permission(module, action):

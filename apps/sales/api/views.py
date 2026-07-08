@@ -232,6 +232,16 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class QuotationViewSet(viewsets.ModelViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     serializer_class = QuotationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer", "sales_rep"]
@@ -286,6 +296,16 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     serializer_class = SalesOrderSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]
@@ -333,6 +353,16 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     required_permission = "sales.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "sales.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "sales.update"
+            elif request.method == "DELETE":
+                return "sales.delete"
+        return self.required_permission
     serializer_class = InvoiceSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]

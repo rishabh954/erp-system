@@ -24,6 +24,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class ProjectListView(CompanyMixin, ListView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/list.html"
     context_object_name = "projects"
     paginate_by = 20
@@ -86,6 +96,16 @@ class ProjectListView(CompanyMixin, ListView):
 
 class ProjectDetailView(CompanyMixin, DetailView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/detail.html"
     context_object_name = "project"
 
@@ -188,6 +208,16 @@ class ProjectCreateView(CompanyMixin, View):
 
 class KanbanBoardView(CompanyMixin, DetailView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/kanban.html"
     context_object_name = "project"
 
@@ -289,6 +319,16 @@ class TaskCreateView(CompanyMixin, View):
 
 class MyTasksView(CompanyMixin, ListView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/my_tasks.html"
     context_object_name = "tasks"
 
@@ -320,6 +360,16 @@ class MyTasksView(CompanyMixin, ListView):
 
 class TaskDetailView(CompanyMixin, DetailView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/task_detail.html"
     context_object_name = "task"
 
@@ -389,6 +439,16 @@ from .services import ProjectTrackingService
 
 class AgileBoardView(CompanyMixin, DetailView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/agile_board.html"
     context_object_name = "sprint"
 
@@ -407,6 +467,16 @@ class AgileBoardView(CompanyMixin, DetailView):
 
 class ProjectGanttDataView(CompanyMixin, View):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk, company=self.company())
         tasks = (
@@ -435,6 +505,16 @@ class ProjectGanttDataView(CompanyMixin, View):
 
 class ProjectRiskListView(CompanyMixin, ListView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/risks/list.html"
     context_object_name = "risks"
 
@@ -447,6 +527,16 @@ class ProjectRiskListView(CompanyMixin, ListView):
 
 class ProjectRiskDetailView(CompanyMixin, DetailView):
     required_permission = "projects.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "projects.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "projects.update"
+            elif request.method == "DELETE":
+                return "projects.delete"
+        return self.required_permission
     template_name = "projects/risks/detail.html"
     context_object_name = "risk"
 

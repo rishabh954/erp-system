@@ -35,6 +35,16 @@ class ReportsMixin(LoginRequiredMixin):
 
 class ReportBuilderView(ReportsMixin, TemplateView):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     template_name = "analytics/report_builder.html"
 
     def get_context_data(self, **kwargs):
@@ -83,6 +93,16 @@ class ReportBuilderView(ReportsMixin, TemplateView):
 
 class SavedReportsListView(ReportsMixin, ListView):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     template_name = "analytics/saved_reports.html"
     context_object_name = "reports"
     paginate_by = 20
@@ -95,6 +115,16 @@ class SavedReportsListView(ReportsMixin, ListView):
 
 class ExecutionLogListView(ReportsMixin, ListView):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     template_name = "analytics/execution_log.html"
     context_object_name = "executions"
     paginate_by = 30
@@ -110,6 +140,16 @@ class ExecutionLogListView(ReportsMixin, ListView):
 
 class ReportDetailView(ReportsMixin, DetailView):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     template_name = "analytics/report_detail.html"
     context_object_name = "report"
 
@@ -177,6 +217,16 @@ class ReportDetailView(ReportsMixin, DetailView):
 
 class ReportExportView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Handle CSV, Excel, PDF export for a saved report."""
 
     def get(self, request, pk, fmt):
@@ -215,6 +265,16 @@ class ReportExportView(ReportsMixin, View):
 
 class QuickExportView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Quick export from a module+columns+filters URL params — no saved report needed."""
 
     def get(self, request, fmt):
@@ -257,6 +317,16 @@ class QuickExportView(ReportsMixin, View):
 
 class ReportDataAPIView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Returns report data as JSON for dynamic chart rendering."""
 
     def get(self, request, pk):
@@ -290,6 +360,16 @@ class ReportDataAPIView(ReportsMixin, View):
 
 class PreviewAPIView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Generates preview data for the Report Builder."""
 
     def post(self, request):
@@ -372,6 +452,16 @@ class PreviewAPIView(ReportsMixin, View):
 
 class ModuleFieldsAPIView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Returns the available columns for a given module."""
 
     FIELD_HINTS = {
@@ -512,6 +602,16 @@ class ModuleFieldsAPIView(ReportsMixin, View):
 
 class ScheduleReportView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     """Create or update a report schedule."""
 
     def post(self, request, pk):
@@ -549,6 +649,16 @@ class ScheduleDeleteView(ReportsMixin, View):
 
 class AnalyticsDashboardView(ReportsMixin, TemplateView):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     template_name = "analytics/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -653,6 +763,16 @@ class GenerateReportAPIView(ReportsMixin, View):
 
 class GetModuleFieldsAPIView(ReportsMixin, View):
     required_permission = "analytics.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "analytics.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "analytics.update"
+            elif request.method == "DELETE":
+                return "analytics.delete"
+        return self.required_permission
     def get(self, request, *args, **kwargs):
         from django.apps import apps as django_apps
 

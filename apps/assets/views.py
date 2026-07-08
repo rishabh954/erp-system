@@ -22,6 +22,16 @@ class CompanyMixin(PermissionRequiredMixin):
 
 class AssetListView(CompanyMixin, ListView):
     required_permission = "assets.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "assets.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "assets.update"
+            elif request.method == "DELETE":
+                return "assets.delete"
+        return self.required_permission
     template_name = "assets/list.html"
     context_object_name = "assets"
     paginate_by = 25
@@ -66,6 +76,16 @@ class AssetListView(CompanyMixin, ListView):
 
 class AssetDetailView(CompanyMixin, DetailView):
     required_permission = "assets.read"
+
+    def get_required_permission(self, request=None):
+        if request:
+            if request.method == "POST":
+                return "assets.create"
+            elif request.method in ["PUT", "PATCH"]:
+                return "assets.update"
+            elif request.method == "DELETE":
+                return "assets.delete"
+        return self.required_permission
     template_name = "assets/detail.html"
     context_object_name = "asset"
 

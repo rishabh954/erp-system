@@ -285,3 +285,31 @@ def test_banking_service_reconcile(company, user, currency):
     assert res_line.is_reconciled == True
     assert res_item.reconciled == True
     assert res_line.journal_item == res_item
+
+def test_issue_credit_note_permissions(client, company):
+    from django.urls import reverse
+    from apps.authentication.models import User, ModulePermission
+    
+    # 1. Setup users
+    user_read = User.objects.create_user(email="read@acc.com", password="password", primary_company=company, role=User.Role.CUSTOMER_PORTAL)
+    ModulePermission.objects.filter(role=User.Role.CUSTOMER_PORTAL, module="accounting").delete()
+    ModulePermission.objects.create(role=User.Role.CUSTOMER_PORTAL, module="accounting", can_read=True, can_create=False)
+    
+    user_create = User.objects.create_user(email="create@acc.com", password="password", primary_company=company, role=User.Role.EMPLOYEE)
+    ModulePermission.objects.filter(role=User.Role.EMPLOYEE, module="accounting").delete()
+    ModulePermission.objects.create(role=User.Role.EMPLOYEE, module="accounting", can_read=True, can_create=True)
+    
+    url = reverse('accounting:issue_credit_note')
+    
+    # 2. Test user_read (should be allowed on GET, forbidden on POST)
+    client.force_login(user_read)
+    response_get = client.get(url)
+    assert response_get.status_code == 200, "Read user should be allowed to view the credit note page"
+    
+    response_post = client.post(url, data={})
+    assert response_post.status_code == 403, "Read user must be forbidden on POST"
+    
+    # 3. Test user_create (should be allowed on both GET and POST)
+    client.force_login(user_create)
+    response_post2 = client.post(url, data={})
+    assert response_post2.status_code != 403, "Create user must pass permission check"
