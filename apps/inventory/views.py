@@ -3,6 +3,7 @@ Inventory Views
 Products, Warehouses, Stock Movements, Transfers, Reports
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, F, Q, Sum
@@ -21,7 +22,7 @@ from .models import (
 )
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -30,6 +31,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class ProductListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/products/list.html"
     context_object_name = "products"
     paginate_by = 30
@@ -82,6 +84,7 @@ class ProductListView(CompanyMixin, ListView):
 
 
 class ProductDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/products/detail.html"
     context_object_name = "product"
 
@@ -109,6 +112,7 @@ class ProductDetailView(CompanyMixin, DetailView):
 
 
 class ProductCreateView(CompanyMixin, View):
+    required_permission = "inventory.create"
     template_name = "inventory/products/form.html"
 
     def get(self, request):
@@ -172,6 +176,7 @@ class ProductCreateView(CompanyMixin, View):
 
 
 class WarehouseListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/warehouses/list.html"
     context_object_name = "warehouses"
 
@@ -206,6 +211,7 @@ class WarehouseListView(CompanyMixin, ListView):
 
 
 class WarehouseCreateView(CompanyMixin, View):
+    required_permission = "inventory.create"
     def post(self, request):
         try:
             from django.contrib.auth import get_user_model
@@ -231,6 +237,7 @@ class WarehouseCreateView(CompanyMixin, View):
 
 
 class WarehouseUpdateView(CompanyMixin, View):
+    required_permission = "inventory.update"
     def post(self, request, pk):
         try:
             wh = get_object_or_404(Warehouse, pk=pk, company=self.company())
@@ -250,6 +257,7 @@ class WarehouseUpdateView(CompanyMixin, View):
 
 
 class WarehouseDeleteView(CompanyMixin, View):
+    required_permission = "inventory.delete"
     def post(self, request, pk):
         try:
             wh = get_object_or_404(Warehouse, pk=pk, company=self.company())
@@ -266,6 +274,7 @@ class WarehouseDeleteView(CompanyMixin, View):
 
 
 class StockMovementListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/movements/list.html"
     context_object_name = "movements"
     paginate_by = 50
@@ -303,6 +312,7 @@ class StockMovementListView(CompanyMixin, ListView):
 
 
 class StockAdjustmentView(CompanyMixin, View):
+    required_permission = "inventory.read"
     template_name = "inventory/movements/adjustment.html"
 
     def get(self, request):
@@ -353,6 +363,7 @@ class StockAdjustmentView(CompanyMixin, View):
 
 
 class TransferListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/transfers/list.html"
     context_object_name = "transfers"
     paginate_by = 25
@@ -387,6 +398,7 @@ class TransferListView(CompanyMixin, ListView):
 
 
 class TransferCreateView(CompanyMixin, View):
+    required_permission = "inventory.create"
     template_name = "inventory/transfers/form.html"
 
     def get(self, request):
@@ -435,6 +447,7 @@ class TransferCreateView(CompanyMixin, View):
 
 
 class TransferDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/transfers/detail.html"
     context_object_name = "transfer"
 
@@ -453,6 +466,7 @@ class TransferDetailView(CompanyMixin, DetailView):
 
 
 class TransferActionView(CompanyMixin, View):
+    required_permission = "inventory.read"
     def post(self, request, pk):
         transfer = get_object_or_404(
             InventoryTransfer, pk=pk, company=self.company(), is_deleted=False
@@ -498,6 +512,7 @@ class TransferActionView(CompanyMixin, View):
 
 
 class ProductCategoryAjaxCreateView(CompanyMixin, View):
+    required_permission = "inventory.create"
     def post(self, request):
         company = self.company()
         name = request.POST.get("name", "").strip()
@@ -522,6 +537,7 @@ class ProductCategoryAjaxCreateView(CompanyMixin, View):
 
 
 class ProductCategoryListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     model = ProductCategory
     template_name = "inventory/categories/list.html"
     context_object_name = "categories"
@@ -541,6 +557,7 @@ from django.views.generic import CreateView, DeleteView, UpdateView
 
 
 class ProductCategoryCreateView(CompanyMixin, SuccessMessageMixin, CreateView):
+    required_permission = "inventory.create"
     model = ProductCategory
     template_name = "inventory/categories/form.html"
     fields = ["name", "code", "parent", "description", "is_active"]
@@ -553,6 +570,7 @@ class ProductCategoryCreateView(CompanyMixin, SuccessMessageMixin, CreateView):
 
 
 class ProductCategoryUpdateView(CompanyMixin, SuccessMessageMixin, UpdateView):
+    required_permission = "inventory.update"
     model = ProductCategory
     template_name = "inventory/categories/form.html"
     fields = ["name", "code", "parent", "description", "is_active"]
@@ -564,6 +582,7 @@ class ProductCategoryUpdateView(CompanyMixin, SuccessMessageMixin, UpdateView):
 
 
 class ProductCategoryDeleteView(CompanyMixin, DeleteView):
+    required_permission = "inventory.delete"
     model = ProductCategory
     template_name = "inventory/categories/confirm_delete.html"
     success_url = reverse_lazy("inventory:categories")
@@ -585,6 +604,7 @@ class ProductCategoryDeleteView(CompanyMixin, DeleteView):
 
 
 class InventoryReportsView(CompanyMixin, TemplateView):
+    required_permission = "inventory.read"
     template_name = "inventory/reports/index.html"
 
     def get_context_data(self, **kwargs):
@@ -722,6 +742,7 @@ from .models import DeliveryOrder
 
 
 class DeliveryOrderListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/deliveries/list.html"
     context_object_name = "deliveries"
     paginate_by = 25
@@ -752,6 +773,7 @@ class DeliveryOrderListView(CompanyMixin, ListView):
 
 
 class DeliveryOrderDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/deliveries/detail.html"
     context_object_name = "delivery"
 
@@ -765,6 +787,7 @@ class DeliveryOrderDetailView(CompanyMixin, DetailView):
 
 
 class ShipDeliveryView(CompanyMixin, View):
+    required_permission = "inventory.read"
     def post(self, request, pk):
         delivery = get_object_or_404(
             DeliveryOrder, pk=pk, company=self.company(), is_deleted=False
@@ -791,6 +814,7 @@ from .models import ReorderRule
 
 
 class ReorderRuleListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/reorder_rules/list.html"
     context_object_name = "rules"
 
@@ -801,6 +825,7 @@ class ReorderRuleListView(CompanyMixin, ListView):
 
 
 class ReorderRuleDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/reorder_rules/detail.html"
     context_object_name = "rule"
 
@@ -814,6 +839,7 @@ class ReorderRuleDetailView(CompanyMixin, DetailView):
 
 
 class PickListListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/picklist_list.html"
     context_object_name = "picklists"
     paginate_by = 30
@@ -833,6 +859,7 @@ class PickListListView(CompanyMixin, ListView):
 
 
 class PickListDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/picklist_detail.html"
     context_object_name = "picklist"
 
@@ -843,6 +870,7 @@ class PickListDetailView(CompanyMixin, DetailView):
 
 
 class ShipmentListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/shipment_list.html"
     context_object_name = "shipments"
     paginate_by = 30
@@ -862,6 +890,7 @@ class ShipmentListView(CompanyMixin, ListView):
 
 
 class LotBatchListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/lot_list.html"
     context_object_name = "lots"
     paginate_by = 50
@@ -881,6 +910,7 @@ class LotBatchListView(CompanyMixin, ListView):
 
 
 class LandedCostListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/landed_cost_list.html"
     context_object_name = "landed_costs"
     paginate_by = 30
@@ -900,6 +930,7 @@ class LandedCostListView(CompanyMixin, ListView):
 
 
 class LotBatchDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/lot_detail.html"
     context_object_name = "lot"
 
@@ -912,6 +943,7 @@ class LotBatchDetailView(CompanyMixin, DetailView):
 
 
 class SerialNumberListView(CompanyMixin, ListView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/serial_list.html"
     context_object_name = "serials"
     paginate_by = 50
@@ -931,6 +963,7 @@ class SerialNumberListView(CompanyMixin, ListView):
 
 
 class SerialNumberDetailView(CompanyMixin, DetailView):
+    required_permission = "inventory.read"
     template_name = "inventory/wms/serial_detail.html"
     context_object_name = "serial"
 

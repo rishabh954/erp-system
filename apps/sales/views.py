@@ -5,6 +5,7 @@ Quotations, Sales Orders, Invoices, Payments — list/create/detail/update
 
 from decimal import Decimal
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -30,7 +31,7 @@ from .models import (
 # ─── Mixin: company scoping ───────────────────────────────────────────────────
 
 
-class CompanyScopedMixin(LoginRequiredMixin):
+class CompanyScopedMixin(PermissionRequiredMixin):
     def get_company(self):
         return self.request.user.primary_company
 
@@ -44,6 +45,7 @@ class CompanyScopedMixin(LoginRequiredMixin):
 
 
 class QuotationListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/quotations/list.html"
     context_object_name = "quotations"
     paginate_by = 25
@@ -72,6 +74,7 @@ class QuotationListView(CompanyScopedMixin, ListView):
 
 
 class QuotationCreateView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     template_name = "sales/quotations/form.html"
 
     def get(self, request):
@@ -111,6 +114,7 @@ class QuotationCreateView(CompanyScopedMixin, View):
 
 
 class QuotationUpdateView(CompanyScopedMixin, View):
+    required_permission = "sales.update"
     template_name = "sales/quotations/form.html"
 
     def get(self, request, pk):
@@ -170,6 +174,7 @@ class QuotationUpdateView(CompanyScopedMixin, View):
 
 
 class QuotationDeleteView(CompanyScopedMixin, View):
+    required_permission = "sales.delete"
     def post(self, request, pk):
         quot = get_object_or_404(Quotation, pk=pk, company=self.get_company())
         quot.delete()
@@ -178,6 +183,7 @@ class QuotationDeleteView(CompanyScopedMixin, View):
 
 
 class QuotationDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.read"
     template_name = "sales/quotations/detail.html"
     context_object_name = "quotation"
 
@@ -196,6 +202,7 @@ class QuotationDetailView(CompanyScopedMixin, DetailView):
 
 
 class QuotationSendView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
             Quotation, pk=pk, company=self.get_company(), is_deleted=False
@@ -225,6 +232,7 @@ class QuotationSendView(CompanyScopedMixin, View):
 
 
 class QuotationRejectView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
             Quotation, pk=pk, company=self.get_company(), is_deleted=False
@@ -243,6 +251,7 @@ class QuotationRejectView(CompanyScopedMixin, View):
 
 
 class QuotationApproveView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
             Quotation, pk=pk, company=self.get_company(), is_deleted=False
@@ -260,6 +269,7 @@ class QuotationApproveView(CompanyScopedMixin, View):
 
 
 class QuotationConvertToSOView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
             Quotation, pk=pk, company=self.get_company(), is_deleted=False
@@ -310,6 +320,7 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
 
 
 class SalesOrderListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/orders/list.html"
     context_object_name = "orders"
     paginate_by = 25
@@ -336,6 +347,7 @@ class SalesOrderListView(CompanyScopedMixin, ListView):
 
 
 class SalesOrderCreateView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     template_name = "sales/orders/form.html"
 
     def get(self, request):
@@ -373,6 +385,7 @@ class SalesOrderCreateView(CompanyScopedMixin, View):
 
 
 class SalesOrderUpdateView(CompanyScopedMixin, View):
+    required_permission = "sales.update"
     template_name = "sales/orders/form.html"
 
     def get(self, request, pk):
@@ -432,6 +445,7 @@ class SalesOrderUpdateView(CompanyScopedMixin, View):
 
 
 class SalesOrderDeleteView(CompanyScopedMixin, View):
+    required_permission = "sales.delete"
     def post(self, request, pk):
         order = get_object_or_404(SalesOrder, pk=pk, company=self.get_company())
         order.delete()
@@ -440,6 +454,7 @@ class SalesOrderDeleteView(CompanyScopedMixin, View):
 
 
 class SalesOrderCancelView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         order = get_object_or_404(
             SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
@@ -475,6 +490,7 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
 
 
 class SalesOrderDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.read"
     template_name = "sales/orders/detail.html"
     context_object_name = "order"
 
@@ -495,6 +511,7 @@ class SalesOrderDetailView(CompanyScopedMixin, DetailView):
 
 
 class CreateDeliveryFromSOView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     def post(self, request, pk):
         so = get_object_or_404(
             SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
@@ -516,6 +533,7 @@ class CreateDeliveryFromSOView(CompanyScopedMixin, View):
 
 
 class CreateInvoiceFromSOView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     def post(self, request, pk):
         so = get_object_or_404(
             SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
@@ -536,6 +554,7 @@ class CreateInvoiceFromSOView(CompanyScopedMixin, View):
 
 
 class InvoiceListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/invoices/list.html"
     context_object_name = "invoices"
     paginate_by = 25
@@ -574,6 +593,7 @@ class InvoiceListView(CompanyScopedMixin, ListView):
 
 
 class InvoiceCreateView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     template_name = "sales/invoices/form.html"
 
     def get(self, request):
@@ -609,6 +629,7 @@ class InvoiceCreateView(CompanyScopedMixin, View):
 
 
 class InvoiceUpdateView(CompanyScopedMixin, View):
+    required_permission = "sales.update"
     template_name = "sales/invoices/form.html"
 
     def get(self, request, pk):
@@ -680,6 +701,7 @@ class InvoiceUpdateView(CompanyScopedMixin, View):
 
 
 class InvoiceDeleteView(CompanyScopedMixin, View):
+    required_permission = "sales.delete"
     def post(self, request, pk):
         invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company())
         if invoice.sales_order:
@@ -694,6 +716,7 @@ class InvoiceDeleteView(CompanyScopedMixin, View):
 
 
 class InvoiceDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.read"
     template_name = "sales/invoices/detail.html"
     context_object_name = "invoice"
 
@@ -712,6 +735,7 @@ class InvoiceDetailView(CompanyScopedMixin, DetailView):
 
 
 class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         from apps.administration.services.integrations import RazorpayService
 
@@ -757,6 +781,7 @@ class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
 
 
 class InvoicePDFView(CompanyScopedMixin, View):
+    required_permission = "sales.read"
     def get(self, request, pk):
         invoice = get_object_or_404(
             Invoice, pk=pk, company=self.get_company(), is_deleted=False
@@ -789,6 +814,7 @@ class InvoicePDFView(CompanyScopedMixin, View):
 
 
 class RecordPaymentView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         invoice = get_object_or_404(
             Invoice, pk=pk, company=self.get_company(), is_deleted=False
@@ -811,6 +837,7 @@ class RecordPaymentView(CompanyScopedMixin, View):
 
 
 class PaymentListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.approve"
     template_name = "sales/payments/list.html"
     context_object_name = "payments"
     paginate_by = 25
@@ -904,6 +931,7 @@ from .models import CreditNote, PriceList, SalesCommission, Subscription
 
 
 class PriceListListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/price_lists/list.html"
     context_object_name = "price_lists"
 
@@ -912,6 +940,7 @@ class PriceListListView(CompanyScopedMixin, ListView):
 
 
 class PriceListDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.read"
     template_name = "sales/price_lists/detail.html"
     context_object_name = "price_list"
 
@@ -920,6 +949,7 @@ class PriceListDetailView(CompanyScopedMixin, DetailView):
 
 
 class SubscriptionListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/subscriptions/list.html"
     context_object_name = "subscriptions"
 
@@ -953,6 +983,7 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
 
 
 class SubscriptionDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.read"
     template_name = "sales/subscriptions/detail.html"
     context_object_name = "subscription"
 
@@ -961,6 +992,7 @@ class SubscriptionDetailView(CompanyScopedMixin, DetailView):
 
 
 class CreditNoteListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.update"
     template_name = "sales/credit_notes/list.html"
     context_object_name = "credit_notes"
 
@@ -971,6 +1003,7 @@ class CreditNoteListView(CompanyScopedMixin, ListView):
 
 
 class CreditNoteDetailView(CompanyScopedMixin, DetailView):
+    required_permission = "sales.update"
     template_name = "sales/credit_notes/detail.html"
     context_object_name = "credit_note"
 
@@ -979,6 +1012,7 @@ class CreditNoteDetailView(CompanyScopedMixin, DetailView):
 
 
 class SalesCommissionListView(CompanyScopedMixin, ListView):
+    required_permission = "sales.read"
     template_name = "sales/commissions/list.html"
     context_object_name = "commissions"
 
@@ -1019,6 +1053,7 @@ class SalesCommissionListView(CompanyScopedMixin, ListView):
 
 
 class SalesCommissionPayView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         if not (
             request.user.is_superuser
@@ -1044,6 +1079,7 @@ class SalesCommissionPayView(CompanyScopedMixin, View):
 
 
 class SubscriptionCreateView(CompanyScopedMixin, View):
+    required_permission = "sales.create"
     def get(self, request):
         from apps.crm.models import Customer
         from apps.inventory.models import Product
@@ -1086,6 +1122,7 @@ class SubscriptionCreateView(CompanyScopedMixin, View):
 
 
 class SubscriptionUpdateView(CompanyScopedMixin, View):
+    required_permission = "sales.update"
     def get(self, request, pk):
         from apps.crm.models import Customer
         from apps.inventory.models import Product
@@ -1118,6 +1155,7 @@ class SubscriptionUpdateView(CompanyScopedMixin, View):
 
 
 class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
+    required_permission = "sales.approve"
     def post(self, request, pk):
         import calendar
         from datetime import timedelta
@@ -1187,6 +1225,7 @@ class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
 
 
 class SalesDashboardView(CompanyScopedMixin, TemplateView):
+    required_permission = "sales.read"
     template_name = "sales/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -1237,6 +1276,7 @@ class SalesDashboardView(CompanyScopedMixin, TemplateView):
 
 
 class POSView(CompanyScopedMixin, TemplateView):
+    required_permission = "sales.read"
     template_name = "sales/pos.html"
 
     def get_context_data(self, **kwargs):
@@ -1270,6 +1310,7 @@ from django.http import JsonResponse
 
 
 class POSAPIView(CompanyScopedMixin, View):
+    required_permission = "sales.read"
     def post(self, request):
         try:
             data = json.loads(request.body)

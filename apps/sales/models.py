@@ -167,6 +167,11 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         db_table = "sales_orders"
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number("SO", self.__class__)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.number} | {self.customer.name}"
 

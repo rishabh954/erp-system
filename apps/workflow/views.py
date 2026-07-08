@@ -5,6 +5,7 @@ Includes: Designer, Pending Approvals, History, Delegation, Visual Flow API
 
 import json
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
@@ -24,7 +25,7 @@ from apps.workflow.models import (
 )
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -35,6 +36,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class WorkflowListView(CompanyMixin, ListView):
+    required_permission = "workflow.read"
     template_name = "workflow/workflow_list.html"
     context_object_name = "workflows"
 
@@ -52,6 +54,7 @@ class WorkflowListView(CompanyMixin, ListView):
 
 
 class WorkflowCreateView(CompanyMixin, View):
+    required_permission = "workflow.create"
     template_name = "workflow/workflow_form.html"
 
     def get(self, request):
@@ -90,6 +93,7 @@ class WorkflowCreateView(CompanyMixin, View):
 
 
 class WorkflowDesignerView(CompanyMixin, DetailView):
+    required_permission = "workflow.read"
     """Visual workflow designer — renders the canvas UI."""
 
     template_name = "workflow/designer.html"
@@ -145,6 +149,7 @@ class WorkflowDesignerView(CompanyMixin, DetailView):
 
 
 class WorkflowDesignerSaveAPI(CompanyMixin, View):
+    required_permission = "workflow.read"
     """AJAX endpoint: saves the visual designer canvas layout."""
 
     def post(self, request, pk):
@@ -166,6 +171,7 @@ class WorkflowDesignerSaveAPI(CompanyMixin, View):
 
 
 class WorkflowVisualFlowAPI(CompanyMixin, View):
+    required_permission = "workflow.read"
     """Returns the workflow as a JSON graph for front-end rendering."""
 
     def get(self, request, pk):
@@ -255,6 +261,7 @@ class WorkflowVisualFlowAPI(CompanyMixin, View):
 
 
 class StepCreateView(CompanyMixin, View):
+    required_permission = "workflow.create"
     def post(self, request, workflow_pk):
         wf = get_object_or_404(
             WorkflowDefinition, pk=workflow_pk, company=self.company()
@@ -296,6 +303,7 @@ class StepCreateView(CompanyMixin, View):
 
 
 class StepDeleteView(CompanyMixin, View):
+    required_permission = "workflow.delete"
     def post(self, request, pk):
         step = get_object_or_404(WorkflowStep, pk=pk, workflow__company=self.company())
         wf_pk = step.workflow_id
@@ -305,6 +313,7 @@ class StepDeleteView(CompanyMixin, View):
 
 
 class StepReorderView(CompanyMixin, View):
+    required_permission = "workflow.read"
     """AJAX: reorder steps by posting a list of IDs."""
 
     def post(self, request, workflow_pk):
@@ -325,6 +334,7 @@ class StepReorderView(CompanyMixin, View):
 
 
 class PendingApprovalsListView(CompanyMixin, ListView):
+    required_permission = "workflow.read"
     template_name = "workflow/pending_approvals.html"
     context_object_name = "instances"
 
@@ -360,6 +370,7 @@ class PendingApprovalsListView(CompanyMixin, ListView):
 
 
 class WorkflowActionAPIView(LoginRequiredMixin, View):
+    required_permission = "workflow.read"
     """Handle approve / reject / delegate / return actions."""
 
     def post(self, request, instance_id):
@@ -410,6 +421,7 @@ class WorkflowActionAPIView(LoginRequiredMixin, View):
 
 
 class ApprovalHistoryListView(CompanyMixin, ListView):
+    required_permission = "workflow.read"
     template_name = "workflow/approval_history.html"
     context_object_name = "actions"
     paginate_by = 50
@@ -442,6 +454,7 @@ class ApprovalHistoryListView(CompanyMixin, ListView):
 
 
 class WorkflowInstanceDetailView(CompanyMixin, DetailView):
+    required_permission = "workflow.read"
     """Full audit timeline for one workflow instance."""
 
     template_name = "workflow/instance_detail.html"
@@ -473,6 +486,7 @@ class WorkflowInstanceDetailView(CompanyMixin, DetailView):
 
 
 class DelegatedApprovalsListView(CompanyMixin, ListView):
+    required_permission = "workflow.read"
     template_name = "workflow/delegations.html"
     context_object_name = "delegations"
 
@@ -488,6 +502,7 @@ class DelegatedApprovalsListView(CompanyMixin, ListView):
 
 
 class ApprovalDelegationCreateView(CompanyMixin, View):
+    required_permission = "workflow.create"
     template_name = "workflow/delegation_form.html"
 
     def get(self, request):
@@ -527,6 +542,7 @@ class ApprovalDelegationCreateView(CompanyMixin, View):
 
 
 class ApprovalDelegationDeleteView(CompanyMixin, View):
+    required_permission = "workflow.delete"
     def post(self, request, pk):
         delegation = get_object_or_404(
             ApprovalDelegation, pk=pk, company=self.company(), delegator=request.user
@@ -543,6 +559,7 @@ class ApprovalDelegationDeleteView(CompanyMixin, View):
 
 
 class NotificationTemplateView(CompanyMixin, View):
+    required_permission = "workflow.read"
     """Create/update email or WhatsApp notification templates per workflow."""
 
     template_name = "workflow/notification_templates.html"
@@ -592,6 +609,7 @@ class NotificationTemplateView(CompanyMixin, View):
 
 
 class WorkflowDashboardView(CompanyMixin, TemplateView):
+    required_permission = "workflow.read"
     template_name = "workflow/dashboard.html"
 
     def get_context_data(self, **kwargs):

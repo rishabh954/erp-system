@@ -11,15 +11,18 @@ pytestmark = pytest.mark.django_db
 def test_asset_crud(client, user, company):
     client.force_login(user)
 
+    from apps.assets.models import AssetCategory
+    category = AssetCategory.objects.create(name="Test Category", company=company)
+    
     # Create
     create_url = reverse("assets:create")
     res = client.post(
         create_url,
         {
             "name": "Test Asset CRUD",
-            "asset_type": Asset.Type.EQUIPMENT,
+            "category": category.pk,
             "purchase_date": str(date.today()),
-            "purchase_price": "1000.00",
+            "purchase_cost": "1000.00",
             "status": Asset.Status.ACTIVE,
         },
     )

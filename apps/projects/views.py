@@ -3,6 +3,7 @@ Project Management Views
 Projects, Tasks, Milestones, Kanban Board, Time Logging
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q, Sum
@@ -16,12 +17,13 @@ from core.services import BaseService
 from .models import Project, ProjectMember, Task, TaskComment, TimeLog
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
 
 class ProjectListView(CompanyMixin, ListView):
+    required_permission = "projects.read"
     template_name = "projects/list.html"
     context_object_name = "projects"
     paginate_by = 20
@@ -83,6 +85,7 @@ class ProjectListView(CompanyMixin, ListView):
 
 
 class ProjectDetailView(CompanyMixin, DetailView):
+    required_permission = "projects.read"
     template_name = "projects/detail.html"
     context_object_name = "project"
 
@@ -123,6 +126,7 @@ class ProjectDetailView(CompanyMixin, DetailView):
 
 
 class ProjectCreateView(CompanyMixin, View):
+    required_permission = "projects.create"
     template_name = "projects/form.html"
 
     def get(self, request):
@@ -183,6 +187,7 @@ class ProjectCreateView(CompanyMixin, View):
 
 
 class KanbanBoardView(CompanyMixin, DetailView):
+    required_permission = "projects.read"
     template_name = "projects/kanban.html"
     context_object_name = "project"
 
@@ -217,6 +222,7 @@ class KanbanBoardView(CompanyMixin, DetailView):
 
 
 class TaskMoveView(CompanyMixin, View):
+    required_permission = "projects.read"
     """AJAX endpoint to move task between Kanban columns."""
 
     def post(self, request, pk):
@@ -232,6 +238,7 @@ class TaskMoveView(CompanyMixin, View):
 
 
 class TaskCreateView(CompanyMixin, View):
+    required_permission = "projects.create"
     def get(self, request):
         from django.forms import DateInput, modelform_factory
 
@@ -281,6 +288,7 @@ class TaskCreateView(CompanyMixin, View):
 
 
 class MyTasksView(CompanyMixin, ListView):
+    required_permission = "projects.read"
     template_name = "projects/my_tasks.html"
     context_object_name = "tasks"
 
@@ -311,6 +319,7 @@ class MyTasksView(CompanyMixin, ListView):
 
 
 class TaskDetailView(CompanyMixin, DetailView):
+    required_permission = "projects.read"
     template_name = "projects/task_detail.html"
     context_object_name = "task"
 
@@ -338,6 +347,7 @@ class TaskDetailView(CompanyMixin, DetailView):
 
 
 class AddCommentView(CompanyMixin, View):
+    required_permission = "projects.read"
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk, company=self.company(), is_deleted=False)
         content = request.POST.get("content", "").strip()
@@ -352,6 +362,7 @@ class AddCommentView(CompanyMixin, View):
 
 
 class LogTimeView(CompanyMixin, View):
+    required_permission = "projects.read"
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk, company=self.company(), is_deleted=False)
         hours = float(request.POST.get("hours", 0))
@@ -377,6 +388,7 @@ from .services import ProjectTrackingService
 
 
 class AgileBoardView(CompanyMixin, DetailView):
+    required_permission = "projects.read"
     template_name = "projects/agile_board.html"
     context_object_name = "sprint"
 
@@ -394,6 +406,7 @@ class AgileBoardView(CompanyMixin, DetailView):
 
 
 class ProjectGanttDataView(CompanyMixin, View):
+    required_permission = "projects.read"
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk, company=self.company())
         tasks = (
@@ -421,6 +434,7 @@ class ProjectGanttDataView(CompanyMixin, View):
 
 
 class ProjectRiskListView(CompanyMixin, ListView):
+    required_permission = "projects.read"
     template_name = "projects/risks/list.html"
     context_object_name = "risks"
 
@@ -432,6 +446,7 @@ class ProjectRiskListView(CompanyMixin, ListView):
 
 
 class ProjectRiskDetailView(CompanyMixin, DetailView):
+    required_permission = "projects.read"
     template_name = "projects/risks/detail.html"
     context_object_name = "risk"
 

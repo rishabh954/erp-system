@@ -1,3 +1,4 @@
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -42,13 +43,14 @@ class CustomerPortalMixin(LoginRequiredMixin):
 
 
 class CustomerPortalView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_dashboard.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         cust = self.get_customer()
-        orders_qs = SalesOrder.objects.filter(customer=cust).order_by("-date")
-        invoices_qs = Invoice.objects.filter(customer=cust).order_by("-date")
+        orders_qs = SalesOrder.objects.filter(customer=cust).order_by("-order_date")
+        invoices_qs = Invoice.objects.filter(customer=cust).order_by("-invoice_date")
         tickets_qs = Ticket.objects.filter(customer=cust)
         ctx["orders"] = orders_qs[:5]
         ctx["invoices"] = invoices_qs[:5]
@@ -64,17 +66,19 @@ class CustomerPortalView(CustomerPortalMixin, TemplateView):
 
 
 class CustomerOrderListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_orders.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["orders"] = SalesOrder.objects.filter(
             customer=self.get_customer()
-        ).order_by("-date")
+        ).order_by("-order_date")
         return ctx
 
 
 class CustomerOrderDetailView(CustomerPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/customer_order_detail.html"
 
     def get(self, request, pk):
@@ -84,28 +88,31 @@ class CustomerOrderDetailView(CustomerPortalMixin, View):
 
 
 class CustomerInvoiceListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_invoices.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["invoices"] = Invoice.objects.filter(customer=self.get_customer()).order_by(
-            "-date"
+            "-invoice_date"
         )
         return ctx
 
 
 class CustomerPaymentListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.approve"
     template_name = "portals/customer_payments.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["payments"] = SalesPayment.objects.filter(
             customer=self.get_customer()
-        ).order_by("-date")
+        ).order_by("-payment_date")
         return ctx
 
 
 class CustomerTicketListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_tickets.html"
 
     def get_context_data(self, **kwargs):
@@ -117,6 +124,7 @@ class CustomerTicketListView(CustomerPortalMixin, TemplateView):
 
 
 class CustomerTicketDetailView(CustomerPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/customer_ticket_detail.html"
 
     def get(self, request, pk):
@@ -144,6 +152,7 @@ class CustomerTicketDetailView(CustomerPortalMixin, View):
 
 
 class CustomerTicketCreateView(CustomerPortalMixin, View):
+    required_permission = "portals.create"
     template_name = "portals/customer_ticket_create.html"
 
     def get(self, request):
@@ -183,6 +192,7 @@ class CustomerTicketCreateView(CustomerPortalMixin, View):
 
 
 class CustomerDocumentListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_documents.html"
 
     def get_context_data(self, **kwargs):
@@ -194,6 +204,7 @@ class CustomerDocumentListView(CustomerPortalMixin, TemplateView):
 
 
 class CustomerContractListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_contracts.html"
 
     def get_context_data(self, **kwargs):
@@ -205,18 +216,20 @@ class CustomerContractListView(CustomerPortalMixin, TemplateView):
 
 
 class CustomerShipmentListView(CustomerPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/customer_shipments.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         orders = SalesOrder.objects.filter(customer=self.get_customer())
         ctx["shipments"] = Shipment.objects.filter(sales_order__in=orders).order_by(
-            "-date"
+            "-created_at"
         )
         return ctx
 
 
 class CustomerShipmentDetailView(CustomerPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/customer_shipment_detail.html"
 
     def get(self, request, pk):
@@ -229,6 +242,7 @@ class CustomerShipmentDetailView(CustomerPortalMixin, View):
 
 
 class CustomerProfileView(CustomerPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/customer_profile.html"
 
     def get(self, request):
@@ -271,13 +285,14 @@ class VendorPortalMixin(LoginRequiredMixin):
 
 
 class VendorPortalView(VendorPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/vendor_dashboard.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         vendor = self.get_vendor()
-        pos_qs = PurchaseOrder.objects.filter(vendor=vendor).order_by("-date")
-        bills_qs = Bill.objects.filter(vendor=vendor).order_by("-date")
+        pos_qs = PurchaseOrder.objects.filter(vendor=vendor).order_by("-order_date")
+        bills_qs = Bill.objects.filter(vendor=vendor).order_by("-bill_date")
         ctx["orders"] = pos_qs[:5]
         ctx["bills"] = bills_qs[:5]
         ctx["total_orders"] = pos_qs.count()
@@ -287,17 +302,19 @@ class VendorPortalView(VendorPortalMixin, TemplateView):
 
 
 class VendorOrderListView(VendorPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/vendor_orders.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["orders"] = PurchaseOrder.objects.filter(vendor=self.get_vendor()).order_by(
-            "-date"
+            "-order_date"
         )
         return ctx
 
 
 class VendorOrderDetailView(VendorPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/vendor_order_detail.html"
 
     def get(self, request, pk):
@@ -307,26 +324,29 @@ class VendorOrderDetailView(VendorPortalMixin, View):
 
 
 class VendorBillListView(VendorPortalMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/vendor_bills.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["bills"] = Bill.objects.filter(vendor=self.get_vendor()).order_by("-date")
+        ctx["bills"] = Bill.objects.filter(vendor=self.get_vendor()).order_by("-bill_date")
         return ctx
 
 
 class VendorPaymentListView(VendorPortalMixin, TemplateView):
+    required_permission = "portals.approve"
     template_name = "portals/vendor_payments.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["payments"] = PurchasePayment.objects.filter(
             vendor=self.get_vendor()
-        ).order_by("-date")
+        ).order_by("-payment_date")
         return ctx
 
 
 class VendorProfileView(VendorPortalMixin, View):
+    required_permission = "portals.read"
     template_name = "portals/vendor_profile.html"
 
     def get(self, request):
@@ -346,6 +366,7 @@ class VendorProfileView(VendorPortalMixin, View):
 
 
 class EmployeePortalView(LoginRequiredMixin, TemplateView):
+    required_permission = "portals.read"
     template_name = "portals/employee_dashboard.html"
 
     def get_context_data(self, **kwargs):

@@ -67,15 +67,16 @@ class InventoryAnalyticsService:
         cumulative_value = Decimal("0")
 
         for item in products_usage:
-            cumulative_value += item["usage"]
-            percent = (cumulative_value / total_usage_value) * 100
-
-            if percent <= 80:
+            previous_percent = (cumulative_value / total_usage_value) * 100
+            
+            if previous_percent < 80:
                 classification = "A"
-            elif percent <= 95:
+            elif previous_percent < 95:
                 classification = "B"
             else:
                 classification = "C"
+
+            cumulative_value += item["usage"]
 
             prod = item["product"]
             if prod.abc_classification != classification:

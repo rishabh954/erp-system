@@ -1,5 +1,6 @@
 import json
 
+from core.permissions import PermissionRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -11,6 +12,7 @@ from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
 
 
 class POSIndexView(CompanyMixin, View):
+    required_permission = "pos.read"
     def get(self, request, *args, **kwargs):
         # Ensure there is an open session for the user
         session = POSSession.objects.filter(
@@ -61,6 +63,7 @@ class POSIndexView(CompanyMixin, View):
 
 
 class POSCheckoutAPIView(CompanyMixin, View):
+    required_permission = "pos.read"
     def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)

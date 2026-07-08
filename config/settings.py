@@ -457,5 +457,7 @@ ERP_SETTINGS = {
 }
 
 import sys
-if 'test' in sys.argv or 'pytest' in sys.modules:
+import os
+
+if ('test' in sys.argv or 'pytest' in sys.modules) and (not os.environ.get('DB_HOST') or os.environ.get('DB_HOST') == 'sqlite'):
     DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}

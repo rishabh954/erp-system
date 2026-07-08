@@ -41,7 +41,7 @@ def test_customer_crud(client, user, company):
     assert cust.name == "Test Customer CRUD Updated"
 
     # List
-    list_url = reverse("crm:customer_list")
+    list_url = reverse("crm:customers")
     res = client.get(list_url)
     assert res.status_code == 200
     assert cust in res.context["object_list"]
@@ -58,8 +58,11 @@ def test_lead_crud(client, user, company):
             "name": "Test Lead CRUD",
             "expected_revenue": "1000.00",
             "status": Lead.Status.NEW,
+            "probability": 50,
         },
     )
+    if res.status_code != 302:
+        print("FORM ERRORS:", res.context['form'].errors)
     assert res.status_code == 302
     lead = Lead.objects.filter(name="Test Lead CRUD").first()
     assert lead is not None
@@ -77,6 +80,7 @@ def test_lead_crud(client, user, company):
             "name": "Test Lead CRUD Updated",
             "expected_revenue": "2000.00",
             "status": Lead.Status.NEW,
+            "probability": 50,
         },
     )
     assert res.status_code == 302
@@ -84,7 +88,7 @@ def test_lead_crud(client, user, company):
     assert lead.name == "Test Lead CRUD Updated"
 
     # List
-    list_url = reverse("crm:lead_list")
+    list_url = reverse("crm:leads")
     res = client.get(list_url)
     assert res.status_code == 200
     assert lead in res.context["object_list"]

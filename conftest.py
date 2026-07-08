@@ -11,8 +11,9 @@ def company(db):
 
 @pytest.fixture
 def user(db, company):
-    user = UserFactory(primary_company=company)
-    UserCompany.objects.create(user=user, company=company)
+    from apps.authentication.models import User
+    user = UserFactory(primary_company=company, role=User.Role.COMPANY_ADMIN)
+    UserCompany.objects.create(user=user, company=company, role=User.Role.COMPANY_ADMIN)
     return user
 
 @pytest.fixture

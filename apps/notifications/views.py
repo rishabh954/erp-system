@@ -2,6 +2,7 @@
 Notifications Views and API
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.utils import timezone
@@ -33,6 +34,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    required_permission = "notifications.read"
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -73,6 +75,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
 # Web view
 class NotificationListView(LoginRequiredMixin, ListView):
+    required_permission = "notifications.read"
     template_name = "notifications/list.html"
     context_object_name = "notifications"
     paginate_by = 30
@@ -90,6 +93,7 @@ class NotificationListView(LoginRequiredMixin, ListView):
 
 
 class MarkReadView(LoginRequiredMixin, View):
+    required_permission = "notifications.read"
     def post(self, request, pk):
         from django.shortcuts import get_object_or_404
 
@@ -99,6 +103,7 @@ class MarkReadView(LoginRequiredMixin, View):
 
 
 class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
+    required_permission = "notifications.update"
     template_name = "notifications/preferences.html"
     context_object_name = "preferences"
 
@@ -133,6 +138,7 @@ class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
 
 
 class AdminEmailLogListView(LoginRequiredMixin, ListView):
+    required_permission = "notifications.read"
     template_name = "notifications/logs/email.html"
     context_object_name = "logs"
     paginate_by = 50
@@ -144,6 +150,7 @@ class AdminEmailLogListView(LoginRequiredMixin, ListView):
 
 
 class AdminSMSLogListView(LoginRequiredMixin, ListView):
+    required_permission = "notifications.read"
     template_name = "notifications/logs/sms.html"
     context_object_name = "logs"
     paginate_by = 50
@@ -155,6 +162,7 @@ class AdminSMSLogListView(LoginRequiredMixin, ListView):
 
 
 class AdminWhatsAppLogListView(LoginRequiredMixin, ListView):
+    required_permission = "notifications.read"
     template_name = "notifications/logs/whatsapp.html"
     context_object_name = "logs"
     paginate_by = 50

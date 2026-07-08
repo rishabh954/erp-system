@@ -283,6 +283,11 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         db_table = "purchase_orders"
         ordering = ["-order_date"]
 
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = self.generate_number("PO", self.__class__)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.number} | {self.vendor.name}"
 

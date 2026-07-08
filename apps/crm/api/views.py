@@ -1,3 +1,4 @@
+from core.permissions import PermissionRequiredMixin
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ from core.pagination import StandardResultsSetPagination
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
+    required_permission = "crm.read"
     queryset = Campaign.objects.all()
     serializer_class = CampaignSerializer
     pagination_class = StandardResultsSetPagination
@@ -26,6 +28,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
 
 class LeadViewSet(viewsets.ModelViewSet):
+    required_permission = "crm.read"
     queryset = Lead.objects.all()
     serializer_class = LeadSerializer
     pagination_class = StandardResultsSetPagination
@@ -84,6 +87,7 @@ class LeadViewSet(viewsets.ModelViewSet):
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    required_permission = "crm.read"
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
@@ -124,6 +128,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 class LeadActivityViewSet(viewsets.ModelViewSet):
+    required_permission = "crm.read"
     queryset = LeadActivity.objects.all()
     serializer_class = LeadActivitySerializer
     pagination_class = StandardResultsSetPagination
@@ -146,6 +151,7 @@ class LeadActivityViewSet(viewsets.ModelViewSet):
 
 
 class ContractViewSet(viewsets.ModelViewSet):
+    required_permission = "crm.read"
     queryset = Contract.objects.all()
     serializer_class = ContractSerializer
     pagination_class = StandardResultsSetPagination

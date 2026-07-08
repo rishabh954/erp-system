@@ -3,6 +3,7 @@ CRM Views
 Leads, Pipeline, Customers, Activities
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -18,7 +19,7 @@ from .forms import LeadForm
 from .models import Campaign, Contract, Customer, Lead, LeadActivity
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -27,6 +28,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class LeadListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/leads/list.html"
     context_object_name = "leads"
     paginate_by = 25
@@ -85,6 +87,7 @@ class LeadListView(CompanyMixin, ListView):
 
 
 class LeadDetailView(CompanyMixin, DetailView):
+    required_permission = "crm.read"
     template_name = "crm/leads/detail.html"
     context_object_name = "lead"
 
@@ -106,6 +109,7 @@ class LeadDetailView(CompanyMixin, DetailView):
 
 
 class LeadCreateView(BaseCreateView):
+    required_permission = "crm.create"
     model = Lead
     form_class = LeadForm
     template_name = "crm/leads/form.html"
@@ -138,6 +142,7 @@ class LeadCreateView(BaseCreateView):
 
 
 class LeadUpdateView(BaseUpdateView):
+    required_permission = "crm.update"
     model = Lead
     form_class = LeadForm
     template_name = "crm/leads/form.html"
@@ -167,6 +172,7 @@ class LeadUpdateView(BaseUpdateView):
 
 
 class LeadDeleteView(CompanyMixin, View):
+    required_permission = "crm.delete"
     def post(self, request, pk):
         c = self.company()
         lead = get_object_or_404(Lead, pk=pk, company=c)
@@ -184,6 +190,7 @@ class LeadDeleteView(CompanyMixin, View):
 
 
 class LeadUpdateStatusView(CompanyMixin, View):
+    required_permission = "crm.update"
     """AJAX: update lead pipeline status."""
 
     def post(self, request, pk):
@@ -229,6 +236,7 @@ class LeadUpdateStatusView(CompanyMixin, View):
 
 
 class CampaignListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/campaigns/list.html"
     context_object_name = "campaigns"
     paginate_by = 25
@@ -253,6 +261,7 @@ class CampaignListView(CompanyMixin, ListView):
 
 
 class CampaignDetailView(CompanyMixin, DetailView):
+    required_permission = "crm.read"
     template_name = "crm/campaigns/detail.html"
     context_object_name = "campaign"
 
@@ -261,6 +270,7 @@ class CampaignDetailView(CompanyMixin, DetailView):
 
 
 class CampaignCreateView(CompanyMixin, View):
+    required_permission = "crm.create"
     def get(self, request):
         return render(
             request, "crm/campaigns/create.html", {"statuses": Campaign.Status.choices}
@@ -282,6 +292,7 @@ class CampaignCreateView(CompanyMixin, View):
 
 
 class MeetingSchedulerView(CompanyMixin, TemplateView):
+    required_permission = "crm.read"
     template_name = "crm/meeting_scheduler.html"
 
     def get_context_data(self, **kwargs):
@@ -293,6 +304,7 @@ class MeetingSchedulerView(CompanyMixin, TemplateView):
 
 
 class LeadConvertView(CompanyMixin, View):
+    required_permission = "crm.approve"
     """Convert won lead to a Customer record."""
 
     def post(self, request, pk):
@@ -322,6 +334,7 @@ class LeadConvertView(CompanyMixin, View):
 
 
 class LeadToggleOpportunityView(CompanyMixin, View):
+    required_permission = "crm.read"
     """Toggle a lead's status as an Opportunity."""
 
     def post(self, request, pk):
@@ -336,6 +349,7 @@ class LeadToggleOpportunityView(CompanyMixin, View):
 
 
 class AddActivityView(CompanyMixin, View):
+    required_permission = "crm.read"
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
         duration = request.POST.get("duration_minutes")
@@ -371,6 +385,7 @@ class AddActivityView(CompanyMixin, View):
 
 
 class PipelineView(CompanyMixin, TemplateView):
+    required_permission = "crm.read"
     template_name = "crm/pipeline.html"
 
     def get_context_data(self, **kwargs):
@@ -399,6 +414,7 @@ class PipelineView(CompanyMixin, TemplateView):
 
 
 class CustomerListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/customers/list.html"
     context_object_name = "customers"
     paginate_by = 25
@@ -426,6 +442,7 @@ class CustomerListView(CompanyMixin, ListView):
 
 
 class CustomerDetailView(CompanyMixin, DetailView):
+    required_permission = "crm.read"
     template_name = "crm/customers/detail.html"
     context_object_name = "customer"
 
@@ -462,6 +479,7 @@ class CustomerDetailView(CompanyMixin, DetailView):
 
 
 class CustomerCreateView(CompanyMixin, View):
+    required_permission = "crm.create"
     template_name = "crm/customers/form.html"
 
     def get(self, request):
@@ -540,6 +558,7 @@ class CustomerCreateView(CompanyMixin, View):
 
 
 class CustomerUpdateView(CompanyMixin, View):
+    required_permission = "crm.update"
     template_name = "crm/customers/form.html"
 
     def get(self, request, pk):
@@ -619,6 +638,7 @@ class CustomerUpdateView(CompanyMixin, View):
 
 
 class CustomerDeleteView(CompanyMixin, View):
+    required_permission = "crm.delete"
     def post(self, request, pk):
         customer = get_object_or_404(
             Customer, pk=pk, company=self.company(), is_deleted=False
@@ -633,6 +653,7 @@ class CustomerDeleteView(CompanyMixin, View):
 
 
 class OpportunityListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/opportunities/list.html"
     context_object_name = "opportunities"
     paginate_by = 25
@@ -683,6 +704,7 @@ class OpportunityListView(CompanyMixin, ListView):
 
 
 class ContractListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/contracts/list.html"
     context_object_name = "contracts"
     paginate_by = 25
@@ -715,6 +737,7 @@ class ContractListView(CompanyMixin, ListView):
 
 
 class ContractDetailView(CompanyMixin, DetailView):
+    required_permission = "crm.read"
     template_name = "crm/contracts/detail.html"
     context_object_name = "contract"
 
@@ -723,6 +746,7 @@ class ContractDetailView(CompanyMixin, DetailView):
 
 
 class ContractCreateView(CompanyMixin, View):
+    required_permission = "crm.create"
     def get(self, request):
         return render(
             request,
@@ -762,6 +786,7 @@ class ContractCreateView(CompanyMixin, View):
 
 
 class ContractUpdateView(CompanyMixin, View):
+    required_permission = "crm.update"
     def get(self, request, pk):
         contract = get_object_or_404(Contract, pk=pk, company=self.company())
         return render(
@@ -804,6 +829,7 @@ class ContractUpdateView(CompanyMixin, View):
 
 
 class ContractDeleteView(CompanyMixin, View):
+    required_permission = "crm.delete"
     def post(self, request, pk):
         contract = get_object_or_404(Contract, pk=pk, company=self.company())
         title = contract.title
@@ -816,6 +842,7 @@ class ContractDeleteView(CompanyMixin, View):
 
 
 class InteractionListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/interactions/list.html"
     context_object_name = "interactions"
     paginate_by = 50
@@ -858,6 +885,7 @@ class InteractionListView(CompanyMixin, ListView):
 
 
 class CampaignReportView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/campaigns/report.html"
     context_object_name = "campaigns"
 
@@ -894,6 +922,7 @@ class CampaignReportView(CompanyMixin, ListView):
 
 
 class ContractReportView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/contracts/report.html"
     context_object_name = "contracts"
 
@@ -942,6 +971,7 @@ class ContractReportView(CompanyMixin, ListView):
 
 
 class CRMDashboardView(CompanyMixin, TemplateView):
+    required_permission = "crm.read"
     template_name = "crm/dashboard.html"
 
     def get_context_data(self, **kwargs):

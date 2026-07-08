@@ -87,7 +87,8 @@ class CompanyCreateView(LoginRequiredMixin, View):
 
         if not request.user.primary_company:
             request.user.primary_company = company
-            request.user.save(update_fields=["primary_company"])
+            request.user.role = "company_admin"
+            request.user.save(update_fields=["primary_company", "role"])
 
         messages.success(request, "Company created successfully.")
         return redirect("dashboard:index")

@@ -19,6 +19,17 @@ class Command(BaseCommand):
             "hrms",
             "company",
             "purchase",
+            "assets",
+            "helpdesk",
+            "documents",
+            "notifications",
+            "workflow",
+            "dashboard",
+            "manufacturing",
+            "pos",
+            "portals",
+            "analytics",
+            "ai",
         ]
 
         # Define the basic matrix: role -> module -> permissions (create, read, update, delete, approve, export, import)

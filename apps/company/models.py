@@ -333,9 +333,8 @@ class Tax(TimeStampedModel):
 
     def compute(self, amount):
         if self.tax_type == self.TaxType.PERCENTAGE:
-            return (amount * self.rate / 100).quantize(
-                __import__("decimal").Decimal("0.01")
-            )
+            from decimal import Decimal
+            return (amount * Decimal(str(self.rate)) / Decimal("100")).quantize(Decimal("0.01"))
         return self.rate
 
 

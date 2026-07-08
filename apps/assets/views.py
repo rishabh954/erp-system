@@ -3,6 +3,7 @@ Asset Management Views
 Asset Registration, Categories, Allocation, Depreciation, Maintenance
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -14,12 +15,13 @@ from core.services import BaseService
 from .models import Asset, AssetCategory, AssetMaintenance
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
 
 class AssetListView(CompanyMixin, ListView):
+    required_permission = "assets.read"
     template_name = "assets/list.html"
     context_object_name = "assets"
     paginate_by = 25
@@ -63,6 +65,7 @@ class AssetListView(CompanyMixin, ListView):
 
 
 class AssetDetailView(CompanyMixin, DetailView):
+    required_permission = "assets.read"
     template_name = "assets/detail.html"
     context_object_name = "asset"
 
@@ -85,6 +88,7 @@ class AssetDetailView(CompanyMixin, DetailView):
 
 
 class AssetCreateView(CompanyMixin, View):
+    required_permission = "assets.create"
     template_name = "assets/form.html"
 
     def get(self, request):
@@ -160,6 +164,7 @@ class AssetCreateView(CompanyMixin, View):
 
 
 class ScheduleMaintenanceView(CompanyMixin, View):
+    required_permission = "assets.read"
     def post(self, request, pk):
         asset = get_object_or_404(
             Asset, pk=pk, company=self.company(), is_deleted=False
@@ -193,6 +198,7 @@ class ScheduleMaintenanceView(CompanyMixin, View):
 
 
 class CompleteMaintenanceView(CompanyMixin, View):
+    required_permission = "assets.approve"
     def post(self, request, maint_pk):
         maint = get_object_or_404(
             AssetMaintenance, pk=maint_pk, company=self.company(), is_deleted=False

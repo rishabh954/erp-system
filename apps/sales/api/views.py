@@ -3,6 +3,7 @@ Sales REST API
 Quotations, Sales Orders, Invoices, Payments
 """
 
+from core.permissions import PermissionRequiredMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
@@ -226,6 +227,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class QuotationViewSet(viewsets.ModelViewSet):
+    required_permission = "sales.read"
     serializer_class = QuotationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer", "sales_rep"]
@@ -279,6 +281,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
+    required_permission = "sales.read"
     serializer_class = SalesOrderSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]
@@ -324,6 +327,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
+    required_permission = "sales.read"
     serializer_class = InvoiceSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]
@@ -380,6 +384,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    required_permission = "sales.approve"
     serializer_class = PaymentSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "method", "customer"]

@@ -85,16 +85,16 @@ def test_vendor_portal_isolation(client, company, company_b, vendor_a, vendor_b)
     po_a = PurchaseOrder.objects.create(
         company=company,
         vendor=vendor_a,
-        date=date.today(),
-        expected_date=date.today(),
+        order_date=date.today(),
+        expected_delivery=date.today(),
         status=PurchaseOrder.Status.CONFIRMED,
     )
 
     po_b = PurchaseOrder.objects.create(
         company=company_b,
         vendor=vendor_b,
-        date=date.today(),
-        expected_date=date.today(),
+        order_date=date.today(),
+        expected_delivery=date.today(),
         status=PurchaseOrder.Status.CONFIRMED,
     )
 

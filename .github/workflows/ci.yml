@@ -10,10 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    # We might need a database container depending on the project setup,
-    # but the project seems to be using sqlite3 locally by default.
-    # If a postgres service is needed, it can be defined here.
-    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: erp_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
     steps:
     - uses: actions/checkout@v4
     
@@ -39,3 +50,7 @@ jobs:
         pytest --cov=apps --cov=core
       env:
         DJANGO_SETTINGS_MODULE: config.settings
+        DB_HOST: localhost
+        DB_NAME: erp_test
+        DB_USER: postgres
+        DB_PASSWORD: postgres

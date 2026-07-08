@@ -216,7 +216,8 @@ class TestMovements:
         assert transfer.status == InventoryTransfer.Status.APPROVED
 
         # 3. Ship Transfer
-        ship_data = {f"qty_sent_{transfer.lines.first().id}": "40"}
+        ship_data = QueryDict(mutable=True)
+        ship_data.update({f"qty_sent_{transfer.lines.first().id}": "40"})
         transfer = transfer_service.process_transfer(transfer, "ship", ship_data, user)
         assert transfer.status == InventoryTransfer.Status.IN_TRANSIT
 
@@ -224,7 +225,8 @@ class TestMovements:
         assert stock.quantity_on_hand == Decimal("60.00")
 
         # 4. Receive Transfer
-        receive_data = {f"qty_recv_{transfer.lines.first().id}": "40"}
+        receive_data = QueryDict(mutable=True)
+        receive_data.update({f"qty_recv_{transfer.lines.first().id}": "40"})
         transfer = transfer_service.process_transfer(
             transfer, "receive", receive_data, user
         )

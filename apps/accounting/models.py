@@ -170,6 +170,12 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
             models.Index(fields=["journal", "date"]),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.number:
+            prefix = self.journal.sequence_prefix if self.journal else "JE"
+            self.number = self.generate_number(prefix, self.__class__)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.number} | {self.date} | {self.total_debit}"
 

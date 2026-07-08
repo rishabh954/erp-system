@@ -5,6 +5,7 @@ Upload, Categories, Version Control, Approval Workflow
 
 import os
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
@@ -17,12 +18,13 @@ from core.services import BaseService
 from .models import Document, DocumentCategory, DocumentVersion
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
 
 class DocumentListView(CompanyMixin, ListView):
+    required_permission = "documents.read"
     template_name = "documents/list.html"
     context_object_name = "documents"
     paginate_by = 25
@@ -56,6 +58,7 @@ class DocumentListView(CompanyMixin, ListView):
 
 
 class DocumentDetailView(CompanyMixin, DetailView):
+    required_permission = "documents.read"
     template_name = "documents/detail.html"
     context_object_name = "document"
 
@@ -75,6 +78,7 @@ class DocumentDetailView(CompanyMixin, DetailView):
 
 
 class DocumentUploadView(CompanyMixin, View):
+    required_permission = "documents.read"
     template_name = "documents/upload.html"
 
     def get(self, request):
@@ -113,6 +117,7 @@ class DocumentUploadView(CompanyMixin, View):
                 expiry_date=data.get("expiry_date") or None,
                 notes=data.get("notes", ""),
                 tags=[t.strip() for t in data.get("tags", "").split(",") if t.strip()],
+                created_by=request.user,
             )
             doc.number = BaseService.generate_sequence_number(
                 "DOC", Document, company.pk
@@ -138,6 +143,7 @@ class DocumentUploadView(CompanyMixin, View):
 
 
 class DocumentNewVersionView(CompanyMixin, View):
+    required_permission = "documents.create"
     def post(self, request, pk):
         doc = get_object_or_404(
             Document, pk=pk, company=self.company(), is_deleted=False
@@ -176,6 +182,7 @@ class DocumentNewVersionView(CompanyMixin, View):
 
 
 class DocumentApproveView(CompanyMixin, View):
+    required_permission = "documents.approve"
     def post(self, request, pk):
         doc = get_object_or_404(
             Document, pk=pk, company=self.company(), is_deleted=False
@@ -197,6 +204,7 @@ class DocumentApproveView(CompanyMixin, View):
 
 
 class DocumentDownloadView(CompanyMixin, View):
+    required_permission = "documents.read"
     def get(self, request, pk):
         doc = get_object_or_404(
             Document, pk=pk, company=self.company(), is_deleted=False
@@ -219,6 +227,7 @@ class DocumentDownloadView(CompanyMixin, View):
 
 
 class DocumentCategoryCreateView(CompanyMixin, View):
+    required_permission = "documents.create"
     def post(self, request):
         data = request.POST
         company = self.company()

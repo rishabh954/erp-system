@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
@@ -216,7 +217,7 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
                 warehouse=self.warehouse,
                 quantity=-qty_to_consume,
                 movement_type=StockMovement.MovementType.PRODUCTION_OUT,
-                movement_date=self.updated_at.date() if self.updated_at else None,
+                movement_date=self.updated_at.date() if self.updated_at else timezone.now().date(),
                 reference_id=f"MO-{self.number}",
                 notes=f"Consumed via BOM {self.bom.number}",
             )
@@ -228,7 +229,7 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
             warehouse=self.warehouse,
             quantity=self.quantity_produced,
             movement_type=StockMovement.MovementType.PRODUCTION_IN,
-            movement_date=self.updated_at.date() if self.updated_at else None,
+            movement_date=self.updated_at.date() if self.updated_at else timezone.now().date(),
             reference_id=f"MO-{self.number}",
             notes=f"Produced via BOM {self.bom.number}",
         )
@@ -322,7 +323,8 @@ class ScrapOrder(CompanyScoped, SequenceMixin, NotesMixin):
                     else None
                 ),
                 quantity=-self.quantity,
-                movement_type=StockMovement.MovementType.ADJUSTMENT_OUT,
+                movement_type=StockMovement.MovementType.ADJUSTMENT,
+                movement_date=self.updated_at.date() if self.updated_at else None,
                 reference_id=self.number,
                 notes=f"Scrapped: {self.reason}",
             )

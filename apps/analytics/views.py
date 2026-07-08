@@ -5,6 +5,7 @@ All report CRUD, export (Excel/CSV/PDF), pivot, chart, and scheduling.
 
 import json
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, JsonResponse
@@ -29,6 +30,7 @@ class ReportsMixin(LoginRequiredMixin):
 
 
 class ReportBuilderView(ReportsMixin, TemplateView):
+    required_permission = "analytics.read"
     template_name = "analytics/report_builder.html"
 
     def get_context_data(self, **kwargs):
@@ -76,6 +78,7 @@ class ReportBuilderView(ReportsMixin, TemplateView):
 
 
 class SavedReportsListView(ReportsMixin, ListView):
+    required_permission = "analytics.read"
     template_name = "analytics/saved_reports.html"
     context_object_name = "reports"
     paginate_by = 20
@@ -87,6 +90,7 @@ class SavedReportsListView(ReportsMixin, ListView):
 
 
 class ExecutionLogListView(ReportsMixin, ListView):
+    required_permission = "analytics.read"
     template_name = "analytics/execution_log.html"
     context_object_name = "executions"
     paginate_by = 30
@@ -101,6 +105,7 @@ class ExecutionLogListView(ReportsMixin, ListView):
 
 
 class ReportDetailView(ReportsMixin, DetailView):
+    required_permission = "analytics.read"
     template_name = "analytics/report_detail.html"
     context_object_name = "report"
 
@@ -167,6 +172,7 @@ class ReportDetailView(ReportsMixin, DetailView):
 
 
 class ReportExportView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Handle CSV, Excel, PDF export for a saved report."""
 
     def get(self, request, pk, fmt):
@@ -204,6 +210,7 @@ class ReportExportView(ReportsMixin, View):
 
 
 class QuickExportView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Quick export from a module+columns+filters URL params — no saved report needed."""
 
     def get(self, request, fmt):
@@ -245,6 +252,7 @@ class QuickExportView(ReportsMixin, View):
 
 
 class ReportDataAPIView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Returns report data as JSON for dynamic chart rendering."""
 
     def get(self, request, pk):
@@ -277,6 +285,7 @@ class ReportDataAPIView(ReportsMixin, View):
 
 
 class PreviewAPIView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Generates preview data for the Report Builder."""
 
     def post(self, request):
@@ -358,6 +367,7 @@ class PreviewAPIView(ReportsMixin, View):
 
 
 class ModuleFieldsAPIView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Returns the available columns for a given module."""
 
     FIELD_HINTS = {
@@ -497,6 +507,7 @@ class ModuleFieldsAPIView(ReportsMixin, View):
 
 
 class ScheduleReportView(ReportsMixin, View):
+    required_permission = "analytics.read"
     """Create or update a report schedule."""
 
     def post(self, request, pk):
@@ -520,6 +531,7 @@ class ScheduleReportView(ReportsMixin, View):
 
 
 class ScheduleDeleteView(ReportsMixin, View):
+    required_permission = "analytics.delete"
     def post(self, request, pk):
         schedule = get_object_or_404(ScheduledReport, pk=pk)
         report_pk = schedule.report_id
@@ -532,6 +544,7 @@ class ScheduleDeleteView(ReportsMixin, View):
 
 
 class AnalyticsDashboardView(ReportsMixin, TemplateView):
+    required_permission = "analytics.read"
     template_name = "analytics/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -556,6 +569,7 @@ class AnalyticsDashboardView(ReportsMixin, TemplateView):
 
 
 class ReportDeleteView(ReportsMixin, View):
+    required_permission = "analytics.delete"
     def post(self, request, pk):
         report = get_object_or_404(SavedReport, pk=pk, created_by=request.user)
         report.delete()
@@ -564,6 +578,7 @@ class ReportDeleteView(ReportsMixin, View):
 
 
 class ReportBulkDeleteView(ReportsMixin, View):
+    required_permission = "analytics.delete"
     def post(self, request):
         pks = request.POST.get("pks", "")
         pk_list = [pk.strip() for pk in pks.split(",") if pk.strip()]
@@ -579,6 +594,7 @@ class ReportBulkDeleteView(ReportsMixin, View):
 
 
 class GenerateReportAPIView(ReportsMixin, View):
+    required_permission = "analytics.approve"
     def get(self, request, *args, **kwargs):
         from django.apps import apps as django_apps
 
@@ -631,6 +647,7 @@ class GenerateReportAPIView(ReportsMixin, View):
 
 
 class GetModuleFieldsAPIView(ReportsMixin, View):
+    required_permission = "analytics.read"
     def get(self, request, *args, **kwargs):
         from django.apps import apps as django_apps
 

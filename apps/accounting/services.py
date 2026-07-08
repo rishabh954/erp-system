@@ -110,8 +110,7 @@ class AutoJournalService:
             total_debit=invoice.total,
             total_credit=invoice.total,
         )
-        entry.number = entry.generate_number(journal.sequence_prefix, entry.__class__)
-        entry.save(update_fields=["number"])
+
 
         # Debit A/R (Total)
         JournalItem.objects.create(
@@ -177,8 +176,7 @@ class AutoJournalService:
             total_debit=payment.amount,
             total_credit=payment.amount,
         )
-        entry.number = entry.generate_number(journal.sequence_prefix, entry.__class__)
-        entry.save(update_fields=["number"])
+
 
         # Debit Bank (Amount)
         JournalItem.objects.create(
@@ -236,8 +234,7 @@ class AutoJournalService:
             total_debit=bill.total,
             total_credit=bill.total,
         )
-        entry.number = entry.generate_number(journal.sequence_prefix, entry.__class__)
-        entry.save(update_fields=["number"])
+
 
         # Credit A/P (Total)
         JournalItem.objects.create(
@@ -303,8 +300,7 @@ class AutoJournalService:
             total_debit=payment.amount,
             total_credit=payment.amount,
         )
-        entry.number = entry.generate_number(journal.sequence_prefix, entry.__class__)
-        entry.save(update_fields=["number"])
+
 
         # Debit A/P (Amount)
         JournalItem.objects.create(

@@ -1,3 +1,4 @@
+from core.permissions import PermissionRequiredMixin
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -21,6 +22,7 @@ from core.pagination import StandardResultsSetPagination
 
 
 class ProductViewSet(viewsets.ModelViewSet):
+    required_permission = "inventory.read"
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     pagination_class = StandardResultsSetPagination
@@ -82,6 +84,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
+    required_permission = "inventory.read"
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     pagination_class = StandardResultsSetPagination
@@ -94,6 +97,7 @@ class WarehouseViewSet(viewsets.ModelViewSet):
 
 
 class StockRecordViewSet(viewsets.ReadOnlyModelViewSet):
+    required_permission = "inventory.approve"
     queryset = StockRecord.objects.all()
     serializer_class = StockRecordSerializer
     pagination_class = StandardResultsSetPagination
@@ -115,6 +119,7 @@ class StockRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class StockMovementViewSet(viewsets.ReadOnlyModelViewSet):
+    required_permission = "inventory.read"
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer
     pagination_class = StandardResultsSetPagination
@@ -127,6 +132,7 @@ class StockMovementViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class InventoryTransferViewSet(viewsets.ModelViewSet):
+    required_permission = "inventory.read"
     queryset = InventoryTransfer.objects.all()
     serializer_class = InventoryTransferSerializer
     pagination_class = StandardResultsSetPagination
@@ -173,6 +179,7 @@ class InventoryTransferViewSet(viewsets.ModelViewSet):
 
 
 class BarcodeScanViewSet(viewsets.ViewSet):
+    required_permission = "inventory.read"
     @action(detail=False, methods=["post"], url_path="scan-receive")
     def scan_receive(self, request):
         barcode = request.data.get("barcode")

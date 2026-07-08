@@ -5,6 +5,7 @@ All 13 AI features with streaming chat, SSE, OCR, forecasting, insights, and NLP
 
 import json
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, StreamingHttpResponse
@@ -15,7 +16,7 @@ from django.views.generic import TemplateView, View
 from apps.ai.models import AIConversation, AIInsight, AIMessage, NLPReport, OCRDocument
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -26,6 +27,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class AIHubView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -62,6 +64,7 @@ class AIHubView(CompanyMixin, TemplateView):
 
 
 class ChatView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/chat.html"
 
     def get_context_data(self, **kwargs):
@@ -85,6 +88,7 @@ class ChatView(CompanyMixin, TemplateView):
 
 
 class ChatNewConversationView(CompanyMixin, View):
+    required_permission = "ai.create"
     def post(self, request):
         conv = AIConversation.objects.create(
             company=self.company(),
@@ -96,6 +100,7 @@ class ChatNewConversationView(CompanyMixin, View):
 
 
 class ChatSendMessageView(CompanyMixin, View):
+    required_permission = "ai.approve"
     """POST: send a message, return streaming SSE response."""
 
     def post(self, request, conv_id):
@@ -152,6 +157,7 @@ class ChatSendMessageView(CompanyMixin, View):
 
 
 class ChatDeleteConversationView(CompanyMixin, View):
+    required_permission = "ai.delete"
     def post(self, request, conv_id):
         conv = get_object_or_404(
             AIConversation, id=conv_id, company=self.company(), user=request.user
@@ -167,6 +173,7 @@ class ChatDeleteConversationView(CompanyMixin, View):
 
 
 class NLPReportView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/nlp_report.html"
 
     def get_context_data(self, **kwargs):
@@ -186,6 +193,7 @@ class NLPReportView(CompanyMixin, TemplateView):
 
 
 class NLPReportQueryView(CompanyMixin, View):
+    required_permission = "ai.read"
     """AJAX: process an NL question and return results."""
 
     def post(self, request):
@@ -231,6 +239,7 @@ class NLPReportQueryView(CompanyMixin, View):
 
 
 class ForecastView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/forecast.html"
 
     def get_context_data(self, **kwargs):
@@ -241,6 +250,7 @@ class ForecastView(CompanyMixin, TemplateView):
 
 
 class ForecastDataView(CompanyMixin, View):
+    required_permission = "ai.read"
     """AJAX: return forecast data JSON for Chart.js."""
 
     def get(self, request):
@@ -277,6 +287,7 @@ class ForecastDataView(CompanyMixin, View):
 
 
 class OCRUploadView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/ocr_upload.html"
 
     def get_context_data(self, **kwargs):
@@ -328,6 +339,7 @@ class OCRUploadView(CompanyMixin, TemplateView):
 
 
 class OCRResultView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/ocr_result.html"
 
     def get_context_data(self, **kwargs):
@@ -339,6 +351,7 @@ class OCRResultView(CompanyMixin, TemplateView):
 
 
 class OCRStatusView(CompanyMixin, View):
+    required_permission = "ai.read"
     """AJAX: poll OCR status."""
 
     def get(self, request, pk):
@@ -358,6 +371,7 @@ class OCRStatusView(CompanyMixin, View):
 
 
 class CustomerInsightsView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/insights.html"
 
     def get_context_data(self, **kwargs):
@@ -388,6 +402,7 @@ class CustomerInsightsView(CompanyMixin, TemplateView):
 
 
 class GenerateCustomerInsightsView(CompanyMixin, View):
+    required_permission = "ai.approve"
     def post(self, request):
         from datetime import timedelta
 
@@ -431,6 +446,7 @@ class GenerateCustomerInsightsView(CompanyMixin, View):
 
 
 class PurchaseRecommendationView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/purchase_recommendations.html"
 
     def get_context_data(self, **kwargs):
@@ -440,6 +456,7 @@ class PurchaseRecommendationView(CompanyMixin, TemplateView):
 
 
 class GeneratePurchaseRecommendationsView(CompanyMixin, View):
+    required_permission = "ai.approve"
     def get(self, request):
         from apps.ai.services import PurchaseRecommendationService
 
@@ -458,10 +475,12 @@ class GeneratePurchaseRecommendationsView(CompanyMixin, View):
 
 
 class ExpenseCategorisationView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/expense_categorisation.html"
 
 
 class CategoriseExpensesView(CompanyMixin, View):
+    required_permission = "ai.read"
     def post(self, request):
         from apps.ai.services import ExpenseCategorisationService
 
@@ -483,6 +502,7 @@ class CategoriseExpensesView(CompanyMixin, View):
 
 
 class FinancialSummaryView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/financial_summary.html"
 
     def get_context_data(self, **kwargs):
@@ -496,6 +516,7 @@ class FinancialSummaryView(CompanyMixin, TemplateView):
 
 
 class GenerateFinancialSummaryView(CompanyMixin, View):
+    required_permission = "ai.approve"
     def post(self, request):
         from datetime import timedelta
 
@@ -529,6 +550,7 @@ class GenerateFinancialSummaryView(CompanyMixin, View):
 
 
 class DashboardAssistantView(CompanyMixin, View):
+    required_permission = "ai.read"
     """AJAX endpoint for the floating dashboard assistant widget."""
 
     def post(self, request):
@@ -556,6 +578,7 @@ class DashboardAssistantView(CompanyMixin, View):
 
 
 class AISettingsView(CompanyMixin, TemplateView):
+    required_permission = "ai.read"
     template_name = "ai/settings.html"
 
     def get_context_data(self, **kwargs):

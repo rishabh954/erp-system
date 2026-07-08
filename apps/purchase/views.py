@@ -3,6 +3,7 @@ Purchase Management Views
 Vendors, Purchase Requests, Purchase Orders, Goods Receipts
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -14,7 +15,7 @@ from django.views.generic import DetailView, ListView, TemplateView, UpdateView,
 from .models import GoodsReceipt, PurchaseOrder, PurchaseRequest, Vendor
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -23,6 +24,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class VendorListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     template_name = "purchase/vendors/list.html"
     context_object_name = "vendors"
     paginate_by = 25
@@ -53,6 +55,7 @@ class VendorListView(CompanyMixin, ListView):
 
 
 class VendorDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     template_name = "purchase/vendors/detail.html"
     context_object_name = "vendor"
 
@@ -78,6 +81,7 @@ class VendorDetailView(CompanyMixin, DetailView):
 
 
 class VendorCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     template_name = "purchase/vendors/form.html"
 
     def get(self, request):
@@ -120,6 +124,7 @@ class VendorCreateView(CompanyMixin, View):
 
 
 class VendorUpdateView(CompanyMixin, View):
+    required_permission = "purchase.update"
     template_name = "purchase/vendors/form.html"
 
     def get(self, request, pk):
@@ -161,6 +166,7 @@ class VendorUpdateView(CompanyMixin, View):
 
 
 class VendorDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
         name = vendor.name
@@ -179,6 +185,7 @@ class VendorDeleteView(CompanyMixin, View):
 
 
 class PurchaseRequestListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     template_name = "purchase/requests/list.html"
     context_object_name = "requests"
     paginate_by = 25
@@ -213,6 +220,7 @@ class PurchaseRequestListView(CompanyMixin, ListView):
 
 
 class PurchaseRequestCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     template_name = "purchase/requests/form.html"
 
     def get(self, request):
@@ -253,6 +261,7 @@ class PurchaseRequestCreateView(CompanyMixin, View):
 
 
 class PurchaseRequestUpdateView(CompanyMixin, View):
+    required_permission = "purchase.update"
     template_name = "purchase/requests/form.html"
 
     def get(self, request, pk):
@@ -303,6 +312,7 @@ class PurchaseRequestUpdateView(CompanyMixin, View):
 
 
 class PurchaseRequestDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         pr = get_object_or_404(
             PurchaseRequest, pk=pk, company=self.company(), is_deleted=False
@@ -319,6 +329,7 @@ class PurchaseRequestDeleteView(CompanyMixin, View):
 
 
 class PurchaseRequestDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     template_name = "purchase/requests/detail.html"
     context_object_name = "pr"
 
@@ -337,6 +348,7 @@ class PurchaseRequestDetailView(CompanyMixin, DetailView):
 
 
 class ApprovePurchaseRequestView(CompanyMixin, View):
+    required_permission = "purchase.approve"
     def post(self, request, pk):
         pr = get_object_or_404(
             PurchaseRequest, pk=pk, company=self.company(), is_deleted=False
@@ -364,6 +376,7 @@ class ApprovePurchaseRequestView(CompanyMixin, View):
 
 
 class PurchaseOrderListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     template_name = "purchase/orders/list.html"
     context_object_name = "orders"
     paginate_by = 25
@@ -397,6 +410,7 @@ class PurchaseOrderListView(CompanyMixin, ListView):
 
 
 class PurchaseOrderCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     template_name = "purchase/orders/form.html"
 
     def get(self, request):
@@ -444,6 +458,7 @@ class PurchaseOrderCreateView(CompanyMixin, View):
 
 
 class PurchaseOrderUpdateView(CompanyMixin, View):
+    required_permission = "purchase.update"
     template_name = "purchase/orders/form.html"
 
     def get(self, request, pk):
@@ -501,6 +516,7 @@ class PurchaseOrderUpdateView(CompanyMixin, View):
 
 
 class PurchaseOrderDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         po = get_object_or_404(
             PurchaseOrder, pk=pk, company=self.company(), is_deleted=False
@@ -517,6 +533,7 @@ class PurchaseOrderDeleteView(CompanyMixin, View):
 
 
 class PurchaseOrderSubmitView(CompanyMixin, View):
+    required_permission = "purchase.read"
     def post(self, request, pk):
         po = get_object_or_404(
             PurchaseOrder, pk=pk, company=self.company(), is_deleted=False
@@ -549,6 +566,7 @@ class PurchaseOrderSubmitView(CompanyMixin, View):
 
 
 class PurchaseOrderConfirmView(CompanyMixin, View):
+    required_permission = "purchase.approve"
     def post(self, request, pk):
         po = get_object_or_404(
             PurchaseOrder, pk=pk, company=self.company(), is_deleted=False
@@ -564,6 +582,7 @@ class PurchaseOrderConfirmView(CompanyMixin, View):
 
 
 class PurchaseOrderDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     template_name = "purchase/orders/detail.html"
     context_object_name = "order"
 
@@ -620,6 +639,7 @@ from .models import Bill
 
 
 class CreateBillFromPOView(CompanyMixin, View):
+    required_permission = "purchase.create"
     def post(self, request, pk):
         po = get_object_or_404(PurchaseOrder, pk=pk, company=self.company())
         try:
@@ -640,6 +660,7 @@ class CreateBillFromPOView(CompanyMixin, View):
 
 
 class BillUpdateView(CompanyMixin, UpdateView):
+    required_permission = "purchase.update"
     model = Bill
     fields = ["bill_date", "due_date", "terms_conditions", "notes"]
     template_name = "purchase/bills/form.html"
@@ -656,6 +677,7 @@ class BillUpdateView(CompanyMixin, UpdateView):
 
 
 class BillDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         bill = get_object_or_404(Bill, pk=pk, company=self.company(), is_deleted=False)
         if bill.status != Bill.Status.DRAFT:
@@ -670,6 +692,7 @@ class BillDeleteView(CompanyMixin, View):
 
 
 class BillListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     model = Bill
     template_name = "purchase/bills/list.html"
     context_object_name = "bills"
@@ -683,6 +706,7 @@ class BillListView(CompanyMixin, ListView):
 
 
 class BillDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     model = Bill
     template_name = "purchase/bills/detail.html"
     context_object_name = "bill"
@@ -698,6 +722,7 @@ class BillDetailView(CompanyMixin, DetailView):
 
 
 class RecordVendorPaymentView(CompanyMixin, View):
+    required_permission = "purchase.approve"
     def post(self, request, pk):
         bill = get_object_or_404(Bill, pk=pk, company=self.company())
         try:
@@ -712,6 +737,7 @@ class RecordVendorPaymentView(CompanyMixin, View):
         except ValueError as e:
             messages.error(request, str(e))
         except Exception as e:
+            print(f"Exception in payment: {e}")
             messages.error(request, f"Error: {e}")
         return redirect("purchase:bill_detail", pk=pk)
 
@@ -720,6 +746,7 @@ class RecordVendorPaymentView(CompanyMixin, View):
 
 
 class GoodsReceiptListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     model = GoodsReceipt
     template_name = "purchase/receipts/list.html"
     context_object_name = "receipts"
@@ -734,6 +761,7 @@ class GoodsReceiptListView(CompanyMixin, ListView):
 
 
 class GoodsReceiptUpdateView(CompanyMixin, UpdateView):
+    required_permission = "purchase.update"
     model = GoodsReceipt
     fields = ["receipt_date", "quality_check", "qc_notes", "notes"]
     template_name = "purchase/receipts/form_update.html"
@@ -750,6 +778,7 @@ class GoodsReceiptUpdateView(CompanyMixin, UpdateView):
 
 
 class GoodsReceiptDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         receipt = get_object_or_404(
             GoodsReceipt, pk=pk, company=self.company(), is_deleted=False
@@ -796,6 +825,7 @@ class GoodsReceiptDeleteView(CompanyMixin, View):
 
 
 class GoodsReceiptDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     model = GoodsReceipt
     template_name = "purchase/receipts/detail.html"
     context_object_name = "receipt"
@@ -805,6 +835,7 @@ class GoodsReceiptDetailView(CompanyMixin, DetailView):
 
 
 class GoodsReceiptCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     def get(self, request, pk):
         po = get_object_or_404(PurchaseOrder, pk=pk, company=self.company())
         if po.status not in [
@@ -838,6 +869,7 @@ from .models import RequestForQuotation, VendorBid
 
 
 class RFQListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     template_name = "purchase/rfqs/list.html"
     context_object_name = "rfqs"
 
@@ -848,6 +880,7 @@ class RFQListView(CompanyMixin, ListView):
 
 
 class RFQDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     template_name = "purchase/rfqs/detail.html"
     context_object_name = "rfq"
 
@@ -858,6 +891,7 @@ class RFQDetailView(CompanyMixin, DetailView):
 
 
 class RFQCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     def get(self, request):
         from apps.inventory.models import Product
 
@@ -885,6 +919,7 @@ class RFQCreateView(CompanyMixin, View):
 
 
 class RFQUpdateView(CompanyMixin, View):
+    required_permission = "purchase.update"
     def get(self, request, pk):
         from apps.inventory.models import Product
 
@@ -926,6 +961,7 @@ class RFQUpdateView(CompanyMixin, View):
 
 
 class RFQDeleteView(CompanyMixin, View):
+    required_permission = "purchase.delete"
     def post(self, request, pk):
         rfq = get_object_or_404(RequestForQuotation, pk=pk, company=self.company())
         if rfq.status != "draft":
@@ -938,6 +974,7 @@ class RFQDeleteView(CompanyMixin, View):
 
 
 class VendorBidListView(CompanyMixin, ListView):
+    required_permission = "purchase.read"
     template_name = "purchase/bids/list.html"
     context_object_name = "bids"
 
@@ -948,6 +985,7 @@ class VendorBidListView(CompanyMixin, ListView):
 
 
 class VendorBidDetailView(CompanyMixin, DetailView):
+    required_permission = "purchase.read"
     template_name = "purchase/bids/detail.html"
     context_object_name = "bid"
 
@@ -960,6 +998,7 @@ class VendorBidDetailView(CompanyMixin, DetailView):
 
 
 class VendorBidCreateView(CompanyMixin, View):
+    required_permission = "purchase.create"
     def get(self, request):
         rfq_id = request.GET.get("rfq")
         rfq = (
@@ -996,6 +1035,7 @@ class VendorBidCreateView(CompanyMixin, View):
 
 
 class VendorBidActionView(CompanyMixin, View):
+    required_permission = "purchase.read"
     def post(self, request, pk):
         bid = get_object_or_404(VendorBid, pk=pk, company=self.company())
         action = request.POST.get("action")
@@ -1030,6 +1070,7 @@ class VendorBidActionView(CompanyMixin, View):
 
 
 class PurchaseDashboardView(CompanyMixin, TemplateView):
+    required_permission = "purchase.read"
     template_name = "purchase/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -1088,6 +1129,7 @@ class PurchaseDashboardView(CompanyMixin, TemplateView):
 
 
 class VendorEvaluateView(CompanyMixin, View):
+    required_permission = "purchase.read"
     def get(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
 

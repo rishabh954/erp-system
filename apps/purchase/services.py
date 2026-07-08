@@ -490,7 +490,7 @@ class PaymentService(BaseService):
             module="purchase",
             resource_type="Bill",
             resource_id=bill.pk,
-            description=f"Processed {payment.currency.code} {amount} payment for bill {bill.number}",
+            description=f"Processed {payment.currency.code if payment.currency else ''} {amount} payment for bill {bill.number}",
         )
         return payment
 

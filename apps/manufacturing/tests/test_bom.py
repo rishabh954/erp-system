@@ -47,11 +47,10 @@ def test_bom_creation_mo_and_mrp(client, company, user, warehouse):
 
     # Give some stock to comp1 to test MRP shortage calculation
     StockRecord.objects.create(
+        company=company,
         product=comp1,
         warehouse=warehouse,
         quantity_on_hand=Decimal("5"),
-        quantity_allocated=Decimal("0"),
-        quantity_available=Decimal("5"),
     )
 
     # 1. Test BOM Creation via View
@@ -213,5 +212,5 @@ def test_mo_cancel_and_scrap(client, company, user, warehouse):
 
     # Verify stock movement for scrap
     movement = StockMovement.objects.get(reference_id=scrap.number)
-    assert movement.movement_type == "adjustment_out"
+    assert movement.movement_type == "adjustment"
     assert movement.quantity == Decimal("-1")

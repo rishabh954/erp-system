@@ -2,6 +2,7 @@
 HelpDesk Views - Tickets, SLA, Knowledge Base
 """
 
+from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
@@ -14,12 +15,13 @@ from core.services import BaseService
 from .models import Ticket, TicketCategory, TicketReply
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
 
 class TicketListView(CompanyMixin, ListView):
+    required_permission = "helpdesk.read"
     template_name = "helpdesk/tickets/list.html"
     context_object_name = "tickets"
     paginate_by = 25
@@ -66,6 +68,7 @@ class TicketListView(CompanyMixin, ListView):
 
 
 class TicketDetailView(CompanyMixin, DetailView):
+    required_permission = "helpdesk.read"
     template_name = "helpdesk/tickets/detail.html"
     context_object_name = "ticket"
 
@@ -103,6 +106,7 @@ class TicketDetailView(CompanyMixin, DetailView):
 
 
 class TicketCreateView(CompanyMixin, View):
+    required_permission = "helpdesk.create"
     template_name = "helpdesk/tickets/form.html"
 
     def get(self, request):
@@ -159,6 +163,7 @@ class TicketCreateView(CompanyMixin, View):
 
 
 class AddReplyView(CompanyMixin, View):
+    required_permission = "helpdesk.read"
     def post(self, request, pk):
         ticket = get_object_or_404(
             Ticket, pk=pk, company=self.company(), is_deleted=False
