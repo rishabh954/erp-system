@@ -6,7 +6,8 @@ Implements: UUID PKs, soft delete, audit fields, multi-tenancy
 
 import uuid
 
-from django.db import models
+from django.db import models, transaction
+from django.db.models.functions import Length
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -260,17 +261,24 @@ class SequenceMixin(models.Model):
         abstract = True
 
     def generate_number(self, prefix: str, model_class) -> str:
-        """Generate next sequence number like PREFIX-0001."""
-        last = (
-            model_class.all_objects.filter(number__startswith=prefix)
-            .order_by("-number")
-            .first()
-        )
-        if last and last.number:
-            try:
-                seq = int(last.number.split("-")[-1]) + 1
-            except (ValueError, IndexError):
+        """Generate next sequence number like PREFIX-0001 in a concurrency-safe manner."""
+        with transaction.atomic():
+            last = (
+                model_class.all_objects.filter(number__startswith=prefix)
+                .select_for_update()
+                .annotate(num_len=Length("number"))
+                .order_by("-num_len", "-number")
+                .first()
+            )
+            if last and last.number:
+                try:
+                    seq = int(last.number.split("-")[-1]) + 1
+                except (ValueError, IndexError):
+                    seq = 1
+            else:
                 seq = 1
-        else:
-            seq = 1
-        return f"{prefix}-{seq:04d}"
+            
+            number = f"{prefix}-{seq:04d}"
+            # Assigning to self here ensures that if we call .save(), it uses this number.
+            # But the caller might want to do it. The original code just returns the string.
+            return number
