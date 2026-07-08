@@ -1,31 +1,39 @@
 import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from core.models import CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin
 
+from core.models import CompanyScoped, CurrencyMixin, NotesMixin, SequenceMixin
 
 # ═══════════════════════════════ PROJECT MANAGEMENT ═══════════════════════════
+
 
 class Project(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
 
     class Status(models.TextChoices):
-        PLANNING = 'planning', _('Planning')
-        ACTIVE = 'active', _('Active')
-        ON_HOLD = 'on_hold', _('On Hold')
-        COMPLETED = 'completed', _('Completed')
-        CANCELLED = 'cancelled', _('Cancelled')
+        PLANNING = "planning", _("Planning")
+        ACTIVE = "active", _("Active")
+        ON_HOLD = "on_hold", _("On Hold")
+        COMPLETED = "completed", _("Completed")
+        CANCELLED = "cancelled", _("Cancelled")
 
     class Priority(models.TextChoices):
-        LOW = 'low', _('Low')
-        MEDIUM = 'medium', _('Medium')
-        HIGH = 'high', _('High')
-        CRITICAL = 'critical', _('Critical')
+        LOW = "low", _("Low")
+        MEDIUM = "medium", _("Medium")
+        HIGH = "high", _("High")
+        CRITICAL = "critical", _("Critical")
 
     name = models.CharField(max_length=500)
     description = models.TextField(blank=True)
-    customer = models.ForeignKey('crm.Customer', null=True, blank=True, on_delete=models.SET_NULL)
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.PLANNING, db_index=True)
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
+    customer = models.ForeignKey(
+        "crm.Customer", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    status = models.CharField(
+        max_length=15, choices=Status.choices, default=Status.PLANNING, db_index=True
+    )
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.MEDIUM
+    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     actual_start = models.DateField(null=True, blank=True)
@@ -34,15 +42,20 @@ class Project(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
     actual_cost = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     progress = models.PositiveSmallIntegerField(default=0)  # 0-100%
     manager = models.ForeignKey(
-        'authentication.User', null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='managed_projects',
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="managed_projects",
     )
-    team_members = models.ManyToManyField('authentication.User', through='ProjectMember', related_name='projects')
+    team_members = models.ManyToManyField(
+        "authentication.User", through="ProjectMember", related_name="projects"
+    )
     is_billable = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'projects_projects'
-        ordering = ['-created_at']
+        db_table = "projects_projects"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.number} | {self.name}"
@@ -52,25 +65,27 @@ class Project(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
         tasks = self.tasks.filter(is_deleted=False)
         if not tasks.exists():
             return 0
-        done = tasks.filter(status='done').count()
+        done = tasks.filter(status="done").count()
         return int(done / tasks.count() * 100)
 
 
 class ProjectMember(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    user = models.ForeignKey('authentication.User', on_delete=models.CASCADE)
+    user = models.ForeignKey("authentication.User", on_delete=models.CASCADE)
     role = models.CharField(max_length=100, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     hours_allocated = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
     class Meta:
-        db_table = 'projects_members'
-        unique_together = ('project', 'user')
+        db_table = "projects_members"
+        unique_together = ("project", "user")
 
 
 class Milestone(CompanyScoped):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='milestones')
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="milestones"
+    )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     due_date = models.DateField()
@@ -79,63 +94,89 @@ class Milestone(CompanyScoped):
     budget = models.DecimalField(max_digits=18, decimal_places=2, default=0)
 
     class Meta:
-        db_table = 'projects_milestones'
-        ordering = ['due_date']
+        db_table = "projects_milestones"
+        ordering = ["due_date"]
 
 
 class Sprint(CompanyScoped, SequenceMixin):
     class Status(models.TextChoices):
-        PLANNING = 'planning', _('Planning')
-        ACTIVE = 'active', _('Active')
-        COMPLETED = 'completed', _('Completed')
-        CANCELLED = 'cancelled', _('Cancelled')
+        PLANNING = "planning", _("Planning")
+        ACTIVE = "active", _("Active")
+        COMPLETED = "completed", _("Completed")
+        CANCELLED = "cancelled", _("Cancelled")
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='sprints')
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="sprints"
+    )
     name = models.CharField(max_length=200)
     goal = models.TextField(blank=True)
     start_date = models.DateField()
     end_date = models.DateField()
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNING)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PLANNING
+    )
 
     class Meta:
-        db_table = 'projects_sprints'
-        ordering = ['-start_date']
+        db_table = "projects_sprints"
+        ordering = ["-start_date"]
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number('SPR', self.__class__)
+            self.number = self.generate_number("SPR", self.__class__)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.project.number} | {self.name}"
 
+
 class Task(CompanyScoped, NotesMixin):
 
     class Status(models.TextChoices):
-        BACKLOG = 'backlog', _('Backlog')
-        TODO = 'todo', _('To Do')
-        IN_PROGRESS = 'in_progress', _('In Progress')
-        IN_REVIEW = 'in_review', _('In Review')
-        DONE = 'done', _('Done')
-        CANCELLED = 'cancelled', _('Cancelled')
+        BACKLOG = "backlog", _("Backlog")
+        TODO = "todo", _("To Do")
+        IN_PROGRESS = "in_progress", _("In Progress")
+        IN_REVIEW = "in_review", _("In Review")
+        DONE = "done", _("Done")
+        CANCELLED = "cancelled", _("Cancelled")
 
     class Priority(models.TextChoices):
-        LOW = 'low', _('Low')
-        MEDIUM = 'medium', _('Medium')
-        HIGH = 'high', _('High')
-        URGENT = 'urgent', _('Urgent')
+        LOW = "low", _("Low")
+        MEDIUM = "medium", _("Medium")
+        HIGH = "high", _("High")
+        URGENT = "urgent", _("Urgent")
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
-    sprint = models.ForeignKey(Sprint, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
-    milestone = models.ForeignKey(Milestone, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
-    parent_task = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subtasks')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks")
+    sprint = models.ForeignKey(
+        Sprint, null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks"
+    )
+    milestone = models.ForeignKey(
+        Milestone,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+    )
+    parent_task = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="subtasks",
+    )
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True)
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.TODO, db_index=True)
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
+    status = models.CharField(
+        max_length=15, choices=Status.choices, default=Status.TODO, db_index=True
+    )
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.MEDIUM
+    )
     assigned_to = models.ForeignKey(
-        'authentication.User', null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='assigned_tasks',
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_tasks",
     )
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
@@ -146,30 +187,30 @@ class Task(CompanyScoped, NotesMixin):
     tags = models.JSONField(default=list)
 
     class Meta:
-        db_table = 'projects_tasks'
-        ordering = ['position', '-created_at']
+        db_table = "projects_tasks"
+        ordering = ["position", "-created_at"]
 
     def __str__(self):
         return f"{self.project.number} | {self.title}"
 
 
 class TaskComment(CompanyScoped):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
-    author = models.ForeignKey('authentication.User', on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey("authentication.User", on_delete=models.CASCADE)
     content = models.TextField()
-    attachment = models.FileField(upload_to='tasks/comments/', null=True, blank=True)
+    attachment = models.FileField(upload_to="tasks/comments/", null=True, blank=True)
 
     class Meta:
-        db_table = 'projects_task_comments'
-        ordering = ['created_at']
+        db_table = "projects_task_comments"
+        ordering = ["created_at"]
 
     def __str__(self):
         return f"{self.task.title[:30]} — {self.author.full_name}"
 
 
 class TimeLog(CompanyScoped):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='time_logs')
-    user = models.ForeignKey('authentication.User', on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="time_logs")
+    user = models.ForeignKey("authentication.User", on_delete=models.CASCADE)
     date = models.DateField()
     hours = models.DecimalField(max_digits=6, decimal_places=2)
     description = models.TextField(blank=True)
@@ -177,38 +218,47 @@ class TimeLog(CompanyScoped):
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
-        db_table = 'projects_time_logs'
+        db_table = "projects_time_logs"
+
 
 class ProjectRisk(CompanyScoped, SequenceMixin):
     class Status(models.TextChoices):
-        IDENTIFIED = 'identified', _('Identified')
-        ASSESSED = 'assessed', _('Assessed')
-        MITIGATED = 'mitigated', _('Mitigated')
-        CLOSED = 'closed', _('Closed')
-        REALIZED = 'realized', _('Realized')
+        IDENTIFIED = "identified", _("Identified")
+        ASSESSED = "assessed", _("Assessed")
+        MITIGATED = "mitigated", _("Mitigated")
+        CLOSED = "closed", _("Closed")
+        REALIZED = "realized", _("Realized")
 
     class Level(models.TextChoices):
-        LOW = 'low', _('Low')
-        MEDIUM = 'medium', _('Medium')
-        HIGH = 'high', _('High')
-        CRITICAL = 'critical', _('Critical')
+        LOW = "low", _("Low")
+        MEDIUM = "medium", _("Medium")
+        HIGH = "high", _("High")
+        CRITICAL = "critical", _("Critical")
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='risks')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="risks")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    probability = models.CharField(max_length=15, choices=Level.choices, default=Level.MEDIUM)
-    impact = models.CharField(max_length=15, choices=Level.choices, default=Level.MEDIUM)
+    probability = models.CharField(
+        max_length=15, choices=Level.choices, default=Level.MEDIUM
+    )
+    impact = models.CharField(
+        max_length=15, choices=Level.choices, default=Level.MEDIUM
+    )
     mitigation_plan = models.TextField(blank=True)
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.IDENTIFIED)
-    owner = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL)
+    status = models.CharField(
+        max_length=15, choices=Status.choices, default=Status.IDENTIFIED
+    )
+    owner = models.ForeignKey(
+        "authentication.User", null=True, blank=True, on_delete=models.SET_NULL
+    )
 
     class Meta:
-        db_table = 'projects_risks'
-        ordering = ['-created_at']
+        db_table = "projects_risks"
+        ordering = ["-created_at"]
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number('RSK', self.__class__)
+            self.number = self.generate_number("RSK", self.__class__)
         super().save(*args, **kwargs)
 
     def __str__(self):

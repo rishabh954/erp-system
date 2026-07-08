@@ -10,112 +10,178 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('auth', '0012_alter_user_first_name_max_length'),
-        ('authentication', '0001_initial'),
-        ('company', '0001_initial'),
+        ("auth", "0012_alter_user_first_name_max_length"),
+        ("authentication", "0001_initial"),
+        ("company", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='primary_company',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='primary_users', to='company.company'),
+            model_name="user",
+            name="primary_company",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="primary_users",
+                to="company.company",
+            ),
         ),
         migrations.AddField(
-            model_name='user',
-            name='user_permissions',
-            field=models.ManyToManyField(blank=True, help_text='Specific permissions for this user.', related_name='user_set', related_query_name='user', to='auth.permission', verbose_name='user permissions'),
+            model_name="user",
+            name="user_permissions",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Specific permissions for this user.",
+                related_name="user_set",
+                related_query_name="user",
+                to="auth.permission",
+                verbose_name="user permissions",
+            ),
         ),
         migrations.AddField(
-            model_name='activitylog',
-            name='company',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='company.company'),
+            model_name="activitylog",
+            name="company",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="company.company",
+            ),
         ),
         migrations.AddField(
-            model_name='activitylog',
-            name='user',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='activity_logs', to=settings.AUTH_USER_MODEL),
+            model_name="activitylog",
+            name="user",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="activity_logs",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='emailverificationtoken',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="emailverificationtoken",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='modulepermission',
-            unique_together={('role', 'module')},
+            name="modulepermission",
+            unique_together={("role", "module")},
         ),
         migrations.AddField(
-            model_name='passwordresettoken',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="passwordresettoken",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddField(
-            model_name='role',
-            name='company',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='roles', to='company.company'),
+            model_name="role",
+            name="company",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="roles",
+                to="company.company",
+            ),
         ),
         migrations.AddField(
-            model_name='permission',
-            name='role',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='permissions', to='authentication.role'),
+            model_name="permission",
+            name="role",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="permissions",
+                to="authentication.role",
+            ),
         ),
         migrations.AddField(
-            model_name='usercompany',
-            name='branch',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='company.branch'),
+            model_name="usercompany",
+            name="branch",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="company.branch",
+            ),
         ),
         migrations.AddField(
-            model_name='usercompany',
-            name='company',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='company.company'),
+            model_name="usercompany",
+            name="company",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="company.company"
+            ),
         ),
         migrations.AddField(
-            model_name='usercompany',
-            name='department',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='company.department'),
+            model_name="usercompany",
+            name="department",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="company.department",
+            ),
         ),
         migrations.AddField(
-            model_name='usercompany',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="usercompany",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddField(
-            model_name='user',
-            name='companies',
-            field=models.ManyToManyField(blank=True, related_name='users', through='authentication.UserCompany', to='company.company'),
+            model_name="user",
+            name="companies",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="users",
+                through="authentication.UserCompany",
+                to="company.company",
+            ),
         ),
         migrations.AddField(
-            model_name='usersession',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sessions', to=settings.AUTH_USER_MODEL),
+            model_name="usersession",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="sessions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
-            model_name='activitylog',
-            index=models.Index(fields=['user', 'created_at'], name='auth_activi_user_id_790a3b_idx'),
+            model_name="activitylog",
+            index=models.Index(
+                fields=["user", "created_at"], name="auth_activi_user_id_790a3b_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='activitylog',
-            index=models.Index(fields=['module', 'action', 'created_at'], name='auth_activi_module_6a6f68_idx'),
+            model_name="activitylog",
+            index=models.Index(
+                fields=["module", "action", "created_at"],
+                name="auth_activi_module_6a6f68_idx",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='role',
-            unique_together={('company', 'code')},
+            name="role",
+            unique_together={("company", "code")},
         ),
         migrations.AlterUniqueTogether(
-            name='permission',
-            unique_together={('role', 'module', 'resource', 'action')},
+            name="permission",
+            unique_together={("role", "module", "resource", "action")},
         ),
         migrations.AlterUniqueTogether(
-            name='usercompany',
-            unique_together={('user', 'company')},
+            name="usercompany",
+            unique_together={("user", "company")},
         ),
         migrations.AddIndex(
-            model_name='user',
-            index=models.Index(fields=['email', 'is_active'], name='auth_users_email_d77ad5_idx'),
+            model_name="user",
+            index=models.Index(
+                fields=["email", "is_active"], name="auth_users_email_d77ad5_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='user',
-            index=models.Index(fields=['role', 'is_active'], name='auth_users_role_1dc74c_idx'),
+            model_name="user",
+            index=models.Index(
+                fields=["role", "is_active"], name="auth_users_role_1dc74c_idx"
+            ),
         ),
     ]

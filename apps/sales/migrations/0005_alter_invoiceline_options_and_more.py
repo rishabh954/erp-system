@@ -6,22 +6,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0004_salesorder_terms_conditions'),
+        ("sales", "0004_salesorder_terms_conditions"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='invoiceline',
-            options={'ordering': ['sort_order']},
+            name="invoiceline",
+            options={"ordering": ["sort_order"]},
         ),
         migrations.AddField(
-            model_name='invoiceline',
-            name='discount_amount',
+            model_name="invoiceline",
+            name="discount_amount",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=18),
         ),
         migrations.AddField(
-            model_name='invoiceline',
-            name='sort_order',
+            model_name="invoiceline",
+            name="sort_order",
             field=models.PositiveSmallIntegerField(default=0),
         ),
     ]

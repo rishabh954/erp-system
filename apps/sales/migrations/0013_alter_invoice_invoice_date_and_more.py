@@ -6,33 +6,43 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0012_invoice_ack_date_invoice_ack_no_invoice_irn_and_more'),
+        ("sales", "0012_invoice_ack_date_invoice_ack_no_invoice_irn_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='invoice',
-            name='invoice_date',
+            model_name="invoice",
+            name="invoice_date",
             field=models.DateField(db_index=True),
         ),
         migrations.AlterField(
-            model_name='payment',
-            name='payment_date',
+            model_name="payment",
+            name="payment_date",
             field=models.DateField(db_index=True),
         ),
         migrations.AlterField(
-            model_name='payment',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed'), ('refunded', 'Refunded')], db_index=True, default='pending', max_length=15),
+            model_name="payment",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Pending"),
+                    ("completed", "Completed"),
+                    ("failed", "Failed"),
+                    ("refunded", "Refunded"),
+                ],
+                db_index=True,
+                default="pending",
+                max_length=15,
+            ),
         ),
         migrations.AlterField(
-            model_name='salesorder',
-            name='delivery_date',
+            model_name="salesorder",
+            name="delivery_date",
             field=models.DateField(blank=True, db_index=True, null=True),
         ),
         migrations.AlterField(
-            model_name='salesorder',
-            name='order_date',
+            model_name="salesorder",
+            name="order_date",
             field=models.DateField(db_index=True),
         ),
     ]

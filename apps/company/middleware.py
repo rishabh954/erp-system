@@ -1,5 +1,7 @@
 import zoneinfo
+
 from django.utils import timezone
+
 
 class TimezoneMiddleware:
     def __init__(self, get_response):
@@ -8,7 +10,7 @@ class TimezoneMiddleware:
     def __call__(self, request):
         tz_name = None
         if request.user.is_authenticated:
-            company = getattr(request.user, 'primary_company', None)
+            company = getattr(request.user, "primary_company", None)
             if company and company.timezone:
                 tz_name = company.timezone
         if tz_name:

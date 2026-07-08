@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0003_alter_salesorderline_options_and_more'),
+        ("sales", "0003_alter_salesorderline_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='salesorder',
-            name='terms_conditions',
+            model_name="salesorder",
+            name="terms_conditions",
             field=models.TextField(blank=True),
         ),
     ]

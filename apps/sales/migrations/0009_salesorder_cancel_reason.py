@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0008_creditnote_creditnoteline_discountrule_and_more'),
+        ("sales", "0008_creditnote_creditnoteline_discountrule_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='salesorder',
-            name='cancel_reason',
-            field=models.TextField(blank=True, help_text='Reason for cancellation'),
+            model_name="salesorder",
+            name="cancel_reason",
+            field=models.TextField(blank=True, help_text="Reason for cancellation"),
         ),
     ]

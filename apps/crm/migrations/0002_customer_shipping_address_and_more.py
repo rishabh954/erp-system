@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('crm', '0001_initial'),
+        ("crm", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customer',
-            name='shipping_address',
+            model_name="customer",
+            name="shipping_address",
             field=models.TextField(blank=True),
         ),
         migrations.AddField(
-            model_name='customer',
-            name='shipping_same_as_billing',
+            model_name="customer",
+            name="shipping_same_as_billing",
             field=models.BooleanField(default=False),
         ),
     ]

@@ -6,13 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('purchase', '0005_autopurchaserule_purchasecontract_and_more'),
+        ("purchase", "0005_autopurchaserule_purchasecontract_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='purchaseorder',
-            name='status',
-            field=models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('approved', 'Approved'), ('sent', 'Sent to Vendor'), ('confirmed', 'Confirmed'), ('partial', 'Partially Received'), ('received', 'Fully Received'), ('invoiced', 'Invoiced'), ('cancelled', 'Cancelled')], db_index=True, default='draft', max_length=20),
+            model_name="purchaseorder",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("draft", "Draft"),
+                    ("pending_approval", "Pending Approval"),
+                    ("approved", "Approved"),
+                    ("sent", "Sent to Vendor"),
+                    ("confirmed", "Confirmed"),
+                    ("partial", "Partially Received"),
+                    ("received", "Fully Received"),
+                    ("invoiced", "Invoiced"),
+                    ("cancelled", "Cancelled"),
+                ],
+                db_index=True,
+                default="draft",
+                max_length=20,
+            ),
         ),
     ]

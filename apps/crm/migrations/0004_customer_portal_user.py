@@ -8,14 +8,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('crm', '0003_lead_is_opportunity_lead_lead_score_and_more'),
+        ("crm", "0003_lead_is_opportunity_lead_lead_score_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customer',
-            name='portal_user',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='customer_profile', to=settings.AUTH_USER_MODEL),
+            model_name="customer",
+            name="portal_user",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="customer_profile",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.authentication.models import User, ActivityLog, Role, ModulePermission
+from apps.authentication.models import ActivityLog, ModulePermission, Role, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -12,10 +12,23 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "email", "first_name", "last_name", "full_name", "phone",
-            "role", "is_active", "is_email_verified", "language", "timezone",
-            "theme", "two_factor_enabled", "avatar", "last_active",
-            "date_joined", "company_name",
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "phone",
+            "role",
+            "is_active",
+            "is_email_verified",
+            "language",
+            "timezone",
+            "theme",
+            "two_factor_enabled",
+            "avatar",
+            "last_active",
+            "date_joined",
+            "company_name",
         ]
         read_only_fields = ["id", "email", "date_joined", "last_active"]
 
@@ -30,13 +43,22 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "email", "first_name", "last_name", "phone", "password",
-            "password_confirm", "role", "language", "timezone",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "password",
+            "password_confirm",
+            "role",
+            "language",
+            "timezone",
         ]
 
     def validate(self, attrs):
         if attrs["password"] != attrs.pop("password_confirm"):
-            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"password_confirm": "Passwords do not match."}
+            )
         return attrs
 
     def create(self, validated_data):
@@ -50,7 +72,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone", "language", "timezone", "theme", "avatar"]
+        fields = [
+            "first_name",
+            "last_name",
+            "phone",
+            "language",
+            "timezone",
+            "theme",
+            "avatar",
+        ]
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -60,12 +90,15 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["new_password_confirm"]:
-            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
         return attrs
 
 
 class CustomTokenObtainSerializer(serializers.Serializer):
     """JWT login with extra user data in response."""
+
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
@@ -94,8 +127,16 @@ class ActivityLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActivityLog
-        fields = ["id", "user_name", "action", "module", "resource_type",
-                  "description", "ip_address", "created_at"]
+        fields = [
+            "id",
+            "user_name",
+            "action",
+            "module",
+            "resource_type",
+            "description",
+            "ip_address",
+            "created_at",
+        ]
 
     def get_user_name(self, obj):
         return obj.user.full_name if obj.user else "System"
@@ -111,6 +152,14 @@ class RoleSerializer(serializers.ModelSerializer):
 class ModulePermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModulePermission
-        fields = ["id", "role", "module", "can_create", "can_read",
-                  "can_update", "can_delete", "can_approve", "can_export"]
-
+        fields = [
+            "id",
+            "role",
+            "module",
+            "can_create",
+            "can_read",
+            "can_update",
+            "can_delete",
+            "can_approve",
+            "can_export",
+        ]

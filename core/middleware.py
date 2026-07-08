@@ -1,5 +1,6 @@
 from django.utils import timezone
 
+
 class AuditLogMiddleware:
     """Captures user IP and user-agent for audit logs."""
 
@@ -12,10 +13,39 @@ class AuditLogMiddleware:
 
     @staticmethod
     def get_client_ip(request) -> str:
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            return x_forwarded_for.split(',')[0].strip()
-        return request.META.get('REMOTE_ADDR', '')
+            return x_forwarded_for.split(",")[0].strip()
+        return request.META.get("REMOTE_ADDR", "")
+
+
+class RequestLoggingMiddleware:
+    """Populates contextvars for the logging filter."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from core.logging import set_logging_context, clear_logging_context
+        
+        user_id = str(request.user.pk) if hasattr(request, "user") and request.user.is_authenticated else "anonymous"
+        company_id = str(request.company.pk) if hasattr(request, "company") and request.company else "none"
+        
+        # In case the company is set in another middleware running AFTER this one, 
+        # we still do our best here, or we place RequestLoggingMiddleware after TenantMiddleware.
+        
+        set_logging_context(
+            user_id=user_id,
+            company_id=company_id,
+            request_path=request.path,
+            client_ip=AuditLogMiddleware.get_client_ip(request)
+        )
+        
+        response = self.get_response(request)
+        
+        clear_logging_context()
+        
+        return response
 
 
 class TenantMiddleware:
@@ -40,5 +70,6 @@ class ActiveUserMiddleware:
     def __call__(self, request):
         if request.user.is_authenticated:
             from apps.authentication.models import User
+
             User.objects.filter(pk=request.user.pk).update(last_active=timezone.now())
         return self.get_response(request)

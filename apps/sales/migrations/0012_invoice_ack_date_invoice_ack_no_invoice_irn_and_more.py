@@ -6,33 +6,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0011_coupon_invoice_coupon_salesorder_coupon_and_more'),
+        ("sales", "0011_coupon_invoice_coupon_salesorder_coupon_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='ack_date',
+            model_name="invoice",
+            name="ack_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='ack_no',
+            model_name="invoice",
+            name="ack_no",
             field=models.CharField(blank=True, max_length=20),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='irn',
-            field=models.CharField(blank=True, help_text='Invoice Reference Number', max_length=64),
+            model_name="invoice",
+            name="irn",
+            field=models.CharField(
+                blank=True, help_text="Invoice Reference Number", max_length=64
+            ),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='signed_qr_code',
+            model_name="invoice",
+            name="signed_qr_code",
             field=models.TextField(blank=True),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='tds_amount',
+            model_name="invoice",
+            name="tds_amount",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=18),
         ),
     ]

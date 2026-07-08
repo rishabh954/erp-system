@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('authentication', '0002_initial'),
+        ("authentication", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='user',
-            name='two_factor_method',
-            field=models.CharField(choices=[('totp', 'Authenticator App')], default='totp', max_length=10),
+            model_name="user",
+            name="two_factor_method",
+            field=models.CharField(
+                choices=[("totp", "Authenticator App")], default="totp", max_length=10
+            ),
         ),
     ]

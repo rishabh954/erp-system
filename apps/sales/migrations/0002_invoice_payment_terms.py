@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0001_initial'),
+        ("sales", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='payment_terms',
+            model_name="invoice",
+            name="payment_terms",
             field=models.PositiveSmallIntegerField(default=30),
         ),
     ]

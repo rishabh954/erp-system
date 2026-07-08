@@ -8,19 +8,38 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('inventory', '0005_product_abc_classification_product_needs_qa_and_more'),
+        ("inventory", "0005_product_abc_classification_product_needs_qa_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='inventorytransfer',
-            name='approved_by',
-            field=models.ForeignKey(blank=True, help_text='User who approved the transfer', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approved_transfers', to=settings.AUTH_USER_MODEL),
+            model_name="inventorytransfer",
+            name="approved_by",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="User who approved the transfer",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="approved_transfers",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='inventorytransfer',
-            name='status',
-            field=models.CharField(choices=[('draft', 'Draft'), ('pending_approval', 'Pending Approval'), ('requested', 'Requested'), ('approved', 'Approved'), ('in_transit', 'In Transit'), ('received', 'Received'), ('cancelled', 'Cancelled')], default='draft', max_length=20),
+            model_name="inventorytransfer",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("draft", "Draft"),
+                    ("pending_approval", "Pending Approval"),
+                    ("requested", "Requested"),
+                    ("approved", "Approved"),
+                    ("in_transit", "In Transit"),
+                    ("received", "Received"),
+                    ("cancelled", "Cancelled"),
+                ],
+                default="draft",
+                max_length=20,
+            ),
         ),
     ]

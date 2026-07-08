@@ -6,13 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('company', '0002_company_default_bank_account_and_more'),
+        ("company", "0002_company_default_bank_account_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='company',
-            name='inventory_valuation_method',
-            field=models.CharField(choices=[('FIFO', 'FIFO'), ('LIFO', 'LIFO'), ('AVERAGE', 'Weighted Average')], default='FIFO', max_length=20),
+            model_name="company",
+            name="inventory_valuation_method",
+            field=models.CharField(
+                choices=[
+                    ("FIFO", "FIFO"),
+                    ("LIFO", "LIFO"),
+                    ("AVERAGE", "Weighted Average"),
+                ],
+                default="FIFO",
+                max_length=20,
+            ),
         ),
     ]

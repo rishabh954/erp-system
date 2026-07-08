@@ -6,13 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('company', '0003_company_inventory_valuation_method'),
+        ("company", "0003_company_inventory_valuation_method"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='company',
-            name='accounting_lock_date',
-            field=models.DateField(blank=True, help_text='Journal Entries before this date cannot be modified or posted.', null=True),
+            model_name="company",
+            name="accounting_lock_date",
+            field=models.DateField(
+                blank=True,
+                help_text="Journal Entries before this date cannot be modified or posted.",
+                null=True,
+            ),
         ),
     ]

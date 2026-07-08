@@ -3,18 +3,23 @@ Enterprise Workflow Engine
 Handles: Unlimited Approval Levels, Conditional Routing, Escalation,
          Delegation, Email Notifications, WhatsApp Notifications
 """
+
 import logging
 from datetime import timedelta
-from django.utils import timezone
+
 from django.contrib.contenttypes.models import ContentType
 from django.template import Context, Template
+from django.utils import timezone
 
 from apps.workflow.models import (
-    WorkflowDefinition, WorkflowStep, WorkflowInstance,
-    WorkflowAction, ApprovalDelegation, WorkflowNotificationTemplate,
-    WorkflowEscalationLog
+    ApprovalDelegation,
+    WorkflowAction,
+    WorkflowDefinition,
+    WorkflowEscalationLog,
+    WorkflowInstance,
+    WorkflowNotificationTemplate,
+    WorkflowStep,
 )
-from apps.notifications.models import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,7 @@ class WorkflowEngine:
     def trigger(cls, document, trigger_event: str, user):
         """Starts a workflow for a document if a matching definition is found."""
         model_name = document.__class__.__name__
-        company    = getattr(document, 'company', getattr(user, 'primary_company', None))
+        company = getattr(document, "company", getattr(user, "primary_company", None))
 
         if not company:
             logger.warning(f"WorkflowEngine.trigger: No company for {document!r}")
@@ -65,7 +70,10 @@ class WorkflowEngine:
         if WorkflowInstance.objects.filter(
             content_type=content_type,
             object_id=str(document.pk),
-            status__in=[WorkflowInstance.Status.PENDING, WorkflowInstance.Status.IN_PROGRESS],
+            status__in=[
+                WorkflowInstance.Status.PENDING,
+                WorkflowInstance.Status.IN_PROGRESS,
+            ],
         ).exists():
             return None
 
@@ -86,14 +94,16 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def approve(cls, instance, user, comment: str = ''):
-        if instance.status not in [WorkflowInstance.Status.PENDING,
-                                   WorkflowInstance.Status.IN_PROGRESS,
-                                   WorkflowInstance.Status.ESCALATED]:
+    def approve(cls, instance, user, comment: str = ""):
+        if instance.status not in [
+            WorkflowInstance.Status.PENDING,
+            WorkflowInstance.Status.IN_PROGRESS,
+            WorkflowInstance.Status.ESCALATED,
+        ]:
             raise ValueError("Workflow is not in an approvable state.")
 
         approvers = cls.get_pending_approvers(instance)
-        is_admin  = getattr(user, 'role', '') in ('super_admin', 'company_admin')
+        is_admin = getattr(user, "role", "") in ("super_admin", "company_admin")
 
         if user not in approvers and not is_admin:
             raise PermissionError("You are not authorised to approve this step.")
@@ -108,13 +118,15 @@ class WorkflowEngine:
         )
 
         document = instance.related_object
-        cls._send_notifications(instance, document,
-                                event=WorkflowNotificationTemplate.Event.APPROVED,
-                                recipients=[instance.initiated_by])
+        cls._send_notifications(
+            instance,
+            document,
+            event=WorkflowNotificationTemplate.Event.APPROVED,
+            recipients=[instance.initiated_by],
+        )
 
         cls._advance_to_next_step(
-            instance, document,
-            current_step_order=instance.current_step.step_order
+            instance, document, current_step_order=instance.current_step.step_order
         )
         return True
 
@@ -123,14 +135,16 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def reject(cls, instance, user, comment: str = ''):
-        if instance.status not in [WorkflowInstance.Status.PENDING,
-                                   WorkflowInstance.Status.IN_PROGRESS,
-                                   WorkflowInstance.Status.ESCALATED]:
+    def reject(cls, instance, user, comment: str = ""):
+        if instance.status not in [
+            WorkflowInstance.Status.PENDING,
+            WorkflowInstance.Status.IN_PROGRESS,
+            WorkflowInstance.Status.ESCALATED,
+        ]:
             raise ValueError("Workflow is not in an approvable state.")
 
         approvers = cls.get_pending_approvers(instance)
-        is_admin  = getattr(user, 'role', '') in ('super_admin', 'company_admin')
+        is_admin = getattr(user, "role", "") in ("super_admin", "company_admin")
 
         if user not in approvers and not is_admin:
             raise PermissionError("You are not authorised to reject this step.")
@@ -153,7 +167,7 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def delegate(cls, instance, user, delegatee, comment: str = ''):
+    def delegate(cls, instance, user, delegatee, comment: str = ""):
         """Delegate this step from `user` to `delegatee`."""
         approvers = cls.get_pending_approvers(instance)
         if user not in approvers:
@@ -186,7 +200,8 @@ class WorkflowEngine:
 
         document = instance.related_object
         cls._send_notifications(
-            instance, document,
+            instance,
+            document,
             event=WorkflowNotificationTemplate.Event.DELEGATED,
             recipients=[delegatee],
         )
@@ -197,7 +212,7 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def return_for_clarification(cls, instance, user, comment: str = ''):
+    def return_for_clarification(cls, instance, user, comment: str = ""):
         WorkflowAction.objects.create(
             company=instance.company,
             instance=instance,
@@ -209,10 +224,11 @@ class WorkflowEngine:
         # Notify the initiator
         document = instance.related_object
         cls._send_notifications(
-            instance, document,
+            instance,
+            document,
             event=WorkflowNotificationTemplate.Event.REJECTED,
             recipients=[instance.initiated_by],
-            extra_context={'action_label': 'Returned for Clarification'},
+            extra_context={"action_label": "Returned for Clarification"},
         )
         return True
 
@@ -229,17 +245,22 @@ class WorkflowEngine:
         """
         now = timezone.now()
         instances = WorkflowInstance.objects.filter(
-            status__in=[WorkflowInstance.Status.IN_PROGRESS, WorkflowInstance.Status.ESCALATED],
+            status__in=[
+                WorkflowInstance.Status.IN_PROGRESS,
+                WorkflowInstance.Status.ESCALATED,
+            ],
             current_step__escalation_enabled=True,
             current_step_started_at__isnull=False,
-        ).select_related('current_step', 'definition', 'initiated_by', 'company')
+        ).select_related("current_step", "definition", "initiated_by", "company")
 
         for inst in instances:
             step = inst.current_step
-            deadline = inst.current_step_started_at + timedelta(hours=step.escalation_hours)
+            deadline = inst.current_step_started_at + timedelta(
+                hours=step.escalation_hours
+            )
 
             if now < deadline:
-                continue   # Not yet overdue
+                continue  # Not yet overdue
 
             already_escalated = WorkflowEscalationLog.objects.filter(
                 instance=inst, step=step
@@ -252,36 +273,43 @@ class WorkflowEngine:
                     approvers = cls.get_pending_approvers(inst)
                     document = inst.related_object
                     cls._send_notifications(
-                        inst, document,
+                        inst,
+                        document,
                         event=WorkflowNotificationTemplate.Event.ESCALATED,
                         recipients=approvers,
                     )
                     WorkflowEscalationLog.objects.create(
-                        instance=inst, step=step,
-                        action_taken='notify',
-                        notes='Escalation reminder sent.',
+                        instance=inst,
+                        step=step,
+                        action_taken="notify",
+                        notes="Escalation reminder sent.",
                     )
 
-            elif action == WorkflowStep.EscalationAction.REASSIGN and step.escalation_to:
+            elif (
+                action == WorkflowStep.EscalationAction.REASSIGN and step.escalation_to
+            ):
                 WorkflowEscalationLog.objects.create(
-                    instance=inst, step=step,
-                    action_taken='reassign',
+                    instance=inst,
+                    step=step,
+                    action_taken="reassign",
                     escalated_to=step.escalation_to,
                 )
                 inst.status = WorkflowInstance.Status.ESCALATED
-                inst.save(update_fields=['status'])
+                inst.save(update_fields=["status"])
                 document = inst.related_object
                 cls._send_notifications(
-                    inst, document,
+                    inst,
+                    document,
                     event=WorkflowNotificationTemplate.Event.ESCALATED,
                     recipients=[step.escalation_to],
                 )
 
             elif action == WorkflowStep.EscalationAction.AUTO_APPROVE:
                 WorkflowEscalationLog.objects.create(
-                    instance=inst, step=step,
-                    action_taken='auto_approve',
-                    notes='Auto-approved due to SLA breach.',
+                    instance=inst,
+                    step=step,
+                    action_taken="auto_approve",
+                    notes="Auto-approved due to SLA breach.",
                 )
                 document = inst.related_object
                 WorkflowAction.objects.create(
@@ -290,15 +318,18 @@ class WorkflowEngine:
                     step=step,
                     actor=inst.initiated_by,  # system actor
                     action=WorkflowAction.Action.APPROVED,
-                    comment='Auto-approved: SLA escalation threshold exceeded.',
+                    comment="Auto-approved: SLA escalation threshold exceeded.",
                 )
-                cls._advance_to_next_step(inst, document, current_step_order=step.step_order)
+                cls._advance_to_next_step(
+                    inst, document, current_step_order=step.step_order
+                )
 
             elif action == WorkflowStep.EscalationAction.AUTO_REJECT:
                 WorkflowEscalationLog.objects.create(
-                    instance=inst, step=step,
-                    action_taken='auto_reject',
-                    notes='Auto-rejected due to SLA breach.',
+                    instance=inst,
+                    step=step,
+                    action_taken="auto_reject",
+                    notes="Auto-rejected due to SLA breach.",
                 )
                 document = inst.related_object
                 WorkflowAction.objects.create(
@@ -307,7 +338,7 @@ class WorkflowEngine:
                     step=step,
                     actor=inst.initiated_by,
                     action=WorkflowAction.Action.REJECTED,
-                    comment='Auto-rejected: SLA escalation threshold exceeded.',
+                    comment="Auto-rejected: SLA escalation threshold exceeded.",
                 )
                 cls._mark_completed(inst, document, WorkflowInstance.Status.REJECTED)
 
@@ -327,43 +358,57 @@ class WorkflowEngine:
         if step.approver_type == WorkflowStep.ApproverType.USER and step.approver_user:
             approvers.add(step.approver_user)
 
-        elif step.approver_type == WorkflowStep.ApproverType.ROLE and step.approver_role:
+        elif (
+            step.approver_type == WorkflowStep.ApproverType.ROLE and step.approver_role
+        ):
             from apps.authentication.models import User
-            approvers.update(User.objects.filter(
-                role=step.approver_role,
-                usercompany__company=instance.company,
-                usercompany__is_active=True,
-            ))
+
+            approvers.update(
+                User.objects.filter(
+                    role=step.approver_role,
+                    usercompany__company=instance.company,
+                    usercompany__is_active=True,
+                )
+            )
 
         elif step.approver_type == WorkflowStep.ApproverType.MANAGER:
-            emp = getattr(instance.initiated_by, 'employee_profile', None)
+            emp = getattr(instance.initiated_by, "employee_profile", None)
             if emp:
-                manager_emp = getattr(emp, 'manager', None)
-                if manager_emp and getattr(manager_emp, 'user', None):
+                manager_emp = getattr(emp, "manager", None)
+                if manager_emp and getattr(manager_emp, "user", None):
                     approvers.add(manager_emp.user)
 
         elif step.approver_type == WorkflowStep.ApproverType.DEPARTMENT_HEAD:
             document = instance.related_object
-            dept = getattr(document, 'department', None) or getattr(
-                getattr(instance.initiated_by, 'employee_profile', None), 'department', None
+            dept = getattr(document, "department", None) or getattr(
+                getattr(instance.initiated_by, "employee_profile", None),
+                "department",
+                None,
             )
             if dept:
                 from apps.authentication.models import User
-                approvers.update(User.objects.filter(
-                    role='department_head',
-                    usercompany__company=instance.company,
-                    usercompany__is_active=True,
-                ))
 
-        elif step.approver_type == WorkflowStep.ApproverType.DYNAMIC and step.approver_field:
+                approvers.update(
+                    User.objects.filter(
+                        role="department_head",
+                        usercompany__company=instance.company,
+                        usercompany__is_active=True,
+                    )
+                )
+
+        elif (
+            step.approver_type == WorkflowStep.ApproverType.DYNAMIC
+            and step.approver_field
+        ):
             document = instance.related_object
             approver_obj = document
-            for attr in step.approver_field.split('__'):
+            for attr in step.approver_field.split("__"):
                 approver_obj = getattr(approver_obj, attr, None)
                 if approver_obj is None:
                     break
-            if approver_obj and hasattr(approver_obj, 'pk'):
+            if approver_obj and hasattr(approver_obj, "pk"):
                 from apps.authentication.models import User
+
                 if isinstance(approver_obj, User):
                     approvers.add(approver_obj)
 
@@ -371,14 +416,19 @@ class WorkflowEngine:
         today = timezone.now().date()
         final_approvers = set()
         for approver in approvers:
-            delegation = ApprovalDelegation.objects.filter(
-                delegator=approver,
-                is_active=True,
-                start_date__lte=today,
-                end_date__gte=today,
-            ).filter(
-                models.Q(workflow__isnull=True) | models.Q(workflow=instance.definition)
-            ).first()
+            delegation = (
+                ApprovalDelegation.objects.filter(
+                    delegator=approver,
+                    is_active=True,
+                    start_date__lte=today,
+                    end_date__gte=today,
+                )
+                .filter(
+                    models.Q(workflow__isnull=True)
+                    | models.Q(workflow=instance.definition)
+                )
+                .first()
+            )
 
             if delegation:
                 final_approvers.add(delegation.delegatee)
@@ -395,7 +445,7 @@ class WorkflowEngine:
     def _advance_to_next_step(cls, instance, document, current_step_order=-1):
         steps = instance.definition.steps.filter(
             step_order__gt=current_step_order
-        ).order_by('step_order')
+        ).order_by("step_order")
 
         amount = cls._get_amount(document)
         doc_dept_id = cls._get_dept_id(document, instance)
@@ -416,7 +466,9 @@ class WorkflowEngine:
             if step.step_type == WorkflowStep.StepType.CONDITION:
                 target_order = cls._evaluate_condition_rules(step, document, amount)
                 if target_order is not None:
-                    cls._advance_to_next_step(instance, document, current_step_order=target_order - 1)
+                    cls._advance_to_next_step(
+                        instance, document, current_step_order=target_order - 1
+                    )
                     return
                 continue  # condition didn't match — skip
 
@@ -432,7 +484,8 @@ class WorkflowEngine:
             # Notify approvers
             approvers = cls.get_pending_approvers(instance)
             cls._send_notifications(
-                instance, document,
+                instance,
+                document,
                 event=WorkflowNotificationTemplate.Event.STEP_ASSIGNED,
                 recipients=approvers,
             )
@@ -446,54 +499,69 @@ class WorkflowEngine:
         or None if no rule matched.
         """
         for rule in step.condition_rules:
-            field    = rule.get('field', '')
-            operator = rule.get('operator', 'eq')
-            value    = rule.get('value')
-            next_ord = rule.get('next_step_order')
+            field = rule.get("field", "")
+            operator = rule.get("operator", "eq")
+            value = rule.get("value")
+            next_ord = rule.get("next_step_order")
 
             # Get field value from document
             doc_val = document
-            for part in field.split('__'):
+            for part in field.split("__"):
                 doc_val = getattr(doc_val, part, None)
                 if doc_val is None:
                     break
 
             try:
-                if operator == 'eq'  and doc_val == value:     return next_ord
-                if operator == 'neq' and doc_val != value:     return next_ord
-                if operator == 'gt'  and float(doc_val or 0) >  float(value): return next_ord
-                if operator == 'gte' and float(doc_val or 0) >= float(value): return next_ord
-                if operator == 'lt'  and float(doc_val or 0) <  float(value): return next_ord
-                if operator == 'lte' and float(doc_val or 0) <= float(value): return next_ord
-                if operator == 'in'  and doc_val in (value if isinstance(value, list) else [value]): return next_ord
+                if operator == "eq" and doc_val == value:
+                    return next_ord
+                if operator == "neq" and doc_val != value:
+                    return next_ord
+                if operator == "gt" and float(doc_val or 0) > float(value):
+                    return next_ord
+                if operator == "gte" and float(doc_val or 0) >= float(value):
+                    return next_ord
+                if operator == "lt" and float(doc_val or 0) < float(value):
+                    return next_ord
+                if operator == "lte" and float(doc_val or 0) <= float(value):
+                    return next_ord
+                if operator == "in" and doc_val in (
+                    value if isinstance(value, list) else [value]
+                ):
+                    return next_ord
             except (TypeError, ValueError):
                 continue
         return None
 
     @classmethod
     def _mark_completed(cls, instance, document, status):
-        instance.status      = status
+        instance.status = status
         instance.current_step = None
         instance.completed_at = timezone.now()
         instance.save()
 
-        if hasattr(document, 'status'):
+        if hasattr(document, "status"):
             if status == WorkflowInstance.Status.APPROVED:
-                if document.status in ('draft', 'pending', 'pending_approval', 'submitted'):
-                    document.status = 'approved'
+                if document.status in (
+                    "draft",
+                    "pending",
+                    "pending_approval",
+                    "submitted",
+                ):
+                    document.status = "approved"
             elif status == WorkflowInstance.Status.REJECTED:
-                document.status = 'rejected'
+                document.status = "rejected"
             try:
-                document.save(update_fields=['status'])
+                document.save(update_fields=["status"])
             except Exception:
                 pass
 
-        event = (WorkflowNotificationTemplate.Event.APPROVED
-                 if status == WorkflowInstance.Status.APPROVED
-                 else WorkflowNotificationTemplate.Event.REJECTED)
+        event = (
+            WorkflowNotificationTemplate.Event.APPROVED
+            if status == WorkflowInstance.Status.APPROVED
+            else WorkflowNotificationTemplate.Event.REJECTED
+        )
         cls._send_notifications(
-            instance, document, event=event,
-            recipients=[instance.initiated_by]
+            instance, document, event=event, recipients=[instance.initiated_by]
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -501,8 +569,14 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def _send_notifications(cls, instance, document, event: str,
-                            recipients: list, extra_context: dict = None):
+    def _send_notifications(
+        cls,
+        instance,
+        document,
+        event: str,
+        recipients: list,
+        extra_context: dict = None,
+    ):
         """
         Send notifications through all enabled channels.
         Attempts to render per-step templates; falls back to system defaults.
@@ -510,15 +584,19 @@ class WorkflowEngine:
         defn = instance.definition
         extra_context = extra_context or {}
 
-        doc_str    = f"{document.__class__.__name__} {getattr(document, 'number', str(document.pk))}"
-        doc_label  = doc_str
+        doc_str = f"{document.__class__.__name__} {getattr(document, 'number', str(document.pk))}"
+        doc_label = doc_str
 
         ctx = {
-            'document':   doc_label,
-            'submitter':  instance.initiated_by.get_full_name() if hasattr(instance.initiated_by, 'get_full_name') else str(instance.initiated_by),
-            'company':    str(instance.company),
-            'workflow':   defn.name,
-            'action_label': event.replace('_', ' ').title(),
+            "document": doc_label,
+            "submitter": (
+                instance.initiated_by.get_full_name()
+                if hasattr(instance.initiated_by, "get_full_name")
+                else str(instance.initiated_by)
+            ),
+            "company": str(instance.company),
+            "workflow": defn.name,
+            "action_label": event.replace("_", " ").title(),
             **extra_context,
         }
 
@@ -526,19 +604,20 @@ class WorkflowEngine:
         if defn.notify_in_app:
             title_map = {
                 WorkflowNotificationTemplate.Event.STEP_ASSIGNED: f"Approval Required: {doc_label}",
-                WorkflowNotificationTemplate.Event.APPROVED:      f"Approved: {doc_label}",
-                WorkflowNotificationTemplate.Event.REJECTED:      f"Rejected: {doc_label}",
-                WorkflowNotificationTemplate.Event.ESCALATED:     f"Escalation: {doc_label}",
-                WorkflowNotificationTemplate.Event.DELEGATED:     f"Delegated to you: {doc_label}",
+                WorkflowNotificationTemplate.Event.APPROVED: f"Approved: {doc_label}",
+                WorkflowNotificationTemplate.Event.REJECTED: f"Rejected: {doc_label}",
+                WorkflowNotificationTemplate.Event.ESCALATED: f"Escalation: {doc_label}",
+                WorkflowNotificationTemplate.Event.DELEGATED: f"Delegated to you: {doc_label}",
             }
             msg_map = {
                 WorkflowNotificationTemplate.Event.STEP_ASSIGNED: f"You have a pending approval for {doc_label} submitted by {ctx['submitter']}.",
-                WorkflowNotificationTemplate.Event.APPROVED:      f"Your {doc_label} has been approved.",
-                WorkflowNotificationTemplate.Event.REJECTED:      f"Your {doc_label} has been rejected.",
-                WorkflowNotificationTemplate.Event.ESCALATED:     f"Escalation: {doc_label} is overdue and has been escalated to you.",
-                WorkflowNotificationTemplate.Event.DELEGATED:     f"{doc_label} approval has been delegated to you.",
+                WorkflowNotificationTemplate.Event.APPROVED: f"Your {doc_label} has been approved.",
+                WorkflowNotificationTemplate.Event.REJECTED: f"Your {doc_label} has been rejected.",
+                WorkflowNotificationTemplate.Event.ESCALATED: f"Escalation: {doc_label} is overdue and has been escalated to you.",
+                WorkflowNotificationTemplate.Event.DELEGATED: f"{doc_label} approval has been delegated to you.",
             }
             from apps.notifications.models import Notification
+
             for recipient in recipients:
                 if recipient:
                     Notification.objects.create(
@@ -547,10 +626,14 @@ class WorkflowEngine:
                         title=title_map.get(event, f"Workflow Update: {doc_label}"),
                         message=msg_map.get(event, f"Workflow update on {doc_label}."),
                         notification_type=(
-                            Notification.NotificationType.SUCCESS if event == WorkflowNotificationTemplate.Event.APPROVED
-                            else Notification.NotificationType.ERROR if event == WorkflowNotificationTemplate.Event.REJECTED
-                            else Notification.NotificationType.WARNING
-                        )
+                            Notification.NotificationType.SUCCESS
+                            if event == WorkflowNotificationTemplate.Event.APPROVED
+                            else (
+                                Notification.NotificationType.ERROR
+                                if event == WorkflowNotificationTemplate.Event.REJECTED
+                                else Notification.NotificationType.WARNING
+                            )
+                        ),
                     )
 
         # ── Email ─────────────────────────────────────────────────────────────
@@ -564,8 +647,8 @@ class WorkflowEngine:
     @classmethod
     def _send_email(cls, instance, event, recipients, ctx, doc_label):
         try:
-            from django.core.mail import send_mail
             from django.conf import settings
+            from django.core.mail import send_mail
 
             tmpl = WorkflowNotificationTemplate.objects.filter(
                 workflow=instance.definition,
@@ -576,10 +659,10 @@ class WorkflowEngine:
 
             if tmpl:
                 subject = cls._render_template(tmpl.subject, ctx)
-                body    = cls._render_template(tmpl.body, ctx)
+                body = cls._render_template(tmpl.body, ctx)
             else:
                 subject = f"[ERP] Workflow: {ctx['action_label']} — {doc_label}"
-                body    = (
+                body = (
                     f"Hello,\n\n"
                     f"Workflow Update: {ctx['action_label']}\n"
                     f"Document: {doc_label}\n"
@@ -588,12 +671,16 @@ class WorkflowEngine:
                     f"Please log in to your ERP system to take action.\n"
                 )
 
-            email_list = [r.email for r in recipients if r and getattr(r, 'email', None)]
+            email_list = [
+                r.email for r in recipients if r and getattr(r, "email", None)
+            ]
             if email_list:
                 send_mail(
                     subject=subject,
                     message=body,
-                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@erp.com'),
+                    from_email=getattr(
+                        settings, "DEFAULT_FROM_EMAIL", "noreply@erp.com"
+                    ),
                     recipient_list=email_list,
                     fail_silently=True,
                 )
@@ -608,15 +695,17 @@ class WorkflowEngine:
         """
         try:
             from django.conf import settings
-            account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
-            auth_token  = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
-            from_number = getattr(settings, 'TWILIO_WHATSAPP_FROM', None)
+
+            account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", None)
+            auth_token = getattr(settings, "TWILIO_AUTH_TOKEN", None)
+            from_number = getattr(settings, "TWILIO_WHATSAPP_FROM", None)
 
             if not all([account_sid, auth_token, from_number]):
                 logger.debug("WhatsApp not configured — skipping.")
                 return
 
             from twilio.rest import Client  # type: ignore
+
             client = Client(account_sid, auth_token)
 
             tmpl = WorkflowNotificationTemplate.objects.filter(
@@ -638,11 +727,13 @@ class WorkflowEngine:
                 )
 
             for recipient in recipients:
-                phone = getattr(recipient, 'mobile', None) or getattr(recipient, 'phone', None)
+                phone = getattr(recipient, "mobile", None) or getattr(
+                    recipient, "phone", None
+                )
                 if phone:
                     client.messages.create(
-                        from_=f'whatsapp:{from_number}',
-                        to=f'whatsapp:{phone}',
+                        from_=f"whatsapp:{from_number}",
+                        to=f"whatsapp:{phone}",
                         body=body,
                     )
         except Exception as e:
@@ -667,7 +758,7 @@ class WorkflowEngine:
         conditions = defn.conditions or {}
         for key, expected in conditions.items():
             val = document
-            for part in key.split('__'):
+            for part in key.split("__"):
                 val = getattr(val, part, None)
                 if val is None:
                     break
@@ -678,21 +769,22 @@ class WorkflowEngine:
     @classmethod
     def _get_amount(cls, document):
         from decimal import Decimal
-        for f in ('total', 'amount', 'total_amount', 'net_amount', 'grand_total'):
+
+        for f in ("total", "amount", "total_amount", "net_amount", "grand_total"):
             v = getattr(document, f, None)
             if v is not None:
                 try:
                     return Decimal(str(v))
                 except Exception:
                     pass
-        return Decimal('0')
+        return Decimal("0")
 
     @classmethod
     def _get_dept_id(cls, document, instance):
-        dept = getattr(document, 'department_id', None)
+        dept = getattr(document, "department_id", None)
         if dept is None:
-            emp = getattr(instance.initiated_by, 'employee_profile', None)
-            dept = getattr(emp, 'department_id', None) if emp else None
+            emp = getattr(instance.initiated_by, "employee_profile", None)
+            dept = getattr(emp, "department_id", None) if emp else None
         return dept
 
 

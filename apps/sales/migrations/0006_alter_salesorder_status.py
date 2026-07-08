@@ -6,13 +6,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sales', '0005_alter_invoiceline_options_and_more'),
+        ("sales", "0005_alter_invoiceline_options_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='salesorder',
-            name='status',
-            field=models.CharField(choices=[('draft', 'Draft'), ('confirmed', 'Confirmed'), ('processing', 'Processing'), ('shipped', 'Shipped'), ('delivered', 'Delivered'), ('invoiced', 'Invoiced'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], db_index=True, default='draft', max_length=15),
+            model_name="salesorder",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("draft", "Draft"),
+                    ("confirmed", "Confirmed"),
+                    ("processing", "Processing"),
+                    ("shipped", "Shipped"),
+                    ("delivered", "Delivered"),
+                    ("invoiced", "Invoiced"),
+                    ("completed", "Completed"),
+                    ("cancelled", "Cancelled"),
+                ],
+                db_index=True,
+                default="draft",
+                max_length=15,
+            ),
         ),
     ]

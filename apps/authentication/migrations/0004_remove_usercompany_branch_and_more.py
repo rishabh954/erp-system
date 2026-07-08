@@ -8,82 +8,162 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('authentication', '0003_alter_user_two_factor_method'),
-        ('company', '0004_company_accounting_lock_date'),
+        ("authentication", "0003_alter_user_two_factor_method"),
+        ("company", "0004_company_accounting_lock_date"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='usercompany',
-            name='branch',
+            model_name="usercompany",
+            name="branch",
         ),
         migrations.RemoveField(
-            model_name='usercompany',
-            name='department',
+            model_name="usercompany",
+            name="department",
         ),
         migrations.RemoveField(
-            model_name='usercompany',
-            name='role_override',
+            model_name="usercompany",
+            name="role_override",
         ),
         migrations.AddField(
-            model_name='user',
-            name='totp_secret',
+            model_name="user",
+            name="totp_secret",
             field=models.CharField(blank=True, max_length=32),
         ),
         migrations.AddField(
-            model_name='usercompany',
-            name='role',
-            field=models.CharField(choices=[('super_admin', 'Super Admin'), ('company_admin', 'Company Admin'), ('hr_manager', 'HR Manager'), ('finance_manager', 'Finance Manager'), ('sales_manager', 'Sales Manager'), ('purchase_manager', 'Purchase Manager'), ('inventory_manager', 'Inventory Manager'), ('project_manager', 'Project Manager'), ('employee', 'Employee'), ('customer_portal', 'Customer Portal User')], default='employee', max_length=30),
+            model_name="usercompany",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("super_admin", "Super Admin"),
+                    ("company_admin", "Company Admin"),
+                    ("hr_manager", "HR Manager"),
+                    ("finance_manager", "Finance Manager"),
+                    ("sales_manager", "Sales Manager"),
+                    ("purchase_manager", "Purchase Manager"),
+                    ("inventory_manager", "Inventory Manager"),
+                    ("project_manager", "Project Manager"),
+                    ("employee", "Employee"),
+                    ("customer_portal", "Customer Portal User"),
+                ],
+                default="employee",
+                max_length=30,
+            ),
         ),
         migrations.AlterModelTable(
-            name='usercompany',
-            table='auth_user_company',
+            name="usercompany",
+            table="auth_user_company",
         ),
         migrations.CreateModel(
-            name='IPRestriction',
+            name="IPRestriction",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ip_address', models.GenericIPAddressField()),
-                ('is_allowed', models.BooleanField(default=True)),
-                ('description', models.CharField(blank=True, max_length=255)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('company', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='company.company')),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ip_address", models.GenericIPAddressField()),
+                ("is_allowed", models.BooleanField(default=True)),
+                ("description", models.CharField(blank=True, max_length=255)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "company",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="company.company",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'auth_ip_restriction',
+                "db_table": "auth_ip_restriction",
             },
         ),
         migrations.CreateModel(
-            name='LoginHistory',
+            name="LoginHistory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
-                ('user_agent', models.TextField(blank=True)),
-                ('status', models.CharField(choices=[('success', 'Success'), ('failed', 'Failed')], max_length=20)),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='login_history', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ip_address", models.GenericIPAddressField(blank=True, null=True)),
+                ("user_agent", models.TextField(blank=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("success", "Success"), ("failed", "Failed")],
+                        max_length=20,
+                    ),
+                ),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="login_history",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'auth_login_history',
-                'ordering': ['-timestamp'],
+                "db_table": "auth_login_history",
+                "ordering": ["-timestamp"],
             },
         ),
         migrations.CreateModel(
-            name='PasswordPolicy',
+            name="PasswordPolicy",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('min_length', models.PositiveSmallIntegerField(default=8)),
-                ('require_uppercase', models.BooleanField(default=True)),
-                ('require_numbers', models.BooleanField(default=True)),
-                ('require_special', models.BooleanField(default=True)),
-                ('expiry_days', models.PositiveSmallIntegerField(default=90, help_text='0 means no expiry')),
-                ('max_failed_logins', models.PositiveSmallIntegerField(default=5)),
-                ('lockout_time_minutes', models.PositiveSmallIntegerField(default=30)),
-                ('company', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='password_policy', to='company.company')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("min_length", models.PositiveSmallIntegerField(default=8)),
+                ("require_uppercase", models.BooleanField(default=True)),
+                ("require_numbers", models.BooleanField(default=True)),
+                ("require_special", models.BooleanField(default=True)),
+                (
+                    "expiry_days",
+                    models.PositiveSmallIntegerField(
+                        default=90, help_text="0 means no expiry"
+                    ),
+                ),
+                ("max_failed_logins", models.PositiveSmallIntegerField(default=5)),
+                ("lockout_time_minutes", models.PositiveSmallIntegerField(default=30)),
+                (
+                    "company",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="password_policy",
+                        to="company.company",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'auth_password_policy',
+                "db_table": "auth_password_policy",
             },
         ),
     ]

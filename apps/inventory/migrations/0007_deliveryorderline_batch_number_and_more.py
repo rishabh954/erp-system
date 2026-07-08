@@ -6,28 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('inventory', '0006_alter_inventorytransfer_approved_by_and_more'),
+        ("inventory", "0006_alter_inventorytransfer_approved_by_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='deliveryorderline',
-            name='batch_number',
+            model_name="deliveryorderline",
+            name="batch_number",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AddField(
-            model_name='deliveryorderline',
-            name='serial_number',
+            model_name="deliveryorderline",
+            name="serial_number",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AddField(
-            model_name='inventorytransferline',
-            name='batch_number',
+            model_name="inventorytransferline",
+            name="batch_number",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AddField(
-            model_name='inventorytransferline',
-            name='serial_number',
+            model_name="inventorytransferline",
+            name="serial_number",
             field=models.CharField(blank=True, max_length=100),
         ),
     ]

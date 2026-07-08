@@ -6,26 +6,26 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('inventory', '0007_deliveryorderline_batch_number_and_more'),
+        ("inventory", "0007_deliveryorderline_batch_number_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='deliveryorderline',
-            name='serial_number',
+            model_name="deliveryorderline",
+            name="serial_number",
         ),
         migrations.RemoveField(
-            model_name='inventorytransferline',
-            name='serial_number',
+            model_name="inventorytransferline",
+            name="serial_number",
         ),
         migrations.AddField(
-            model_name='deliveryorderline',
-            name='serial_numbers',
+            model_name="deliveryorderline",
+            name="serial_numbers",
             field=models.JSONField(blank=True, default=list),
         ),
         migrations.AddField(
-            model_name='inventorytransferline',
-            name='serial_numbers',
+            model_name="inventorytransferline",
+            name="serial_numbers",
             field=models.JSONField(blank=True, default=list),
         ),
     ]

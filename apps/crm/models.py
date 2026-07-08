@@ -1,28 +1,39 @@
 """
 CRM Models - Leads, Customers, Pipeline
 """
+
+from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from core.models import CompanyScoped, AddressMixin, ContactMixin, NotesMixin, SequenceMixin
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.contrib.contenttypes.fields import GenericRelation
+
+from core.models import (
+    AddressMixin,
+    CompanyScoped,
+    ContactMixin,
+    NotesMixin,
+    SequenceMixin,
+)
+
 
 class Campaign(CompanyScoped, NotesMixin):
     class Status(models.TextChoices):
-        PLANNING = 'planning', _('Planning')
-        ACTIVE = 'active', _('Active')
-        COMPLETED = 'completed', _('Completed')
-        CANCELLED = 'cancelled', _('Cancelled')
+        PLANNING = "planning", _("Planning")
+        ACTIVE = "active", _("Active")
+        COMPLETED = "completed", _("Completed")
+        CANCELLED = "cancelled", _("Cancelled")
 
     name = models.CharField(max_length=255)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNING)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PLANNING
+    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     budget = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     expected_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
 
     class Meta:
-        db_table = 'crm_campaigns'
+        db_table = "crm_campaigns"
 
     def __str__(self):
         return self.name
@@ -30,22 +41,25 @@ class Campaign(CompanyScoped, NotesMixin):
     @property
     def total_leads_count(self):
         return self.leads.filter(is_deleted=False).count()
-        
+
     @property
     def opportunities_count(self):
         return self.leads.filter(is_deleted=False, is_opportunity=True).count()
-        
+
     @property
     def won_count(self):
-        return self.leads.filter(is_deleted=False, status='won').count()
-        
+        return self.leads.filter(is_deleted=False, status="won").count()
+
     @property
     def actual_revenue_generated(self):
         from django.db.models import Sum
+
         # Revenue from leads won
-        res = self.leads.filter(is_deleted=False, status='won').aggregate(total=Sum('expected_revenue'))['total']
+        res = self.leads.filter(is_deleted=False, status="won").aggregate(
+            total=Sum("expected_revenue")
+        )["total"]
         return res or 0
-        
+
     @property
     def roi_percentage(self):
         if not self.budget or self.budget <= 0:
@@ -53,54 +67,87 @@ class Campaign(CompanyScoped, NotesMixin):
         rev = self.actual_revenue_generated
         return ((float(rev) - float(self.budget)) / float(self.budget)) * 100
 
+
 class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
 
     class Status(models.TextChoices):
-        NEW = 'new', _('New')
-        CONTACTED = 'contacted', _('Contacted')
-        QUALIFIED = 'qualified', _('Qualified')
-        PROPOSAL = 'proposal', _('Proposal Sent')
-        NEGOTIATION = 'negotiation', _('Negotiation')
-        WON = 'won', _('Won')
-        LOST = 'lost', _('Lost')
+        NEW = "new", _("New")
+        CONTACTED = "contacted", _("Contacted")
+        QUALIFIED = "qualified", _("Qualified")
+        PROPOSAL = "proposal", _("Proposal Sent")
+        NEGOTIATION = "negotiation", _("Negotiation")
+        WON = "won", _("Won")
+        LOST = "lost", _("Lost")
 
     class Source(models.TextChoices):
-        WEB = 'web', _('Website')
-        REFERRAL = 'referral', _('Referral')
-        SOCIAL = 'social', _('Social Media')
-        EMAIL = 'email', _('Email Campaign')
-        COLD_CALL = 'cold_call', _('Cold Call')
-        EVENT = 'event', _('Event')
-        OTHER = 'other', _('Other')
+        WEB = "web", _("Website")
+        REFERRAL = "referral", _("Referral")
+        SOCIAL = "social", _("Social Media")
+        EMAIL = "email", _("Email Campaign")
+        COLD_CALL = "cold_call", _("Cold Call")
+        EVENT = "event", _("Event")
+        OTHER = "other", _("Other")
 
     name = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.NEW, db_index=True
+    )
     source = models.CharField(max_length=20, choices=Source.choices, blank=True)
     assigned_to = models.ForeignKey(
-        'authentication.User', null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='assigned_leads',
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_leads",
     )
     expected_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    probability = models.PositiveSmallIntegerField(default=10, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    probability = models.PositiveSmallIntegerField(
+        default=10, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     expected_close_date = models.DateField(null=True, blank=True)
     lost_reason = models.TextField(blank=True)
     converted_to_customer = models.BooleanField(default=False)
-    customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
+    customer = models.ForeignKey(
+        "Customer",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="leads",
+    )
     tags = models.JSONField(default=list)
-    
+
     # Enterprise CRM additions
-    is_opportunity = models.BooleanField(default=False, help_text='If True, this is considered a qualified deal/opportunity.')
+    is_opportunity = models.BooleanField(
+        default=False,
+        help_text="If True, this is considered a qualified deal/opportunity.",
+    )
     lead_score = models.IntegerField(default=0)
-    campaign = models.ForeignKey(Campaign, null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
-    territory = models.ForeignKey('Territory', null=True, blank=True, on_delete=models.SET_NULL, related_name='leads')
-    
-    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
-    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+    campaign = models.ForeignKey(
+        Campaign, null=True, blank=True, on_delete=models.SET_NULL, related_name="leads"
+    )
+    territory = models.ForeignKey(
+        "Territory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="leads",
+    )
+
+    documents = GenericRelation(
+        "documents.Document",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
+    workflows = GenericRelation(
+        "workflow.WorkflowInstance",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
 
     class Meta:
-        db_table = 'crm_leads'
-        ordering = ['-created_at']
+        db_table = "crm_leads"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.number} | {self.name}"
@@ -108,11 +155,11 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
     def calculate_score(self):
         """Calculate lead score based on probability, revenue, source, and data completeness."""
         score = 0
-        
+
         # 1. Probability (up to 50 pts)
         if self.probability:
             score += int(self.probability / 2)
-            
+
         # 2. Expected Revenue (up to 20 pts)
         if self.expected_revenue:
             if self.expected_revenue >= 10000:
@@ -121,7 +168,7 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
                 score += 10
             elif self.expected_revenue > 0:
                 score += 5
-                
+
         # 3. Source (up to 15 pts)
         if self.source:
             if self.source == self.Source.REFERRAL:
@@ -130,7 +177,7 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
                 score += 10
             elif self.source in [self.Source.EMAIL, self.Source.SOCIAL]:
                 score += 5
-                
+
         # 4. Data Completeness (up to 15 pts)
         if self.email:
             score += 5
@@ -138,141 +185,197 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
             score += 5
         if self.campaign_id:
             score += 5
-            
+
         # Cap at 100
         self.lead_score = min(score, 100)
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
-        
+
         # Only auto-calculate if we're not explicitly updating specific fields that exclude lead_score
-        update_fields = kwargs.get('update_fields')
-        if not update_fields or 'lead_score' in update_fields or 'status' in update_fields:
+        update_fields = kwargs.get("update_fields")
+        if (
+            not update_fields
+            or "lead_score" in update_fields
+            or "status" in update_fields
+        ):
             self.calculate_score()
-            if update_fields and 'lead_score' not in update_fields:
-                kwargs['update_fields'] = list(update_fields) + ['lead_score']
-                
+            if update_fields and "lead_score" not in update_fields:
+                kwargs["update_fields"] = list(update_fields) + ["lead_score"]
+
         super().save(*args, **kwargs)
-        
+
         # Apply assignment rules if this is a new, unassigned lead
         if is_new and not self.assigned_to:
             self._apply_assignment_rules()
 
     def _apply_assignment_rules(self):
         """Internal method to auto-assign lead based on active LeadAssignmentRules."""
-        rules = LeadAssignmentRule.objects.filter(company=self.company, is_active=True).order_by('priority')
-        
+        rules = LeadAssignmentRule.objects.filter(
+            company=self.company, is_active=True
+        ).order_by("priority")
+
         for rule in rules:
             if rule.source_criteria and rule.source_criteria != self.source:
                 continue
             if rule.min_revenue and self.expected_revenue < rule.min_revenue:
                 continue
-                
+
             # Rule matches, apply assignment method
-            if rule.assignment_method == LeadAssignmentRule.AssignmentMethod.TERRITORY_BASED and rule.target_territory:
+            if (
+                rule.assignment_method
+                == LeadAssignmentRule.AssignmentMethod.TERRITORY_BASED
+                and rule.target_territory
+            ):
                 self.territory = rule.target_territory
                 reps = rule.target_territory.sales_reps.all()
                 if reps.exists():
-                    self.assigned_to = reps.first() # Simple assignment for now, could be improved to round robin
-            
+                    self.assigned_to = (
+                        reps.first()
+                    )  # Simple assignment for now, could be improved to round robin
+
             if self.assigned_to or self.territory:
-                self.save(update_fields=['assigned_to', 'territory'])
+                self.save(update_fields=["assigned_to", "territory"])
                 break
 
 
 class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
     class CustomerType(models.TextChoices):
-        INDIVIDUAL = 'individual', _('Individual')
-        BUSINESS = 'business', _('Business')
+        INDIVIDUAL = "individual", _("Individual")
+        BUSINESS = "business", _("Business")
 
     name = models.CharField(max_length=255, db_index=True)
-    customer_type = models.CharField(max_length=15, choices=CustomerType.choices, default=CustomerType.BUSINESS)
+    customer_type = models.CharField(
+        max_length=15, choices=CustomerType.choices, default=CustomerType.BUSINESS
+    )
     customer_code = models.CharField(max_length=50, blank=True, db_index=True)
     tax_id = models.CharField(max_length=100, blank=True)
     credit_limit = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    payment_terms = models.PositiveSmallIntegerField(default=30, help_text='Days')
-    currency = models.ForeignKey('company.Currency', null=True, blank=True, on_delete=models.SET_NULL)
+    payment_terms = models.PositiveSmallIntegerField(default=30, help_text="Days")
+    currency = models.ForeignKey(
+        "company.Currency", null=True, blank=True, on_delete=models.SET_NULL
+    )
     sales_rep = models.ForeignKey(
-        'authentication.User', null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='customers',
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="customers",
     )
     shipping_address = models.TextField(blank=True)
     shipping_same_as_billing = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    portal_user = models.OneToOneField('authentication.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='customer_profile')
-    
+    portal_user = models.OneToOneField(
+        "authentication.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customer_profile",
+    )
+
     # CRM Additions
     tags = models.JSONField(default=list, blank=True)
-    segment = models.CharField(max_length=50, blank=True, help_text='Customer Segment (e.g., Enterprise, SMB)')
+    segment = models.CharField(
+        max_length=50, blank=True, help_text="Customer Segment (e.g., Enterprise, SMB)"
+    )
 
-    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
-    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+    documents = GenericRelation(
+        "documents.Document",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
+    workflows = GenericRelation(
+        "workflow.WorkflowInstance",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
 
     class Meta:
-        db_table = 'crm_customers'
+        db_table = "crm_customers"
 
     def __str__(self):
         return self.name
 
     @property
     def outstanding_balance(self):
-        from apps.sales.models import Invoice
         from django.db.models import Sum
-        return Invoice.objects.filter(
-            customer=self, status__in=['sent', 'partial']
-        ).aggregate(total=Sum('balance_due'))['total'] or 0
+
+        from apps.sales.models import Invoice
+
+        return (
+            Invoice.objects.filter(
+                customer=self, status__in=["sent", "partial"]
+            ).aggregate(total=Sum("balance_due"))["total"]
+            or 0
+        )
 
 
 class LeadActivity(CompanyScoped):
     class ActivityType(models.TextChoices):
-        CALL = 'call', _('Call')
-        EMAIL = 'email', _('Email')
-        MEETING = 'meeting', _('Meeting')
-        NOTE = 'note', _('Note')
-        TASK = 'task', _('Task')
+        CALL = "call", _("Call")
+        EMAIL = "email", _("Email")
+        MEETING = "meeting", _("Meeting")
+        NOTE = "note", _("Note")
+        TASK = "task", _("Task")
 
-    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='activities')
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="activities")
     activity_type = models.CharField(max_length=15, choices=ActivityType.choices)
     subject = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    assigned_to = models.ForeignKey('authentication.User', null=True, on_delete=models.SET_NULL)
+    assigned_to = models.ForeignKey(
+        "authentication.User", null=True, on_delete=models.SET_NULL
+    )
     outcome = models.TextField(blank=True)
-    
-    duration_minutes = models.PositiveIntegerField(null=True, blank=True, help_text='Duration in minutes for calls/meetings')
+
+    duration_minutes = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Duration in minutes for calls/meetings"
+    )
     email_message_id = models.CharField(max_length=255, blank=True)
     email_status = models.CharField(max_length=50, blank=True)
 
     class Meta:
-        db_table = 'crm_lead_activities'
-        ordering = ['-created_at']
+        db_table = "crm_lead_activities"
+        ordering = ["-created_at"]
 
 
 class Contract(CompanyScoped, NotesMixin):
     class Status(models.TextChoices):
-        DRAFT = 'draft', _('Draft')
-        ACTIVE = 'active', _('Active')
-        EXPIRED = 'expired', _('Expired')
-        TERMINATED = 'terminated', _('Terminated')
+        DRAFT = "draft", _("Draft")
+        ACTIVE = "active", _("Active")
+        EXPIRED = "expired", _("Expired")
+        TERMINATED = "terminated", _("Terminated")
 
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='contracts')
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="contracts"
+    )
     title = models.CharField(max_length=255)
     contract_number = models.CharField(max_length=100, blank=True, db_index=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.DRAFT
+    )
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     value = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    document = models.FileField(upload_to='contracts/', null=True, blank=True)
+    document = models.FileField(upload_to="contracts/", null=True, blank=True)
     signed_by_customer = models.BooleanField(default=False)
     signed_date = models.DateField(null=True, blank=True)
-    
-    documents = GenericRelation('documents.Document', object_id_field='object_id', content_type_field='content_type')
-    workflows = GenericRelation('workflow.WorkflowInstance', object_id_field='object_id', content_type_field='content_type')
+
+    documents = GenericRelation(
+        "documents.Document",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
+    workflows = GenericRelation(
+        "workflow.WorkflowInstance",
+        object_id_field="object_id",
+        content_type_field="content_type",
+    )
 
     class Meta:
-        db_table = 'crm_contracts'
-        ordering = ['-created_at']
+        db_table = "crm_contracts"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.contract_number} | {self.title}"
@@ -280,15 +383,17 @@ class Contract(CompanyScoped, NotesMixin):
     @property
     def is_valid(self):
         from django.utils import timezone
+
         if self.status != self.Status.ACTIVE:
             return False
         if self.end_date and self.end_date < timezone.now().date():
             return False
         return True
-        
+
     @property
     def days_until_expiry(self):
         from django.utils import timezone
+
         if not self.end_date:
             return None
         delta = self.end_date - timezone.now().date()
@@ -296,63 +401,93 @@ class Contract(CompanyScoped, NotesMixin):
 
     def save(self, *args, **kwargs):
         from django.utils import timezone
+
         # Auto-expire logic on save
         if self.end_date and self.status == self.Status.ACTIVE:
             if self.end_date < timezone.now().date():
                 self.status = self.Status.EXPIRED
         super().save(*args, **kwargs)
 
+
 # ════════════════════════ SALES TEAM MANAGEMENT ══════════════════════════════
+
 
 class Territory(CompanyScoped, NotesMixin):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=50, blank=True)
-    manager = models.ForeignKey('authentication.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_territories')
-    sales_reps = models.ManyToManyField('authentication.User', blank=True, related_name='territories')
-    
+    manager = models.ForeignKey(
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="managed_territories",
+    )
+    sales_reps = models.ManyToManyField(
+        "authentication.User", blank=True, related_name="territories"
+    )
+
     class Meta:
-        db_table = 'crm_territories'
-        verbose_name_plural = 'Territories'
-        
+        db_table = "crm_territories"
+        verbose_name_plural = "Territories"
+
     def __str__(self):
         return self.name
+
 
 class LeadAssignmentRule(CompanyScoped):
     class AssignmentMethod(models.TextChoices):
-        ROUND_ROBIN = 'round_robin', _('Round Robin')
-        LOAD_BALANCED = 'load_balanced', _('Load Balanced')
-        TERRITORY_BASED = 'territory', _('Territory Based')
+        ROUND_ROBIN = "round_robin", _("Round Robin")
+        LOAD_BALANCED = "load_balanced", _("Load Balanced")
+        TERRITORY_BASED = "territory", _("Territory Based")
 
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
-    source_criteria = models.CharField(max_length=50, choices=Lead.Source.choices, blank=True, help_text='Apply to leads from this source')
+    source_criteria = models.CharField(
+        max_length=50,
+        choices=Lead.Source.choices,
+        blank=True,
+        help_text="Apply to leads from this source",
+    )
     min_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    assignment_method = models.CharField(max_length=20, choices=AssignmentMethod.choices, default=AssignmentMethod.ROUND_ROBIN)
-    target_territory = models.ForeignKey(Territory, null=True, blank=True, on_delete=models.SET_NULL)
-    priority = models.IntegerField(default=0, help_text='Lower number means higher priority')
+    assignment_method = models.CharField(
+        max_length=20,
+        choices=AssignmentMethod.choices,
+        default=AssignmentMethod.ROUND_ROBIN,
+    )
+    target_territory = models.ForeignKey(
+        Territory, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    priority = models.IntegerField(
+        default=0, help_text="Lower number means higher priority"
+    )
 
     class Meta:
-        db_table = 'crm_lead_assignment_rules'
-        ordering = ['priority']
-        
+        db_table = "crm_lead_assignment_rules"
+        ordering = ["priority"]
+
     def __str__(self):
         return self.name
 
+
 class SalesTarget(CompanyScoped):
     class Period(models.TextChoices):
-        MONTHLY = 'monthly', _('Monthly')
-        QUARTERLY = 'quarterly', _('Quarterly')
-        YEARLY = 'yearly', _('Yearly')
+        MONTHLY = "monthly", _("Monthly")
+        QUARTERLY = "quarterly", _("Quarterly")
+        YEARLY = "yearly", _("Yearly")
 
-    sales_rep = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='sales_targets')
-    period = models.CharField(max_length=15, choices=Period.choices, default=Period.MONTHLY)
+    sales_rep = models.ForeignKey(
+        "authentication.User", on_delete=models.CASCADE, related_name="sales_targets"
+    )
+    period = models.CharField(
+        max_length=15, choices=Period.choices, default=Period.MONTHLY
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     target_revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     target_deals = models.IntegerField(default=0)
-    
+
     class Meta:
-        db_table = 'crm_sales_targets'
-        
+        db_table = "crm_sales_targets"
+
     def __str__(self):
         return f"{self.sales_rep.get_full_name()} - {self.get_period_display()} Target"

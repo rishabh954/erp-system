@@ -7,14 +7,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('administration', '0001_initial'),
-        ('hrms', '0003_expenseclaim_performanceappraisal_trainingprogram'),
+        ("administration", "0001_initial"),
+        ("hrms", "0003_expenseclaim_performanceappraisal_trainingprogram"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='employee',
-            name='job_title',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='administration.designation'),
+            model_name="employee",
+            name="job_title",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="administration.designation",
+            ),
         ),
     ]

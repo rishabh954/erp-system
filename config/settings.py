@@ -104,6 +104,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.AuditLogMiddleware',
     'core.middleware.TenantMiddleware',
+    'core.middleware.RequestLoggingMiddleware',
     'core.middleware.ActiveUserMiddleware',
     'apps.authentication.middleware.SecurityMiddleware',
     'apps.company.middleware.TimezoneMiddleware',
@@ -395,13 +396,18 @@ CORS_ALLOW_CREDENTIALS = True
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'context_filter': {
+            '()': 'core.logging.RequestContextLogFilter',
+        },
+    },
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} [User:{user_id} Comp:{company_id} IP:{client_ip} Path:{request_path}] {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {message}',
+            'format': '{levelname} [User:{user_id} Comp:{company_id}] {message}',
             'style': '{',
         },
     },
@@ -413,11 +419,13 @@ LOGGING = {
             'maxBytes': 10 * 1024 * 1024,
             'backupCount': 5,
             'formatter': 'verbose',
+            'filters': ['context_filter'],
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['context_filter'],
         },
     },
     'root': {
