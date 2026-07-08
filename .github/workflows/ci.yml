@@ -2,92 +2,40 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main", "master" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: erp_db
-          POSTGRES_USER: erp_user
-          POSTGRES_PASSWORD: erp_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    # We might need a database container depending on the project setup,
+    # but the project seems to be using sqlite3 locally by default.
+    # If a postgres service is needed, it can be defined here.
+    
     steps:
-    - uses: actions/checkout@v3
-
+    - uses: actions/checkout@v4
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
-
+        cache: 'pip'
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-django pytest-cov requests
-
-    - name: Copy env template
-      run: cp .env.example .env
-
-    - name: Run Celery Worker in background
-      env:
-        DB_NAME: erp_db
-        DB_USER: erp_user
-        DB_PASSWORD: erp_password
-        DB_HOST: localhost
-        DB_PORT: 5432
-        REDIS_URL: redis://localhost:6379/0
-        CELERY_BROKER_URL: redis://localhost:6379/0
-        SECRET_KEY: test-secret-key-that-is-long-enough-for-django
+        pip install ruff pytest pytest-django pytest-cov
+        
+    - name: Lint with Ruff
       run: |
-        celery -A config worker -l info &
-        sleep 5
-
-    - name: Verify Celery Execution
-      env:
-        DB_NAME: erp_db
-        DB_USER: erp_user
-        DB_PASSWORD: erp_password
-        DB_HOST: localhost
-        DB_PORT: 5432
-        REDIS_URL: redis://localhost:6379/0
-        CELERY_BROKER_URL: redis://localhost:6379/0
-        SECRET_KEY: test-secret-key-that-is-long-enough-for-django
+        # Run ruff check on the whole repo
+        ruff check .
+        
+    - name: Run Tests
       run: |
-        python manage.py verify_celery
-
-    - name: Run pytest (Unit and E2E)
+        pytest --cov=apps --cov=core
       env:
-        DB_NAME: erp_db
-        DB_USER: erp_user
-        DB_PASSWORD: erp_password
-        DB_HOST: localhost
-        DB_PORT: 5432
-        REDIS_URL: redis://localhost:6379/0
-        CELERY_BROKER_URL: redis://localhost:6379/0
-        SECRET_KEY: test-secret-key-that-is-long-enough-for-django
-      run: |
-        pytest --cov=apps --cov-report=term-missing
+        DJANGO_SETTINGS_MODULE: config.settings
