@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from core.permissions import PermissionRequiredMixin
 from django.views.generic import TemplateView, View
 
 from .models import (
@@ -54,6 +55,7 @@ class AdminRequiredMixin(LoginRequiredMixin):
 
 
 class AppStoreView(AdminRequiredMixin, TemplateView):
+    required_permission = "administration.read"
     template_name = "administration/app_store.html"
 
     def get_context_data(self, **kwargs):
@@ -178,6 +180,7 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
 
 
 class AdminDashboardView(AdminRequiredMixin, TemplateView):
+    required_permission = "administration.read"
     template_name = "administration/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -232,6 +235,7 @@ class HRManagerOrAdminMixin(LoginRequiredMixin):
 
 
 class DesignationListView(HRManagerOrAdminMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/designations.html"
 
     def get(self, request):
@@ -256,6 +260,7 @@ class DesignationListView(HRManagerOrAdminMixin, View):
 
 
 class DesignationDeleteView(HRManagerOrAdminMixin, View):
+    required_permission = "administration.delete"
     def post(self, request, pk):
         obj = get_object_or_404(Designation, pk=pk, company=self.company)
         obj.delete()
@@ -267,6 +272,7 @@ class DesignationDeleteView(HRManagerOrAdminMixin, View):
 
 
 class NumberSeriesListView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/number_series.html"
 
     def get(self, request):
@@ -297,6 +303,7 @@ class NumberSeriesListView(AdminRequiredMixin, View):
 
 
 class ApprovalMatrixListView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/approval_matrix.html"
 
     def get(self, request):
@@ -330,6 +337,7 @@ class ApprovalMatrixListView(AdminRequiredMixin, View):
 
 
 class ApprovalMatrixDeleteView(AdminRequiredMixin, View):
+    required_permission = "administration.delete"
     def post(self, request, pk):
         obj = get_object_or_404(ApprovalMatrix, pk=pk, company=self.company)
         obj.delete()
@@ -341,6 +349,7 @@ class ApprovalMatrixDeleteView(AdminRequiredMixin, View):
 
 
 class EmailConfigView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/email_config.html"
 
     def get(self, request):
@@ -367,6 +376,7 @@ class EmailConfigView(AdminRequiredMixin, View):
 
 
 class EmailConfigDeleteView(AdminRequiredMixin, View):
+    required_permission = "administration.delete"
     def post(self, request, pk):
         obj = get_object_or_404(EmailConfig, pk=pk, company=self.company)
         obj.delete()
@@ -375,6 +385,7 @@ class EmailConfigDeleteView(AdminRequiredMixin, View):
 
 
 class EmailConfigTestView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     """Send a test email to the authenticated user."""
 
     def post(self, request, pk):
@@ -408,6 +419,7 @@ class EmailConfigTestView(AdminRequiredMixin, View):
 
 
 class SMSConfigView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/sms_config.html"
 
     def get(self, request):
@@ -438,6 +450,7 @@ class SMSConfigView(AdminRequiredMixin, View):
 
 
 class WhatsAppConfigView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/whatsapp_config.html"
 
     def get(self, request):
@@ -468,6 +481,7 @@ class WhatsAppConfigView(AdminRequiredMixin, View):
 
 
 class NotificationCenterView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/notifications.html"
 
     def get(self, request):
@@ -505,6 +519,7 @@ class NotificationCenterView(AdminRequiredMixin, View):
 
 
 class DocumentTemplateListView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/document_templates.html"
 
     def get(self, request):
@@ -542,6 +557,7 @@ class DocumentTemplateListView(AdminRequiredMixin, View):
 
 
 class DataImportView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/import_export.html"
 
     def get(self, request):
@@ -590,6 +606,7 @@ class DataImportView(AdminRequiredMixin, View):
 
 
 class BackupRestoreView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/backup_restore.html"
 
     def get(self, request):
@@ -624,6 +641,7 @@ class BackupRestoreView(AdminRequiredMixin, View):
 
 
 class AuditLogView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/audit_logs.html"
 
     def get(self, request):
@@ -663,6 +681,7 @@ class AuditLogView(AdminRequiredMixin, View):
 
 
 class ActivityLogView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/activity_logs.html"
 
     def get(self, request):
@@ -692,6 +711,7 @@ class ActivityLogView(AdminRequiredMixin, View):
 
 
 class APIManagementView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/api_management.html"
 
     def get(self, request):
@@ -720,6 +740,7 @@ class APIManagementView(AdminRequiredMixin, View):
 
 
 class IntegrationCenterView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/integrations.html"
 
     def get(self, request):
@@ -772,6 +793,7 @@ class IntegrationCenterView(AdminRequiredMixin, View):
 
 
 class DashboardBuilderView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/dashboard_builder.html"
 
     def get(self, request):
@@ -807,6 +829,7 @@ class DashboardBuilderView(AdminRequiredMixin, View):
 
 
 class ReportBuilderView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/report_builder.html"
 
     def get(self, request):
@@ -845,6 +868,7 @@ class ReportBuilderView(AdminRequiredMixin, View):
 
 
 class SystemSettingsView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/system_settings.html"
 
     def get(self, request):
@@ -888,6 +912,7 @@ class SystemSettingsView(AdminRequiredMixin, View):
 
 
 class AuditLogDetailView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     def get(self, request, pk):
         log = get_object_or_404(AuditLog, pk=pk, company=self.company)
         return JsonResponse(
@@ -907,6 +932,7 @@ class AuditLogDetailView(AdminRequiredMixin, View):
 
 
 class PendingUserApprovalListView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     template_name = "administration/pending_users.html"
 
     def get(self, request):
@@ -924,6 +950,7 @@ class PendingUserApprovalListView(AdminRequiredMixin, View):
 
 
 class PendingUserApprovalActionView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
     def post(self, request, pk):
         from apps.authentication.models import User
 

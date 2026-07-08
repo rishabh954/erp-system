@@ -8,15 +8,17 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
+from core.permissions import HasModulePermission
 
 from . import serializers
 
 
 # ─── Company Mixin ─────────────────────────────────────────────────────────────
 class CompanyScopedViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, HasModulePermission]
+    required_permission = "api.access"  # Fallback/default
     """Base viewset that automatically filters queryset to the authenticated user's company."""
 
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
     def get_company(self):
@@ -38,6 +40,7 @@ from apps.crm.models import Customer, Lead
 
 @extend_schema(tags=["CRM"])
 class LeadViewSet(CompanyScopedViewSet):
+    required_permission = "crm.read"
     queryset = Lead.objects.select_related("assigned_to").all()
     serializer_class = serializers.LeadSerializer
     filterset_fields = ["status", "source", "assigned_to"]
@@ -48,6 +51,7 @@ class LeadViewSet(CompanyScopedViewSet):
 
 @extend_schema(tags=["CRM"])
 class CustomerViewSet(CompanyScopedViewSet):
+    required_permission = "crm.read"
     queryset = Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     filterset_fields = ["customer_type", "is_active"]
@@ -62,32 +66,35 @@ from apps.sales.models import Invoice, Quotation, SalesOrder
 
 @extend_schema(tags=["Sales"])
 class QuotationViewSet(CompanyScopedViewSet):
+    required_permission = "sales.read"
     queryset = Quotation.objects.select_related("customer").all()
     serializer_class = serializers.ErpQuotationSerializer
     filterset_fields = ["status", "customer"]
     search_fields = ["number", "customer__name"]
-    ordering_fields = ["date", "total_amount", "created_at"]
-    ordering = ["-date"]
+    ordering_fields = ["created_at", "total"]
+    ordering = ["-created_at"]
 
 
 @extend_schema(tags=["Sales"])
 class SalesOrderViewSet(CompanyScopedViewSet):
+    required_permission = "sales.read"
     queryset = SalesOrder.objects.select_related("customer").all()
     serializer_class = serializers.ErpSalesOrderSerializer
     filterset_fields = ["status", "customer"]
     search_fields = ["number", "customer__name"]
-    ordering_fields = ["date", "total_amount", "created_at"]
-    ordering = ["-date"]
+    ordering_fields = ["order_date", "total", "created_at"]
+    ordering = ["-order_date"]
 
 
 @extend_schema(tags=["Sales"])
 class InvoiceViewSet(CompanyScopedViewSet):
+    required_permission = "sales.read"
     queryset = Invoice.objects.select_related("customer").all()
     serializer_class = serializers.ErpInvoiceSerializer
     filterset_fields = ["status", "customer"]
     search_fields = ["number", "customer__name"]
-    ordering_fields = ["date", "due_date", "total_amount"]
-    ordering = ["-date"]
+    ordering_fields = ["invoice_date", "due_date", "total"]
+    ordering = ["-invoice_date"]
 
 
 # ─── Purchase ─────────────────────────────────────────────────────────────────
@@ -96,6 +103,7 @@ from apps.purchase.models import Bill, PurchaseOrder, Vendor
 
 @extend_schema(tags=["Purchase"])
 class VendorViewSet(CompanyScopedViewSet):
+    required_permission = "purchase.read"
     queryset = Vendor.objects.all()
     serializer_class = serializers.ErpVendorSerializer
     filterset_fields = ["vendor_type"]
@@ -106,22 +114,24 @@ class VendorViewSet(CompanyScopedViewSet):
 
 @extend_schema(tags=["Purchase"])
 class PurchaseOrderViewSet(CompanyScopedViewSet):
+    required_permission = "purchase.read"
     queryset = PurchaseOrder.objects.select_related("vendor").all()
     serializer_class = serializers.ErpPurchaseOrderSerializer
     filterset_fields = ["status", "vendor"]
     search_fields = ["number", "vendor__name"]
-    ordering_fields = ["date", "total_amount", "created_at"]
-    ordering = ["-date"]
+    ordering_fields = ["order_date", "total_amount", "created_at"]
+    ordering = ["-order_date"]
 
 
 @extend_schema(tags=["Purchase"])
 class BillViewSet(CompanyScopedViewSet):
+    required_permission = "purchase.read"
     queryset = Bill.objects.select_related("vendor").all()
     serializer_class = serializers.ErpBillSerializer
     filterset_fields = ["status", "vendor"]
     search_fields = ["number", "vendor__name"]
-    ordering_fields = ["date", "due_date", "total_amount"]
-    ordering = ["-date"]
+    ordering_fields = ["bill_date", "due_date", "total_amount"]
+    ordering = ["-bill_date"]
 
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
@@ -130,6 +140,7 @@ from apps.inventory.models import Product, Warehouse
 
 @extend_schema(tags=["Inventory"])
 class ProductViewSet(CompanyScopedViewSet):
+    required_permission = "inventory.read"
     queryset = Product.objects.select_related("category", "uom").all()
     serializer_class = serializers.ErpProductSerializer
     filterset_fields = ["product_type", "tracking_method", "category"]
@@ -140,6 +151,7 @@ class ProductViewSet(CompanyScopedViewSet):
 
 @extend_schema(tags=["Inventory"])
 class WarehouseViewSet(CompanyScopedViewSet):
+    required_permission = "inventory.read"
     queryset = Warehouse.objects.all()
     serializer_class = serializers.ErpWarehouseSerializer
     filterset_fields = []
@@ -154,6 +166,7 @@ from apps.hrms.models import Employee, LeaveRequest
 
 @extend_schema(tags=["HRMS"])
 class EmployeeViewSet(CompanyScopedViewSet):
+    required_permission = "hrms.read"
     queryset = Employee.objects.select_related("department").all()
     serializer_class = serializers.EmployeeSerializer
     filterset_fields = ["department", "status"]
@@ -164,6 +177,7 @@ class EmployeeViewSet(CompanyScopedViewSet):
 
 @extend_schema(tags=["HRMS"])
 class LeaveRequestViewSet(CompanyScopedViewSet):
+    required_permission = "hrms.read"
     queryset = LeaveRequest.objects.select_related("employee").all()
     serializer_class = serializers.LeaveRequestSerializer
     filterset_fields = ["status", "employee"]
@@ -178,6 +192,7 @@ from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder
 
 @extend_schema(tags=["Manufacturing"])
 class ManufacturingOrderViewSet(CompanyScopedViewSet):
+    required_permission = "manufacturing.read"
     queryset = ManufacturingOrder.objects.select_related("product", "bom").all()
     serializer_class = serializers.ManufacturingOrderSerializer
     filterset_fields = ["status", "product"]
@@ -188,6 +203,7 @@ class ManufacturingOrderViewSet(CompanyScopedViewSet):
 
 @extend_schema(tags=["Manufacturing"])
 class BOMViewSet(CompanyScopedViewSet):
+    required_permission = "manufacturing.read"
     queryset = BillOfMaterial.objects.select_related("product").all()
     serializer_class = serializers.BOMSerializer
     filterset_fields = ["is_active", "product"]

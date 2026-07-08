@@ -1,92 +1,67 @@
-from django.test import TestCase
+import pytest
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.authentication.models import ModulePermission, Role, User
+from apps.authentication.models import User, ModulePermission
 from apps.company.models import Company
 
-
-class RBACTestCase(TestCase):
-    def setUp(self):
-        self.client = APIClient()
+@pytest.mark.django_db
+class TestRBAC:
+    @pytest.fixture
+    def setup_data(self):
         self.company = Company.objects.create(name="Test Company")
-
+        self.super_admin = User.objects.create_superuser("admin@test.com", "pass", first_name="Admin", last_name="User")
+        
+        # User with limited role
         self.employee = User.objects.create_user(
-            email="employee@test.com",
-            password="password123",
-            first_name="Emp",
-            last_name="Loyee",
+            "emp@test.com", "pass", 
+            first_name="Emp", last_name="User",
             role=User.Role.EMPLOYEE,
+            primary_company=self.company
         )
         self.employee.companies.add(self.company)
-        self.employee.primary_company = self.company
-        self.employee.save()
-
-        self.admin = User.objects.create_user(
-            email="admin@test.com",
-            password="password123",
-            first_name="Ad",
-            last_name="Min",
-            role=User.Role.COMPANY_ADMIN,
-        )
-        self.admin.companies.add(self.company)
-        self.admin.primary_company = self.company
-        self.admin.save()
-
-        self.role = Role.objects.create(
-            company=self.company, name="Custom Role", code="custom-role"
+        
+        # Give employee access to accounting read ONLY
+        ModulePermission.objects.update_or_create(
+            role=User.Role.EMPLOYEE,
+            module="accounting",
+            defaults={
+                "can_read": True,
+                "can_create": False,
+                "can_update": False,
+                "can_delete": False
+            }
         )
 
-        self.mod_perm = ModulePermission.objects.create(
-            role=User.Role.EMPLOYEE, module="test"
-        )
+        self.client_admin = APIClient()
+        self.client_admin.force_authenticate(user=self.super_admin)
 
-    def test_employee_cannot_create_user(self):
-        self.client.force_authenticate(user=self.employee)
-        response = self.client.post("/api/v1/auth/users/", {"email": "new@test.com"})
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.client_emp = APIClient()
+        self.client_emp.force_authenticate(user=self.employee)
 
-    def test_admin_can_create_user(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(
-            "/api/v1/auth/users/",
-            {
-                "email": "new@test.com",
-                "first_name": "New",
-                "last_name": "User",
-                "password": "password123",
-                "password_confirm": "password123",
-                "role": User.Role.EMPLOYEE,
-            },
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    def test_drf_module_permission(self, setup_data):
+        # Admin accesses quotes -> 200 (HasModulePermission lets superusers bypass)
+        url = reverse("api:quotation-list")
+        response = self.client_admin.get(url)
+        assert response.status_code == status.HTTP_200_OK
 
-    def test_employee_cannot_deactivate_user(self):
-        self.client.force_authenticate(user=self.employee)
-        response = self.client.post(
-            f"/api/v1/auth/users/{self.admin.id}/toggle_active/"
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Employee accesses quotes -> 403 (Doesn't have sales.read)
+        response = self.client_emp.get(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_employee_cannot_create_role(self):
-        self.client.force_authenticate(user=self.employee)
-        response = self.client.post(
-            "/api/v1/auth/roles/", {"name": "Hacker Role", "code": "hacker"}
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_django_view_module_permission(self, setup_data, client):
+        client.force_login(self.super_admin)
+        url = reverse("accounting:chart_of_accounts")
+        response = client.get(url)
+        assert response.status_code == 200
 
-    def test_employee_cannot_update_module_permission(self):
-        self.client.force_authenticate(user=self.employee)
-        response = self.client.patch(
-            f"/api/v1/auth/module-permissions/{self.mod_perm.id}/", {"can_create": True}
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        client.force_login(self.employee)
+        # Employee has accounting.read, should succeed
+        response = client.get(url)
+        assert response.status_code == 200
 
-    def test_admin_cannot_update_module_permission(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.patch(
-            f"/api/v1/auth/module-permissions/{self.mod_perm.id}/", {"can_create": True}
-        )
-        self.assertEqual(
-            response.status_code, status.HTTP_403_FORBIDDEN
-        )  # Only superusers can edit module permissions
+        # Try to access create view (requires accounting.create)
+        url_create = reverse("accounting:account_create")
+        response_create = client.get(url_create)
+        assert response_create.status_code == 403

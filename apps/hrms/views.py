@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from core.permissions import PermissionRequiredMixin
 from django.views.generic import DetailView, ListView, TemplateView, View
 
 from .models import (
@@ -28,7 +29,7 @@ from .models import (
 )
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -37,6 +38,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class EmployeeListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/employees/list.html"
     context_object_name = "employees"
     paginate_by = 25
@@ -47,6 +49,15 @@ class EmployeeListView(CompanyMixin, ListView):
             .select_related("job_title", "department", "branch", "manager")
             .order_by("first_name")
         )
+
+        user = self.request.user
+        if getattr(user, "role", "") == "employee":
+            try:
+                emp_profile = user.employee
+                if emp_profile and emp_profile.department:
+                    qs = qs.filter(department=emp_profile.department)
+            except AttributeError:
+                pass
 
         q = self.request.GET.get("q", "")
         status = self.request.GET.get("status", "")
@@ -83,6 +94,7 @@ class EmployeeListView(CompanyMixin, ListView):
 
 
 class EmployeeDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/employees/detail.html"
     context_object_name = "employee"
 
@@ -121,6 +133,7 @@ class EmployeeDetailView(CompanyMixin, DetailView):
 
 
 class EmployeeUpdateView(CompanyMixin, View):
+    required_permission = "hrms.update"
     template_name = "hrms/employees/form.html"
 
     def get(self, request, pk):
@@ -238,6 +251,7 @@ class EmployeeUpdateView(CompanyMixin, View):
 
 
 class EmployeeCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     template_name = "hrms/employees/form.html"
 
     def get(self, request):
@@ -309,6 +323,7 @@ class EmployeeCreateView(CompanyMixin, View):
 
 
 class EmployeeDocumentCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     def post(self, request, pk):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         data = request.POST
@@ -328,6 +343,7 @@ class EmployeeDocumentCreateView(CompanyMixin, View):
 
 
 class EmployeeDocumentDeleteView(CompanyMixin, View):
+    required_permission = "hrms.delete"
     def post(self, request, pk, doc_id):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         doc = get_object_or_404(
@@ -339,6 +355,7 @@ class EmployeeDocumentDeleteView(CompanyMixin, View):
 
 
 class EmployeeSkillCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     def post(self, request, pk):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         data = request.POST
@@ -354,6 +371,7 @@ class EmployeeSkillCreateView(CompanyMixin, View):
 
 
 class EmployeeSkillDeleteView(CompanyMixin, View):
+    required_permission = "hrms.delete"
     def post(self, request, pk, skill_id):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         skill = get_object_or_404(EmployeeSkill, pk=skill_id, employee=emp)
@@ -363,6 +381,7 @@ class EmployeeSkillDeleteView(CompanyMixin, View):
 
 
 class ExperienceRecordCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     def post(self, request, pk):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         data = request.POST
@@ -381,6 +400,7 @@ class ExperienceRecordCreateView(CompanyMixin, View):
 
 
 class ExperienceRecordDeleteView(CompanyMixin, View):
+    required_permission = "hrms.delete"
     def post(self, request, pk, exp_id):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         exp = get_object_or_404(ExperienceRecord, pk=exp_id, employee=emp)
@@ -393,6 +413,7 @@ class ExperienceRecordDeleteView(CompanyMixin, View):
 
 
 class AttendanceView(CompanyMixin, TemplateView):
+    required_permission = "hrms.read"
     template_name = "hrms/attendance/index.html"
 
     def get_context_data(self, **kwargs):
@@ -421,6 +442,7 @@ class AttendanceView(CompanyMixin, TemplateView):
 
 
 class CheckInView(CompanyMixin, View):
+    required_permission = "hrms.read"
     def post(self, request):
         try:
             emp = Employee.objects.get(user=request.user, is_deleted=False)
@@ -438,6 +460,7 @@ class CheckInView(CompanyMixin, View):
 
 
 class CheckOutView(CompanyMixin, View):
+    required_permission = "hrms.read"
     def post(self, request):
         try:
             emp = Employee.objects.get(user=request.user, is_deleted=False)
@@ -461,6 +484,7 @@ class CheckOutView(CompanyMixin, View):
 
 
 class LeaveListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/leaves/list.html"
     context_object_name = "leaves"
     paginate_by = 25
@@ -495,6 +519,7 @@ class LeaveListView(CompanyMixin, ListView):
 
 
 class LeaveRequestCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     template_name = "hrms/leaves/form.html"
 
     def get(self, request):
@@ -534,6 +559,7 @@ class LeaveRequestCreateView(CompanyMixin, View):
 
 
 class LeaveApproveView(CompanyMixin, View):
+    required_permission = "hrms.approve"
     def post(self, request, pk):
         leave = get_object_or_404(
             LeaveRequest, pk=pk, company=self.company(), is_deleted=False
@@ -562,6 +588,7 @@ class LeaveApproveView(CompanyMixin, View):
 
 
 class SalaryStructureListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/salary_structures/list.html"
     context_object_name = "structures"
 
@@ -570,6 +597,7 @@ class SalaryStructureListView(CompanyMixin, ListView):
 
 
 class SalaryStructureCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     template_name = "hrms/salary_structures/form.html"
 
     def get(self, request):
@@ -589,6 +617,7 @@ class SalaryStructureCreateView(CompanyMixin, View):
 
 
 class SalaryStructureDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/salary_structures/detail.html"
     context_object_name = "structure"
 
@@ -606,6 +635,7 @@ class SalaryStructureDetailView(CompanyMixin, DetailView):
 
 
 class SalaryComponentCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     def post(self, request, pk):
         structure = get_object_or_404(SalaryStructure, pk=pk, company=self.company())
         data = request.POST
@@ -628,6 +658,7 @@ class SalaryComponentCreateView(CompanyMixin, View):
 
 
 class SalaryComponentDeleteView(CompanyMixin, View):
+    required_permission = "hrms.delete"
     def post(self, request, pk, comp_id):
         structure = get_object_or_404(SalaryStructure, pk=pk, company=self.company())
         comp = get_object_or_404(
@@ -642,6 +673,7 @@ class SalaryComponentDeleteView(CompanyMixin, View):
 
 
 class EmployeeSalaryCreateView(CompanyMixin, View):
+    required_permission = "hrms.create"
     def post(self, request, pk):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         data = request.POST
@@ -667,6 +699,7 @@ class EmployeeSalaryCreateView(CompanyMixin, View):
 
 
 class PayrollListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/payroll/list.html"
     context_object_name = "periods"
     paginate_by = 12
@@ -678,6 +711,7 @@ class PayrollListView(CompanyMixin, ListView):
 
 
 class PayrollDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/payroll/detail.html"
     context_object_name = "period"
 
@@ -700,6 +734,7 @@ class PayrollDetailView(CompanyMixin, DetailView):
 
 
 class PayrollProcessView(CompanyMixin, View):
+    required_permission = "hrms.read"
     def post(self, request, pk):
         period = get_object_or_404(
             PayrollPeriod, pk=pk, company=self.company(), is_deleted=False
@@ -753,6 +788,7 @@ from .models import JobApplication, JobPosting
 
 
 class JobPostingListView(CompanyMixin, ListView):
+    required_permission = "hrms.create"
     template_name = "hrms/recruitment/job_postings.html"
     context_object_name = "jobs"
 
@@ -797,6 +833,7 @@ class JobPostingListView(CompanyMixin, ListView):
 
 
 class JobPostingDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.create"
     template_name = "hrms/recruitment/job_posting_detail.html"
     context_object_name = "job"
 
@@ -823,6 +860,7 @@ class JobPostingDetailView(CompanyMixin, DetailView):
 
 
 class JobApplicationListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/recruitment/applications.html"
     context_object_name = "applications"
 
@@ -862,6 +900,7 @@ class JobApplicationListView(CompanyMixin, ListView):
 
 
 class JobApplicationDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/recruitment/application_detail.html"
     context_object_name = "application"
 
@@ -892,6 +931,7 @@ from .models import ExpenseClaim, PerformanceAppraisal, TrainingProgram
 
 
 class PerformanceAppraisalListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/appraisals/list.html"
     context_object_name = "appraisals"
 
@@ -933,6 +973,7 @@ class PerformanceAppraisalListView(CompanyMixin, ListView):
 
 
 class PerformanceAppraisalDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/appraisals/detail.html"
     context_object_name = "appraisal"
 
@@ -966,6 +1007,7 @@ class PerformanceAppraisalDetailView(CompanyMixin, DetailView):
 
 
 class TrainingProgramListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/training/list.html"
     context_object_name = "programs"
 
@@ -992,6 +1034,7 @@ class TrainingProgramListView(CompanyMixin, ListView):
 
 
 class TrainingProgramDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/training/detail.html"
     context_object_name = "program"
 
@@ -1033,6 +1076,7 @@ class TrainingProgramDetailView(CompanyMixin, DetailView):
 
 
 class ExpenseClaimListView(CompanyMixin, ListView):
+    required_permission = "hrms.read"
     template_name = "hrms/expenses/list.html"
     context_object_name = "claims"
 
@@ -1082,6 +1126,7 @@ class ExpenseClaimListView(CompanyMixin, ListView):
 
 
 class ExpenseClaimDetailView(CompanyMixin, DetailView):
+    required_permission = "hrms.read"
     template_name = "hrms/expenses/detail.html"
     context_object_name = "claim"
 

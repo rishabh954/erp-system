@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views import View
+from core.permissions import PermissionRequiredMixin
 from django.views.generic import TemplateView
 
 from .forms import (
@@ -155,6 +156,7 @@ class LoginView(View):
 
 
 class LogoutView(LoginRequiredMixin, View):
+    required_permission = "authentication.read"
     def post(self, request):
         ActivityLog.objects.create(
             user=request.user,
@@ -333,6 +335,7 @@ class PasswordResetConfirmView(View):
 
 
 class ProfileView(LoginRequiredMixin, TemplateView):
+    required_permission = "authentication.read"
     template_name = "authentication/profile.html"
 
     def get_context_data(self, **kwargs):
@@ -349,6 +352,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
 
 
 class ProfileUpdateView(LoginRequiredMixin, View):
+    required_permission = "authentication.update"
     def post(self, request):
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
@@ -366,6 +370,7 @@ class ProfileUpdateView(LoginRequiredMixin, View):
 
 
 class ChangePasswordView(LoginRequiredMixin, View):
+    required_permission = "authentication.read"
     def post(self, request):
         form = ChangePasswordForm(user=request.user, data=request.POST)
         if form.is_valid():
@@ -387,6 +392,7 @@ class ChangePasswordView(LoginRequiredMixin, View):
 
 
 class RevokeSessionView(LoginRequiredMixin, View):
+    required_permission = "authentication.read"
     def post(self, request, session_id):
         session = get_object_or_404(UserSession, pk=session_id, user=request.user)
         session.is_active = False
@@ -396,6 +402,7 @@ class RevokeSessionView(LoginRequiredMixin, View):
 
 
 class RevokeAllSessionsView(LoginRequiredMixin, View):
+    required_permission = "authentication.read"
     def post(self, request):
         current_key = request.session.session_key
         UserSession.objects.filter(user=request.user, is_active=True).exclude(
@@ -409,6 +416,7 @@ class RevokeAllSessionsView(LoginRequiredMixin, View):
 
 
 class ActivityLogView(LoginRequiredMixin, View):
+    required_permission = "authentication.read"
     def get(self, request):
         logs = (
             ActivityLog.objects.filter(user=request.user)

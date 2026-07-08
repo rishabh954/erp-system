@@ -32,3 +32,60 @@ class IsSuperAdmin(permissions.BasePermission):
                 request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser
             )
         )
+
+
+class HasModulePermission(permissions.BasePermission):
+    """
+    DRF permission class that checks user.has_module_permission().
+    Requires view to have `required_permission` attribute set to "module.action"
+    e.g. required_permission = "accounting.read"
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+            
+        required_perm = getattr(view, 'required_permission', None)
+        if not required_perm:
+            # If no permission is explicitly required, fallback to basic auth check
+            return True
+            
+        try:
+            module, action = required_perm.split('.')
+            return request.user.has_module_permission(module, action)
+        except ValueError:
+            return False
+
+
+from django.contrib.auth.mixins import AccessMixin
+from django.core.exceptions import ImproperlyConfigured
+
+class PermissionRequiredMixin(AccessMixin):
+    """
+    Mixin for class-based views to enforce module permissions.
+    Requires `required_permission` to be set on the view class.
+    """
+    required_permission = None
+
+    def get_required_permission(self):
+        if self.required_permission is None:
+            raise ImproperlyConfigured(
+                f"{self.__class__.__name__} is missing the required_permission attribute. "
+                "Define required_permission = 'module.action'."
+            )
+        return self.required_permission
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
+        required_perm = self.get_required_permission()
+        try:
+            module, action = required_perm.split('.')
+            if not request.user.has_module_permission(module, action):
+                return self.handle_no_permission()
+        except ValueError:
+            return self.handle_no_permission()
+
+        return super().dispatch(request, *args, **kwargs)
+

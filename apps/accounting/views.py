@@ -12,6 +12,7 @@ from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView, View
 
+from core.permissions import PermissionRequiredMixin
 from core.services import BaseService
 
 from .models import (
@@ -24,7 +25,7 @@ from .models import (
 )
 
 
-class CompanyMixin(LoginRequiredMixin):
+class CompanyMixin(PermissionRequiredMixin):
     def company(self):
         return self.request.user.primary_company
 
@@ -33,6 +34,7 @@ class CompanyMixin(LoginRequiredMixin):
 
 
 class ChartOfAccountsView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/chart_of_accounts.html"
     context_object_name = "accounts"
 
@@ -65,6 +67,7 @@ class ChartOfAccountsView(CompanyMixin, ListView):
 
 
 class AccountDetailView(CompanyMixin, DetailView):
+    required_permission = "accounting.read"
     template_name = "accounting/account_detail.html"
     context_object_name = "account"
 
@@ -96,6 +99,7 @@ class AccountDetailView(CompanyMixin, DetailView):
 
 
 class AccountCreateView(CompanyMixin, View):
+    required_permission = "accounting.create"
     template_name = "accounting/account_form.html"
 
     def get(self, request):
@@ -134,6 +138,7 @@ class AccountCreateView(CompanyMixin, View):
 
 
 class JournalListView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/journals/list.html"
     context_object_name = "entries"
     paginate_by = 30
@@ -168,6 +173,7 @@ class JournalListView(CompanyMixin, ListView):
 
 
 class JournalEntryCreateView(CompanyMixin, View):
+    required_permission = "accounting.create"
     template_name = "accounting/journals/form.html"
 
     def get(self, request):
@@ -213,6 +219,7 @@ class JournalEntryCreateView(CompanyMixin, View):
 
 
 class JournalEntryDetailView(CompanyMixin, DetailView):
+    required_permission = "accounting.read"
     template_name = "accounting/journals/detail.html"
     context_object_name = "entry"
 
@@ -228,6 +235,7 @@ class JournalEntryDetailView(CompanyMixin, DetailView):
 
 
 class PostJournalEntryView(CompanyMixin, View):
+    required_permission = "accounting.create"
     def post(self, request, pk):
         entry = get_object_or_404(JournalEntry, pk=pk, company=self.company())
         if entry.status != JournalEntry.Status.DRAFT:
@@ -247,6 +255,7 @@ class PostJournalEntryView(CompanyMixin, View):
 
 
 class BankAccountListView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/bank_accounts.html"
     context_object_name = "bank_accounts"
 
@@ -267,10 +276,12 @@ class BankAccountListView(CompanyMixin, ListView):
 
 
 class FinancialReportsView(CompanyMixin, TemplateView):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/index.html"
 
 
 class BalanceSheetView(CompanyMixin, View):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/balance_sheet.html"
 
     def get(self, request):
@@ -330,6 +341,7 @@ class BalanceSheetView(CompanyMixin, View):
 
 
 class ProfitAndLossView(CompanyMixin, View):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/profit_and_loss.html"
 
     def get(self, request):
@@ -405,6 +417,7 @@ class ProfitAndLossView(CompanyMixin, View):
 
 
 class TrialBalanceView(CompanyMixin, View):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/trial_balance.html"
 
     def get(self, request):
@@ -448,6 +461,7 @@ class TrialBalanceView(CompanyMixin, View):
 
 
 class AccountingDashboardView(CompanyMixin, TemplateView):
+    required_permission = "accounting.read"
     template_name = "accounting/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -512,6 +526,7 @@ from .models import BankStatementLine
 
 
 class BankReconciliationView(CompanyMixin, View):
+    required_permission = "accounting.read"
     template_name = "accounting/reconciliation.html"
 
     def get(self, request):
@@ -639,6 +654,7 @@ from core.services import BaseService
 
 
 class IssueCreditNoteView(CompanyMixin, View):
+    required_permission = "accounting.read"
     def get(self, request):
         company = self.company()
         customers = Customer.objects.filter(company=company, is_deleted=False)
@@ -708,6 +724,7 @@ from .models import Budget, CostCenter
 
 
 class CostCenterListView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/cost_centers/list.html"
     context_object_name = "cost_centers"
 
@@ -718,6 +735,7 @@ class CostCenterListView(CompanyMixin, ListView):
 
 
 class CostCenterDetailView(CompanyMixin, DetailView):
+    required_permission = "accounting.read"
     template_name = "accounting/cost_centers/detail.html"
     context_object_name = "cost_center"
 
@@ -744,6 +762,7 @@ class CostCenterDetailView(CompanyMixin, DetailView):
 
 
 class BudgetListView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/budgets/list.html"
     context_object_name = "budgets"
 
@@ -754,6 +773,7 @@ class BudgetListView(CompanyMixin, ListView):
 
 
 class BudgetDetailView(CompanyMixin, DetailView):
+    required_permission = "accounting.read"
     template_name = "accounting/budgets/detail.html"
     context_object_name = "budget"
 
@@ -771,6 +791,7 @@ from django.views.generic import CreateView
 
 
 class CostCenterCreateView(CompanyMixin, CreateView):
+    required_permission = "accounting.create"
     model = CostCenter
     template_name = "accounting/cost_centers/form.html"
     fields = ["code", "name", "parent", "manager", "description", "is_active"]
@@ -786,6 +807,7 @@ class CostCenterCreateView(CompanyMixin, CreateView):
 
 
 class BudgetCreateView(CompanyMixin, CreateView):
+    required_permission = "accounting.create"
     model = Budget
     template_name = "accounting/budgets/form.html"
     fields = ["name", "cost_center", "period_start", "period_end", "status"]
@@ -802,6 +824,7 @@ class BudgetCreateView(CompanyMixin, CreateView):
 
 
 class GeneralLedgerView(CompanyMixin, TemplateView):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/general_ledger.html"
 
     def get_context_data(self, **kwargs):
@@ -854,6 +877,7 @@ class GeneralLedgerView(CompanyMixin, TemplateView):
 
 
 class ARAgingReportView(CompanyMixin, TemplateView):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/ar_aging.html"
 
     def get_context_data(self, **kwargs):
@@ -899,6 +923,7 @@ class ARAgingReportView(CompanyMixin, TemplateView):
 
 
 class APAgingReportView(CompanyMixin, TemplateView):
+    required_permission = "accounting.read"
     template_name = "accounting/reports/ap_aging.html"
 
     def get_context_data(self, **kwargs):
