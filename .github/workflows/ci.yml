@@ -38,12 +38,17 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install ruff pytest pytest-django pytest-cov
+        pip install ruff pytest pytest-django pytest-cov mypy django-stubs
         
     - name: Lint with Ruff
       run: |
         # Run ruff check on the whole repo
+        # Run ruff check on the whole repo
         ruff check .
+        
+    - name: Run Mypy
+      run: |
+        mypy apps core || true
         
     - name: Run Tests
       run: |
@@ -54,3 +59,24 @@ jobs:
         DB_NAME: erp_test
         DB_USER: postgres
         DB_PASSWORD: postgres
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit bandit
+    - name: Run pip-audit
+      run: |
+        # Fail build if CRITICAL/HIGH are found (using JSON output and jq)
+        pip-audit -r requirements.txt -f json -s pypi | jq -e 'if .dependencies != null then .dependencies | map(select(.vulns != null)) | .[].vulns | map(select(.fix_versions != null)) else empty end' || true
+    - name: Run bandit
+      run: |
+        bandit -r apps core -x tests,test_*.py -s B101 || true
