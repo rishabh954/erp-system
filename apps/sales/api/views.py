@@ -271,6 +271,9 @@ class QuotationViewSet(viewsets.ModelViewSet):
         quot.save(update_fields=["status"])
         return Response(QuotationSerializer(quot).data)
 
+    @extend_schema(
+        responses={200: QuotationSerializer}
+    )
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         quot = self.get_object()
@@ -279,6 +282,23 @@ class QuotationViewSet(viewsets.ModelViewSet):
         quot.save(update_fields=["status", "approved_by"])
         return Response(QuotationSerializer(quot).data)
 
+    from drf_spectacular.utils import extend_schema, inline_serializer
+
+    @extend_schema(
+        responses={
+            201: inline_serializer(
+                name='ConvertToOrderResponse',
+                fields={
+                    'order_id': serializers.UUIDField(),
+                    'order_number': serializers.CharField(),
+                }
+            ),
+            400: inline_serializer(
+                name='ConvertToOrderError',
+                fields={'error': serializers.CharField()}
+            )
+        }
+    )
     @action(detail=True, methods=["post"])
     def convert_to_order(self, request, pk=None):
         quot = self.get_object()
@@ -339,6 +359,17 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred."}, status=400)
 
+    @extend_schema(
+        responses={
+            201: inline_serializer(
+                name='CreateInvoiceResponse',
+                fields={
+                    'invoice_id': serializers.UUIDField(),
+                    'invoice_number': serializers.CharField(),
+                }
+            )
+        }
+    )
     @action(detail=True, methods=["post"])
     def create_invoice(self, request, pk=None):
         order = self.get_object()
@@ -412,6 +443,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         )
         return Response(PaymentSerializer(payment).data, status=201)
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name='InvoicePdfResponse',
+                fields={
+                    'pdf_url': serializers.CharField(),
+                }
+            )
+        }
+    )
     @action(detail=True, methods=["get"])
     def pdf(self, request, pk=None):
         invoice = self.get_object()
