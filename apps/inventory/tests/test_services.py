@@ -6,14 +6,15 @@ from apps.inventory.services import DeliveryService
 
 
 @pytest.mark.django_db
-def test_ship_delivery_logger_no_crash(mocker):
+@patch('apps.inventory.models.DeliveryOrder.objects.select_for_update')
+def test_ship_delivery_logger_no_crash(mock_select_for_update):
     # Setup mock delivery and mock stock service
     delivery = MagicMock()
     delivery.status = "ready"
     delivery.lines.all.return_value = []
 
     # We mock select_for_update to return the same magic mock
-    mocker.patch('apps.inventory.models.DeliveryOrder.objects.select_for_update', return_value=MagicMock(get=MagicMock(return_value=delivery)))
+    mock_select_for_update.return_value = MagicMock(get=MagicMock(return_value=delivery))
 
     # We mock ShiprocketService to raise an Exception and see if logger crashes
     with patch('apps.administration.services.integrations.ShiprocketService') as MockShiprocket:
