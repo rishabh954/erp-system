@@ -75,8 +75,24 @@ jobs:
         pip install pip-audit bandit
     - name: Run pip-audit
       run: |
-        # Fail build if CRITICAL/HIGH are found (using JSON output and jq)
-        pip-audit -r requirements.txt -f json -s pypi | jq -e 'if .dependencies != null then .dependencies | map(select(.vulns != null)) | .[].vulns | map(select(.fix_versions != null)) else empty end' || true
+        # Explicitly ignoring current vulnerabilities that will be fixed in the upcoming dependency upgrade PR.
+        # This allows the CI to stay green for other changes until the upgrade is merged.
+        IGNORES=(
+          PYSEC-2024-58 PYSEC-2024-57 PYSEC-2024-56 PYSEC-2024-59 PYSEC-2024-69 PYSEC-2024-70
+          PYSEC-2024-68 PYSEC-2024-67 PYSEC-2025-13 PYSEC-2024-102 PYSEC-2024-156 PYSEC-2024-157
+          PYSEC-2025-1 PYSEC-2025-14 PYSEC-2025-47 PYSEC-2025-105 PYSEC-2025-107 PYSEC-2025-108
+          PYSEC-2026-1297 CVE-2026-32274 GHSA-gj48-438w-jh9v GHSA-8rfp-98v4-mmr6 PYSEC-2026-35
+          PYSEC-2026-1284 GHSA-h4gh-qq45-vh27 CVE-2026-26007 GHSA-537c-gmf6-5ccf PYSEC-2026-1305
+          PYSEC-2026-89 PYSEC-2025-61 PYSEC-2026-165 CVE-2026-25990 CVE-2026-40192 CVE-2026-42309
+          CVE-2026-42310 CVE-2026-42311 PYSEC-2026-1845 PYSEC-2026-1917 PYSEC-2026-2034 CVE-2026-49452
+        )
+        IGNORE_ARGS=""
+        for vuln in "${IGNORES[@]}"; do
+          IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $vuln"
+        done
+        pip-audit -r requirements.txt --strict $IGNORE_ARGS
     - name: Run bandit
       run: |
+        # Keeping bandit as an informational check for now to match mypy's current treatment.
+        # We will enforce this without '|| true' after a dedicated cleanup sprint for Bandit findings.
         bandit -r apps core -x tests,test_*.py -s B101 || true
