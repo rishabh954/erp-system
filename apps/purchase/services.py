@@ -186,8 +186,9 @@ class PurchaseOrderService(BaseService):
                 try:
                     t = Tax.objects.get(pk=tax_id)
                     tax_amt = t.compute(taxable)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
@@ -210,8 +211,9 @@ class PurchaseOrderService(BaseService):
                     )
                     contract_line.quantity_ordered += qty
                     contract_line.save(update_fields=["quantity_ordered"])
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning("Failed to update contract: %s", e)
 
             subtotal += taxable
             tax_total += tax_amt
@@ -282,8 +284,9 @@ class PurchaseOrderService(BaseService):
                 try:
                     t = Tax.objects.get(pk=tax_id)
                     tax_amt = t.compute(taxable)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
@@ -618,7 +621,7 @@ class VendorBidService(BaseService):
             module="purchase",
             resource_type="VendorBid",
             resource_id=bid.pk,
-            description=f"Received bid from vendor",
+            description="Received bid from vendor",
         )
         return bid
 

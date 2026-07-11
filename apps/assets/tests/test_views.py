@@ -13,7 +13,7 @@ def test_asset_crud(client, user, company):
 
     from apps.assets.models import AssetCategory
     category = AssetCategory.objects.create(name="Test Category", company=company)
-    
+
     # Create
     create_url = reverse("assets:create")
     res = client.post(

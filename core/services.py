@@ -93,7 +93,7 @@ class BaseService:
         action: str,
         module: str,
         resource_type: str = "",
-        resource_id: str = "",
+        resource_id: Any = "",
         description: str = "",
         extra_data: dict = None,
     ):

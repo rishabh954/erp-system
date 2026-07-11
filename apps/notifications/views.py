@@ -2,7 +2,6 @@
 Notifications Views and API
 """
 
-from core.permissions import PermissionRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.utils import timezone

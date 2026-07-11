@@ -1,7 +1,8 @@
 import pytest
-from apps.company.models import Company
+
 from apps.authentication.models import User
-from django.contrib.auth.models import Permission
+from apps.company.models import Company
+
 
 @pytest.fixture
 def pos_company(db):
@@ -9,13 +10,14 @@ def pos_company(db):
 
 from django.core.management import call_command
 
+
 @pytest.fixture(autouse=True)
 def setup_perms(db):
     call_command('setup_permissions')
 
 @pytest.fixture
 def pos_user_with_read(db, pos_company):
-    # Customer Portal role has no POS access by default, but let's give them a role that has read-only pos, wait, no role has read-only POS. 
+    # Customer Portal role has no POS access by default, but let's give them a role that has read-only pos, wait, no role has read-only POS.
     # Let's create a custom ModulePermission for this user's role
     user = User.objects.create_user(email="read@pos.com", password="password", primary_company=pos_company, role=User.Role.EMPLOYEE)
     # The EMPLOYEE role has pos.read and pos.create, wait, I need a role that ONLY has read. Let's make CUSTOMER_PORTAL have pos.read only.

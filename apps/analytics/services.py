@@ -6,7 +6,7 @@ Handles Excel, CSV, PDF generation using openpyxl, pandas, and weasyprint.
 import csv
 import io
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 from django.db.models import QuerySet
 from django.http import HttpResponse
@@ -17,8 +17,8 @@ from django.utils import timezone
 
 
 def get_queryset_for_module(
-    module: str, company_id: int, filters: dict = None
-) -> QuerySet:
+    module: str, company_id: str, filters: dict | None = None
+) -> QuerySet | None:
     """Return a filtered queryset for the given module slug."""
     filters = filters or {}
 
@@ -28,6 +28,8 @@ def get_queryset_for_module(
             if val not in (None, "", [], {}):
                 qs = qs.filter(**{key: val})
         return qs
+
+    qs: Any = None
 
     if module == "sales_orders":
         from apps.sales.models import SalesOrder
@@ -145,7 +147,7 @@ def get_queryset_for_module(
     return _apply(qs, filters)
 
 
-def serialize_row(obj, fields: List[str]) -> Dict[str, Any]:
+def serialize_row(obj, fields: list[str]) -> dict[str, Any]:
     """Convert a model instance to a flat dict of requested fields."""
     row = {}
     for f in fields:
@@ -169,12 +171,12 @@ def serialize_row(obj, fields: List[str]) -> Dict[str, Any]:
 
 def get_data(
     module: str,
-    company_id: int,
-    columns: List[str],
-    filters: dict = None,
+    company_id: str,
+    columns: list[str],
+    filters: dict | None = None,
     sort_by: str = "-created_at",
-    limit: int = None,
-) -> List[Dict[str, Any]]:
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     """Main data fetcher — returns list of flat dicts."""
     qs = get_queryset_for_module(module, company_id, filters)
     if qs is None:
@@ -185,14 +187,14 @@ def get_data(
         if limit:
             qs = qs[:limit]
         return [serialize_row(obj, columns) for obj in qs]
-    except Exception as e:
+    except Exception:
         return []
 
 
 # ── Export helpers ─────────────────────────────────────────────────────────────
 
 
-def export_csv(data: List[Dict], filename: str = "report.csv") -> HttpResponse:
+def export_csv(data: list[dict], filename: str = "report.csv") -> HttpResponse:
     """Return an HttpResponse with CSV data attached."""
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
@@ -205,7 +207,7 @@ def export_csv(data: List[Dict], filename: str = "report.csv") -> HttpResponse:
 
 
 def export_excel(
-    data: List[Dict], filename: str = "report.xlsx", sheet_name: str = "Report"
+    data: list[dict], filename: str = "report.xlsx", sheet_name: str = "Report"
 ) -> HttpResponse:
     """Return an HttpResponse with Excel XLSX data attached using openpyxl."""
     import openpyxl
@@ -297,7 +299,7 @@ def export_excel(
 
 
 def export_pdf(
-    data: List[Dict], report_name: str = "Report", filename: str = "report.pdf"
+    data: list[dict], report_name: str = "Report", filename: str = "report.pdf"
 ) -> HttpResponse:
     """Render a PDF using weasyprint from an HTML template."""
     try:
@@ -319,7 +321,7 @@ def export_pdf(
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response.write(pdf_bytes)
         return response
-    except Exception as e:
+    except Exception:
         # Fallback to simple PDF via reportlab
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
@@ -407,10 +409,10 @@ def export_pdf(
 
 
 def get_pivot_data(
-    data: List[Dict], row_field: str, col_field: str, value_field: str
-) -> Dict:
+    data: list[dict], row_field: str, col_field: str, value_field: str
+) -> dict:
     """Build a pivot table from flat data."""
-    pivot = {}
+    pivot: dict[str, dict[str, float]] = {}
     all_cols = set()
 
     for row in data:

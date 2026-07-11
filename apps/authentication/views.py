@@ -15,7 +15,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views import View
-from core.permissions import PermissionRequiredMixin
 from django.views.generic import TemplateView
 
 from .forms import (

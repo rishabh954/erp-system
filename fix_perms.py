@@ -37,9 +37,9 @@ for file_path, class_name, new_perm in fixes:
     if not os.path.exists(file_path):
         print(f'File not found: {file_path}')
         continue
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         content = f.read()
-    
+
     # We want to replace required_permission = \"...\" ONLY inside the specific class.
     lines = content.split('\n')
     inside_class = False
@@ -49,17 +49,17 @@ for file_path, class_name, new_perm in fixes:
             inside_class = True
             class_indent = line[:len(line) - len(line.lstrip())]
             continue
-        
+
         if inside_class:
             if line.strip().startswith('class ') and len(line) - len(line.lstrip()) <= len(class_indent):
                 inside_class = False
-                
+
         if inside_class and 'required_permission' in line:
             old_perm_match = re.search(r'\"([a-zA-Z0-9_\.]+)\"', line) or re.search(r'\'([a-zA-Z0-9_\.]+)\'', line)
             if old_perm_match:
                 lines[i] = line.replace(old_perm_match.group(0), f'\"{new_perm}\"')
                 print(f'Updated {class_name} in {file_path}')
                 inside_class = False # Only replace the first one
-                
+
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))

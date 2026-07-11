@@ -1,7 +1,6 @@
-import logging
 import json
+import logging
 
-from core.permissions import PermissionRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -10,7 +9,6 @@ from django.views import View
 from apps.company.views import CompanyMixin
 from apps.inventory.models import Product, ProductCategory, StockMovement, Warehouse
 from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
-
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +137,9 @@ class POSCheckoutAPIView(CompanyMixin, View):
                             reference_type="POSOrder",
                             reference_id=str(order.id),
                         )
-                    except Exception:
-                        pass  # Stock deduction is best-effort; don't block the sale
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning("Stock deduction failed: %s", e)
 
                 # 3. Record Payment
                 POSPayment.objects.create(
@@ -168,7 +167,7 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 {"status": "error", "message": "A product in the cart was not found."},
                 status=400,
             )
-        except Exception as e:
+        except Exception:
             logger.error("POS checkout failed", exc_info=True)
             return JsonResponse(
                 {

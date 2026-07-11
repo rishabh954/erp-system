@@ -49,7 +49,7 @@ class Project(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
         on_delete=models.SET_NULL,
         related_name="managed_projects",
     )
-    team_members = models.ManyToManyField(
+    team_members: models.ManyToManyField = models.ManyToManyField(
         "authentication.User", through="ProjectMember", related_name="projects"
     )
     is_billable = models.BooleanField(default=False)

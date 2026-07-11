@@ -8,7 +8,6 @@ from django.views import View
 
 from .models import Product, StockRecord
 
-
 logger = logging.getLogger(__name__)
 
 

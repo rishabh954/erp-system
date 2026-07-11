@@ -227,7 +227,7 @@ class SalesOrderLine(models.Model):
 
 class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
-    from core.constants.sales import InvoiceStatus, InvoiceDocumentType
+    from core.constants.sales import InvoiceDocumentType, InvoiceStatus
     Status = InvoiceStatus
     DocumentType = InvoiceDocumentType
 
@@ -378,7 +378,7 @@ class InvoiceLine(models.Model):
 
 class Payment(CompanyScoped, SequenceMixin):
 
-    from core.constants.sales import PaymentStatus, PaymentMethod
+    from core.constants.sales import PaymentMethod, PaymentStatus
     Status = PaymentStatus
     Method = PaymentMethod
 

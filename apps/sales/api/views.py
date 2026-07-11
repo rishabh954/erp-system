@@ -1,10 +1,10 @@
 import logging
+
 """
 Sales REST API
 Quotations, Sales Orders, Invoices, Payments
 """
 
-from core.permissions import PermissionRequiredMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action

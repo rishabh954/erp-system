@@ -60,8 +60,9 @@ def _write_audit(action, instance, changes=None, user=None):
             changes=changes or {},
             timestamp=timezone.now(),
         )
-    except Exception:
-        pass  # Never let audit fail silently block the main operation
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to save audit log: %s", e)  # Never let audit fail silently block the main operation
 
 
 def register_audit_signals():
@@ -110,8 +111,9 @@ def register_audit_signals():
             make_post_save(model_cls)
             make_post_delete(model_cls)
 
-        except Exception:
-            pass  # If a model can't be imported yet, skip gracefully
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Model not found: %s", e)  # If a model can't be imported yet, skip gracefully
 
 
 # Register on app ready

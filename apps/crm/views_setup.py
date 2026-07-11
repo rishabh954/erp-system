@@ -1,8 +1,8 @@
-from core.mixins import CompanyMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+
+from core.mixins import CompanyMixin
 
 from .models import LeadAssignmentRule, SalesTarget, Territory
 
@@ -42,7 +42,7 @@ class TerritoryUpdateView(CompanyMixin, UpdateView):
         return super().form_valid(form)
 
 
-class TerritoryDeleteView(CompanyMixin, DeleteView):
+class TerritoryDeleteView(CompanyMixin, DeleteView):  # type: ignore[misc]
     model = Territory
     success_url = reverse_lazy("crm:territory_list")
 

@@ -69,8 +69,9 @@ class LogoutAPIView(APIView):
             if refresh_token:
                 token = RefreshToken(refresh_token)
                 token.blacklist()
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to blacklist token: %s", e)
 
         ActivityLog.objects.create(
             user=request.user,

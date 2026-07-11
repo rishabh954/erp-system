@@ -3,8 +3,9 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.authentication.models import User, ModulePermission
+from apps.authentication.models import ModulePermission, User
 from apps.company.models import Company
+
 
 @pytest.mark.django_db
 class TestRBAC:
@@ -12,16 +13,16 @@ class TestRBAC:
     def setup_data(self):
         self.company = Company.objects.create(name="Test Company")
         self.super_admin = User.objects.create_superuser("admin@test.com", "pass", first_name="Admin", last_name="User")
-        
+
         # User with limited role
         self.employee = User.objects.create_user(
-            "emp@test.com", "pass", 
+            "emp@test.com", "pass",
             first_name="Emp", last_name="User",
             role=User.Role.EMPLOYEE,
             primary_company=self.company
         )
         self.employee.companies.add(self.company)
-        
+
         # Give employee access to accounting read ONLY
         ModulePermission.objects.update_or_create(
             role=User.Role.EMPLOYEE,

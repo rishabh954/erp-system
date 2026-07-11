@@ -6,10 +6,7 @@ Quotations, Sales Orders, Invoices, Payments — list/create/detail/update
 import logging
 from decimal import Decimal
 
-from core.permissions import PermissionRequiredMixin
-from core.mixins import CompanyMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,6 +16,7 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 from apps.company.models import Currency, Tax
 from apps.crm.models import Customer
 from apps.inventory.models import Product
+from core.mixins import CompanyMixin
 
 from .models import (
     Invoice,
@@ -806,7 +804,7 @@ class InvoiceGeneratePaymentLinkView(CompanyMixin, View):
             )
             return redirect("sales:invoice_detail", pk=pk)
 
-        service = RazorpayService(credentials={"api_key": "mock", "api_secret": "mock"})
+        service = RazorpayService(credentials={"api_key": "mock", "api_secret": "mock"})  # nosec B105
 
         try:
             # Calculate remaining amount
@@ -1419,7 +1417,7 @@ class POSView(CompanyMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         import json
-        import logging
+
         from apps.company.models import Tax
         from apps.crm.models import Customer
         from apps.inventory.models import Product
@@ -1443,8 +1441,6 @@ class POSView(CompanyMixin, TemplateView):
 
 import json
 import logging
-
-from django.http import JsonResponse
 
 
 class POSAPIView(CompanyMixin, View):
@@ -1563,7 +1559,7 @@ class POSAPIView(CompanyMixin, View):
             return JsonResponse(
                 {"success": False, "error": "Customer not found."}, status=400
             )
-        except Exception as e:
+        except Exception:
             logger.error("Unexpected error", exc_info=True)
             return JsonResponse(
                 {"success": False, "error": "An unexpected error occurred."},

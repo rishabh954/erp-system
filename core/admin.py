@@ -287,10 +287,9 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ["employee_id", "first_name", "last_name", "email", "national_id"]
     readonly_fields = ["created_at", "updated_at"]
 
+    @admin.display(description="Name")
     def full_name(self, obj):
         return obj.full_name
-
-    full_name.short_description = "Name"
 
 
 @admin.register(Attendance)

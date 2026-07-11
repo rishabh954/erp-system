@@ -6,7 +6,6 @@ from django.core.management.base import BaseCommand
 
 from apps.company.tasks import update_exchange_rates
 
-
 logger = logging.getLogger(__name__)
 
 

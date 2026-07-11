@@ -57,7 +57,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs["password"] != attrs.pop("password_confirm"):
             raise serializers.ValidationError(
-                {"password_confirm": "Passwords do not match."}
+                {"password_confirm": "Passwords do not match."}  # nosec B105
             )
         return attrs
 
@@ -91,7 +91,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError(
-                {"new_password_confirm": "Passwords do not match."}
+                {"new_password_confirm": "Passwords do not match."}  # nosec B105
             )
         return attrs
 

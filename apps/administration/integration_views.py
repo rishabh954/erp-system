@@ -1,4 +1,5 @@
 import logging
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import redirect, render
@@ -11,7 +12,6 @@ from apps.administration.models import (
     WebhookEndpoint,
     WhatsAppConfig,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +84,8 @@ class OAuthMockConnectView(LoginRequiredMixin, AdminRequiredMixin, View):
             defaults={"integration_type": integration_type, "name": provider.title()},
         )
         integration.credentials = {
-            "oauth_token": "mock_token_123",
-            "refresh_token": "mock_refresh_456",
+            "oauth_token": "mock_token_123",  # nosec B105
+            "refresh_token": "mock_refresh_456",  # nosec B105
         }
         integration.status = Integration.Status.CONNECTED
         integration.save()

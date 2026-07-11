@@ -142,7 +142,7 @@ class GoogleDriveService(BaseIntegrationService):
                 self.is_connected = True
             else:
                 self.is_connected = False
-        except Exception as e:
+        except Exception:
             self.is_connected = False
 
     def upload_file(self, file_name, file_content_or_path, folder_id=None):

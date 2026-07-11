@@ -60,7 +60,7 @@ class Command(BaseCommand):
         if not admin_user:
             admin_user = User.objects.create_superuser(
                 email=admin_email,
-                password="admin",
+                password="admin",  # nosec B106
                 first_name="Super",
                 last_name="Admin",
             )
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             admin_user.primary_company = company
             admin_user.save()
             self.stdout.write(
-                self.style.SUCCESS(f"Admin user created (admin@acme.com / admin)")
+                self.style.SUCCESS("Admin user created (admin@acme.com / admin)")
             )
 
         # Add a couple of staff users

@@ -8,7 +8,7 @@ from django.utils import timezone
 from faker import Faker
 
 from apps.authentication.models import User
-from apps.crm.models import Customer, Vendor
+from apps.crm.models import Customer
 from apps.helpdesk.models import Ticket, TicketCategory
 from apps.inventory.models import (
     Product,
@@ -22,9 +22,9 @@ from apps.manufacturing.models import (
     BillOfMaterialLine,
     ManufacturingOrder,
 )
-from apps.purchase.models import PurchaseOrder, PurchaseOrderLine
+from apps.purchase.models import PurchaseOrder, PurchaseOrderLine, Vendor
 from apps.sales.models import SalesOrder, SalesOrderLine
-from core.models import Company
+from apps.company.models import Company
 
 
 class Command(BaseCommand):
@@ -61,7 +61,7 @@ class Command(BaseCommand):
         if not admin_user:
             admin_user = User.objects.create_superuser(
                 email=admin_email,
-                password="admin",
+                password="admin",  # nosec B106
                 first_name="Super",
                 last_name="Admin",
             )
@@ -69,7 +69,7 @@ class Command(BaseCommand):
             admin_user.primary_company = company
             admin_user.save()
             self.stdout.write(
-                self.style.SUCCESS(f"Admin user created (admin@acme.com / admin)")
+                self.style.SUCCESS("Admin user created (admin@acme.com / admin)")
             )
 
         # Add a couple of staff users

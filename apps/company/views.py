@@ -3,11 +3,13 @@ Company Management Views
 Settings, Branches, Departments, Users, Fiscal Years, Currencies
 """
 
-from core.mixins import CompanyMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import ListView, TemplateView, UpdateView, View
+
+from apps.authentication.models import UserCompany
+from core.mixins import CompanyMixin
 
 from .models import (
     Branch,
@@ -19,9 +21,6 @@ from .models import (
     Tax,
     TaxGroup,
 )
-
-
-from apps.authentication.models import UserCompany
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
@@ -48,8 +47,9 @@ class CompanyCreateView(LoginRequiredMixin, View):
             try:
                 call_command("seed_currencies")
                 currencies = Currency.objects.filter(is_active=True)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("Failed to seed currencies: %s", e)
 
         return render(
             request,

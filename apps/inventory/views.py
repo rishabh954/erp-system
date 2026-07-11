@@ -1,18 +1,18 @@
 import logging
+
 """
 Inventory Views
 Products, Warehouses, Stock Movements, Transfers, Reports
 """
 
-from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, F, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, View
+
+from core.mixins import CompanyMixin
 
 from .models import (
     InventoryTransfer,
@@ -22,7 +22,6 @@ from .models import (
     StockRecord,
     Warehouse,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -658,7 +657,7 @@ class ProductCategoryUpdateView(CompanyMixin, SuccessMessageMixin, UpdateView):
         return ProductCategory.objects.filter(company=self.company())
 
 
-class ProductCategoryDeleteView(CompanyMixin, DeleteView):
+class ProductCategoryDeleteView(CompanyMixin, DeleteView):  # type: ignore[misc]
     required_permission = "inventory.delete"
     model = ProductCategory
     template_name = "inventory/categories/confirm_delete.html"

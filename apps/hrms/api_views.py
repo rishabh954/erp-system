@@ -9,7 +9,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import Attendance, BiometricLog, Employee
 
-
 logger = logging.getLogger(__name__)
 
 

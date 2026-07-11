@@ -6,17 +6,14 @@ All 13 AI features with streaming chat, SSE, OCR, forecasting, insights, and NLP
 import json
 import logging
 
-from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from apps.ai.models import AIConversation, AIInsight, AIMessage, NLPReport, OCRDocument
-
+from core.mixins import CompanyMixin
 
 logger = logging.getLogger(__name__)
 
@@ -407,7 +404,7 @@ class OCRUploadView(CompanyMixin, TemplateView):
             doc.status = OCRDocument.Status.DONE
             doc.save()
 
-        messages.success(request, f"Document uploaded and processing started.")
+        messages.success(request, "Document uploaded and processing started.")
         return redirect("ai:ocr_result", pk=doc.pk)
 
 

@@ -49,7 +49,7 @@ class HasModulePermission(permissions.BasePermission):
             required_perm = view.get_required_permission(request)
         else:
             required_perm = getattr(view, 'required_permission', None)
-        
+
         if not required_perm:
             from django.core.exceptions import ImproperlyConfigured
             raise ImproperlyConfigured(
@@ -73,7 +73,7 @@ class PermissionRequiredMixin(AccessMixin):
     Mixin for class-based views to enforce module permissions.
     Requires `required_permission` to be set on the view class.
     """
-    required_permission = None
+    required_permission: str | None = None
 
     def get_required_permission(self, request=None):
         if self.required_permission is None:

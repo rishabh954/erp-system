@@ -26,7 +26,7 @@ def update_exchange_rates():
 
         # Using exchangerate.host (free tier, no API key needed)
         url = f"https://api.exchangerate.host/latest?base={base_currency.code}"
-        with urllib.request.urlopen(url, timeout=10) as response:
+        with urllib.request.urlopen(url, timeout=10) as response:  # nosec B310
             data = json.loads(response.read())
 
         rates = data.get("rates", {})

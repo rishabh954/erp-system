@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
+
 from core.permissions import HasModulePermission
 
 from . import serializers
@@ -254,7 +255,7 @@ class WarehouseViewSet(CompanyScopedViewSet):
         return self.required_permission
     queryset = Warehouse.objects.all()
     serializer_class = serializers.ErpWarehouseSerializer
-    filterset_fields = []
+    filterset_fields: list[str] = []
     search_fields = ["name", "code"]
     ordering_fields = ["name", "code"]
     ordering = ["name"]

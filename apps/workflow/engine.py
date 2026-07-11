@@ -552,8 +552,8 @@ class WorkflowEngine:
                 document.status = "rejected"
             try:
                 document.save(update_fields=["status"])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to update document status: %s", e)
 
         event = (
             WorkflowNotificationTemplate.Event.APPROVED
@@ -776,7 +776,7 @@ class WorkflowEngine:
                 try:
                     return Decimal(str(v))
                 except Exception:
-                    pass
+                    continue  # nosec B112
         return Decimal("0")
 
     @classmethod

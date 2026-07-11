@@ -3,22 +3,25 @@ CRM Views
 Leads, Pipeline, Customers, Activities
 """
 
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView, View
+from django.views.generic import (
+    CreateView,
+    DetailView,
+    ListView,
+    TemplateView,
+    UpdateView,
+    View,
+)
 
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
 from .forms import LeadForm
 from .models import Campaign, Contract, Customer, Lead, LeadActivity
-
-
 
 # ════════════════════════ LEADS ═══════════════════════════════════════════════
 
@@ -220,8 +223,9 @@ class LeadUpdateStatusView(CompanyMixin, View):
             try:
                 data = json.loads(request.body)
                 new_status = data.get("status")
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("Failed to parse status: %s", e)
 
         if new_status in dict(Lead.Status.choices):
             lead.status = new_status
@@ -550,8 +554,9 @@ class CustomerDetailView(CompanyMixin, DetailView):
                 or 0
             )
             ctx["outstanding"] = customer.outstanding_balance
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to get customer context: %s", e)
         return ctx
 
 

@@ -9,7 +9,6 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from core.services import BaseService
 from core.models import (
     AddressMixin,
     BranchScoped,
@@ -17,6 +16,7 @@ from core.models import (
     ContactMixin,
     SequenceMixin,
 )
+from core.services import BaseService
 
 
 class JobTitle(CompanyScoped):

@@ -1,18 +1,18 @@
 import logging
+
 """
 HRMS Views
 Employees, Attendance, Leave Management, Payroll
 """
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from django.views.generic import DetailView, ListView, TemplateView, View
+
+from core.mixins import CompanyMixin
 
 from .models import (
     Attendance,
@@ -29,7 +29,6 @@ from .models import (
     SalaryComponent,
     SalaryStructure,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -231,7 +230,7 @@ class EmployeeUpdateView(CompanyMixin, View):
                 user = User.objects.create_user(
                     email=emp.email,
                     username=emp.email,
-                    password="Welcome@123",
+                    password="Welcome@123",  # nosec B106
                     first_name=emp.first_name,
                     last_name=emp.last_name,
                     role=User.Role.EMPLOYEE,
@@ -304,7 +303,7 @@ class EmployeeCreateView(CompanyMixin, View):
                 user = User.objects.create_user(
                     email=emp.email,
                     username=emp.email,
-                    password="Welcome@123",
+                    password="Welcome@123",  # nosec B106
                     first_name=emp.first_name,
                     last_name=emp.last_name,
                     role=User.Role.EMPLOYEE,

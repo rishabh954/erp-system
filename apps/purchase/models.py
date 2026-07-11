@@ -7,7 +7,6 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from core.services import BaseService
 from core.models import (
     AddressMixin,
     CompanyScoped,
@@ -16,6 +15,7 @@ from core.models import (
     NotesMixin,
     SequenceMixin,
 )
+from core.services import BaseService
 
 
 class Vendor(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):

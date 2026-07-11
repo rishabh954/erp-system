@@ -146,5 +146,6 @@ def process_ocr_document(doc_id: str):
             OCRDocument.objects.filter(id=doc_id).update(
                 status=OCRDocument.Status.FAILED, error_message="An unexpected error occurred."
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to save report: %s", e)

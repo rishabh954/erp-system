@@ -79,19 +79,19 @@ def test_product_list_view_n_plus_one(client, user, company):
             quantity_on_hand=Decimal("10.0"),
             average_cost=Decimal("5.0"),
         )
-    
+
     # Pre-fetch the view once to warm up any caches
     client.get(reverse("inventory:products"))
 
-    from django.test.utils import CaptureQueriesContext
     from django.db import connection
+    from django.test.utils import CaptureQueriesContext
 
     # With the annotation fix, this should only take a small constant number of queries
     # rather than scaling linearly with the number of products
     with CaptureQueriesContext(connection) as ctx:
         response = client.get(reverse("inventory:products"))
         assert response.status_code == 200
-    
+
     # If N+1 was present, 15 products * 2 queries = 30+ extra queries.
     # The baseline is around 19 queries for auth, session, context processors, etc.
     assert len(ctx.captured_queries) < 25, f"Too many queries ({len(ctx.captured_queries)})"

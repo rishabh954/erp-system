@@ -38,7 +38,7 @@ def run_scheduled_report(self, schedule_id: str):
         # Fetch data
         data = get_data(
             module=report.module,
-            company_id=report.company_id,
+            company_id=str(report.company_id),
             columns=report.columns,
             filters=report.filters,
             sort_by=report.sort_by,

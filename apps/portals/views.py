@@ -1,4 +1,3 @@
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -8,12 +7,10 @@ from apps.crm.models import Contract
 from apps.documents.models import Document
 from apps.helpdesk.models import Ticket, TicketCategory, TicketReply
 from apps.hrms.models import Employee, ExpenseClaim, LeaveRequest
-from apps.purchase.models import Bill
+from apps.purchase.models import Bill, PurchaseOrder
 from apps.purchase.models import Payment as PurchasePayment
-from apps.purchase.models import PurchaseOrder
-from apps.sales.models import Invoice
+from apps.sales.models import Invoice, SalesOrder, Shipment
 from apps.sales.models import Payment as SalesPayment
-from apps.sales.models import SalesOrder, Shipment
 
 # ------------------------------------------------------------------------
 # CUSTOMER PORTAL VIEWS

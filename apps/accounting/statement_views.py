@@ -1,5 +1,5 @@
-import logging
 import csv
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -10,7 +10,6 @@ from django.views.generic import CreateView, ListView
 from apps.company.views import CompanyMixin
 
 from .models import BankStatement, BankStatementLine
-
 
 logger = logging.getLogger(__name__)
 

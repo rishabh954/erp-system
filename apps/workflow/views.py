@@ -6,8 +6,6 @@ Includes: Designer, Pending Approvals, History, Delegation, Visual Flow API
 import json
 import logging
 
-from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
@@ -25,7 +23,7 @@ from apps.workflow.models import (
     WorkflowNotificationTemplate,
     WorkflowStep,
 )
-
+from core.mixins import CompanyMixin
 
 logger = logging.getLogger(__name__)
 

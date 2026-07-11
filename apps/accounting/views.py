@@ -1,4 +1,5 @@
 import logging
+
 """
 Accounting Views
 Chart of Accounts, Journal Entries, Bank Accounts, Financial Reports
@@ -8,13 +9,11 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView, View
 
 from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from core.services import BaseService
 
 from .models import (
@@ -25,7 +24,6 @@ from .models import (
     JournalEntry,
     JournalItem,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -651,13 +649,10 @@ urlpatterns = [
     path("reports/profit-loss/", ProfitAndLossView.as_view(), name="profit_loss"),
     path("reports/trial-balance/", TrialBalanceView.as_view(), name="trial_balance"),
 ]
-from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View
 
 from apps.crm.models import Customer
 from apps.sales.models import Invoice, InvoiceLine
-from core.services import BaseService
 
 
 class IssueCreditNoteView(CompanyMixin, View):

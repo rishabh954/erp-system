@@ -5,7 +5,6 @@ CEO, HR, Sales, Finance dashboards — all KPIs and chart data
 
 from datetime import timedelta
 
-from core.permissions import PermissionRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, F, Q, Sum
 from django.shortcuts import redirect
@@ -158,46 +157,74 @@ class CEODashboardAPIView(APIView):
         revenue_data = []
         expense_data = []
 
+        from django.db.models import Count
+        from django.db.models.functions import TruncMonth
+
         # Build monthly chart for last 12 months
         today = timezone.localdate()
+        m_date_start = today.replace(day=1) - timedelta(days=11 * 28)
+        m_date_start = m_date_start.replace(day=1)
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        m_end_today = today.replace(day=last_day)
+
+        rev_qs = (
+            Invoice.objects.filter(
+                company=company,
+                invoice_date__range=(m_date_start, m_end_today),
+                status__in=["sent", "partial", "paid"],
+            )
+            .annotate(month=TruncMonth("invoice_date"))
+            .values("month")
+            .annotate(t=Sum("total"))
+        )
+        rev_dict = {
+            (item["month"].date() if hasattr(item["month"], "date") else item["month"]).strftime("%b %y"): item["t"]
+            for item in rev_qs
+            if item["month"]
+        }
+
+        exp_qs = (
+            JournalItem.objects.filter(
+                journal_entry__company=company,
+                journal_entry__date__range=(m_date_start, m_end_today),
+                journal_entry__status="posted",
+                account__account_type="expense",
+            )
+            .annotate(month=TruncMonth("journal_entry__date"))
+            .values("month")
+            .annotate(t=Sum("debit"))
+        )
+        exp_dict = {
+            (item["month"].date() if hasattr(item["month"], "date") else item["month"]).strftime("%b %y"): item["t"]
+            for item in exp_qs
+            if item["month"]
+        }
+
         for i in range(11, -1, -1):
             m_date = today.replace(day=1) - timedelta(days=i * 28)
             m_date = m_date.replace(day=1)
-            last_day = calendar.monthrange(m_date.year, m_date.month)[1]
-            m_end = m_date.replace(day=last_day)
 
             label = m_date.strftime("%b %y")
             months.append(label)
-
-            rev = (
-                Invoice.objects.filter(
-                    company=company,
-                    invoice_date__range=(m_date, m_end),
-                    status__in=["sent", "partial", "paid"],
-                ).aggregate(t=Sum("total"))["t"]
-                or 0
-            )
-
-            exp = (
-                JournalItem.objects.filter(
-                    journal_entry__company=company,
-                    journal_entry__date__range=(m_date, m_end),
-                    journal_entry__status="posted",
-                    account__account_type="expense",
-                ).aggregate(t=Sum("debit"))["t"]
-                or 0
-            )
-
-            revenue_data.append(float(rev))
-            expense_data.append(float(exp))
+            revenue_data.append(float(rev_dict.get(label, 0)))
+            expense_data.append(float(exp_dict.get(label, 0)))
 
         # Pipeline by stage
         from apps.crm.models import Lead
 
+        pipeline_qs = (
+            Lead.objects.filter(
+                company=company,
+                is_deleted=False,
+                status__in=["new", "contacted", "qualified", "proposal", "won"],
+            )
+            .values("status")
+            .annotate(c=Count("id"))
+        )
+        pipeline_counts = {item["status"]: item["c"] for item in pipeline_qs}
+
         pipeline = {
-            label: Lead.objects.filter(
-                company=company, status=val, is_deleted=False
-            ).count()
+            label: pipeline_counts.get(val, 0)
             for val, label in [
                 ("new", "New"),
                 ("contacted", "Contacted"),
@@ -895,7 +922,7 @@ class CalendarEventsAPIView(LoginRequiredMixin, View):
                                 leave.end_date + timezone.timedelta(days=1)
                             ).isoformat(),  # exclusive end
                             "color": "#17a2b8",  # info blue
-                            "url": f"/hrms/leaves/",
+                            "url": "/hrms/leaves/",
                         }
                     )
 

@@ -9,11 +9,14 @@ All services degrade gracefully when OPENAI_API_KEY is not set.
 import io
 import json
 import logging
+import re
 import time
+from collections.abc import Generator
 from datetime import timedelta
-from typing import Generator
+from typing import Any
 
 from django.conf import settings
+from django.db.models import Sum
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -73,7 +76,7 @@ Format responses using markdown. Use tables for comparisons. Be professional and
         context: str = "general",
         stream: bool = False,
         max_tokens: int = 1500,
-    ) -> str | Generator:
+    ) -> tuple[str, int] | Generator:
         """Send messages to LLM and return response."""
         client = _get_openai()
 
@@ -327,19 +330,14 @@ class ForecastingService:
             end = timezone.now().date()
             start = end - timedelta(days=90)
 
-            orders = (
-                SalesOrder.objects.filter(
-                    company=company, order_date__gte=start, order_date__lte=end
-                )
-                .values("order_date")
-                .annotate(total=models_sum("total"))
-            )
+            qs = SalesOrder.objects.filter(company=company, order_date__gte=start, order_date__lte=end)
+            orders = qs.values("order_date").annotate(total=Sum("total"))
 
             # Fill in missing days with 0
-            date_series = {}
+            date_series: dict[str, float] = {}
             d = start
             while d <= end:
-                date_series[str(d)] = 0
+                date_series[str(d)] = 0.0
                 d += timedelta(days=1)
             for o in orders:
                 date_series[str(o["order_date"])] = float(o["total"] or 0)
@@ -356,8 +354,11 @@ class ForecastingService:
             # Predict future
             future_x = np.arange(len(y), len(y) + days_ahead).reshape(-1, 1)
             future_x_poly = poly.transform(future_x)
-            predicted = model.predict(future_x_poly)
+            forecast_y: Any = model.predict(future_x_poly)
 
+            # Cap minimum at 0
+            forecast_y = np.maximum(forecast_y, 0)
+            
             # Build labels
             future_dates = [
                 (end + timedelta(days=i + 1)).strftime("%b %d")
@@ -366,8 +367,8 @@ class ForecastingService:
             historical_dates = [d for d in date_series.keys()]
 
             # Confidence bands (±15%)
-            lower = [max(0, p * 0.85) for p in predicted]
-            upper = [p * 1.15 for p in predicted]
+            lower = [max(0, p * 0.85) for p in forecast_y]
+            upper = [p * 1.15 for p in forecast_y]
 
             r2 = model.score(x_poly, y)
 
@@ -377,7 +378,7 @@ class ForecastingService:
                 "historical_labels": historical_dates[-30:],
                 "historical_values": y[-30:].tolist(),
                 "forecast_labels": future_dates,
-                "predicted": [max(0, float(p)) for p in predicted],
+                "predicted": [float(p) for p in forecast_y],
                 "lower_bound": [float(l) for l in lower],
                 "upper_bound": [float(u) for u in upper],
                 "metrics": {
@@ -385,7 +386,7 @@ class ForecastingService:
                     "algorithm": "Polynomial Regression (degree=2)",
                     "training_days": len(y),
                     "total_predicted": round(
-                        sum(max(0, float(p)) for p in predicted), 2
+                        sum(float(p) for p in forecast_y), 2
                     ),
                 },
             }
@@ -420,13 +421,14 @@ class ForecastingService:
                                 "reorder_level": reorder,
                                 "reorder_quantity": float(p.reorder_quantity or 0),
                                 "days_until_reorder": max(0, round(days_until_reorder)),
+                                "total": stock,
                                 "urgency": (
                                     "critical" if days_until_reorder <= 7 else "warning"
                                 ),
                             }
                         )
 
-            alerts.sort(key=lambda x: x["days_until_reorder"])
+            alerts.sort(key=lambda x: float(x.get("days_until_reorder", 0)))
 
             return {
                 "type": "inventory",
@@ -459,15 +461,12 @@ class ForecastingService:
             end = timezone.now().date()
             start = end - timedelta(days=60)
 
-            items = (
-                SalesOrderLine.objects.filter(
-                    sales_order__order_date__gte=start,
-                    sales_order__order_date__lte=end,
-                    **filters,
-                )
-                .values("sales_order__order_date")
-                .annotate(qty=models_sum("quantity"))
+            qs: Any = SalesOrderLine.objects.filter(
+                sales_order__order_date__gte=start,
+                sales_order__order_date__lte=end,
+                **filters,
             )
+            items = qs.values("sales_order__order_date").annotate(qty=Sum("quantity"))
 
             date_map = {}
             d = start
@@ -756,8 +755,9 @@ Return ONLY a JSON array:
                     raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
                 if raw.startswith("["):
                     return json.loads(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to parse AI response: %s", e)
 
         # Fallback: simple keyword matching
         results = []
@@ -859,7 +859,7 @@ Use clear business language. Format with markdown headers."""
 
         # Sales this month
         try:
-            from apps.sales.models import SalesInvoice, SalesOrder
+            from apps.sales.models import Invoice, SalesOrder
 
             metrics["monthly_revenue"] = float(
                 SalesOrder.objects.filter(
@@ -868,19 +868,20 @@ Use clear business language. Format with markdown headers."""
                 or 0
             )
             metrics["outstanding_invoices"] = float(
-                SalesInvoice.objects.filter(company=company, status="sent").aggregate(
+                Invoice.objects.filter(company=company, status="sent").aggregate(
                     t=Sum("total")
                 )["t"]
                 or 0
             )
             metrics["overdue_invoices"] = float(
-                SalesInvoice.objects.filter(
+                Invoice.objects.filter(
                     company=company, status="overdue"
                 ).aggregate(t=Sum("total"))["t"]
                 or 0
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to create Invoice for intent: %s", e)
 
         # Purchase this month
         try:
@@ -892,8 +893,9 @@ Use clear business language. Format with markdown headers."""
                 ).aggregate(t=Sum("total"))["t"]
                 or 0
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to check stock for intent: %s", e)
 
         # Expenses
         try:
@@ -905,8 +907,9 @@ Use clear business language. Format with markdown headers."""
                 ).aggregate(t=Sum("total_amount"))["t"]
                 or 0
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to create Lead for intent: %s", e)
 
         metrics["period"] = f"{month_start.strftime('%B %Y')}"
         return metrics
@@ -1033,8 +1036,9 @@ Give a clear, concise business answer in 2-3 sentences."""
             if intent.get("sort_by"):
                 try:
                     qs = qs.order_by(f"-{intent['sort_by']}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning("Failed to apply sort_by: %s", e)
 
             qs = qs[:limit]
             results = []

@@ -6,7 +6,6 @@ All report CRUD, export (Excel/CSV/PDF), pivot, chart, and scheduling.
 import json
 import logging
 
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, JsonResponse
@@ -16,7 +15,6 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 
 from .models import CustomReport, ReportExecution, SavedReport, ScheduledReport
 from .services import export_csv, export_excel, export_pdf, get_data, get_pivot_data
-
 
 logger = logging.getLogger(__name__)
 

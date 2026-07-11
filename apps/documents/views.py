@@ -5,15 +5,13 @@ Upload, Categories, Version Control, Approval Workflow
 
 import os
 
-from core.mixins import CompanyMixin
-from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, View
 
+from core.mixins import CompanyMixin
 from core.services import BaseService
 
 from .models import Document, DocumentCategory, DocumentVersion

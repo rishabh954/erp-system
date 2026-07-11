@@ -48,9 +48,9 @@ billiard==4.2.4
     # via
     #   -r requirements.in
     #   celery
-black==24.4.2
+black==26.3.1
     # via -r requirements.in
-bleach==6.1.0
+bleach==6.4.0
     # via -r requirements.in
 boto3==1.34.121
     # via -r requirements.in
@@ -121,11 +121,11 @@ coverage[toml]==7.14.3
     # via
     #   -r requirements.in
     #   pytest-cov
-cron-descriptor==2.1.0
+cron-descriptor==1.4.5
     # via
     #   -r requirements.in
     #   django-celery-beat
-cryptography==42.0.8
+cryptography==48.0.1
     # via
     #   -r requirements.in
     #   google-auth
@@ -142,7 +142,7 @@ distro==1.9.0
     # via
     #   -r requirements.in
     #   openai
-django==5.0.6
+django==5.2.16
     # via
     #   -r requirements.in
     #   django-anymail
@@ -170,7 +170,7 @@ django==5.0.6
     #   drf-spectacular
 django-anymail==10.3
     # via -r requirements.in
-django-celery-beat==2.6.0
+django-celery-beat==2.9.0
     # via -r requirements.in
 django-celery-results==2.5.1
     # via -r requirements.in
@@ -212,7 +212,7 @@ django-simple-history==3.12.0
     # via -r requirements.in
 django-storages==1.14.3
     # via -r requirements.in
-django-stubs==5.0.2
+django-stubs==5.2.0
     # via -r requirements.in
 django-stubs-ext==6.0.6
     # via
@@ -229,7 +229,7 @@ djangorestframework==3.15.2
     #   -r requirements.in
     #   djangorestframework-simplejwt
     #   drf-spectacular
-djangorestframework-simplejwt==5.3.1
+djangorestframework-simplejwt==5.5.1
     # via -r requirements.in
 drf-spectacular==0.29.0
     # via -r requirements.in
@@ -377,7 +377,7 @@ lxml==6.1.1
     # via
     #   -r requirements.in
     #   svglib
-markdown==3.6
+markdown==3.8.1
     # via -r requirements.in
 matplotlib-inline==0.2.2
     # via
@@ -429,7 +429,7 @@ pathspec==1.1.1
     #   black
 phonenumbers==8.13.39
     # via -r requirements.in
-pillow==11.2.1
+pillow==12.2.0
     # via
     #   -r requirements.in
     #   pytesseract
@@ -534,7 +534,7 @@ pypng==0.20220715.0
     #   qrcode
 pytesseract==0.3.13
     # via -r requirements.in
-pytest==8.2.2
+pytest==9.0.3
     # via
     #   -r requirements.in
     #   pytest-cov
@@ -602,7 +602,7 @@ scipy==1.18.0
     # via
     #   -r requirements.in
     #   scikit-learn
-sentry-sdk==2.5.1
+sentry-sdk==2.8.0
     # via -r requirements.in
 six==1.17.0
     # via
@@ -713,7 +713,7 @@ wcwidth==0.8.1
     # via
     #   -r requirements.in
     #   prompt-toolkit
-weasyprint==62.3
+weasyprint==68.0
     # via -r requirements.in
 webencodings==0.5.1
     # via

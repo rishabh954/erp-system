@@ -1,8 +1,8 @@
-from core.services import BaseService
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.purchase.models import RequestForQuotation, RFQLine
+from core.services import BaseService
 
 from .models import StockMovement
 

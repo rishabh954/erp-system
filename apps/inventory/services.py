@@ -68,7 +68,7 @@ class InventoryAnalyticsService:
 
         for item in products_usage:
             previous_percent = (cumulative_value / total_usage_value) * 100
-            
+
             if previous_percent < 80:
                 classification = "A"
             elif previous_percent < 95:
@@ -604,7 +604,7 @@ class DeliveryService(BaseService):
         try:
             from apps.administration.services.integrations import ShiprocketService
 
-            shiprocket = ShiprocketService(credentials={"token": "mock"})
+            shiprocket = ShiprocketService(credentials={"token": "mock"})  # nosec B105
             shipment = shiprocket.create_shipment(
                 order_id=delivery.number,
                 pickup_pincode="110001",
@@ -618,7 +618,7 @@ class DeliveryService(BaseService):
                 + f"\n\nShipped via {shipment['courier_name']}. Est Delivery: {shipment['estimated_delivery']}"
             )
         except Exception as e:
-            pass  # Non-critical failure
+            logger.warning("Shiprocket integration failed: %s", e)  # Non-critical failure
 
         delivery.save()
 
