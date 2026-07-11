@@ -130,6 +130,12 @@ class LeadCreateView(CompanyMixin, CreateView):
     form_class = LeadForm
     template_name = "crm/leads/form.html"
 
+    def get_context_data(self, **kwargs):
+        from apps.authentication.models import User
+
+        ctx = super().get_context_data(**kwargs)
+        c = self.request.user.primary_company
+        ctx["status_choices"] = Lead.Status.choices
         ctx["source_choices"] = Lead.Source.choices
         ctx["sales_users"] = User.objects.filter(
             companies=c,
@@ -141,6 +147,7 @@ class LeadCreateView(CompanyMixin, CreateView):
 
     def form_valid(self, form):
         # Generate sequence number and set other defaults
+        form.instance.company = self.request.user.primary_company
         form.instance.number = BaseService.generate_sequence_number(
             "LD", Lead, self.request.user.primary_company.pk
         )
