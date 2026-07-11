@@ -14,4 +14,4 @@ repos:
         name: Prevent Stray Scripts
         entry: Stray scripts (scripts/fix_*, scripts/patch_*, scripts/temp_*) are not allowed outside scripts/maintenance/.
         language: fail
-        files: ^scripts/(fix_|patch_|temp_).*\.py$
+        files: ^(scripts/)?(fix_|patch_|temp_|patch|debug_).*\.py$
