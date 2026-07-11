@@ -42,40 +42,41 @@ class Command(BaseCommand):
 
         matrix = {
             User.Role.HR_MANAGER: {
-                "hrms": (True, True, True, True, True, True, True),
-                "company": (False, True, False, False, False, False, False),
+                "hrms": (True, True, True, True, True, True, True, False),
+                "company": (False, True, False, False, False, False, False, False),
             },
             User.Role.FINANCE_MANAGER: {
-                "accounting": (True, True, True, True, True, True, True),
-                "sales": (False, True, False, False, True, True, False),
-                "purchase": (False, True, False, False, True, True, False),
-                "hrms": (False, True, False, False, False, True, False),  # Read payroll
+                "accounting": (True, True, True, True, True, True, True, False),
+                "sales": (False, True, False, False, True, True, False, False),
+                "purchase": (False, True, False, False, True, True, False, False),
+                "hrms": (False, True, False, False, False, True, False, False),  # Read payroll
             },
             User.Role.SALES_MANAGER: {
-                "sales": (True, True, True, True, True, True, True),
-                "crm": (True, True, True, True, True, True, True),
-                "pos": (True, True, True, True, True, True, True),
-                "inventory": (False, True, False, False, False, False, False),
+                "sales": (True, True, True, True, True, True, True, False),
+                "crm": (True, True, True, True, True, True, True, False),
+                "pos": (True, True, True, True, True, True, True, False),
+                "inventory": (False, True, False, False, False, False, False, False),
             },
             User.Role.PURCHASE_MANAGER: {
-                "purchase": (True, True, True, True, True, True, True),
-                "inventory": (False, True, False, False, False, False, False),
-                "accounting": (False, True, False, False, False, False, False),
+                "purchase": (True, True, True, True, True, True, True, False),
+                "inventory": (False, True, False, False, False, False, False, False),
+                "accounting": (False, True, False, False, False, False, False, False),
             },
             User.Role.INVENTORY_MANAGER: {
-                "inventory": (True, True, True, True, True, True, True),
-                "purchase": (False, True, False, False, False, False, False),
-                "sales": (False, True, False, False, False, False, False),
+                "inventory": (True, True, True, True, True, True, True, False),
+                "purchase": (False, True, False, False, False, False, False, False),
+                "sales": (False, True, False, False, False, False, False, False),
             },
             User.Role.PROJECT_MANAGER: {
-                "projects": (True, True, True, True, True, True, True),
-                "crm": (False, True, False, False, False, False, False),
-                "hrms": (False, True, False, False, False, False, False),
+                "projects": (True, True, True, True, True, True, True, False),
+                "crm": (False, True, False, False, False, False, False, False),
+                "hrms": (False, True, False, False, False, False, False, False),
             },
             User.Role.EMPLOYEE: {
                 "hrms": (
                     False,
                     True,
+                    False,
                     False,
                     False,
                     False,
@@ -90,9 +91,10 @@ class Command(BaseCommand):
                     False,
                     False,
                     False,
+                    False,
                 ),  # Can update assigned tasks
-                "pos": (True, True, False, False, False, False, False),
-                "company": (False, True, False, False, False, False, False),
+                "pos": (True, True, False, False, False, False, False, False),
+                "company": (False, True, False, False, False, False, False, False),
             },
             User.Role.CUSTOMER_PORTAL: {
                 "sales": (
@@ -103,10 +105,12 @@ class Command(BaseCommand):
                     False,
                     False,
                     False,
+                    False,
                 ),  # Read own invoices
                 "projects": (
                     False,
                     True,
+                    False,
                     False,
                     False,
                     False,
@@ -125,13 +129,13 @@ class Command(BaseCommand):
             for module in modules:
                 # Determine permissions
                 if role in [User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN]:
-                    c, r, u, d, a, e, i = (True, True, True, True, True, True, True)
+                    c, r, u, d, a, e, i, m = (True, True, True, True, True, True, True, True)
                 else:
                     role_matrix = matrix.get(role, {})
                     perms = role_matrix.get(
-                        module, (False, False, False, False, False, False, False)
+                        module, (False, False, False, False, False, False, False, False)
                     )
-                    c, r, u, d, a, e, i = perms
+                    c, r, u, d, a, e, i, m = perms
 
                 obj, created = ModulePermission.objects.update_or_create(
                     role=role,
@@ -144,6 +148,7 @@ class Command(BaseCommand):
                         "can_approve": a,
                         "can_export": e,
                         "can_import": i,
+                        "can_manage_users": m,
                     },
                 )
                 if created:

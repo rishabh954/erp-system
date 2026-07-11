@@ -94,6 +94,7 @@ class CompanyCreateView(LoginRequiredMixin, View):
 
 
 class CompanySettingsView(CompanyMixin, View):
+    required_permission = "company.update"
     template_name = "company/settings.html"
 
     def get(self, request):
@@ -157,6 +158,7 @@ class CompanySettingsView(CompanyMixin, View):
 
 
 class SwitchCompanyView(CompanyMixin, View):
+    required_permission = "company.read"
     def get(self, request, company_id):
         from apps.authentication.models import UserCompany
 
@@ -176,6 +178,7 @@ class SwitchCompanyView(CompanyMixin, View):
 
 
 class BranchListView(CompanyMixin, ListView):
+    required_permission = "company.read"
     template_name = "company/branches/list.html"
     context_object_name = "branches"
 
@@ -188,6 +191,7 @@ class BranchListView(CompanyMixin, ListView):
 
 
 class BranchCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     template_name = "company/branches/form.html"
 
     def get(self, request):
@@ -229,6 +233,7 @@ class BranchCreateView(CompanyMixin, View):
 
 
 class DepartmentListView(CompanyMixin, ListView):
+    required_permission = "company.read"
     template_name = "company/departments/list.html"
     context_object_name = "departments"
 
@@ -251,6 +256,7 @@ class DepartmentListView(CompanyMixin, ListView):
 
 
 class DepartmentCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     template_name = "company/departments/form.html"
 
     def get(self, request):
@@ -297,6 +303,7 @@ class DepartmentCreateView(CompanyMixin, View):
 
 
 class UserManagementView(CompanyMixin, ListView):
+    required_permission = "company.manage_users"
     template_name = "company/users/list.html"
     context_object_name = "users"
 
@@ -309,6 +316,7 @@ class UserManagementView(CompanyMixin, ListView):
 
 
 class InviteUserView(CompanyMixin, View):
+    required_permission = "company.manage_users"
     def post(self, request):
         email = request.POST.get("email")
         role = request.POST.get("role", "employee")
@@ -349,6 +357,7 @@ class InviteUserView(CompanyMixin, View):
 
 
 class UserUpdateView(CompanyMixin, View):
+    required_permission = "company.manage_users"
     template_name = "company/users/form.html"
 
     def get(self, request, pk):
@@ -387,6 +396,7 @@ class UserUpdateView(CompanyMixin, View):
 
 
 class UserRemoveView(CompanyMixin, View):
+    required_permission = "company.manage_users"
     def post(self, request, pk):
         from apps.authentication.models import User, UserCompany
 
@@ -412,6 +422,7 @@ class UserRemoveView(CompanyMixin, View):
 
 
 class FiscalYearListView(CompanyMixin, ListView):
+    required_permission = "company.read"
     template_name = "company/fiscal_years/list.html"
     context_object_name = "fiscal_years"
 
@@ -420,6 +431,7 @@ class FiscalYearListView(CompanyMixin, ListView):
 
 
 class FiscalYearCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     def post(self, request):
         data = request.POST
         company = self.company()
@@ -441,6 +453,7 @@ class FiscalYearCreateView(CompanyMixin, View):
 
 
 class CurrencyListView(CompanyMixin, TemplateView):
+    required_permission = "company.read"
     template_name = "company/currencies/list.html"
 
     def get_context_data(self, **kwargs):
@@ -453,6 +466,7 @@ class CurrencyListView(CompanyMixin, TemplateView):
 
 
 class CurrencyCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     def post(self, request):
         try:
             Currency.objects.create(
@@ -470,6 +484,7 @@ class CurrencyCreateView(CompanyMixin, View):
 
 
 class CurrencyUpdateView(CompanyMixin, UpdateView):
+    required_permission = "company.update"
     model = Currency
     template_name = "company/currencies/form.html"
     fields = ["code", "name", "symbol", "decimal_places", "is_base", "is_active"]
@@ -485,6 +500,7 @@ class CurrencyUpdateView(CompanyMixin, UpdateView):
 
 
 class CurrencyDeleteView(CompanyMixin, View):
+    required_permission = "company.delete"
     def post(self, request, pk):
         try:
             currency = Currency.objects.get(pk=pk)
@@ -503,6 +519,7 @@ class CurrencyDeleteView(CompanyMixin, View):
 
 
 class ExchangeRateCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     def post(self, request):
         try:
             from decimal import Decimal
@@ -531,6 +548,7 @@ from apps.inventory.models import UnitOfMeasure
 
 
 class UomListView(CompanyMixin, TemplateView):
+    required_permission = "company.read"
     template_name = "company/uoms/list.html"
 
     def get_context_data(self, **kwargs):
@@ -543,6 +561,7 @@ class UomListView(CompanyMixin, TemplateView):
 
 
 class UomCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     def post(self, request):
         try:
             UnitOfMeasure.objects.create(
@@ -559,6 +578,7 @@ class UomCreateView(CompanyMixin, View):
 
 
 class UomUpdateView(CompanyMixin, View):
+    required_permission = "company.update"
     def post(self, request, pk):
         try:
             uom = get_object_or_404(UnitOfMeasure, pk=pk, company=self.company())
@@ -574,6 +594,7 @@ class UomUpdateView(CompanyMixin, View):
 
 
 class UomDeleteView(CompanyMixin, View):
+    required_permission = "company.delete"
     def post(self, request, pk):
         try:
             uom = get_object_or_404(UnitOfMeasure, pk=pk, company=self.company())
@@ -594,6 +615,7 @@ class UomDeleteView(CompanyMixin, View):
 
 
 class TaxListView(CompanyMixin, TemplateView):
+    required_permission = "company.read"
     template_name = "company/taxes/list.html"
 
     def get_context_data(self, **kwargs):
@@ -618,6 +640,7 @@ class TaxListView(CompanyMixin, TemplateView):
 
 
 class TaxCreateView(CompanyMixin, View):
+    required_permission = "company.create"
     def post(self, request):
         try:
             from decimal import Decimal
@@ -642,6 +665,7 @@ class TaxCreateView(CompanyMixin, View):
 
 
 class TaxUpdateView(CompanyMixin, View):
+    required_permission = "company.update"
     def post(self, request, pk):
         try:
             from decimal import Decimal
@@ -666,6 +690,7 @@ class TaxUpdateView(CompanyMixin, View):
 
 
 class TaxDeleteView(CompanyMixin, View):
+    required_permission = "company.delete"
     def post(self, request, pk):
         try:
             tax = get_object_or_404(Tax, pk=pk, company=self.company())

@@ -18,10 +18,10 @@ class Command(BaseCommand):
         try:
             result = update_exchange_rates.delay()
         except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             self.stderr.write(
                 self.style.ERROR(
-                    logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-                    f"Failed to submit task to broker. Is Redis/Celery running? Error: {"An unexpected error occurred."}"
+                    "Failed to submit task to broker. Is Redis/Celery running? Error: An unexpected error occurred."
                 )
             )
             sys.exit(1)

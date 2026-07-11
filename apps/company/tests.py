@@ -19,6 +19,7 @@ class TimezoneTests(TestCase):
             password="password123",
             first_name="TZ",
             last_name="User",
+            role=User.Role.COMPANY_ADMIN,
         )
         UserCompany.objects.create(user=self.user, company=self.company, is_active=True)
         self.user.primary_company = self.company

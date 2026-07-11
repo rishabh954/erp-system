@@ -51,8 +51,11 @@ class HasModulePermission(permissions.BasePermission):
             required_perm = getattr(view, 'required_permission', None)
         
         if not required_perm:
-            # If no permission is explicitly required, fallback to basic auth check
-            return True
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured(
+                f"{view.__class__.__name__} is missing the required_permission attribute. "
+                "Define required_permission = 'module.action' or override get_required_permission()."
+            )
 
         try:
             module, action = required_perm.split('.')
@@ -73,6 +76,11 @@ class PermissionRequiredMixin(AccessMixin):
     required_permission = None
 
     def get_required_permission(self, request=None):
+        if self.required_permission is None:
+            raise ImproperlyConfigured(
+                f"{self.__class__.__name__} is missing the required_permission attribute. "
+                "Define required_permission = 'module.action' or override get_required_permission()."
+            )
         return self.required_permission
 
     def dispatch(self, request, *args, **kwargs):
@@ -80,13 +88,12 @@ class PermissionRequiredMixin(AccessMixin):
             return self.handle_no_permission()
 
         required_perm = self.get_required_permission(request)
-        if required_perm:
-            try:
-                module, action = required_perm.split('.')
-                if not request.user.has_module_permission(module, action):
-                    return self.handle_no_permission()
-            except ValueError:
+        try:
+            module, action = required_perm.split('.')
+            if not request.user.has_module_permission(module, action):
                 return self.handle_no_permission()
+        except ValueError:
+            return self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
 

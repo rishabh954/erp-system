@@ -300,6 +300,7 @@ class ModulePermission(models.Model):
     can_approve = models.BooleanField(default=False)
     can_export = models.BooleanField(default=False)
     can_import = models.BooleanField(default=False)
+    can_manage_users = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("role", "module")
