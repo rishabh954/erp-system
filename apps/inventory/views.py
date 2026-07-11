@@ -50,6 +50,12 @@ class ProductListView(CompanyMixin, ListView):
         qs = (
             Product.objects.filter(company=self.company(), is_deleted=False)
             .select_related("category", "brand", "uom", "tax")
+            .annotate(
+                _total_stock_annotated=Sum(
+                    "stock_records__quantity_on_hand",
+                    filter=Q(stock_records__is_deleted=False)
+                )
+            )
             .order_by("name")
         )
 

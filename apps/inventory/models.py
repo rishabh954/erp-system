@@ -194,6 +194,8 @@ class Product(CompanyScoped, NotesMixin):
 
     @property
     def total_stock(self):
+        if hasattr(self, '_total_stock_annotated'):
+            return self._total_stock_annotated or 0
         return (
             self.stock_records.filter(is_deleted=False).aggregate(
                 total=models.Sum("quantity_on_hand")

@@ -62,6 +62,41 @@ def test_goods_receipt_updates_stock(client, company, user):
     assert stock_record.warehouse == warehouse
 
 
+def test_product_list_view_n_plus_one(client, user, company):
+    """Test that ProductListView does not suffer from N+1 queries when accessing total_stock."""
+    client.force_login(user)
+    user.role = "company_admin"
+    user.save()
+
+    # Create multiple products (use a larger number to prove O(1))
+    for i in range(15):
+        p = ProductFactory(company=company, name=f"Product {i}")
+        warehouse = WarehouseFactory(company=company, name=f"WH {i}")
+        StockRecord.objects.create(
+            company=company,
+            product=p,
+            warehouse=warehouse,
+            quantity_on_hand=Decimal("10.0"),
+            average_cost=Decimal("5.0"),
+        )
+    
+    # Pre-fetch the view once to warm up any caches
+    client.get(reverse("inventory:products"))
+
+    from django.test.utils import CaptureQueriesContext
+    from django.db import connection
+
+    # With the annotation fix, this should only take a small constant number of queries
+    # rather than scaling linearly with the number of products
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(reverse("inventory:products"))
+        assert response.status_code == 200
+    
+    # If N+1 was present, 15 products * 2 queries = 30+ extra queries.
+    # The baseline is around 19 queries for auth, session, context processors, etc.
+    assert len(ctx.captured_queries) < 25, f"Too many queries ({len(ctx.captured_queries)})"
+
+
 @pytest.fixture
 def inventory_services(db, rf, company, user, warehouse, product):
     from core.factories import CustomerFactory, VendorFactory
