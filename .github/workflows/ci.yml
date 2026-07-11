@@ -47,7 +47,7 @@ jobs:
         
     - name: Run Tests
       run: |
-        pytest --cov=apps --cov=core
+        pytest
       env:
         DJANGO_SETTINGS_MODULE: config.settings
         DB_HOST: localhost

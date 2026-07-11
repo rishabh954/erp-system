@@ -1,0 +1,17 @@
+[tool.coverage.run]
+source = ["apps", "core"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/tests.py"
+]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+exclude = [
+    "^.*/migrations/.*$",
+]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
