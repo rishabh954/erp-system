@@ -3,6 +3,7 @@ Asset Management Views
 Asset Registration, Categories, Allocation, Depreciation, Maintenance
 """
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -13,11 +14,6 @@ from django.views.generic import DetailView, ListView, View
 from core.services import BaseService
 
 from .models import Asset, AssetCategory, AssetMaintenance
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 class AssetListView(CompanyMixin, ListView):

@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
+from core.services import BaseService
 
 
 class WorkCenter(CompanyScoped, NotesMixin):
@@ -94,7 +95,7 @@ class BillOfMaterial(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("BOM", self.__class__)
+            self.number = BaseService.generate_sequence_number("BOM", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -165,7 +166,7 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("MO", self.__class__)
+            self.number = BaseService.generate_sequence_number("MO", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -265,7 +266,7 @@ class WorkOrder(CompanyScoped, SequenceMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("WO", self.__class__)
+            self.number = BaseService.generate_sequence_number("WO", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -303,7 +304,7 @@ class ScrapOrder(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("SCRAP", self.__class__)
+            self.number = BaseService.generate_sequence_number("SCRAP", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def mark_done(self):
@@ -392,7 +393,7 @@ class QualityCheck(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("QC", self.__class__)
+            self.number = BaseService.generate_sequence_number("QC", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -476,7 +477,7 @@ class MaterialPlan(CompanyScoped, SequenceMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("MRP", self.__class__)
+            self.number = BaseService.generate_sequence_number("MRP", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -546,7 +547,7 @@ class MaintenanceRequest(CompanyScoped, SequenceMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("MNT", self.__class__)
+            self.number = BaseService.generate_sequence_number("MNT", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):

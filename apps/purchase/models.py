@@ -7,6 +7,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from core.services import BaseService
 from core.models import (
     AddressMixin,
     CompanyScoped,
@@ -285,7 +286,7 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("PO", self.__class__)
+            self.number = BaseService.generate_sequence_number("PO", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):

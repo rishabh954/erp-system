@@ -5,6 +5,7 @@ Upload, Categories, Version Control, Approval Workflow
 
 import os
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -16,11 +17,6 @@ from django.views.generic import DetailView, ListView, View
 from core.services import BaseService
 
 from .models import Document, DocumentCategory, DocumentVersion
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 class DocumentListView(CompanyMixin, ListView):

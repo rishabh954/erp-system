@@ -10,6 +10,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
+from core.services import BaseService
 
 
 class UnitOfMeasure(CompanyScoped):
@@ -364,7 +365,7 @@ class StockMovement(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("SM", self.__class__)
+            self.number = BaseService.generate_sequence_number("SM", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -549,7 +550,7 @@ class LotBatch(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("LOT", self.__class__)
+            self.number = BaseService.generate_sequence_number("LOT", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -588,7 +589,7 @@ class SerialNumber(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("SN", self.__class__)
+            self.number = BaseService.generate_sequence_number("SN", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -624,7 +625,7 @@ class PickList(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("PICK", self.__class__)
+            self.number = BaseService.generate_sequence_number("PICK", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -676,7 +677,7 @@ class PackingSlip(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("PACK", self.__class__)
+            self.number = BaseService.generate_sequence_number("PACK", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -729,7 +730,7 @@ class Shipment(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("SHIP", self.__class__)
+            self.number = BaseService.generate_sequence_number("SHIP", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -765,7 +766,7 @@ class LandedCost(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("LC", self.__class__)
+            self.number = BaseService.generate_sequence_number("LC", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -821,7 +822,7 @@ class CycleCount(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("CC", self.__class__)
+            self.number = BaseService.generate_sequence_number("CC", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -887,5 +888,5 @@ class QualityInspection(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("QA", self.__class__)
+            self.number = BaseService.generate_sequence_number("QA", self.__class__, self.company_id)
         super().save(*args, **kwargs)

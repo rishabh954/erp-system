@@ -1,3 +1,4 @@
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -12,11 +13,6 @@ from .models import (
     WorkCenter,
     WorkOrder,
 )
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ WORK CENTERS & ROUTINGS ════════════════════════════

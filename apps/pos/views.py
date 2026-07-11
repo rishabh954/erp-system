@@ -15,7 +15,7 @@ from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
 logger = logging.getLogger(__name__)
 
 
-class POSIndexView(PermissionRequiredMixin, CompanyMixin, View):
+class POSIndexView(CompanyMixin, View):
     required_permission = "pos.read"
 
     def get_required_permission(self, request=None):
@@ -76,7 +76,7 @@ class POSIndexView(PermissionRequiredMixin, CompanyMixin, View):
         return render(request, "sales/pos.html", context)
 
 
-class POSCheckoutAPIView(PermissionRequiredMixin, CompanyMixin, View):
+class POSCheckoutAPIView(CompanyMixin, View):
     required_permission = "pos.create"
     def post(self, request, *args, **kwargs):
         try:

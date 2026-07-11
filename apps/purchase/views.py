@@ -4,6 +4,7 @@ Purchase Management Views
 Vendors, Purchase Requests, Purchase Orders, Goods Receipts
 """
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -17,11 +18,6 @@ from .models import GoodsReceipt, PurchaseOrder, PurchaseRequest, Vendor
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ VENDORS ═════════════════════════════════════════════

@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.views.generic import DetailView, ListView, TemplateView, View
 
@@ -31,11 +32,6 @@ from .models import (
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ EMPLOYEES ══════════════════════════════════════════

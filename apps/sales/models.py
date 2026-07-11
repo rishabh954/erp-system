@@ -9,6 +9,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, CurrencyMixin, NotesMixin, SequenceMixin
+from core.services import BaseService
 
 
 class Quotation(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
@@ -169,7 +170,7 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("SO", self.__class__)
+            self.number = BaseService.generate_sequence_number("SO", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):

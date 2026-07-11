@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
+from core.services import BaseService
 
 
 class POSSession(CompanyScoped, SequenceMixin, NotesMixin):
@@ -27,7 +28,7 @@ class POSSession(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("POS-S", self.__class__)
+            self.number = BaseService.generate_sequence_number("POS-S", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 
@@ -60,7 +61,7 @@ class POSOrder(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("POS", self.__class__)
+            self.number = BaseService.generate_sequence_number("POS", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 

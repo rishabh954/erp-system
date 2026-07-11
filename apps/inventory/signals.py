@@ -1,3 +1,4 @@
+from core.services import BaseService
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -68,7 +69,7 @@ def trigger_reorder_rules(sender, instance, created, **kwargs):
                                     .first()
                                 ),
                             )
-                            rfq.number = rfq.generate_number("RFQ", RequestForQuotation)
+                            rfq.number = BaseService.generate_sequence_number("RFQ", RequestForQuotation, rfq.company_id)
                             rfq.save()
 
                             RFQLine.objects.create(

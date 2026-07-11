@@ -10,18 +10,14 @@ from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView, View
 
-from core.base_views import BaseCreateView, BaseUpdateView
+from core.mixins import CompanyMixin
 from core.services import BaseService
 
 from .forms import LeadForm
 from .models import Campaign, Contract, Customer, Lead, LeadActivity
 
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ LEADS ═══════════════════════════════════════════════
@@ -128,18 +124,12 @@ class LeadDetailView(CompanyMixin, DetailView):
         return ctx
 
 
-class LeadCreateView(BaseCreateView):
+class LeadCreateView(CompanyMixin, CreateView):
     required_permission = "crm.create"
     model = Lead
     form_class = LeadForm
     template_name = "crm/leads/form.html"
 
-    def get_context_data(self, **kwargs):
-        from apps.authentication.models import User
-
-        ctx = super().get_context_data(**kwargs)
-        c = self.request.user.primary_company
-        ctx["status_choices"] = Lead.Status.choices
         ctx["source_choices"] = Lead.Source.choices
         ctx["sales_users"] = User.objects.filter(
             companies=c,
@@ -161,7 +151,7 @@ class LeadCreateView(BaseCreateView):
         return reverse_lazy("crm:lead_detail", kwargs={"pk": self.object.pk})
 
 
-class LeadUpdateView(BaseUpdateView):
+class LeadUpdateView(CompanyMixin, UpdateView):
     required_permission = "crm.update"
     model = Lead
     form_class = LeadForm

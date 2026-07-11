@@ -13,6 +13,7 @@ from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView, View
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from core.services import BaseService
 
@@ -27,11 +28,6 @@ from .models import (
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ═══════════════════════ CHART OF ACCOUNTS ════════════════════════════════════

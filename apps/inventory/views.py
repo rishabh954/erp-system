@@ -4,6 +4,7 @@ Inventory Views
 Products, Warehouses, Stock Movements, Transfers, Reports
 """
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -24,11 +25,6 @@ from .models import (
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ PRODUCTS ═══════════════════════════════════════════

@@ -3,6 +3,7 @@ Company Management Views
 Settings, Branches, Departments, Users, Fiscal Years, Currencies
 """
 
+from core.mixins import CompanyMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -18,11 +19,6 @@ from .models import (
     Tax,
     TaxGroup,
 )
-
-
-class CompanyMixin(LoginRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 from apps.authentication.models import UserCompany

@@ -6,6 +6,7 @@ Includes: Designer, Pending Approvals, History, Delegation, Visual Flow API
 import json
 import logging
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -27,11 +28,6 @@ from apps.workflow.models import (
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ══════════════════════════════════════════════════════════════════════════════

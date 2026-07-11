@@ -1,14 +1,10 @@
+from core.mixins import CompanyMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from .models import LeadAssignmentRule, SalesTarget, Territory
-
-
-class CompanyMixin(LoginRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ════════════════════════ TERRITORIES ═════════════════════════════════════════

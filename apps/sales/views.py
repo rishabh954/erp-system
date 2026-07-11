@@ -7,6 +7,7 @@ import logging
 from decimal import Decimal
 
 from core.permissions import PermissionRequiredMixin
+from core.mixins import CompanyMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -35,20 +36,11 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-class CompanyScopedMixin(PermissionRequiredMixin):
-    def get_company(self):
-        return self.request.user.primary_company
-
-    def get_base_qs(self, model):
-        return model.objects.filter(
-            company=self.get_company(), is_deleted=False
-        ).select_related()
-
 
 # ════════════════════════ QUOTATIONS ══════════════════════════════════════════
 
 
-class QuotationListView(CompanyScopedMixin, ListView):
+class QuotationListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -66,7 +58,7 @@ class QuotationListView(CompanyScopedMixin, ListView):
 
     def get_queryset(self):
         qs = (
-            self.get_base_qs(Quotation)
+            Quotation.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("customer", "sales_rep", "branch")
             .order_by("-created_at")
         )
@@ -87,7 +79,7 @@ class QuotationListView(CompanyScopedMixin, ListView):
         return ctx
 
 
-class QuotationCreateView(CompanyScopedMixin, View):
+class QuotationCreateView(CompanyMixin, View):
     required_permission = "sales.create"
     template_name = "sales/quotations/form.html"
 
@@ -98,7 +90,7 @@ class QuotationCreateView(CompanyScopedMixin, View):
 
     def post(self, request):
         data = request.POST
-        company = self.get_company()
+        company = self.company()
         try:
             from .services import QuotationService
 
@@ -113,7 +105,7 @@ class QuotationCreateView(CompanyScopedMixin, View):
             return render(request, self.template_name, self._ctx())
 
     def _ctx(self):
-        company = self.get_company()
+        company = self.company()
         return {
             "customers": Customer.objects.filter(
                 company=company, is_deleted=False
@@ -127,18 +119,18 @@ class QuotationCreateView(CompanyScopedMixin, View):
         }
 
 
-class QuotationUpdateView(CompanyScopedMixin, View):
+class QuotationUpdateView(CompanyMixin, View):
     required_permission = "sales.update"
     template_name = "sales/quotations/form.html"
 
     def get(self, request, pk):
-        quotation = get_object_or_404(Quotation, pk=pk, company=self.get_company())
+        quotation = get_object_or_404(Quotation, pk=pk, company=self.company())
         ctx = QuotationCreateView()._ctx.__get__(self)()
         ctx["quotation"] = quotation
         return render(request, self.template_name, ctx)
 
     def post(self, request, pk):
-        quotation = get_object_or_404(Quotation, pk=pk, company=self.get_company())
+        quotation = get_object_or_404(Quotation, pk=pk, company=self.company())
         data = request.POST
         try:
             quotation.customer_id = data["customer"]
@@ -187,16 +179,16 @@ class QuotationUpdateView(CompanyScopedMixin, View):
             return render(request, self.template_name, ctx)
 
 
-class QuotationDeleteView(CompanyScopedMixin, View):
+class QuotationDeleteView(CompanyMixin, View):
     required_permission = "sales.delete"
     def post(self, request, pk):
-        quot = get_object_or_404(Quotation, pk=pk, company=self.get_company())
+        quot = get_object_or_404(Quotation, pk=pk, company=self.company())
         quot.delete()
         messages.success(request, f"Quotation {quot.number} deleted.")
         return redirect("sales:quotations")
 
 
-class QuotationDetailView(CompanyScopedMixin, DetailView):
+class QuotationDetailView(CompanyMixin, DetailView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -215,7 +207,7 @@ class QuotationDetailView(CompanyScopedMixin, DetailView):
         return get_object_or_404(
             Quotation.objects.select_related("customer", "sales_rep", "branch"),
             pk=self.kwargs["pk"],
-            company=self.get_company(),
+            company=self.company(),
             is_deleted=False,
         )
 
@@ -225,11 +217,11 @@ class QuotationDetailView(CompanyScopedMixin, DetailView):
         return ctx
 
 
-class QuotationSendView(CompanyScopedMixin, View):
+class QuotationSendView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
-            Quotation, pk=pk, company=self.get_company(), is_deleted=False
+            Quotation, pk=pk, company=self.company(), is_deleted=False
         )
         if quot.status == Quotation.Status.DRAFT:
             quot.status = Quotation.Status.SENT
@@ -255,11 +247,11 @@ class QuotationSendView(CompanyScopedMixin, View):
         return redirect("sales:quotation_detail", pk=pk)
 
 
-class QuotationRejectView(CompanyScopedMixin, View):
+class QuotationRejectView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
-            Quotation, pk=pk, company=self.get_company(), is_deleted=False
+            Quotation, pk=pk, company=self.company(), is_deleted=False
         )
         if quot.status in (Quotation.Status.CONVERTED,):
             messages.error(request, "Converted Quotations cannot be rejected.")
@@ -274,11 +266,11 @@ class QuotationRejectView(CompanyScopedMixin, View):
         return redirect("sales:quotation_detail", pk=pk)
 
 
-class QuotationApproveView(CompanyScopedMixin, View):
+class QuotationApproveView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
-            Quotation, pk=pk, company=self.get_company(), is_deleted=False
+            Quotation, pk=pk, company=self.company(), is_deleted=False
         )
         if quot.status in (Quotation.Status.CONVERTED, Quotation.Status.REJECTED):
             messages.error(
@@ -292,11 +284,11 @@ class QuotationApproveView(CompanyScopedMixin, View):
         return redirect("sales:quotation_detail", pk=pk)
 
 
-class QuotationConvertToSOView(CompanyScopedMixin, View):
+class QuotationConvertToSOView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         quot = get_object_or_404(
-            Quotation, pk=pk, company=self.get_company(), is_deleted=False
+            Quotation, pk=pk, company=self.company(), is_deleted=False
         )
         if quot.status not in (Quotation.Status.SENT, Quotation.Status.APPROVED):
             messages.error(
@@ -328,7 +320,7 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
 
             so = service.convert_quote_to_order(quot)
             so = SalesOrderService(
-                user=request.user, company=self.get_company()
+                user=request.user, company=self.company()
             ).confirm_order(so)
 
             messages.success(
@@ -344,7 +336,7 @@ class QuotationConvertToSOView(CompanyScopedMixin, View):
 # ════════════════════════ SALES ORDERS ══════════════════════════════════════
 
 
-class SalesOrderListView(CompanyScopedMixin, ListView):
+class SalesOrderListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -362,7 +354,7 @@ class SalesOrderListView(CompanyScopedMixin, ListView):
 
     def get_queryset(self):
         qs = (
-            self.get_base_qs(SalesOrder)
+            SalesOrder.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("customer", "sales_rep", "price_list")
             .order_by("-order_date")
         )
@@ -381,7 +373,7 @@ class SalesOrderListView(CompanyScopedMixin, ListView):
         return ctx
 
 
-class SalesOrderCreateView(CompanyScopedMixin, View):
+class SalesOrderCreateView(CompanyMixin, View):
     required_permission = "sales.create"
     template_name = "sales/orders/form.html"
 
@@ -390,7 +382,7 @@ class SalesOrderCreateView(CompanyScopedMixin, View):
 
     def post(self, request):
         data = request.POST
-        company = self.get_company()
+        company = self.company()
         try:
             from .services import SalesOrderService
 
@@ -405,7 +397,7 @@ class SalesOrderCreateView(CompanyScopedMixin, View):
             return render(request, self.template_name, self._ctx())
 
     def _ctx(self):
-        company = self.get_company()
+        company = self.company()
         return {
             "customers": Customer.objects.filter(
                 company=company, is_deleted=False
@@ -419,18 +411,18 @@ class SalesOrderCreateView(CompanyScopedMixin, View):
         }
 
 
-class SalesOrderUpdateView(CompanyScopedMixin, View):
+class SalesOrderUpdateView(CompanyMixin, View):
     required_permission = "sales.update"
     template_name = "sales/orders/form.html"
 
     def get(self, request, pk):
-        order = get_object_or_404(SalesOrder, pk=pk, company=self.get_company())
+        order = get_object_or_404(SalesOrder, pk=pk, company=self.company())
         ctx = SalesOrderCreateView()._ctx.__get__(self)()
         ctx["order"] = order
         return render(request, self.template_name, ctx)
 
     def post(self, request, pk):
-        order = get_object_or_404(SalesOrder, pk=pk, company=self.get_company())
+        order = get_object_or_404(SalesOrder, pk=pk, company=self.company())
         data = request.POST
         try:
             order.customer_id = data["customer"]
@@ -479,20 +471,20 @@ class SalesOrderUpdateView(CompanyScopedMixin, View):
             return render(request, self.template_name, ctx)
 
 
-class SalesOrderDeleteView(CompanyScopedMixin, View):
+class SalesOrderDeleteView(CompanyMixin, View):
     required_permission = "sales.delete"
     def post(self, request, pk):
-        order = get_object_or_404(SalesOrder, pk=pk, company=self.get_company())
+        order = get_object_or_404(SalesOrder, pk=pk, company=self.company())
         order.delete()
         messages.success(request, f"Sales Order {order.number} deleted.")
         return redirect("sales:orders")
 
 
-class SalesOrderCancelView(CompanyScopedMixin, View):
+class SalesOrderCancelView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         order = get_object_or_404(
-            SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
+            SalesOrder, pk=pk, company=self.company(), is_deleted=False
         )
 
         if order.status in (SalesOrder.Status.SHIPPED, SalesOrder.Status.DELIVERED):
@@ -511,7 +503,7 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
             from apps.sales.services import SalesOrderService
 
             SalesOrderService(
-                user=request.user, company=self.get_company()
+                user=request.user, company=self.company()
             ).cancel_order(order, reason=cancel_reason)
         except Exception as e:
             messages.error(request, f"Error cancelling order: {e}")
@@ -524,7 +516,7 @@ class SalesOrderCancelView(CompanyScopedMixin, View):
         return redirect("sales:order_detail", pk=pk)
 
 
-class SalesOrderDetailView(CompanyScopedMixin, DetailView):
+class SalesOrderDetailView(CompanyMixin, DetailView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -543,7 +535,7 @@ class SalesOrderDetailView(CompanyScopedMixin, DetailView):
         return get_object_or_404(
             SalesOrder,
             pk=self.kwargs["pk"],
-            company=self.get_company(),
+            company=self.company(),
             is_deleted=False,
         )
 
@@ -555,16 +547,16 @@ class SalesOrderDetailView(CompanyScopedMixin, DetailView):
         return ctx
 
 
-class CreateDeliveryFromSOView(CompanyScopedMixin, View):
+class CreateDeliveryFromSOView(CompanyMixin, View):
     required_permission = "sales.create"
     def post(self, request, pk):
         so = get_object_or_404(
-            SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
+            SalesOrder, pk=pk, company=self.company(), is_deleted=False
         )
         try:
             from .services import SalesOrderService
 
-            service = SalesOrderService(user=request.user, company=self.get_company())
+            service = SalesOrderService(user=request.user, company=self.company())
             delivery = service.create_delivery(so)
             messages.success(
                 request, f"Delivery Note {delivery.number} created successfully."
@@ -577,16 +569,16 @@ class CreateDeliveryFromSOView(CompanyScopedMixin, View):
         return redirect("sales:order_detail", pk=so.pk)
 
 
-class CreateInvoiceFromSOView(CompanyScopedMixin, View):
+class CreateInvoiceFromSOView(CompanyMixin, View):
     required_permission = "sales.create"
     def post(self, request, pk):
         so = get_object_or_404(
-            SalesOrder, pk=pk, company=self.get_company(), is_deleted=False
+            SalesOrder, pk=pk, company=self.company(), is_deleted=False
         )
         try:
             from .services import SalesOrderService
 
-            service = SalesOrderService(user=request.user, company=self.get_company())
+            service = SalesOrderService(user=request.user, company=self.company())
             inv = service.create_invoice(so)
             messages.success(request, f"Invoice {inv.number} created.")
             return redirect("sales:invoice_detail", pk=inv.pk)
@@ -598,7 +590,7 @@ class CreateInvoiceFromSOView(CompanyScopedMixin, View):
 # ════════════════════════ INVOICES ════════════════════════════════════════════
 
 
-class InvoiceListView(CompanyScopedMixin, ListView):
+class InvoiceListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -616,7 +608,7 @@ class InvoiceListView(CompanyScopedMixin, ListView):
 
     def get_queryset(self):
         qs = (
-            self.get_base_qs(Invoice)
+            Invoice.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("customer", "sales_order")
             .order_by("-invoice_date")
         )
@@ -647,7 +639,7 @@ class InvoiceListView(CompanyScopedMixin, ListView):
         return ctx
 
 
-class InvoiceCreateView(CompanyScopedMixin, View):
+class InvoiceCreateView(CompanyMixin, View):
     required_permission = "sales.create"
     template_name = "sales/invoices/form.html"
 
@@ -656,7 +648,7 @@ class InvoiceCreateView(CompanyScopedMixin, View):
 
     def post(self, request):
         data = request.POST
-        company = self.get_company()
+        company = self.company()
         try:
             from .services import InvoiceService
 
@@ -669,7 +661,7 @@ class InvoiceCreateView(CompanyScopedMixin, View):
             return render(request, self.template_name, self._ctx())
 
     def _ctx(self):
-        company = self.get_company()
+        company = self.company()
         return {
             "customers": Customer.objects.filter(
                 company=company, is_deleted=False
@@ -683,12 +675,12 @@ class InvoiceCreateView(CompanyScopedMixin, View):
         }
 
 
-class InvoiceUpdateView(CompanyScopedMixin, View):
+class InvoiceUpdateView(CompanyMixin, View):
     required_permission = "sales.update"
     template_name = "sales/invoices/form.html"
 
     def get(self, request, pk):
-        invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company())
+        invoice = get_object_or_404(Invoice, pk=pk, company=self.company())
         if invoice.sales_order:
             messages.error(
                 request,
@@ -700,7 +692,7 @@ class InvoiceUpdateView(CompanyScopedMixin, View):
         return render(request, self.template_name, ctx)
 
     def post(self, request, pk):
-        invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company())
+        invoice = get_object_or_404(Invoice, pk=pk, company=self.company())
         if invoice.sales_order:
             messages.error(
                 request,
@@ -755,10 +747,10 @@ class InvoiceUpdateView(CompanyScopedMixin, View):
             return render(request, self.template_name, ctx)
 
 
-class InvoiceDeleteView(CompanyScopedMixin, View):
+class InvoiceDeleteView(CompanyMixin, View):
     required_permission = "sales.delete"
     def post(self, request, pk):
-        invoice = get_object_or_404(Invoice, pk=pk, company=self.get_company())
+        invoice = get_object_or_404(Invoice, pk=pk, company=self.company())
         if invoice.sales_order:
             messages.error(
                 request,
@@ -770,7 +762,7 @@ class InvoiceDeleteView(CompanyScopedMixin, View):
         return redirect("sales:invoices")
 
 
-class InvoiceDetailView(CompanyScopedMixin, DetailView):
+class InvoiceDetailView(CompanyMixin, DetailView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -787,7 +779,7 @@ class InvoiceDetailView(CompanyScopedMixin, DetailView):
 
     def get_object(self):
         return get_object_or_404(
-            Invoice, pk=self.kwargs["pk"], company=self.get_company(), is_deleted=False
+            Invoice, pk=self.kwargs["pk"], company=self.company(), is_deleted=False
         )
 
     def get_context_data(self, **kwargs):
@@ -799,13 +791,13 @@ class InvoiceDetailView(CompanyScopedMixin, DetailView):
         return ctx
 
 
-class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
+class InvoiceGeneratePaymentLinkView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         from apps.administration.services.integrations import RazorpayService
 
         invoice = get_object_or_404(
-            Invoice, pk=pk, company=self.get_company(), is_deleted=False
+            Invoice, pk=pk, company=self.company(), is_deleted=False
         )
 
         if invoice.status in ["paid", "void"]:
@@ -845,7 +837,7 @@ class InvoiceGeneratePaymentLinkView(CompanyScopedMixin, View):
         return redirect("sales:invoice_detail", pk=pk)
 
 
-class InvoicePDFView(CompanyScopedMixin, View):
+class InvoicePDFView(CompanyMixin, View):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -859,13 +851,13 @@ class InvoicePDFView(CompanyScopedMixin, View):
         return self.required_permission
     def get(self, request, pk):
         invoice = get_object_or_404(
-            Invoice, pk=pk, company=self.get_company(), is_deleted=False
+            Invoice, pk=pk, company=self.company(), is_deleted=False
         )
         lines = invoice.lines.all().select_related("product", "tax")
         context = {
             "invoice": invoice,
             "lines": lines,
-            "company": self.get_company(),
+            "company": self.company(),
         }
         html = render(request, "sales/invoices/pdf_template.html", context)
         try:
@@ -888,16 +880,16 @@ class InvoicePDFView(CompanyScopedMixin, View):
             return html
 
 
-class RecordPaymentView(CompanyScopedMixin, View):
+class RecordPaymentView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         invoice = get_object_or_404(
-            Invoice, pk=pk, company=self.get_company(), is_deleted=False
+            Invoice, pk=pk, company=self.company(), is_deleted=False
         )
         try:
             from .services import PaymentService
 
-            service = PaymentService(user=request.user, company=self.get_company())
+            service = PaymentService(user=request.user, company=self.company())
             payment = service.record_payment(invoice, request.POST)
             messages.success(
                 request,
@@ -911,7 +903,7 @@ class RecordPaymentView(CompanyScopedMixin, View):
         return redirect("sales:invoice_detail", pk=pk)
 
 
-class PaymentListView(CompanyScopedMixin, ListView):
+class PaymentListView(CompanyMixin, ListView):
     required_permission = "sales.approve"
     template_name = "sales/payments/list.html"
     context_object_name = "payments"
@@ -919,7 +911,7 @@ class PaymentListView(CompanyScopedMixin, ListView):
 
     def get_queryset(self):
         qs = (
-            self.get_base_qs(Payment)
+            Payment.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("invoice", "customer", "currency")
             .order_by("-payment_date")
         )
@@ -940,7 +932,7 @@ class PaymentListView(CompanyScopedMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        base_qs = self.get_base_qs(Payment)
+        base_qs = Payment.objects.filter(company=self.company(), is_deleted=False).select_related()
         ctx["status_choices"] = Payment.Status.choices
         ctx["method_choices"] = Payment.Method.choices
         ctx["current_status"] = self.request.GET.get("status", "")
@@ -1005,7 +997,7 @@ urlpatterns = [
 from .models import CreditNote, PriceList, SalesCommission, Subscription
 
 
-class PriceListListView(CompanyScopedMixin, ListView):
+class PriceListListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1021,10 +1013,10 @@ class PriceListListView(CompanyScopedMixin, ListView):
     context_object_name = "price_lists"
 
     def get_queryset(self):
-        return self.get_base_qs(PriceList)
+        return PriceList.objects.filter(company=self.company(), is_deleted=False).select_related()
 
 
-class PriceListDetailView(CompanyScopedMixin, DetailView):
+class PriceListDetailView(CompanyMixin, DetailView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1040,10 +1032,10 @@ class PriceListDetailView(CompanyScopedMixin, DetailView):
     context_object_name = "price_list"
 
     def get_queryset(self):
-        return self.get_base_qs(PriceList)
+        return PriceList.objects.filter(company=self.company(), is_deleted=False).select_related()
 
 
-class SubscriptionListView(CompanyScopedMixin, ListView):
+class SubscriptionListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1062,7 +1054,7 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
         from django.db.models import Q
 
         qs = (
-            self.get_base_qs(Subscription)
+            Subscription.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("customer", "product")
             .order_by("-created_at")
         )
@@ -1087,7 +1079,7 @@ class SubscriptionListView(CompanyScopedMixin, ListView):
         return ctx
 
 
-class SubscriptionDetailView(CompanyScopedMixin, DetailView):
+class SubscriptionDetailView(CompanyMixin, DetailView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1103,30 +1095,30 @@ class SubscriptionDetailView(CompanyScopedMixin, DetailView):
     context_object_name = "subscription"
 
     def get_queryset(self):
-        return self.get_base_qs(Subscription).select_related("customer", "product")
+        return Subscription.objects.filter(company=self.company(), is_deleted=False).select_related().select_related("customer", "product")
 
 
-class CreditNoteListView(CompanyScopedMixin, ListView):
+class CreditNoteListView(CompanyMixin, ListView):
     required_permission = "sales.update"
     template_name = "sales/credit_notes/list.html"
     context_object_name = "credit_notes"
 
     def get_queryset(self):
-        return self.get_base_qs(CreditNote).select_related(
+        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related().select_related(
             "customer", "invoice", "branch"
         )
 
 
-class CreditNoteDetailView(CompanyScopedMixin, DetailView):
+class CreditNoteDetailView(CompanyMixin, DetailView):
     required_permission = "sales.update"
     template_name = "sales/credit_notes/detail.html"
     context_object_name = "credit_note"
 
     def get_queryset(self):
-        return self.get_base_qs(CreditNote).select_related("customer", "invoice")
+        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related().select_related("customer", "invoice")
 
 
-class SalesCommissionListView(CompanyScopedMixin, ListView):
+class SalesCommissionListView(CompanyMixin, ListView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1145,7 +1137,7 @@ class SalesCommissionListView(CompanyScopedMixin, ListView):
         from django.db.models import Q
 
         qs = (
-            self.get_base_qs(SalesCommission)
+            SalesCommission.objects.filter(company=self.company(), is_deleted=False).select_related()
             .select_related("sales_rep", "invoice")
             .order_by("-created_at")
         )
@@ -1177,7 +1169,7 @@ class SalesCommissionListView(CompanyScopedMixin, ListView):
         return ctx
 
 
-class SalesCommissionPayView(CompanyScopedMixin, View):
+class SalesCommissionPayView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         if not (
@@ -1188,7 +1180,7 @@ class SalesCommissionPayView(CompanyScopedMixin, View):
             return redirect("sales:commissions")
 
         commission = get_object_or_404(
-            SalesCommission, pk=pk, company=self.get_company()
+            SalesCommission, pk=pk, company=self.company()
         )
         if commission.status == SalesCommission.Status.PENDING:
             commission.status = SalesCommission.Status.PAID
@@ -1203,7 +1195,7 @@ class SalesCommissionPayView(CompanyScopedMixin, View):
         return redirect("sales:commissions")
 
 
-class SubscriptionCreateView(CompanyScopedMixin, View):
+class SubscriptionCreateView(CompanyMixin, View):
     required_permission = "sales.create"
     def get(self, request):
         from apps.crm.models import Customer
@@ -1214,9 +1206,9 @@ class SubscriptionCreateView(CompanyScopedMixin, View):
             "sales/subscriptions/form.html",
             {
                 "customers": Customer.objects.filter(
-                    company=self.get_company(), is_deleted=False
+                    company=self.company(), is_deleted=False
                 ),
-                "products": Product.objects.filter(company=self.get_company()),
+                "products": Product.objects.filter(company=self.company()),
                 "cycles": Subscription.BillingCycle.choices,
                 "statuses": Subscription.Status.choices,
             },
@@ -1227,13 +1219,13 @@ class SubscriptionCreateView(CompanyScopedMixin, View):
         from apps.inventory.models import Product
 
         customer = Customer.objects.get(
-            pk=request.POST.get("customer"), company=self.get_company()
+            pk=request.POST.get("customer"), company=self.company()
         )
         product = Product.objects.get(
-            pk=request.POST.get("product"), company=self.get_company()
+            pk=request.POST.get("product"), company=self.company()
         )
         Subscription.objects.create(
-            company=self.get_company(),
+            company=self.company(),
             customer=customer,
             product=product,
             billing_cycle=request.POST.get("billing_cycle"),
@@ -1246,29 +1238,29 @@ class SubscriptionCreateView(CompanyScopedMixin, View):
         return redirect("sales:subscriptions")
 
 
-class SubscriptionUpdateView(CompanyScopedMixin, View):
+class SubscriptionUpdateView(CompanyMixin, View):
     required_permission = "sales.update"
     def get(self, request, pk):
         from apps.crm.models import Customer
         from apps.inventory.models import Product
 
-        sub = get_object_or_404(Subscription, pk=pk, company=self.get_company())
+        sub = get_object_or_404(Subscription, pk=pk, company=self.company())
         return render(
             request,
             "sales/subscriptions/form.html",
             {
                 "subscription": sub,
                 "customers": Customer.objects.filter(
-                    company=self.get_company(), is_deleted=False
+                    company=self.company(), is_deleted=False
                 ),
-                "products": Product.objects.filter(company=self.get_company()),
+                "products": Product.objects.filter(company=self.company()),
                 "cycles": Subscription.BillingCycle.choices,
                 "statuses": Subscription.Status.choices,
             },
         )
 
     def post(self, request, pk):
-        sub = get_object_or_404(Subscription, pk=pk, company=self.get_company())
+        sub = get_object_or_404(Subscription, pk=pk, company=self.company())
         sub.billing_cycle = request.POST.get("billing_cycle")
         sub.status = request.POST.get("status")
         sub.start_date = request.POST.get("start_date")
@@ -1279,7 +1271,7 @@ class SubscriptionUpdateView(CompanyScopedMixin, View):
         return redirect("sales:subscriptions")
 
 
-class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
+class SubscriptionGenerateInvoiceView(CompanyMixin, View):
     required_permission = "sales.approve"
     def post(self, request, pk):
         import calendar
@@ -1287,7 +1279,7 @@ class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
 
         from core.services import BaseService
 
-        sub = get_object_or_404(Subscription, pk=pk, company=self.get_company())
+        sub = get_object_or_404(Subscription, pk=pk, company=self.company())
 
         if sub.status != Subscription.Status.ACTIVE:
             messages.error(
@@ -1349,7 +1341,7 @@ class SubscriptionGenerateInvoiceView(CompanyScopedMixin, View):
 # ════════════════════════ DASHBOARD & POS ════════════════════════════════════
 
 
-class SalesDashboardView(CompanyScopedMixin, TemplateView):
+class SalesDashboardView(CompanyMixin, TemplateView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1367,7 +1359,7 @@ class SalesDashboardView(CompanyScopedMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         from django.db.models import Sum
 
-        c = self.get_company()
+        c = self.company()
 
         # Summary Metrics
         total_rev = (
@@ -1410,7 +1402,7 @@ class SalesDashboardView(CompanyScopedMixin, TemplateView):
         return ctx
 
 
-class POSView(CompanyScopedMixin, TemplateView):
+class POSView(CompanyMixin, TemplateView):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -1433,7 +1425,7 @@ class POSView(CompanyScopedMixin, TemplateView):
         from apps.inventory.models import Product
 
         products = list(
-            Product.objects.filter(company=self.get_company()).values(
+            Product.objects.filter(company=self.company()).values(
                 "id", "name", "sku", "sale_price", "barcode"
             )
         )
@@ -1443,9 +1435,9 @@ class POSView(CompanyScopedMixin, TemplateView):
 
         ctx["products_json"] = json.dumps(products)
         ctx["customers"] = Customer.objects.filter(
-            company=self.get_company(), is_deleted=False
+            company=self.company(), is_deleted=False
         ).order_by("name")
-        ctx["taxes"] = Tax.objects.filter(company=self.get_company()).order_by("name")
+        ctx["taxes"] = Tax.objects.filter(company=self.company()).order_by("name")
         return ctx
 
 
@@ -1455,7 +1447,7 @@ import logging
 from django.http import JsonResponse
 
 
-class POSAPIView(CompanyScopedMixin, View):
+class POSAPIView(CompanyMixin, View):
     required_permission = "sales.create"
     def post(self, request):
         try:
@@ -1476,7 +1468,7 @@ class POSAPIView(CompanyScopedMixin, View):
             from apps.crm.models import Customer
             from apps.inventory.models import Product
 
-            company = self.get_company()
+            company = self.company()
 
             # ── Customer ─────────────────────────────────────────────────────
             if customer_id:

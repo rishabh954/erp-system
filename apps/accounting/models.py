@@ -9,6 +9,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, CurrencyMixin, NotesMixin, SequenceMixin
+from core.services import BaseService
 
 
 class Account(CompanyScoped):
@@ -173,7 +174,7 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
     def save(self, *args, **kwargs):
         if not self.number:
             prefix = self.journal.sequence_prefix if self.journal else "JE"
-            self.number = self.generate_number(prefix, self.__class__)
+            self.number = BaseService.generate_sequence_number(prefix, self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -510,7 +511,7 @@ class FixedAsset(CompanyScoped, SequenceMixin, NotesMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("FA", self.__class__)
+            self.number = BaseService.generate_sequence_number("FA", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
 

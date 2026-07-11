@@ -6,6 +6,7 @@ All 13 AI features with streaming chat, SSE, OCR, forecasting, insights, and NLP
 import json
 import logging
 
+from core.mixins import CompanyMixin
 from core.permissions import PermissionRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,11 +19,6 @@ from apps.ai.models import AIConversation, AIInsight, AIMessage, NLPReport, OCRD
 
 
 logger = logging.getLogger(__name__)
-
-
-class CompanyMixin(PermissionRequiredMixin):
-    def company(self):
-        return self.request.user.primary_company
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from core.services import BaseService
 from core.models import (
     AddressMixin,
     BranchScoped,
@@ -787,7 +788,7 @@ class ExpenseClaim(CompanyScoped, SequenceMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("EXP", self.__class__)
+            self.number = BaseService.generate_sequence_number("EXP", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -828,7 +829,7 @@ class TravelRequest(CompanyScoped, SequenceMixin):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = self.generate_number("TRV", self.__class__)
+            self.number = BaseService.generate_sequence_number("TRV", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
     def __str__(self):

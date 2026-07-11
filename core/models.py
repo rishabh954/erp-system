@@ -253,32 +253,13 @@ class AttachmentMixin(models.Model):
 
 
 class SequenceMixin(models.Model):
-    """Adds an auto-generated human-readable number (e.g. INV-0001)."""
+    """Adds an auto-generated human-readable number (e.g. INV-00001).
 
-    number = models.CharField(max_length=50, unique=True, blank=True, db_index=True)
+    All number generation must use BaseService.generate_sequence_number()
+    from core.services — it is company-scoped and uses consistent 5-digit padding.
+    """
+
+    number = models.CharField(max_length=50, blank=True, db_index=True)
 
     class Meta:
         abstract = True
-
-    def generate_number(self, prefix: str, model_class) -> str:
-        """Generate next sequence number like PREFIX-0001 in a concurrency-safe manner."""  # noqa: E501
-        with transaction.atomic():
-            last = (
-                model_class.all_objects.filter(number__startswith=prefix)
-                .select_for_update()
-                .annotate(num_len=Length("number"))
-                .order_by("-num_len", "-number")
-                .first()
-            )
-            if last and last.number:
-                try:
-                    seq = int(last.number.split("-")[-1]) + 1
-                except (ValueError, IndexError):
-                    seq = 1
-            else:
-                seq = 1
-
-            number = f"{prefix}-{seq:04d}"
-            # Assigning to self here ensures that if we call .save(), it uses this number.  # noqa: E501
-            # But the caller might want to do it. The original code just returns the string.  # noqa: E501
-            return number
