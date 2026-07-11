@@ -47,3 +47,11 @@ def test_product_list_view(client, user, company, product):
 ### 3. E2E and Multi-tenancy Testing
 - End-to-end (E2E) workflow tests reside in the root `tests/` directory (e.g., `test_e2e_walkthrough.py`). We use Django's `LiveServerTestCase` and `django.test.Client` for fast, headless E2E verification rather than heavy Selenium/Playwright suites.
 - Ensure all detail views strictly enforce multi-tenancy constraints (e.g., `get_queryset` isolating objects by `self.request.user.primary_company`). Boundary violation tests are tracked in `tests/test_multitenant_boundary.py`.
+
+### 4. Pre-commit Hooks
+This project uses `pre-commit` to ensure code quality and prevent syntax errors or stray scripts from being committed.
+**CRITICAL**: After cloning the repository, you MUST run:
+```bash
+pre-commit install
+```
+This installs the Git hooks which will automatically run `ruff` for linting, `check-ast` for syntax validation, and block accidental commits of temporary scratch scripts.
