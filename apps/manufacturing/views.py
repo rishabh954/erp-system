@@ -275,7 +275,7 @@ class MOActionView(CompanyMixin, View):
 
 # ════════════════════════ SCRAP & DOWNTIME ════════════════════════════════════
 
-from .models import DowntimeLog, ScrapOrder
+from .models import DowntimeLog, ScrapOrder  # noqa: E402
 
 
 class ScrapOrderListView(CompanyMixin, ListView):
@@ -427,7 +427,7 @@ class WorkOrderCompleteView(CompanyMixin, View):
 
 
 # ════════════════════════ QUALITY CONTROL & COSTING ═══════════════════════════
-from .models import ProductionCosting, QualityCheck
+from .models import ProductionCosting, QualityCheck  # noqa: E402
 
 
 class QualityCheckListView(CompanyMixin, ListView):
@@ -516,10 +516,10 @@ class ProductionCostingDetailView(CompanyMixin, DetailView):
 
 # ════════════════════════ DASHBOARD, MRP, MAINTENANCE ═════════════════════════
 
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView  # noqa: E402
 
-from .models import MaintenanceRequest, MaterialPlan
-from .services import MRPService
+from .models import MaintenanceRequest, MaterialPlan  # noqa: E402
+from .services import MRPService  # noqa: E402
 
 
 class ManufacturingDashboardView(CompanyMixin, TemplateView):

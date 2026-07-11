@@ -5,16 +5,16 @@ HRMS Views
 Employees, Attendance, Leave Management, Payroll
 """
 
-from django.contrib import messages
-from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.contrib import messages  # noqa: E402
+from django.db.models import Q  # noqa: E402
+from django.http import JsonResponse  # noqa: E402
+from django.shortcuts import get_object_or_404, redirect, render  # noqa: E402
+from django.utils import timezone  # noqa: E402
+from django.views.generic import DetailView, ListView, TemplateView, View  # noqa: E402
 
-from core.mixins import CompanyMixin
+from core.mixins import CompanyMixin  # noqa: E402
 
-from .models import (
+from .models import (  # noqa: E402
     Attendance,
     Employee,
     EmployeeDocument,
@@ -836,7 +836,7 @@ class PayrollProcessView(CompanyMixin, View):
 
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
-from django.urls import path
+from django.urls import path  # noqa: E402
 
 app_name = "hrms"
 
@@ -863,7 +863,7 @@ urlpatterns = [
 
 # ════════════════════════ RECRUITMENT ═════════════════════════════════════════
 
-from .models import JobApplication, JobPosting
+from .models import JobApplication, JobPosting  # noqa: E402
 
 
 class JobPostingListView(CompanyMixin, ListView):
@@ -1026,7 +1026,7 @@ class JobApplicationDetailView(CompanyMixin, DetailView):
 
 
 # ════════════════════════ PERFORMANCE APPRAISAL ═══════════════════════════════
-from .models import ExpenseClaim, PerformanceAppraisal, TrainingProgram
+from .models import ExpenseClaim, PerformanceAppraisal, TrainingProgram  # noqa: E402
 
 
 class PerformanceAppraisalListView(CompanyMixin, ListView):

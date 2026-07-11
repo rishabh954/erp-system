@@ -38,7 +38,7 @@ def auto_mark_attendance():
     from apps.hrms.models import Attendance, Employee
 
     today = timezone.localdate()
-    weekday = today.weekday()  # 0=Mon
+    today.weekday()  # 0=Mon
 
     for company in Company.objects.filter(status="active", is_deleted=False):
         employees = Employee.objects.filter(
@@ -137,4 +137,4 @@ def _count_working_days(start, end):
     return count
 
 
-from decimal import Decimal
+from decimal import Decimal  # noqa: E402

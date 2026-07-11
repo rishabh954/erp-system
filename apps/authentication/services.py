@@ -37,7 +37,7 @@ class AuthService:
         EmailVerificationToken.objects.filter(user=user, is_used=False).update(
             is_used=True
         )
-        record = EmailVerificationToken.objects.create(
+        EmailVerificationToken.objects.create(
             user=user,
             token=token_str,
             expires_at=timezone.now() + timedelta(hours=24),

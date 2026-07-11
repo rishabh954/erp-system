@@ -194,8 +194,8 @@ class ReportDetailView(ReportsMixin, DetailView):
                 ctx["chart_values"] = json.dumps(list(vals_map.values()))
             else:
                 counted = {}
-                for l in labels:
-                    counted[l] = counted.get(l, 0) + 1
+                for item in labels:
+                    counted[item] = counted.get(item, 0) + 1
                 ctx["chart_labels"] = json.dumps(list(counted.keys()))
                 ctx["chart_values"] = json.dumps(list(counted.values()))
 
@@ -424,7 +424,7 @@ class PreviewAPIView(ReportsMixin, View):
                     k = str(r.get(group_by, "N/A"))
                     try:
                         v = float(r.get(val_field, 1)) if val_field else 1
-                    except:
+                    except Exception:
                         v = 1
                     labels_dict[k] = labels_dict.get(k, 0) + v
 

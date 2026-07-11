@@ -25,7 +25,7 @@ def test_pos_checkout_permissions(client, pos_company, pos_user_with_read, pos_u
     # First, setup required data for a successful or 400 checkout (meaning it passes permission check)
     # The view checks for an OPEN POSSession
     warehouse = Warehouse.objects.create(company=pos_company, name="Test Warehouse")
-    session = POSSession.objects.create(
+    POSSession.objects.create(
         company=pos_company,
         user=pos_user_with_create,
         status=POSSession.Status.OPEN,

@@ -192,19 +192,6 @@ class LoginHistory(models.Model):
         ordering = ["-timestamp"]
 
 
-class UserSession(models.Model):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="active_sessions"
-    )
-    session_key = models.CharField(max_length=40, unique=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(blank=True)
-    last_activity = models.DateTimeField(auto_now=True)
-    expires_at = models.DateTimeField()
-
-    class Meta:
-        db_table = "auth_user_session"
-
 
 class IPRestriction(models.Model):
     company = models.ForeignKey(

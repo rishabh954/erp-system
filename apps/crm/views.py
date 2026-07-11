@@ -318,7 +318,7 @@ class CampaignCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        campaign = Campaign.objects.create(
+        Campaign.objects.create(
             company=self.company(),
             name=request.POST.get("name"),
             status=request.POST.get("status", "planning"),

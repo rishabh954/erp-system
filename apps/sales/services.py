@@ -181,9 +181,9 @@ class SalesService(BaseService):
         from decimal import Decimal
 
         lines = invoice.lines.all()
-        subtotal = sum((l.subtotal for l in lines), Decimal("0"))
-        tax_amount = sum((l.tax_amount for l in lines), Decimal("0"))
-        discount_amount = sum((l.discount_amount for l in lines), Decimal("0"))
+        subtotal = sum((item.subtotal for item in lines), Decimal("0"))
+        tax_amount = sum((item.tax_amount for item in lines), Decimal("0"))
+        discount_amount = sum((item.discount_amount for item in lines), Decimal("0"))
 
         # We don't save the invoice here, just return the computed dictionary.
         # This can be used in APIs before saving.
@@ -228,7 +228,7 @@ class SalesService(BaseService):
     @transaction.atomic
     def create_shipment_from_order(
         self, order: SalesOrder, lines_data: list = None
-    ) -> "Shipment":
+    ) -> "Shipment":  # noqa: F821
         """Generate a Shipment from a Sales Order."""
         from apps.sales.models import Shipment, ShipmentLine
 

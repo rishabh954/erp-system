@@ -15,7 +15,7 @@ from apps.sales.services import SalesOrderService
 @pytest.fixture
 def setup_data(db):
     company = Company.objects.create(name="Test Company")
-    branch = Branch.objects.create(name="Main Branch", company=company)
+    Branch.objects.create(name="Main Branch", company=company)
     user = User.objects.create_user(
         email="test@example.com",
         password="password",

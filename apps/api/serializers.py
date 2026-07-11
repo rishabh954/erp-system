@@ -29,7 +29,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 # ─── Sales ────────────────────────────────────────────────────────────────────
-from apps.sales.models import Invoice, Quotation, SalesOrder
+from apps.sales.models import Invoice, Quotation, SalesOrder  # noqa: E402
 
 
 class ErpQuotationSerializer(serializers.ModelSerializer):
@@ -72,7 +72,7 @@ class ErpInvoiceSerializer(serializers.ModelSerializer):
 
 
 # ─── Purchase ─────────────────────────────────────────────────────────────────
-from apps.purchase.models import Bill, PurchaseOrder, Vendor
+from apps.purchase.models import Bill, PurchaseOrder, Vendor  # noqa: E402
 
 
 class ErpVendorSerializer(serializers.ModelSerializer):
@@ -109,7 +109,7 @@ class ErpBillSerializer(serializers.ModelSerializer):
 
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
-from apps.inventory.models import Product, Warehouse
+from apps.inventory.models import Product, Warehouse  # noqa: E402
 
 
 class ErpProductSerializer(serializers.ModelSerializer):
@@ -139,7 +139,7 @@ class ErpWarehouseSerializer(serializers.ModelSerializer):
 
 
 # ─── HRMS ─────────────────────────────────────────────────────────────────────
-from apps.hrms.models import Employee, LeaveRequest
+from apps.hrms.models import Employee, LeaveRequest  # noqa: E402
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -176,7 +176,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
 
 # ─── Manufacturing ────────────────────────────────────────────────────────────
-from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder
+from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder  # noqa: E402
 
 
 class ManufacturingOrderSerializer(serializers.ModelSerializer):

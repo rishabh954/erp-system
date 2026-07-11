@@ -950,7 +950,7 @@ class PaymentListView(CompanyMixin, ListView):
 
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
-from django.urls import path
+from django.urls import path  # noqa: E402
 
 app_name = "sales"
 
@@ -992,7 +992,7 @@ urlpatterns = [
 
 # ════════════════════════ ENTERPRISE SALES VIEWS ═════════════════════════════
 
-from .models import CreditNote, PriceList, SalesCommission, Subscription
+from .models import CreditNote, PriceList, SalesCommission, Subscription  # noqa: E402
 
 
 class PriceListListView(CompanyMixin, ListView):
@@ -1439,8 +1439,8 @@ class POSView(CompanyMixin, TemplateView):
         return ctx
 
 
-import json
-import logging
+import json  # noqa: E402
+import logging  # noqa: E402
 
 
 class POSAPIView(CompanyMixin, View):

@@ -8,6 +8,7 @@ from django.utils import timezone
 from faker import Faker
 
 from apps.authentication.models import User
+from apps.company.models import Company
 from apps.crm.models import Customer
 from apps.helpdesk.models import Ticket, TicketCategory
 from apps.inventory.models import (
@@ -24,7 +25,6 @@ from apps.manufacturing.models import (
 )
 from apps.purchase.models import PurchaseOrder, PurchaseOrderLine, Vendor
 from apps.sales.models import SalesOrder, SalesOrderLine
-from apps.company.models import Company
 
 
 class Command(BaseCommand):

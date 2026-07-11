@@ -5,16 +5,22 @@ Purchase Management Views
 Vendors, Purchase Requests, Purchase Orders, Goods Receipts
 """
 
-from django.contrib import messages
-from django.db.models import Q, Sum
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
-from django.utils import timezone
-from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
+from django.contrib import messages  # noqa: E402
+from django.db.models import Q, Sum  # noqa: E402
+from django.shortcuts import get_object_or_404, redirect, render  # noqa: E402
+from django.urls import reverse_lazy  # noqa: E402
+from django.utils import timezone  # noqa: E402
+from django.views.generic import (  # noqa: E402
+    DetailView,
+    ListView,
+    TemplateView,
+    UpdateView,
+    View,
+)
 
-from core.mixins import CompanyMixin
+from core.mixins import CompanyMixin  # noqa: E402
 
-from .models import GoodsReceipt, PurchaseOrder, PurchaseRequest, Vendor
+from .models import GoodsReceipt, PurchaseOrder, PurchaseRequest, Vendor  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -662,7 +668,7 @@ class PurchaseOrderDetailView(CompanyMixin, DetailView):
 
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
-from django.urls import path
+from django.urls import path  # noqa: E402
 
 app_name = "purchase"
 
@@ -693,7 +699,7 @@ urlpatterns = [
 # ========================================== BILL VIEWS ==========================================
 
 
-from .models import Bill
+from .models import Bill  # noqa: E402
 
 
 class CreateBillFromPOView(CompanyMixin, View):
@@ -963,7 +969,7 @@ class GoodsReceiptCreateView(CompanyMixin, View):
 
 # ════════════════════════ ENTERPRISE PURCHASE VIEWS ═══════════════════════════
 
-from .models import RequestForQuotation, VendorBid
+from .models import RequestForQuotation, VendorBid  # noqa: E402
 
 
 class RFQListView(CompanyMixin, ListView):

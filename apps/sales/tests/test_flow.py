@@ -94,7 +94,7 @@ def test_sales_flow(client, user, company, customer, product, tax, currency):
     assert invoice.balance_due == Decimal("220.00")
 
     # Register Payment
-    payment = Payment.objects.create(
+    Payment.objects.create(
         company=company,
         invoice=invoice,
         customer=customer,

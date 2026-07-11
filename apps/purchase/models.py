@@ -294,10 +294,10 @@ class PurchaseOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
     def recalculate_totals(self):
         lines = self.lines.all()
-        self.subtotal = sum(l.subtotal for l in lines)
-        self.tax_amount = sum(l.tax_amount for l in lines)
+        self.subtotal = sum(item.subtotal for item in lines)
+        self.tax_amount = sum(item.tax_amount for item in lines)
         self.discount_amount = sum(
-            (l.subtotal * (l.discount_percent / 100)) for l in lines
+            (item.subtotal * (item.discount_percent / 100)) for item in lines
         )
         self.total = (
             self.subtotal + self.tax_amount - self.discount_amount + self.shipping_cost
@@ -446,8 +446,8 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
 
     def calculate_totals(self):
         lines = self.lines.all()
-        self.subtotal = sum(l.subtotal for l in lines)
-        self.tax_amount = sum(l.tax_amount for l in lines)
+        self.subtotal = sum(item.subtotal for item in lines)
+        self.tax_amount = sum(item.tax_amount for item in lines)
         self.total = self.subtotal + self.tax_amount - self.discount_amount
         self.save(update_fields=["subtotal", "tax_amount", "total"])
         self.update_balance()

@@ -48,7 +48,7 @@ def test_payroll_service(company, user, employee, currency):
         percentage=Decimal("5.00"),
     )
 
-    salary = EmployeeSalary.objects.create(
+    EmployeeSalary.objects.create(
         employee=employee,
         company=company,
         salary_structure=struct,

@@ -36,7 +36,7 @@ class CompanyScopedViewSet(viewsets.ModelViewSet):
 
 
 # ─── CRM ──────────────────────────────────────────────────────────────────────
-from apps.crm.models import Customer, Lead
+from apps.crm.models import Customer, Lead  # noqa: E402
 
 
 @extend_schema(tags=["CRM"])
@@ -82,7 +82,7 @@ class CustomerViewSet(CompanyScopedViewSet):
 
 
 # ─── Sales ────────────────────────────────────────────────────────────────────
-from apps.sales.models import Invoice, Quotation, SalesOrder
+from apps.sales.models import Invoice, Quotation, SalesOrder  # noqa: E402
 
 
 @extend_schema(tags=["Sales"])
@@ -149,7 +149,7 @@ class InvoiceViewSet(CompanyScopedViewSet):
 
 
 # ─── Purchase ─────────────────────────────────────────────────────────────────
-from apps.purchase.models import Bill, PurchaseOrder, Vendor
+from apps.purchase.models import Bill, PurchaseOrder, Vendor  # noqa: E402
 
 
 @extend_schema(tags=["Purchase"])
@@ -216,7 +216,7 @@ class BillViewSet(CompanyScopedViewSet):
 
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
-from apps.inventory.models import Product, Warehouse
+from apps.inventory.models import Product, Warehouse  # noqa: E402
 
 
 @extend_schema(tags=["Inventory"])
@@ -262,7 +262,7 @@ class WarehouseViewSet(CompanyScopedViewSet):
 
 
 # ─── HRMS ─────────────────────────────────────────────────────────────────────
-from apps.hrms.models import Employee, LeaveRequest
+from apps.hrms.models import Employee, LeaveRequest  # noqa: E402
 
 
 @extend_schema(tags=["HRMS"])
@@ -308,7 +308,7 @@ class LeaveRequestViewSet(CompanyScopedViewSet):
 
 
 # ─── Manufacturing ────────────────────────────────────────────────────────────
-from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder
+from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder  # noqa: E402
 
 
 @extend_schema(tags=["Manufacturing"])

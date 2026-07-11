@@ -9,7 +9,6 @@ All services degrade gracefully when OPENAI_API_KEY is not set.
 import io
 import json
 import logging
-import re
 import time
 from collections.abc import Generator
 from datetime import timedelta
@@ -358,7 +357,7 @@ class ForecastingService:
 
             # Cap minimum at 0
             forecast_y = np.maximum(forecast_y, 0)
-            
+
             # Build labels
             future_dates = [
                 (end + timedelta(days=i + 1)).strftime("%b %d")
@@ -379,7 +378,7 @@ class ForecastingService:
                 "historical_values": y[-30:].tolist(),
                 "forecast_labels": future_dates,
                 "predicted": [float(p) for p in forecast_y],
-                "lower_bound": [float(l) for l in lower],
+                "lower_bound": [float(item) for item in lower],
                 "upper_bound": [float(u) for u in upper],
                 "metrics": {
                     "r2_score": round(r2, 3),
@@ -644,7 +643,7 @@ class PurchaseRecommendationService:
                 return []
 
             # Build data for AI recommendation
-            prompt = f"""You are a procurement assistant. Based on the following inventory alerts, 
+            prompt = f"""You are a procurement assistant. Based on the following inventory alerts,
 suggest specific purchase orders with quantities and urgency levels.
 
 Alerts (products needing restocking within 14 days):

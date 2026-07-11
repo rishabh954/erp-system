@@ -63,7 +63,7 @@ def test_journal_entry_posting_balances_debits_credits(company, user):
     )
 
     # Test balance validation
-    assert je.is_balanced() == True
+    assert je.is_balanced() is True
 
     # Post it
     je.post(user=user)
@@ -124,7 +124,7 @@ def test_journal_entry_post_unbalanced_fails(company, user):
         credit=Decimal("50.00"),
     )
 
-    assert je.is_balanced() == False
+    assert je.is_balanced() is False
 
     with pytest.raises(ValueError, match="is not balanced"):
         je.post(user=user)
@@ -227,7 +227,7 @@ def test_journal_entry_service_create(company, user):
     assert entry.total_debit == Decimal("200")
     assert entry.total_credit == Decimal("200")
     assert entry.items.count() == 2
-    assert entry.is_balanced() == True
+    assert entry.is_balanced() is True
 
 
 def test_banking_service_reconcile(company, user, currency):
@@ -282,8 +282,8 @@ def test_banking_service_reconcile(company, user, currency):
     service = BankingService(user=user, company=company)
     res_line, res_item = service.reconcile_transaction(line.id, item.id)
 
-    assert res_line.is_reconciled == True
-    assert res_item.reconciled == True
+    assert res_line.is_reconciled is True
+    assert res_item.reconciled is True
     assert res_line.journal_item == res_item
 
 def test_issue_credit_note_permissions(client, company):

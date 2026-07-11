@@ -231,8 +231,8 @@ class CompleteMaintenanceView(CompanyMixin, View):
 
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
-from django.urls import path
-from django.utils import timezone
+from django.urls import path  # noqa: E402
+from django.utils import timezone  # noqa: E402
 
 app_name = "assets"
 

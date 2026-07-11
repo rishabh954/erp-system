@@ -270,7 +270,7 @@ class DocumentCategoryCreateView(CompanyMixin, View):
 
 # ════════════════════════ URL PATTERNS ════════════════════════════════════════
 
-from django.urls import path
+from django.urls import path  # noqa: E402
 
 app_name = "documents"
 

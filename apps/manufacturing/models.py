@@ -212,7 +212,7 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
                     Decimal(line.scrap_percentage) / Decimal(100)
                 )
 
-            movement_out = StockMovement.objects.create(
+            StockMovement.objects.create(
                 company=self.company,
                 product=line.component,
                 warehouse=self.warehouse,
@@ -224,7 +224,7 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
             )
 
         # Produce finished goods (Stock in)
-        movement_in = StockMovement.objects.create(
+        StockMovement.objects.create(
             company=self.company,
             product=self.product,
             warehouse=self.warehouse,

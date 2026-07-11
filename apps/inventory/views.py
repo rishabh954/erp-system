@@ -5,16 +5,16 @@ Inventory Views
 Products, Warehouses, Stock Movements, Transfers, Reports
 """
 
-from django.contrib import messages
-from django.db.models import Count, F, Q, Sum
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.contrib import messages  # noqa: E402
+from django.db.models import Count, F, Q, Sum  # noqa: E402
+from django.http import JsonResponse  # noqa: E402
+from django.shortcuts import get_object_or_404, redirect, render  # noqa: E402
+from django.utils import timezone  # noqa: E402
+from django.views.generic import DetailView, ListView, TemplateView, View  # noqa: E402
 
-from core.mixins import CompanyMixin
+from core.mixins import CompanyMixin  # noqa: E402
 
-from .models import (
+from .models import (  # noqa: E402
     InventoryTransfer,
     Product,
     ProductCategory,
@@ -386,7 +386,7 @@ class StockAdjustmentView(CompanyMixin, View):
             from .services import StockService
 
             service = StockService(user=request.user, company=company)
-            mov = service.adjust_stock(
+            service.adjust_stock(
                 product=product,
                 warehouse=warehouse,
                 qty_input=data["quantity"],
@@ -627,9 +627,9 @@ class ProductCategoryListView(CompanyMixin, ListView):
         return qs.order_by("name")
 
 
-from django.contrib.messages.views import SuccessMessageMixin
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, UpdateView
+from django.contrib.messages.views import SuccessMessageMixin  # noqa: E402
+from django.urls import reverse_lazy  # noqa: E402
+from django.views.generic import CreateView, DeleteView, UpdateView  # noqa: E402
 
 
 class ProductCategoryCreateView(CompanyMixin, SuccessMessageMixin, CreateView):
@@ -824,7 +824,7 @@ class InventoryReportsView(CompanyMixin, TemplateView):
 
 # ════════════════════════ DELIVERIES ═════════════════════════════════════════
 
-from .models import DeliveryOrder
+from .models import DeliveryOrder  # noqa: E402
 
 
 class DeliveryOrderListView(CompanyMixin, ListView):
@@ -916,7 +916,7 @@ class ShipDeliveryView(CompanyMixin, View):
 
 # ════════════════════════ ENTERPRISE INVENTORY VIEWS ═════════════════════════
 
-from .models import ReorderRule
+from .models import ReorderRule  # noqa: E402
 
 
 class ReorderRuleListView(CompanyMixin, ListView):

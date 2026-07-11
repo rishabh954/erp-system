@@ -5,13 +5,13 @@ Sales REST API
 Quotations, Sales Orders, Invoices, Payments
 """
 
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import serializers, viewsets
-from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend  # noqa: E402
+from rest_framework import serializers, viewsets  # noqa: E402
+from rest_framework.decorators import action  # noqa: E402
+from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
+from rest_framework.response import Response  # noqa: E402
 
-from ..models import (
+from ..models import (  # noqa: E402
     Invoice,
     InvoiceLine,
     Payment,
@@ -198,6 +198,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return obj.customer.name
 
     def get_is_overdue(self, obj):
+        from django.utils import timezone
         return obj.status in ("sent", "partial") and obj.due_date < timezone.localdate()
 
 

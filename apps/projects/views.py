@@ -427,8 +427,8 @@ class LogTimeView(CompanyMixin, View):
 
 # ════════════════════════ AGILE & RISK VIEWS ══════════════════════════════════
 
-from .models import ProjectRisk, Sprint
-from .services import ProjectTrackingService
+from .models import ProjectRisk, Sprint  # noqa: E402
+from .services import ProjectTrackingService  # noqa: E402
 
 
 class AgileBoardView(CompanyMixin, DetailView):

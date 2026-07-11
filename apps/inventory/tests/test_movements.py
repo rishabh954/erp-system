@@ -294,7 +294,7 @@ class TestMovements:
 
     def test_compute_abc_analysis(self, company, product, warehouse):
         # Create usage for product
-        mov = StockMovement.objects.create(
+        StockMovement.objects.create(
             company=company,
             product=product,
             warehouse=warehouse,

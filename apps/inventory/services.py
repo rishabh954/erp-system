@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
@@ -6,6 +7,7 @@ from django.utils import timezone
 
 from .models import Product, StockMovement
 
+logger = logging.getLogger(__name__)
 
 class InventoryAnalyticsService:
 
@@ -84,10 +86,14 @@ class InventoryAnalyticsService:
                 prod.save(update_fields=["abc_classification"])
 
 
-from django.db import transaction
+from django.db import transaction  # noqa: E402
 
-from apps.inventory.models import InventoryTransfer, InventoryTransferLine, StockRecord
-from core.services import BaseService
+from apps.inventory.models import (  # noqa: E402
+    InventoryTransfer,
+    InventoryTransferLine,
+    StockRecord,
+)
+from core.services import BaseService  # noqa: E402
 
 
 class StockService(BaseService):
@@ -565,7 +571,7 @@ class DeliveryService(BaseService):
             stock_record.quantity_on_hand -= line.quantity_shipped
             stock_record.save(update_fields=["quantity_on_hand"])
 
-            mov = StockMovement.objects.create(
+            StockMovement.objects.create(
                 company=self.company,
                 product=line.product,
                 warehouse=delivery.warehouse,

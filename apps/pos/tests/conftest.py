@@ -8,7 +8,7 @@ from apps.company.models import Company
 def pos_company(db):
     return Company.objects.create(name="POS Test Company")
 
-from django.core.management import call_command
+from django.core.management import call_command  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

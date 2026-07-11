@@ -39,7 +39,7 @@ def test_goods_receipt_updates_stock(client, company, user):
     client.force_login(user)
 
     # Initial stock should be 0 or nonexistent
-    assert StockRecord.objects.filter(product=product).exists() == False
+    assert StockRecord.objects.filter(product=product).exists() is False
 
     # Submit GRN form via the view
     url = reverse("purchase:order_receive", args=[po.pk])

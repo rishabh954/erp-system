@@ -851,17 +851,17 @@ class ExecutiveKPIDashboardView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/executive_kpi.html"
 
 
-from datetime import datetime
+from datetime import datetime  # noqa: E402
 
-from django.http import JsonResponse
-from django.views import View
+from django.http import JsonResponse  # noqa: E402
+from django.views import View  # noqa: E402
 
-from apps.crm.models import Lead, LeadActivity
-from apps.hrms.models import LeaveRequest
-from apps.projects.models import Milestone
-from apps.projects.models import Task as ProjectTask
-from apps.purchase.models import Bill
-from apps.sales.models import Invoice
+from apps.crm.models import Lead, LeadActivity  # noqa: E402
+from apps.hrms.models import LeaveRequest  # noqa: E402
+from apps.projects.models import Milestone  # noqa: E402
+from apps.projects.models import Task as ProjectTask  # noqa: E402
+from apps.purchase.models import Bill  # noqa: E402
+from apps.sales.models import Invoice  # noqa: E402
 
 
 class CalendarView(LoginRequiredMixin, TemplateView):
