@@ -1,9 +1,11 @@
-import pytest
 from decimal import Decimal
+from unittest.mock import MagicMock
+
+import pytest
 from django.utils import timezone
+
 from apps.accounting.models import Account, JournalEntry
 from apps.accounting.services import AutoJournalService, FinancialReportingService
-from unittest.mock import MagicMock
 
 pytestmark = pytest.mark.django_db
 
@@ -19,7 +21,7 @@ def test_autojournal_post_sales_invoice(company, user):
     invoice.subtotal = Decimal("100.00")
     invoice.tax_amount = Decimal("10.00")
     invoice.customer.id = 1
-    
+
     # Mock lines
     mock_line = MagicMock()
     mock_line.product.revenue_account = None
@@ -27,7 +29,7 @@ def test_autojournal_post_sales_invoice(company, user):
     invoice.lines.first.return_value = mock_line
 
     entry = AutoJournalService.post_sales_invoice(invoice)
-    
+
     assert entry.total_debit == Decimal("110.00")
     assert entry.total_credit == Decimal("110.00")
     assert entry.is_balanced() is True
@@ -46,14 +48,14 @@ def test_autojournal_post_purchase_bill(company, user):
     bill.subtotal = Decimal("200.00")
     bill.tax_amount = Decimal("20.00")
     bill.vendor.id = 1
-    
+
     mock_line = MagicMock()
     mock_line.product.cogs_account = None
     bill.lines.exists.return_value = True
     bill.lines.first.return_value = mock_line
 
     entry = AutoJournalService.post_purchase_bill(bill)
-    
+
     assert entry.total_debit == Decimal("220.00")
     assert entry.total_credit == Decimal("220.00")
     assert entry.is_balanced() is True
@@ -73,14 +75,14 @@ def test_financial_reporting_trial_balance(company, user):
 
     from apps.accounting.models import Journal, JournalItem
     journal = Journal.objects.create(company=company, name="GEN", code="GEN", journal_type=Journal.JournalType.GENERAL)
-    
+
     je = JournalEntry.objects.create(
         company=company, journal=journal, date=timezone.now().date(),
         total_debit=Decimal("100.00"), total_credit=Decimal("100.00"), status=JournalEntry.Status.POSTED
     )
     JournalItem.objects.create(journal_entry=je, account=asset_account, debit=Decimal("100.00"), credit=Decimal("0"))
     JournalItem.objects.create(journal_entry=je, account=liability_account, debit=Decimal("0"), credit=Decimal("100.00"))
-    
+
     tb = FinancialReportingService.get_trial_balance(company)
     assert tb["total_debit"] == Decimal("100.00")
     assert tb["total_credit"] == Decimal("100.00")
