@@ -6,6 +6,7 @@ Quotations, Sales Orders, Invoices, Payments
 """
 
 from django_filters.rest_framework import DjangoFilterBackend  # noqa: E402
+from drf_spectacular.utils import extend_schema, inline_serializer  # noqa: E402
 from rest_framework import serializers, viewsets  # noqa: E402
 from rest_framework.decorators import action  # noqa: E402
 from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
@@ -281,8 +282,6 @@ class QuotationViewSet(viewsets.ModelViewSet):
         quot.approved_by = request.user
         quot.save(update_fields=["status", "approved_by"])
         return Response(QuotationSerializer(quot).data)
-
-    from drf_spectacular.utils import extend_schema, inline_serializer
 
     @extend_schema(
         responses={

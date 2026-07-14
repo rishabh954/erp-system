@@ -3323,8 +3323,6 @@ paths:
   /api/crm/leads/:
     get:
       operationId: api_crm_leads_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: assigned_to
@@ -3409,8 +3407,6 @@ paths:
           description: ''
     post:
       operationId: api_crm_leads_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - CRM
       requestBody:
@@ -3438,8 +3434,6 @@ paths:
   /api/crm/leads/{id}/:
     patch:
       operationId: api_crm_leads_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3473,8 +3467,6 @@ paths:
           description: ''
     get:
       operationId: api_crm_leads_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3497,8 +3489,6 @@ paths:
           description: ''
     put:
       operationId: api_crm_leads_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3533,8 +3523,6 @@ paths:
           description: ''
     delete:
       operationId: api_crm_leads_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3554,8 +3542,6 @@ paths:
   /api/crm/customers/:
     get:
       operationId: api_crm_customers_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: customer_type
@@ -3609,8 +3595,6 @@ paths:
           description: ''
     post:
       operationId: api_crm_customers_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - CRM
       requestBody:
@@ -3638,8 +3622,6 @@ paths:
   /api/crm/customers/{id}/:
     patch:
       operationId: api_crm_customers_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3673,8 +3655,6 @@ paths:
           description: ''
     get:
       operationId: api_crm_customers_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3697,8 +3677,6 @@ paths:
           description: ''
     put:
       operationId: api_crm_customers_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3733,8 +3711,6 @@ paths:
           description: ''
     delete:
       operationId: api_crm_customers_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3754,8 +3730,6 @@ paths:
   /api/sales/quotations/:
     get:
       operationId: api_sales_quotations_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: customer
@@ -3818,8 +3792,6 @@ paths:
           description: ''
     post:
       operationId: api_sales_quotations_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Sales
       requestBody:
@@ -3847,8 +3819,6 @@ paths:
   /api/sales/quotations/{id}/:
     patch:
       operationId: api_sales_quotations_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3882,8 +3852,6 @@ paths:
           description: ''
     get:
       operationId: api_sales_quotations_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3906,8 +3874,6 @@ paths:
           description: ''
     put:
       operationId: api_sales_quotations_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3942,8 +3908,6 @@ paths:
           description: ''
     delete:
       operationId: api_sales_quotations_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -3963,8 +3927,6 @@ paths:
   /api/sales/orders/:
     get:
       operationId: api_sales_orders_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: customer
@@ -4031,8 +3993,6 @@ paths:
           description: ''
     post:
       operationId: api_sales_orders_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Sales
       requestBody:
@@ -4060,8 +4020,6 @@ paths:
   /api/sales/orders/{id}/:
     patch:
       operationId: api_sales_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4095,8 +4053,6 @@ paths:
           description: ''
     get:
       operationId: api_sales_orders_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4119,8 +4075,6 @@ paths:
           description: ''
     put:
       operationId: api_sales_orders_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4155,8 +4109,6 @@ paths:
           description: ''
     delete:
       operationId: api_sales_orders_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4176,8 +4128,6 @@ paths:
   /api/sales/invoices/:
     get:
       operationId: api_sales_invoices_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: customer
@@ -4242,8 +4192,6 @@ paths:
           description: ''
     post:
       operationId: api_sales_invoices_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Sales
       requestBody:
@@ -4271,8 +4219,6 @@ paths:
   /api/sales/invoices/{id}/:
     patch:
       operationId: api_sales_invoices_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4306,8 +4252,6 @@ paths:
           description: ''
     get:
       operationId: api_sales_invoices_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4330,8 +4274,6 @@ paths:
           description: ''
     put:
       operationId: api_sales_invoices_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4366,8 +4308,6 @@ paths:
           description: ''
     delete:
       operationId: api_sales_invoices_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4387,8 +4327,6 @@ paths:
   /api/purchase/vendors/:
     get:
       operationId: api_purchase_vendors_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - name: ordering
         required: false
@@ -4440,8 +4378,6 @@ paths:
           description: ''
     post:
       operationId: api_purchase_vendors_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Purchase
       requestBody:
@@ -4469,8 +4405,6 @@ paths:
   /api/purchase/vendors/{id}/:
     patch:
       operationId: api_purchase_vendors_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4504,8 +4438,6 @@ paths:
           description: ''
     get:
       operationId: api_purchase_vendors_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4528,8 +4460,6 @@ paths:
           description: ''
     put:
       operationId: api_purchase_vendors_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4564,8 +4494,6 @@ paths:
           description: ''
     delete:
       operationId: api_purchase_vendors_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4585,8 +4513,6 @@ paths:
   /api/purchase/orders/:
     get:
       operationId: api_purchase_orders_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - name: ordering
         required: false
@@ -4655,8 +4581,6 @@ paths:
           description: ''
     post:
       operationId: api_purchase_orders_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Purchase
       requestBody:
@@ -4684,8 +4608,6 @@ paths:
   /api/purchase/orders/{id}/:
     patch:
       operationId: api_purchase_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4719,8 +4641,6 @@ paths:
           description: ''
     get:
       operationId: api_purchase_orders_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4743,8 +4663,6 @@ paths:
           description: ''
     put:
       operationId: api_purchase_orders_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4779,8 +4697,6 @@ paths:
           description: ''
     delete:
       operationId: api_purchase_orders_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4800,8 +4716,6 @@ paths:
   /api/purchase/bills/:
     get:
       operationId: api_purchase_bills_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - name: ordering
         required: false
@@ -4864,8 +4778,6 @@ paths:
           description: ''
     post:
       operationId: api_purchase_bills_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Purchase
       requestBody:
@@ -4893,8 +4805,6 @@ paths:
   /api/purchase/bills/{id}/:
     patch:
       operationId: api_purchase_bills_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4928,8 +4838,6 @@ paths:
           description: ''
     get:
       operationId: api_purchase_bills_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4952,8 +4860,6 @@ paths:
           description: ''
     put:
       operationId: api_purchase_bills_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -4988,8 +4894,6 @@ paths:
           description: ''
     delete:
       operationId: api_purchase_bills_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5009,8 +4913,6 @@ paths:
   /api/inventory/products/:
     get:
       operationId: api_inventory_products_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: category
@@ -5081,8 +4983,6 @@ paths:
           description: ''
     post:
       operationId: api_inventory_products_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Inventory
       requestBody:
@@ -5110,8 +5010,6 @@ paths:
   /api/inventory/products/{id}/:
     patch:
       operationId: api_inventory_products_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5145,8 +5043,6 @@ paths:
           description: ''
     get:
       operationId: api_inventory_products_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5169,8 +5065,6 @@ paths:
           description: ''
     put:
       operationId: api_inventory_products_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5205,8 +5099,6 @@ paths:
           description: ''
     delete:
       operationId: api_inventory_products_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5226,8 +5118,6 @@ paths:
   /api/inventory/warehouses/:
     get:
       operationId: api_inventory_warehouses_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - name: ordering
         required: false
@@ -5267,8 +5157,6 @@ paths:
           description: ''
     post:
       operationId: api_inventory_warehouses_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Inventory
       requestBody:
@@ -5296,8 +5184,6 @@ paths:
   /api/inventory/warehouses/{id}/:
     patch:
       operationId: api_inventory_warehouses_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5331,8 +5217,6 @@ paths:
           description: ''
     get:
       operationId: api_inventory_warehouses_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5355,8 +5239,6 @@ paths:
           description: ''
     put:
       operationId: api_inventory_warehouses_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5391,8 +5273,6 @@ paths:
           description: ''
     delete:
       operationId: api_inventory_warehouses_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5412,8 +5292,6 @@ paths:
   /api/hrms/employees/:
     get:
       operationId: api_hrms_employees_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: department
@@ -5476,8 +5354,6 @@ paths:
           description: ''
     post:
       operationId: api_hrms_employees_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - HRMS
       requestBody:
@@ -5505,8 +5381,6 @@ paths:
   /api/hrms/employees/{id}/:
     patch:
       operationId: api_hrms_employees_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5540,8 +5414,6 @@ paths:
           description: ''
     get:
       operationId: api_hrms_employees_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5564,8 +5436,6 @@ paths:
           description: ''
     put:
       operationId: api_hrms_employees_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5600,8 +5470,6 @@ paths:
           description: ''
     delete:
       operationId: api_hrms_employees_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5621,8 +5489,6 @@ paths:
   /api/hrms/leaves/:
     get:
       operationId: api_hrms_leaves_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: employee
@@ -5683,8 +5549,6 @@ paths:
           description: ''
     post:
       operationId: api_hrms_leaves_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - HRMS
       requestBody:
@@ -5712,8 +5576,6 @@ paths:
   /api/hrms/leaves/{id}/:
     patch:
       operationId: api_hrms_leaves_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5747,8 +5609,6 @@ paths:
           description: ''
     get:
       operationId: api_hrms_leaves_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5771,8 +5631,6 @@ paths:
           description: ''
     put:
       operationId: api_hrms_leaves_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5807,8 +5665,6 @@ paths:
           description: ''
     delete:
       operationId: api_hrms_leaves_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5828,8 +5684,6 @@ paths:
   /api/manufacturing/orders/:
     get:
       operationId: api_manufacturing_orders_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - name: ordering
         required: false
@@ -5890,8 +5744,6 @@ paths:
           description: ''
     post:
       operationId: api_manufacturing_orders_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Manufacturing
       requestBody:
@@ -5919,8 +5771,6 @@ paths:
   /api/manufacturing/orders/{id}/:
     patch:
       operationId: api_manufacturing_orders_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5954,8 +5804,6 @@ paths:
           description: ''
     get:
       operationId: api_manufacturing_orders_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -5978,8 +5826,6 @@ paths:
           description: ''
     put:
       operationId: api_manufacturing_orders_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -6014,8 +5860,6 @@ paths:
           description: ''
     delete:
       operationId: api_manufacturing_orders_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -6035,8 +5879,6 @@ paths:
   /api/manufacturing/boms/:
     get:
       operationId: api_manufacturing_boms_list
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: query
         name: is_active
@@ -6085,8 +5927,6 @@ paths:
           description: ''
     post:
       operationId: api_manufacturing_boms_create
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       tags:
       - Manufacturing
       requestBody:
@@ -6114,8 +5954,6 @@ paths:
   /api/manufacturing/boms/{id}/:
     patch:
       operationId: api_manufacturing_boms_partial_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -6149,8 +5987,6 @@ paths:
           description: ''
     get:
       operationId: api_manufacturing_boms_retrieve
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -6173,8 +6009,6 @@ paths:
           description: ''
     put:
       operationId: api_manufacturing_boms_update
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
@@ -6209,8 +6043,6 @@ paths:
           description: ''
     delete:
       operationId: api_manufacturing_boms_destroy
-      description: Base viewset that automatically filters queryset to the authenticated
-        user's company.
       parameters:
       - in: path
         name: id
