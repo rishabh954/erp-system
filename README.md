@@ -157,6 +157,13 @@ erp_system/
 
 ---
 
+## 🔒 Security & Secrets Management
+
+- **Environment Variables**: Use `.env` to store all production secrets. Never commit `.env` or real credentials into version control.
+- **Rotation**: If a secret (such as an email app password, database credential, or API key) is ever accidentally committed, it must be considered compromised. You must immediately rotate the credential in the underlying service and update the server configuration.
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
