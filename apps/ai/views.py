@@ -42,10 +42,11 @@ class AIHubView(CompanyMixin, TemplateView):
         company = self.company()
         user = self.request.user
 
-        from django.conf import settings
+        from apps.ai.models import AIConfiguration
 
-        ctx["openai_configured"] = bool(getattr(settings, "OPENAI_API_KEY", ""))
-        ctx["gemini_configured"] = bool(getattr(settings, "GEMINI_API_KEY", ""))
+        config, _ = AIConfiguration.objects.get_or_create(company=company)
+        ctx["openai_configured"] = bool(config.get_openai_key())
+        ctx["gemini_configured"] = bool(config.get_gemini_key())
         ctx["ai_available"] = ctx["openai_configured"] or ctx["gemini_configured"]
 
         ctx["conversation_count"] = AIConversation.objects.filter(
@@ -147,13 +148,14 @@ class ChatSendMessageView(CompanyMixin, View):
             full_response = ""
             try:
                 for chunk in LLMService.chat(
-                    messages_payload, conv.context, stream=True, max_tokens=1500
+                    messages_payload, conv.context, stream=True, max_tokens=1500,
+                    company=self.company(),
                 ):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             except Exception as e:
                 logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-                yield f"data: {json.dumps({'error': "An unexpected error occurred."})}\n\n"
+                yield f"data: {json.dumps({'error': 'An unexpected error occurred.'})}\n\n"
             finally:
                 # Save assistant message
                 if full_response:
@@ -622,7 +624,7 @@ class CategoriseExpensesView(CompanyMixin, View):
             if not descriptions:
                 return JsonResponse({"error": "No descriptions provided"}, status=400)
 
-            results = ExpenseCategorisationService.categorise(descriptions)
+            results = ExpenseCategorisationService.categorise(descriptions, company=self.company())
             return JsonResponse({"results": results})
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
@@ -748,27 +750,51 @@ class AISettingsView(CompanyMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        from django.conf import settings as django_settings
+        from apps.ai.models import AIConfiguration
+        from apps.ai.forms import AIConfigurationForm
 
-        ctx["openai_key_set"] = bool(getattr(django_settings, "OPENAI_API_KEY", ""))
-        ctx["gemini_key_set"] = bool(getattr(django_settings, "GEMINI_API_KEY", ""))
-        ctx["twilio_set"] = bool(getattr(django_settings, "TWILIO_ACCOUNT_SID", ""))
-        ctx["model"] = getattr(django_settings, "OPENAI_MODEL", "gpt-4o-mini")
+        company = self.company()
+        config, _ = AIConfiguration.objects.get_or_create(company=company)
+        if "form" not in kwargs:
+            ctx["form"] = AIConfigurationForm(instance=config)
+
+        # Reflect DB key status (DB key OR .env key = configured)
+        ctx["openai_key_set"] = bool(config.get_openai_key())
+        ctx["gemini_key_set"] = bool(config.get_gemini_key())
+
+        from django.conf import settings as _s
+        ctx["twilio_set"] = bool(
+            config.twilio_account_sid or getattr(_s, "TWILIO_ACCOUNT_SID", "")
+        )
+        ctx["model"] = config.openai_model or "gpt-4o-mini"
 
         ctx["total_conversations"] = AIConversation.objects.filter(
-            company=self.company()
+            company=company
         ).count()
-        ctx["total_ocr"] = OCRDocument.objects.filter(company=self.company()).count()
-        ctx["total_insights"] = AIInsight.objects.filter(company=self.company()).count()
-        ctx["total_nlp"] = NLPReport.objects.filter(company=self.company()).count()
+        ctx["total_ocr"] = OCRDocument.objects.filter(company=company).count()
+        ctx["total_insights"] = AIInsight.objects.filter(company=company).count()
+        ctx["total_nlp"] = NLPReport.objects.filter(company=company).count()
 
         # Token usage
         from django.db.models import Sum
 
         ctx["tokens_used"] = (
-            AIMessage.objects.filter(conversation__company=self.company()).aggregate(
+            AIMessage.objects.filter(conversation__company=company).aggregate(
                 t=Sum("tokens_used")
             )["t"]
             or 0
         )
         return ctx
+
+    def post(self, request, *args, **kwargs):
+        from apps.ai.models import AIConfiguration
+        from apps.ai.forms import AIConfigurationForm
+        
+        config, created = AIConfiguration.objects.get_or_create(company=self.company())
+        form = AIConfigurationForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "AI configuration updated successfully.")
+            return redirect("ai:settings")
+        
+        return self.render_to_response(self.get_context_data(form=form))

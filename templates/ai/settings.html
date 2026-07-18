@@ -11,56 +11,192 @@
   <a href="{% url 'ai:hub' %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-th me-1"></i>AI Hub</a>
 </div>
 
+{% if messages %}
+<div class="mb-3">
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
 <div class="row g-4">
   <div class="col-12 col-lg-8">
+
+    <!-- ── API Keys ─────────────────────────────────────────────── -->
     <div class="card mb-4">
-      <div class="card-header fw-600"><i class="fas fa-key me-2"></i>API Configuration</div>
+      <div class="card-header fw-600"><i class="fas fa-key me-2"></i>API Keys</div>
       <div class="card-body">
-        
-        <div class="d-flex align-items-center mb-4 p-3 border rounded {% if openai_key_set %}bg-success-subtle border-success{% else %}bg-warning-subtle border-warning{% endif %}">
-          <div class="me-3" style="font-size:2rem">🤖</div>
-          <div class="flex-grow-1">
-            <h6 class="fw-700 mb-1">OpenAI (Primary Provider)</h6>
-            {% if openai_key_set %}
-            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
-            <span class="text-muted small ms-2">Using model: {{ model }}</span>
-            {% else %}
-            <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Configured</span>
-            <p class="text-muted small mb-0 mt-1">Add <code>OPENAI_API_KEY</code> to your <code>.env</code> file.</p>
-            {% endif %}
+
+        <!-- OpenAI -->
+        <div class="p-3 border rounded mb-3 {% if openai_key_set %}bg-success-subtle border-success{% else %}bg-warning-subtle border-warning{% endif %}">
+          <div class="d-flex align-items-center mb-2">
+            <span style="font-size:1.6rem" class="me-2">🤖</span>
+            <div>
+              <h6 class="fw-700 mb-0">OpenAI (Primary Provider)</h6>
+              {% if openai_key_set %}
+              <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+              <span class="text-muted small ms-2">Model: <strong>{{ model }}</strong></span>
+              {% else %}
+              <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Configured</span>
+              {% endif %}
+            </div>
           </div>
+          <label class="form-label fw-600 mb-1">{{ form.openai_api_key.label }}</label>
+          {{ form.openai_api_key }}
+          {% if form.openai_api_key.help_text %}
+          <div class="form-text">{{ form.openai_api_key.help_text }}</div>
+          {% endif %}
+          <div class="text-danger small">{{ form.openai_api_key.errors }}</div>
         </div>
 
-        <div class="d-flex align-items-center mb-4 p-3 border rounded {% if gemini_key_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
-          <div class="me-3" style="font-size:2rem">🌌</div>
-          <div class="flex-grow-1">
-            <h6 class="fw-700 mb-1">Google Gemini (Fallback Provider)</h6>
-            {% if gemini_key_set %}
-            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
-            {% else %}
-            <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
-            <p class="text-muted small mb-0 mt-1">Add <code>GEMINI_API_KEY</code> to your <code>.env</code> file as a fallback.</p>
-            {% endif %}
+        <!-- Gemini -->
+        <div class="p-3 border rounded mb-3 {% if gemini_key_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
+          <div class="d-flex align-items-center mb-2">
+            <span style="font-size:1.6rem" class="me-2">🌌</span>
+            <div>
+              <h6 class="fw-700 mb-0">Google Gemini (Fallback Provider)</h6>
+              {% if gemini_key_set %}
+              <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+              {% else %}
+              <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
+              {% endif %}
+            </div>
           </div>
+          <label class="form-label fw-600 mb-1">{{ form.gemini_api_key.label }}</label>
+          {{ form.gemini_api_key }}
+          {% if form.gemini_api_key.help_text %}
+          <div class="form-text">{{ form.gemini_api_key.help_text }}</div>
+          {% endif %}
+          <div class="text-danger small">{{ form.gemini_api_key.errors }}</div>
         </div>
 
-        <div class="d-flex align-items-center p-3 border rounded {% if twilio_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
-          <div class="me-3" style="font-size:2rem">📱</div>
-          <div class="flex-grow-1">
-            <h6 class="fw-700 mb-1">WhatsApp & SMS (Twilio)</h6>
-            {% if twilio_set %}
-            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
-            {% else %}
-            <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
-            <p class="text-muted small mb-0 mt-1">Required for AI-triggered workflow alerts. Set <code>TWILIO_ACCOUNT_SID</code>.</p>
-            {% endif %}
+        <!-- Twilio -->
+        <div class="p-3 border rounded {% if twilio_set %}bg-success-subtle border-success{% else %}bg-light{% endif %}">
+          <div class="d-flex align-items-center mb-2">
+            <span style="font-size:1.6rem" class="me-2">📱</span>
+            <div>
+              <h6 class="fw-700 mb-0">WhatsApp &amp; SMS (Twilio)</h6>
+              {% if twilio_set %}
+              <span class="badge bg-success"><i class="fas fa-check me-1"></i>Configured</span>
+              {% else %}
+              <span class="badge bg-secondary"><i class="fas fa-minus me-1"></i>Not Configured</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-600 mb-1">{{ form.twilio_account_sid.label }}</label>
+              {{ form.twilio_account_sid }}
+              <div class="text-danger small">{{ form.twilio_account_sid.errors }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600 mb-1">{{ form.twilio_auth_token.label }}</label>
+              {{ form.twilio_auth_token }}
+              <div class="text-danger small">{{ form.twilio_auth_token.errors }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600 mb-1">{{ form.twilio_phone_number.label }}</label>
+              {{ form.twilio_phone_number }}
+              <div class="text-danger small">{{ form.twilio_phone_number.errors }}</div>
+            </div>
           </div>
         </div>
 
       </div>
     </div>
+
+    <!-- ── Model & Feature Settings ──────────────────────────────── -->
+    <div class="card mb-4">
+      <div class="card-header fw-600"><i class="fas fa-sliders-h me-2"></i>Model &amp; Feature Settings</div>
+      <div class="card-body">
+
+        <h6 class="fw-bold mb-3">Model Configuration</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label fw-600">{{ form.ai_provider.label }}</label>
+            {{ form.ai_provider }}
+            <div class="text-danger small">{{ form.ai_provider.errors }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600">{{ form.openai_model.label }}</label>
+            {{ form.openai_model }}
+            <div class="form-text">e.g. gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo</div>
+            <div class="text-danger small">{{ form.openai_model.errors }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600">{{ form.temperature.label }}</label>
+            {{ form.temperature }}
+            <div class="form-text">0 = deterministic, 1 = creative, 2 = very random</div>
+            <div class="text-danger small">{{ form.temperature.errors }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600">{{ form.max_tokens.label }}</label>
+            {{ form.max_tokens }}
+            <div class="text-danger small">{{ form.max_tokens.errors }}</div>
+          </div>
+        </div>
+
+        <h6 class="fw-bold mb-3">Feature Toggles</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_chat }}
+              <label class="form-check-label">{{ form.enable_chat.label }}</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_nlp_reports }}
+              <label class="form-check-label">{{ form.enable_nlp_reports.label }}</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_forecasting }}
+              <label class="form-check-label">{{ form.enable_forecasting.label }}</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_ocr }}
+              <label class="form-check-label">{{ form.enable_ocr.label }}</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_insights }}
+              <label class="form-check-label">{{ form.enable_insights.label }}</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              {{ form.enable_recommendations }}
+              <label class="form-check-label">{{ form.enable_recommendations.label }}</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-save me-1"></i>Save Settings
+          </button>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
+  <!-- ── Usage Statistics sidebar ─────────────────────────────── -->
   <div class="col-12 col-lg-4">
     <div class="card mb-4">
       <div class="card-header fw-600"><i class="fas fa-chart-bar me-2"></i>Usage Statistics</div>
@@ -89,6 +225,19 @@
         </ul>
       </div>
     </div>
+
+    <!-- Security note -->
+    <div class="card border-0 bg-info-subtle">
+      <div class="card-body">
+        <h6 class="fw-bold"><i class="fas fa-shield-alt me-1 text-info"></i>Security Note</h6>
+        <p class="small mb-0 text-muted">
+          API keys are stored encrypted in the database and are scoped to your company.
+          They are never exposed to the browser after saving.
+          You can also set keys via <code>.env</code> as a server-level fallback.
+        </p>
+      </div>
+    </div>
   </div>
 </div>
+</form>
 {% endblock %}

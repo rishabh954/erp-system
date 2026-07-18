@@ -30,6 +30,38 @@ class AIConfiguration(CompanyScoped):
     temperature = models.FloatField(default=0.3)
     max_tokens = models.IntegerField(default=2048)
 
+    # API Keys (stored per-company; override .env values when set)
+    openai_api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Your OpenAI secret key (sk-…). Overrides the server .env value.",
+    )
+    gemini_api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Your Google Gemini API key. Overrides the server .env value.",
+    )
+    twilio_account_sid = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Twilio Account SID for WhatsApp/SMS alerts.",
+    )
+    twilio_auth_token = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Twilio Auth Token.",
+    )
+    twilio_phone_number = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Twilio 'from' phone number (e.g. +14155238886).",
+    )
+
     # Feature toggles
     enable_chat = models.BooleanField(default=True)
     enable_nlp_reports = models.BooleanField(default=True)
@@ -47,6 +79,16 @@ class AIConfiguration(CompanyScoped):
 
     def __str__(self):
         return f"AI Config — {self.company}"
+
+    def get_openai_key(self) -> str:
+        """Return the DB key if set, otherwise fall back to .env."""
+        from django.conf import settings as django_settings
+        return self.openai_api_key or getattr(django_settings, "OPENAI_API_KEY", "") or ""
+
+    def get_gemini_key(self) -> str:
+        """Return the DB key if set, otherwise fall back to .env."""
+        from django.conf import settings as django_settings
+        return self.gemini_api_key or getattr(django_settings, "GEMINI_API_KEY", "") or ""
 
 
 # ══════════════════════════════════════════════════════════════════════════════

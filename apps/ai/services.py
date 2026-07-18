@@ -23,11 +23,29 @@ logger = logging.getLogger(__name__)
 # ── Lazy imports (no hard crash if libraries not installed) ──────────────────
 
 
-def _get_openai():
+def _get_ai_config(company):
+    """Return the AIConfiguration for *company*, or None."""
+    if company is None:
+        return None
+    try:
+        from apps.ai.models import AIConfiguration
+        config, _ = AIConfiguration.objects.get_or_create(company=company)
+        return config
+    except Exception:
+        return None
+
+
+def _get_openai(company=None):
+    """Build an OpenAI client using the company DB key, falling back to .env."""
     try:
         from openai import OpenAI
 
-        api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+        config = _get_ai_config(company)
+        if config:
+            api_key = config.get_openai_key()
+        else:
+            api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+
         if not api_key:
             return None
         return OpenAI(api_key=api_key)
@@ -35,11 +53,17 @@ def _get_openai():
         return None
 
 
-def _get_gemini():
+def _get_gemini(company=None):
+    """Build a Gemini client using the company DB key, falling back to .env."""
     try:
         import google.generativeai as genai
 
-        key = getattr(settings, "GEMINI_API_KEY", "") or ""
+        config = _get_ai_config(company)
+        if config:
+            key = config.get_gemini_key()
+        else:
+            key = getattr(settings, "GEMINI_API_KEY", "") or ""
+
         if not key:
             return None
         genai.configure(api_key=key)
@@ -49,8 +73,8 @@ def _get_gemini():
 
 
 AI_NOT_CONFIGURED_MSG = (
-    "🔧 AI is not configured yet. Please add your OPENAI_API_KEY to the .env file "
-    "and restart the server. Visit /ai/settings/ for setup instructions."
+    "🔧 AI is not configured yet. Enter your OpenAI / Gemini API key "
+    "on the AI Settings page (/ai/settings/) to get started."
 )
 
 
@@ -75,9 +99,24 @@ Format responses using markdown. Use tables for comparisons. Be professional and
         context: str = "general",
         stream: bool = False,
         max_tokens: int = 1500,
+        company=None,
     ) -> tuple[str, int] | Generator:
         """Send messages to LLM and return response."""
-        client = _get_openai()
+        config = _get_ai_config(company)
+        # Resolve model/temperature from DB config, then .env, then defaults
+        model_name = (
+            (config.openai_model if config else None)
+            or getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+        )
+        temperature = (
+            (config.temperature if config else None)
+            if config is not None
+            else getattr(settings, "AI_TEMPERATURE", 0.3)
+        )
+        if temperature is None:
+            temperature = getattr(settings, "AI_TEMPERATURE", 0.3)
+
+        client = _get_openai(company)
 
         if client:
             try:
@@ -90,26 +129,26 @@ Format responses using markdown. Use tables for comparisons. Be professional and
                 all_messages = system_msg + messages
 
                 if stream:
-                    return cls._stream_openai(client, all_messages, max_tokens)
+                    return cls._stream_openai(client, all_messages, max_tokens, model_name, temperature)
 
                 response = client.chat.completions.create(
-                    model=getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+                    model=model_name,
                     messages=all_messages,
                     max_tokens=max_tokens,
-                    temperature=getattr(settings, "AI_TEMPERATURE", 0.3),
+                    temperature=temperature,
                 )
                 return response.choices[0].message.content, response.usage.total_tokens
 
             except Exception as e:
                 logger.error(f"OpenAI error: {e}")
                 # Fall through to Gemini
-                gemini = _get_gemini()
+                gemini = _get_gemini(company)
                 if gemini:
                     return cls._gemini_chat(gemini, messages)
                 return AI_NOT_CONFIGURED_MSG, 0
 
         # Try Gemini
-        gemini = _get_gemini()
+        gemini = _get_gemini(company)
         if gemini:
             return cls._gemini_chat(gemini, messages)
 
@@ -123,13 +162,20 @@ Format responses using markdown. Use tables for comparisons. Be professional and
         return AI_NOT_CONFIGURED_MSG, 0
 
     @classmethod
-    def _stream_openai(cls, client, messages: list, max_tokens: int) -> Generator:
+    def _stream_openai(
+        cls,
+        client,
+        messages: list,
+        max_tokens: int,
+        model_name: str = "gpt-4o-mini",
+        temperature: float = 0.3,
+    ) -> Generator:
         try:
             stream = client.chat.completions.create(
-                model=getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+                model=model_name,
                 messages=messages,
                 max_tokens=max_tokens,
-                temperature=getattr(settings, "AI_TEMPERATURE", 0.3),
+                temperature=temperature,
                 stream=True,
             )
             for chunk in stream:
@@ -138,7 +184,7 @@ Format responses using markdown. Use tables for comparisons. Be professional and
                     yield delta.content
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}")
-            yield f"\n\n⚠️ Stream error: {"An unexpected error occurred."}"
+            yield "\n\n⚠️ Stream error: An unexpected error occurred."
 
     @classmethod
     def _gemini_chat(cls, model, messages: list):
@@ -152,10 +198,10 @@ Format responses using markdown. Use tables for comparisons. Be professional and
             return AI_NOT_CONFIGURED_MSG, 0
 
     @classmethod
-    def complete(cls, prompt: str, max_tokens: int = 800) -> str:
+    def complete(cls, prompt: str, max_tokens: int = 800, company=None) -> str:
         """Single-shot completion."""
         result, _ = cls.chat(
-            [{"role": "user", "content": prompt}], max_tokens=max_tokens
+            [{"role": "user", "content": prompt}], max_tokens=max_tokens, company=company
         )
         return result
 
@@ -605,7 +651,7 @@ Total customers: {sum(summary_data.values())}
 Focus on retention, growth opportunities, and risk mitigation. Be specific and practical."""
 
             narrative, tokens = LLMService.chat(
-                [{"role": "user", "content": prompt}], "crm", max_tokens=500
+                [{"role": "user", "content": prompt}], "crm", max_tokens=500, company=company
             )
 
             return {
@@ -663,7 +709,7 @@ Return a JSON array of recommendations:
 Return ONLY the JSON array."""
 
             response, _ = LLMService.chat(
-                [{"role": "user", "content": prompt}], "purchase", max_tokens=800
+                [{"role": "user", "content": prompt}], "purchase", max_tokens=800, company=company
             )
 
             try:
@@ -729,7 +775,7 @@ class ExpenseCategorisationService:
     ]
 
     @classmethod
-    def categorise(cls, descriptions: list[str]) -> list[dict]:
+    def categorise(cls, descriptions: list[str], company=None) -> list[dict]:
         """Categorise a batch of expense descriptions."""
         if not descriptions:
             return []
@@ -744,7 +790,7 @@ Return ONLY a JSON array:
 [{{"id": 0, "description": "...", "category": "...", "confidence": 0.0-1.0, "gl_code": "5xxx"}}]"""
 
         response, _ = LLMService.chat(
-            [{"role": "user", "content": prompt}], "expense", max_tokens=800
+            [{"role": "user", "content": prompt}], "expense", max_tokens=800, company=company
         )
 
         try:
@@ -802,8 +848,8 @@ Return ONLY a JSON array:
         return results
 
     @classmethod
-    def categorise_single(cls, description: str) -> dict:
-        results = cls.categorise([description])
+    def categorise_single(cls, description: str, company=None) -> dict:
+        results = cls.categorise([description], company=company)
         return results[0] if results else {"category": "Other", "confidence": 0.5}
 
 
@@ -834,7 +880,7 @@ Cover:
 Use clear business language. Format with markdown headers."""
 
             narrative, tokens = LLMService.chat(
-                [{"role": "user", "content": prompt}], "finance", max_tokens=600
+                [{"role": "user", "content": prompt}], "finance", max_tokens=600, company=company
             )
 
             return {
@@ -973,7 +1019,7 @@ Return ONLY valid JSON:
 }}"""
 
         intent_raw, tokens = LLMService.chat(
-            [{"role": "user", "content": intent_prompt}], "analytics", max_tokens=300
+            [{"role": "user", "content": intent_prompt}], "analytics", max_tokens=300, company=company
         )
 
         try:
@@ -1002,7 +1048,7 @@ Sample data: {json.dumps(results[:5], default=str)}
 Give a clear, concise business answer in 2-3 sentences."""
 
         narrative, n_tokens = LLMService.chat(
-            [{"role": "user", "content": narrative_prompt}], "analytics", max_tokens=250
+            [{"role": "user", "content": narrative_prompt}], "analytics", max_tokens=250, company=company
         )
 
         return {
@@ -1089,7 +1135,7 @@ Give a helpful, specific answer based on the dashboard data. If data is missing,
 Keep your response concise (2-4 sentences). Use markdown for emphasis."""
 
         response, _ = LLMService.chat(
-            [{"role": "user", "content": prompt}], "dashboard", max_tokens=300
+            [{"role": "user", "content": prompt}], "dashboard", max_tokens=300, company=company
         )
         return response
 
