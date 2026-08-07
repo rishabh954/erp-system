@@ -18,7 +18,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from django.utils.decorators import method_decorator
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 
 from .forms import (
     ChangePasswordForm,
