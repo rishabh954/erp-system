@@ -56,7 +56,8 @@ def _get_openai(company=None):
 def _get_gemini(company=None):
     """Build a Gemini client using the company DB key, falling back to .env."""
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
 
         config = _get_ai_config(company)
         if config:
@@ -66,8 +67,9 @@ def _get_gemini(company=None):
 
         if not key:
             return None
-        genai.configure(api_key=key)
-        return genai.GenerativeModel("gemini-1.5-flash")
+        # Return a tuple of (Client, Model Name) or just Client
+        client = genai.Client(api_key=key)
+        return client
     except ImportError:
         return None
 
@@ -103,6 +105,13 @@ Format responses using markdown. Use tables for comparisons. Be professional and
     ) -> tuple[str, int] | Generator:
         """Send messages to LLM and return response."""
         config = _get_ai_config(company)
+        if config and config.ai_provider == "disabled":
+            return "🔧 AI features are disabled for this company.", 0
+
+        # Check Monthly token budget
+        if config and config.total_tokens_used >= config.monthly_token_budget:
+            return "⚠️ Monthly AI token budget exceeded for this company.", 0
+
         # Resolve model/temperature from DB config, then .env, then defaults
         model_name = (
             (config.openai_model if config else None)
@@ -115,6 +124,19 @@ Format responses using markdown. Use tables for comparisons. Be professional and
         )
         if temperature is None:
             temperature = getattr(settings, "AI_TEMPERATURE", 0.3)
+
+        ai_provider = config.ai_provider if config else "openai"
+
+        # If Gemini is specifically selected as provider, skip OpenAI entirely
+        if ai_provider == "gemini":
+            gemini = _get_gemini(company)
+            if gemini:
+                res, tokens = cls._gemini_chat(gemini, messages)
+                if config and tokens > 0:
+                    config.total_tokens_used += tokens
+                    config.save(update_fields=["total_tokens_used"])
+                return res, tokens
+            return AI_NOT_CONFIGURED_MSG, 0
 
         client = _get_openai(company)
 
@@ -137,11 +159,15 @@ Format responses using markdown. Use tables for comparisons. Be professional and
                     max_tokens=max_tokens,
                     temperature=temperature,
                 )
-                return response.choices[0].message.content, response.usage.total_tokens
+                tokens_used = response.usage.total_tokens if response.usage else 0
+                if config and tokens_used > 0:
+                    config.total_tokens_used += tokens_used
+                    config.save(update_fields=["total_tokens_used"])
+                return response.choices[0].message.content, tokens_used
 
             except Exception as e:
                 logger.error(f"OpenAI error: {e}")
-                # Fall through to Gemini
+                # Fall through to Gemini if OpenAI failed but provider is not disabled
                 gemini = _get_gemini(company)
                 if gemini:
                     return cls._gemini_chat(gemini, messages)
@@ -187,11 +213,14 @@ Format responses using markdown. Use tables for comparisons. Be professional and
             yield "\n\n⚠️ Stream error: An unexpected error occurred."
 
     @classmethod
-    def _gemini_chat(cls, model, messages: list):
+    def _gemini_chat(cls, client, messages: list):
         try:
             # Convert to Gemini format
             text = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages)
-            response = model.generate_content(text)
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=text,
+            )
             return response.text, 0
         except Exception as e:
             logger.error(f"Gemini error: {e}")

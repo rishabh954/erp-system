@@ -97,3 +97,37 @@ class PermissionRequiredMixin(AccessMixin):
 
         return super().dispatch(request, *args, **kwargs)
 
+
+class HttpMethodPermissionMixin(PermissionRequiredMixin):
+    """
+    Mixin that dynamically maps HTTP methods to module actions.
+    Enables automatic DRY permission mapping:
+      - GET / HEAD / OPTIONS -> 'read'
+      - POST -> 'create'
+      - PUT / PATCH -> 'update'
+      - DELETE -> 'delete'
+    Example view settings:
+      required_permission_module = 'accounting'
+    """
+    required_permission_module: str | None = None
+
+    def get_required_permission(self, request=None):
+        if not self.required_permission_module:
+            raise ImproperlyConfigured(
+                f"{self.__class__.__name__} is missing the required_permission_module attribute. "
+                "Define required_permission_module = 'module_name'."
+            )
+        method = (request.method if request else self.request.method).upper()
+        if method in ("GET", "HEAD", "OPTIONS"):
+            action = "read"
+        elif method == "POST":
+            action = "create"
+        elif method in ("PUT", "PATCH"):
+            action = "update"
+        elif method == "DELETE":
+            action = "delete"
+        else:
+            action = "read"
+        return f"{self.required_permission_module}.{action}"
+
+

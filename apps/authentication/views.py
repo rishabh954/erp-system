@@ -17,6 +17,9 @@ from django.utils.translation import gettext_lazy as _
 from django.views import View
 from django.views.generic import TemplateView
 
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
+
 from .forms import (
     ChangePasswordForm,
     LoginForm,
@@ -50,6 +53,7 @@ class LoginView(View):
         form = LoginForm()
         return render(request, self.template_name, {"form": form})
 
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
     def post(self, request):
         form = LoginForm(request.POST)
         if not form.is_valid():
@@ -183,6 +187,7 @@ class TwoFactorVerifyView(View):
             return redirect("auth:login")
         return render(request, self.template_name, {"form": TwoFactorVerifyForm()})
 
+    @method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=True))
     def post(self, request):
         if "2fa_user_id" not in request.session:
             return redirect("auth:login")
@@ -221,6 +226,7 @@ class RegisterView(View):
             return redirect("dashboard:index")
         return render(request, self.template_name, {"form": RegisterForm()})
 
+    @method_decorator(ratelimit(key="ip", rate="3/h", method="POST", block=True))
     def post(self, request):
         form = RegisterForm(request.POST)
         if not form.is_valid():

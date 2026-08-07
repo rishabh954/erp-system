@@ -7,6 +7,7 @@ import uuid
 
 from django.db import models
 
+from core.fields import EncryptedCharField
 from core.models import CompanyScoped
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -31,14 +32,14 @@ class AIConfiguration(CompanyScoped):
     max_tokens = models.IntegerField(default=2048)
 
     # API Keys (stored per-company; override .env values when set)
-    openai_api_key = models.CharField(
-        max_length=255,
+    openai_api_key = EncryptedCharField(
+        max_length=500,
         blank=True,
         default="",
         help_text="Your OpenAI secret key (sk-…). Overrides the server .env value.",
     )
-    gemini_api_key = models.CharField(
-        max_length=255,
+    gemini_api_key = EncryptedCharField(
+        max_length=500,
         blank=True,
         default="",
         help_text="Your Google Gemini API key. Overrides the server .env value.",
@@ -49,8 +50,8 @@ class AIConfiguration(CompanyScoped):
         default="",
         help_text="Twilio Account SID for WhatsApp/SMS alerts.",
     )
-    twilio_auth_token = models.CharField(
-        max_length=255,
+    twilio_auth_token = EncryptedCharField(
+        max_length=500,
         blank=True,
         default="",
         help_text="Twilio Auth Token.",

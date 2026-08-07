@@ -441,6 +441,10 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+# ─── Rate Limiting ────────────────────────────────────────────────────────────
+RATELIMIT_USE_CACHE = 'default'
+
 # ─── ERP Custom Settings ──────────────────────────────────────────────────────
 ERP_SETTINGS = {
     'COMPANY_NAME': os.environ.get('COMPANY_NAME', 'EnterpriseERP'),

@@ -24,17 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class AIHubView(CompanyMixin, TemplateView):
-    required_permission = "ai.read"
-
-    def get_required_permission(self, request=None):
-        if request:
-            if request.method == "POST":
-                return "ai.create"
-            elif request.method in ["PUT", "PATCH"]:
-                return "ai.update"
-            elif request.method == "DELETE":
-                return "ai.delete"
-        return self.required_permission
+    required_permission_module = "ai"
     template_name = "ai/dashboard.html"
 
     def get_context_data(self, **kwargs):
