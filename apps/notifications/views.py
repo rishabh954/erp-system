@@ -32,7 +32,10 @@ class NotificationSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+from core.api.mixins import TenantScopedViewSetMixin
+
+
+class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     required_permission = "notifications.read"
 
     def get_required_permission(self, request=None):
@@ -44,13 +47,21 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             elif request.method == "DELETE":
                 return "notifications.delete"
         return self.required_permission
+    queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        user = getattr(self.request, "user", None)
+        if not user or not user.is_authenticated:
+            return Notification.objects.none()
+        company = getattr(user, "primary_company", None)
+        if not company:
+            return Notification.objects.none()
+
         qs = Notification.objects.filter(
-            recipient=self.request.user,
-            company=self.request.user.primary_company,
+            recipient=user,
+            company=company,
         ).order_by("-created_at")
         is_read = self.request.query_params.get("is_read")
         if is_read is not None:

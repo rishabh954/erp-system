@@ -28,11 +28,10 @@ class TestAIServices:
     def test_get_gemini_returns_client(self, company):
         """Test: when company has gemini key set, _get_gemini returns client"""
         AIConfiguration.objects.create(company=company, gemini_api_key="test-gemini-key")
-        with patch('google.generativeai.GenerativeModel') as mock_model, \
-             patch('google.generativeai.configure') as mock_configure:
+        with patch('google.genai.Client') as mock_client_cls:
             client = _get_gemini(company)
-            mock_configure.assert_called_once_with(api_key="test-gemini-key")
-            assert client == mock_model.return_value
+            mock_client_cls.assert_called_once_with(api_key="test-gemini-key")
+            assert client == mock_client_cls.return_value
 
     def test_chat_with_mock_openai_response(self, company):
         """Test: chat() with mock OpenAI response"""
@@ -66,7 +65,7 @@ class TestAIServices:
             mock_gemini_client = MagicMock()
             mock_gemini_response = MagicMock()
             mock_gemini_response.text = "Gemini fallback response"
-            mock_gemini_client.generate_content.return_value = mock_gemini_response
+            mock_gemini_client.models.generate_content.return_value = mock_gemini_response
             mock_get_gemini.return_value = mock_gemini_client
             
             response, tokens = LLMService.chat([{"role": "user", "content": "Hello"}], company=company)

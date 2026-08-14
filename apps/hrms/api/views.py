@@ -11,19 +11,14 @@ from apps.hrms.api.serializers import (
     PayslipSerializer,
 )
 from apps.hrms.models import Attendance, Employee, LeaveRequest, PayrollPeriod, Payslip
+from core.api.mixins import TenantScopedViewSetMixin
 from core.pagination import StandardResultsSetPagination
 
 
-class EmployeeViewSet(viewsets.ModelViewSet):
+class EmployeeViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["post"])
     def check_in(self, request, pk=None):
@@ -82,16 +77,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
+class AttendanceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-
         employee_id = self.request.query_params.get("employee")
         if employee_id:
             qs = qs.filter(employee_id=employee_id)
@@ -122,16 +114,10 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 
-class LeaveRequestViewSet(viewsets.ModelViewSet):
+class LeaveRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all()
     serializer_class = LeaveRequestSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
@@ -163,16 +149,10 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         return Response({"status": "rejected"})
 
 
-class PayrollPeriodViewSet(viewsets.ReadOnlyModelViewSet):
+class PayrollPeriodViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = PayrollPeriod.objects.all()
     serializer_class = PayrollPeriodSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):
@@ -191,16 +171,10 @@ class PayrollPeriodViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({"status": "processing_started"})
 
 
-class PayslipViewSet(viewsets.ReadOnlyModelViewSet):
+class PayslipViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Payslip.objects.all()
     serializer_class = PayslipSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["get"])
     def download_pdf(self, request, pk=None):

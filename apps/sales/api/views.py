@@ -12,6 +12,8 @@ from rest_framework.decorators import action  # noqa: E402
 from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
 from rest_framework.response import Response  # noqa: E402
 
+from core.api.mixins import TenantScopedViewSetMixin
+
 from ..models import (  # noqa: E402
     Invoice,
     InvoiceLine,
@@ -232,7 +234,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 # ─── ViewSets ─────────────────────────────────────────────────────────────────
 
 
-class QuotationViewSet(viewsets.ModelViewSet):
+class QuotationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -244,6 +246,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "sales.delete"
         return self.required_permission
+    queryset = Quotation.objects.all()
     serializer_class = QuotationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer", "sales_rep"]
@@ -252,9 +255,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        return Quotation.objects.filter(
-            company=self.request.user.primary_company, is_deleted=False
-        ).select_related("customer", "currency", "sales_rep")
+        return super().get_queryset().select_related("customer", "currency", "sales_rep")
 
     def perform_create(self, serializer):
         from core.services import BaseService
@@ -314,7 +315,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
         return Response({"order_id": str(so.pk), "order_number": so.number}, status=201)
 
 
-class SalesOrderViewSet(viewsets.ModelViewSet):
+class SalesOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -326,6 +327,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "sales.delete"
         return self.required_permission
+    queryset = SalesOrder.objects.all()
     serializer_class = SalesOrderSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]
@@ -333,9 +335,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
     ordering = ["-order_date"]
 
     def get_queryset(self):
-        return SalesOrder.objects.filter(
-            company=self.request.user.primary_company, is_deleted=False
-        ).select_related("customer", "currency")
+        return super().get_queryset().select_related("customer", "currency")
 
     def perform_create(self, serializer):
         from core.services import BaseService
@@ -382,7 +382,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
         )
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
@@ -394,6 +394,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "sales.delete"
         return self.required_permission
+    queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "customer"]
@@ -401,9 +402,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     ordering = ["-invoice_date"]
 
     def get_queryset(self):
-        return Invoice.objects.filter(
-            company=self.request.user.primary_company, is_deleted=False
-        ).select_related("customer", "currency")
+        return super().get_queryset().select_related("customer", "currency")
 
     def perform_create(self, serializer):
         from core.services import BaseService
@@ -459,8 +458,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return Response({"pdf_url": f"/sales/invoices/{invoice.pk}/pdf/"})
 
 
-class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+class PaymentViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     required_permission = "sales.approve"
+    queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "method", "customer"]
@@ -468,6 +468,4 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["-payment_date"]
 
     def get_queryset(self):
-        return Payment.objects.filter(
-            company=self.request.user.primary_company, is_deleted=False
-        ).select_related("invoice", "customer", "currency")
+        return super().get_queryset().select_related("invoice", "customer", "currency")

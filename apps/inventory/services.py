@@ -288,8 +288,16 @@ class TransferService(BaseService):
         transfer.save()
 
         # Process lines
-        products = data.getlist("product[]")
-        quantities = data.getlist("quantity[]")
+        if hasattr(data, "getlist"):
+            products = data.getlist("product[]")
+            quantities = data.getlist("quantity[]")
+        else:
+            products = data.get("product[]", [])
+            if not isinstance(products, list):
+                products = [products] if products else []
+            quantities = data.get("quantity[]", [])
+            if not isinstance(quantities, list):
+                quantities = [quantities] if quantities else []
 
         lines_created = 0
         for i, prod_id in enumerate(products):
@@ -343,12 +351,13 @@ class TransferService(BaseService):
                 batch = data.get(f"batch_number_{line.id}", "")
 
                 # Try getting it as a list first (from API), otherwise try single string and split (from form)
-                serial_nums = data.getlist(f"serial_numbers_{line.id}")
-                if not serial_nums:
-                    serial_str = data.get(f"serial_numbers_{line.id}", "")
-                    if serial_str:
+                if hasattr(data, "getlist"):
+                    serial_nums = data.getlist(f"serial_numbers_{line.id}")
+                else:
+                    serial_nums = data.get(f"serial_numbers_{line.id}", [])
+                    if isinstance(serial_nums, str):
                         serial_nums = [
-                            s.strip() for s in serial_str.split(",") if s.strip()
+                            s.strip() for s in serial_nums.split(",") if s.strip()
                         ]
 
                 line.quantity_sent = qty_sent

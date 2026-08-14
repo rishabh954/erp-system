@@ -10,10 +10,11 @@ from apps.crm.api.serializers import (
     LeadSerializer,
 )
 from apps.crm.models import Campaign, Contract, Customer, Lead, LeadActivity
+from core.api.mixins import TenantScopedViewSetMixin
 from core.pagination import StandardResultsSetPagination
 
 
-class CampaignViewSet(viewsets.ModelViewSet):
+class CampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
@@ -25,18 +26,13 @@ class CampaignViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "crm.delete"
         return self.required_permission
+
     queryset = Campaign.objects.all()
     serializer_class = CampaignSerializer
     pagination_class = StandardResultsSetPagination
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company, is_deleted=False)
-        return qs
 
-
-class LeadViewSet(viewsets.ModelViewSet):
+class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
@@ -48,15 +44,10 @@ class LeadViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "crm.delete"
         return self.required_permission
+
     queryset = Lead.objects.all()
     serializer_class = LeadSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["post"])
     def convert_to_customer(self, request, pk=None):
@@ -105,7 +96,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         return Response({"status": "status_updated"})
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
@@ -117,15 +108,10 @@ class CustomerViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "crm.delete"
         return self.required_permission
+
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs
 
     @action(detail=True, methods=["get"])
     def statement(self, request, pk=None):
@@ -156,7 +142,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         )
 
 
-class LeadActivityViewSet(viewsets.ModelViewSet):
+class LeadActivityViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
@@ -168,28 +154,25 @@ class LeadActivityViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "crm.delete"
         return self.required_permission
+
     queryset = LeadActivity.objects.all()
     serializer_class = LeadActivitySerializer
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-
         lead_id = self.request.query_params.get("lead")
         if lead_id:
             qs = qs.filter(lead_id=lead_id)
-
         return qs
 
     def perform_create(self, serializer):
-        self.request.data.get("lead")
-        # Ensure lead is passed and valid in serializer
-        serializer.save(company=getattr(self.request, "company", None))
+        user = getattr(self.request, "user", None)
+        company = getattr(user, "primary_company", None)
+        serializer.save(company=company)
 
 
-class ContractViewSet(viewsets.ModelViewSet):
+class ContractViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
@@ -201,12 +184,7 @@ class ContractViewSet(viewsets.ModelViewSet):
             elif request.method == "DELETE":
                 return "crm.delete"
         return self.required_permission
+
     queryset = Contract.objects.all()
     serializer_class = ContractSerializer
     pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if hasattr(self.request, "company") and self.request.company:
-            qs = qs.filter(company=self.request.company)
-        return qs

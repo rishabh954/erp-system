@@ -8,14 +8,14 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
-
+from core.api.mixins import TenantScopedViewSetMixin
 from core.permissions import HasModulePermission
 
 from . import serializers
 
 
 # ─── Company Mixin ─────────────────────────────────────────────────────────────
-class CompanyScopedViewSet(viewsets.ModelViewSet):
+class CompanyScopedViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasModulePermission]
     required_permission = "api.access"  # Fallback/default
     """Base viewset that automatically filters queryset to the authenticated user's company."""
@@ -23,16 +23,18 @@ class CompanyScopedViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
     def get_company(self):
-        return getattr(self.request.user, "company", None)
-
-    def get_queryset(self):
-        company = self.get_company()
-        if company:
-            return self.queryset.filter(company=company)
-        return self.queryset.none()
+        user = getattr(self.request, "user", None)
+        if not user or not user.is_authenticated:
+            return None
+        return getattr(user, "primary_company", None) or getattr(user, "company", None)
 
     def perform_create(self, serializer):
-        serializer.save(company=self.get_company())
+        company = self.get_company()
+        if company:
+            serializer.save(company=company)
+        else:
+            serializer.save()
+
 
 
 # ─── CRM ──────────────────────────────────────────────────────────────────────

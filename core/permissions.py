@@ -113,9 +113,10 @@ class HttpMethodPermissionMixin(PermissionRequiredMixin):
 
     def get_required_permission(self, request=None):
         if not self.required_permission_module:
+            if self.required_permission:
+                return self.required_permission
             raise ImproperlyConfigured(
-                f"{self.__class__.__name__} is missing the required_permission_module attribute. "
-                "Define required_permission_module = 'module_name'."
+                f"{self.__class__.__name__} is missing the required_permission_module or required_permission attribute."
             )
         method = (request.method if request else self.request.method).upper()
         if method in ("GET", "HEAD", "OPTIONS"):

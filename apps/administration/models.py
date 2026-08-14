@@ -516,6 +516,9 @@ class AuditLog(UUIDModel):
         on_delete=models.SET_NULL,
         related_name="admin_audit_logs",
     )
+    action = models.CharField(
+        max_length=20, choices=Action.choices, default=Action.CREATE, db_index=True
+    )
     model_name = models.CharField(max_length=100, db_index=True)
     object_id = models.CharField(max_length=100, blank=True)
     object_repr = models.CharField(max_length=300, blank=True)

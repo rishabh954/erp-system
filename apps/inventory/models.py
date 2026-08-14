@@ -207,6 +207,10 @@ class Product(CompanyScoped, NotesMixin):
     def is_low_stock(self):
         return self.total_stock <= self.reorder_point
 
+    @property
+    def needs_reorder(self):
+        return self.is_low_stock
+
 
 class ProductVariant(CompanyScoped):
     product = models.ForeignKey(

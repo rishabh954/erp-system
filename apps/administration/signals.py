@@ -62,7 +62,7 @@ def _write_audit(action, instance, changes=None, user=None):
         )
     except Exception as e:
         import logging
-        logging.getLogger(__name__).warning("Failed to save audit log: %s", e)  # Never let audit fail silently block the main operation
+        logging.getLogger(__name__).error("Failed to save audit log: %s", e, exc_info=True)
 
 
 def register_audit_signals():
