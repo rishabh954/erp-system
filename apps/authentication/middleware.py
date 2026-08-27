@@ -22,19 +22,27 @@ class SecurityMiddleware:
         ip_address = self.get_client_ip(request)
 
         # 1. IP Restriction Check
-        # Check global or user-specific IP rules
-        restrictions = IPRestriction.objects.filter(user=request.user)
-        if not restrictions.exists() and getattr(request.user, "primary_company", None):
-            restrictions = IPRestriction.objects.filter(
-                company=request.user.primary_company
-            )
+        # Check global or user-specific IP rules (cached)
+        from django.core.cache import cache
+        
+        company_id = getattr(request.user, "primary_company_id", None)
+        cache_key = f"ip_restrictions:{request.user.id}:{company_id}"
+        allowed_ips = cache.get(cache_key)
 
-        if restrictions.exists():
-            # If there are restrictions, the IP MUST be in the allowed list
-            allowed = restrictions.filter(
-                ip_address=ip_address, is_allowed=True
-            ).exists()
-            if not allowed:
+        if allowed_ips is None:
+            restrictions = IPRestriction.objects.filter(user=request.user)
+            if not restrictions.exists() and company_id:
+                restrictions = IPRestriction.objects.filter(company_id=company_id)
+
+            if restrictions.exists():
+                allowed_ips = list(restrictions.filter(is_allowed=True).values_list("ip_address", flat=True))
+                cache.set(cache_key, allowed_ips, timeout=60)
+            else:
+                cache.set(cache_key, "NO_RESTRICTIONS", timeout=60)
+                allowed_ips = "NO_RESTRICTIONS"
+
+        if allowed_ips != "NO_RESTRICTIONS":
+            if ip_address not in allowed_ips:
                 from django.contrib.auth import logout
 
                 logout(request)

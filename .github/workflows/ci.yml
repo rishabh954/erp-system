@@ -50,6 +50,16 @@ jobs:
       run: |
         mypy apps core
         
+    - name: Check for missing migrations
+      run: |
+        python manage.py makemigrations --check --dry-run
+      env:
+        DJANGO_SETTINGS_MODULE: config.settings
+        DB_HOST: localhost
+        DB_NAME: erp_test
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+
     - name: Run Tests
       run: |
         pytest

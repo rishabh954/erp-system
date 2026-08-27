@@ -19,9 +19,14 @@ class TenantScopedViewSetMixin:
         if not company:
             return qs.none()
 
-        # Filter by company
+        # Filter by company (supports consolidated reporting)
         if hasattr(qs.model, "company"):
-            qs = qs.filter(company=company)
+            consolidated = getattr(self, "request", None) and self.request.query_params.get("consolidated") == "true"
+            if consolidated:
+                company_ids = company.get_all_subsidiary_ids()
+                qs = qs.filter(company_id__in=company_ids)
+            else:
+                qs = qs.filter(company=company)
 
         # Filter soft-deleted if model supports is_deleted
         if hasattr(qs.model, "is_deleted"):

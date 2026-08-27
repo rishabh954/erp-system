@@ -23,16 +23,47 @@ if dotenv_path.exists():
                 os.environ.setdefault(key, val)
 
 # ─── Security ────────────────────────────────────────────────────────────────
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# Detect test runs (pytest or manage.py test).
+# Use multiple reliable signals: sys.modules, sys.argv, and common pytest env vars.
+TESTING = False
+try:
+    if 'pytest' in ' '.join(sys.argv):
+        TESTING = True
+except Exception:
+    pass
 
-if not DEBUG:
+if not TESTING:
+    # check loaded modules
+    TESTING = any(name.startswith('pytest') for name in list(sys.modules.keys()))
+
+if not TESTING:
+    # environment variables set by pytest/test runners
+    TESTING = bool(os.environ.get('PYTEST_CURRENT_TEST')) or bool(os.environ.get('DJANGO_TESTING'))
+
+# Respect explicit DEBUG env var; otherwise enable DEBUG during tests to avoid
+# running production-only checks in the test environment.
+if 'DEBUG' in os.environ:
+    DEBUG = os.environ.get('DEBUG') == 'True'
+else:
+    DEBUG = bool(TESTING)
+
+if not DEBUG and not TESTING:
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY or SECRET_KEY == 'change-me-in-production-use-50+-chars' or SECRET_KEY == 'your-very-long-random-secret-key-50-chars-minimum-change-me':  # noqa: E501
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured("SECRET_KEY environment variable must be set securely when DEBUG is False")  # noqa: E501
 else:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Parse ALLOWED_HOSTS from env; require explicit hosts in production
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
+if not DEBUG and not TESTING:
+    if not ALLOWED_HOSTS:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured(
+            "ALLOWED_HOSTS must be set (comma-separated) when DEBUG is False"
+        )
 
 # ─── Applications ─────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -156,9 +187,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ─── Database ─────────────────────────────────────────────────────────────────
+DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.postgresql')
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': DB_ENGINE,
         'NAME': os.environ.get('DB_NAME', 'erp_db'),
         'USER': os.environ.get('DB_USER', 'erp_user'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'erp_password'),
@@ -166,8 +198,8 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
         'OPTIONS': {
             'connect_timeout': 10,
-        },
-        'CONN_MAX_AGE': 600,
+        } if DB_ENGINE == 'django.db.backends.postgresql' else {},
+        'CONN_MAX_AGE': 600 if DB_ENGINE == 'django.db.backends.postgresql' else 0,
     }
 }
 
@@ -371,6 +403,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # ─── Security Headers ─────────────────────────────────────────────────────────
+SECURE_REFERRER_POLICY = 'same-origin'
+
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -386,7 +420,19 @@ else:
     CSRF_COOKIE_SECURE = False
     SECURE_HSTS_SECONDS = 0
 
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
+def _parse_origins(env_val, default):
+    return [o.strip() for o in os.environ.get(env_val, default).split(',') if o.strip()]
+
+CSRF_TRUSTED_ORIGINS = _parse_origins('CSRF_TRUSTED_ORIGINS', 'http://localhost')
+
+if not DEBUG and not TESTING:
+    # In production require explicit HTTPS origins
+    for origin in CSRF_TRUSTED_ORIGINS:
+        if not origin.lower().startswith('https://'):
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured('All CSRF_TRUSTED_ORIGINS must use https in production')
+
+CSRF_COOKIE_HTTPONLY = not DEBUG
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
@@ -463,5 +509,11 @@ ERP_SETTINGS = {
 import os  # noqa: E402
 import sys  # noqa: E402
 
-if ('test' in sys.argv or 'pytest' in sys.modules) and (not os.environ.get('DB_HOST') or os.environ.get('DB_HOST') == 'sqlite'):  # noqa: E501
-    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}  # noqa: E501
+# Use a local SQLite database when requested or during pytest runs.
+db_host = os.environ.get('DB_HOST')
+db_engine = os.environ.get('DB_ENGINE', 'django.db.backends.postgresql')
+
+if db_host == 'sqlite' or db_engine in {'django.db.backends.sqlite3', 'sqlite3'}:
+    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}
+elif ('test' in sys.argv or 'pytest' in sys.modules) and (not db_host or db_host == 'sqlite'):
+    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}

@@ -181,35 +181,62 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
         return f"{self.number} | {self.date} | {self.total_debit}"
 
     def is_balanced(self):
-        return self.total_debit == self.total_credit
+        items = list(self.items.all())
+        if not items:
+            return self.total_debit == self.total_credit
+        total_debit = sum(item.debit for item in items)
+        total_credit = sum(item.credit for item in items)
+        return total_debit == total_credit
 
     def post(self, user=None):
+        from django.db import transaction
         from django.utils import timezone
 
-        # Check financial close lock date
-        if (
-            self.company.accounting_lock_date
-            and self.date <= self.company.accounting_lock_date
-        ):
-            raise ValueError(
-                f"Cannot post entry before lock date: {self.company.accounting_lock_date}"
-            )
+        with transaction.atomic():
+            # Lock the journal entry row to prevent race conditions and check status
+            locked_entry = JournalEntry.objects.select_for_update().get(pk=self.pk)
+            
+            if locked_entry.status == self.Status.POSTED:
+                return
 
-        if not self.is_balanced():
-            raise ValueError(f"Journal entry {self.number} is not balanced")
-        self.status = self.Status.POSTED
-        self.posted_at = timezone.now()
-        if user:
-            self.posted_by = user
-        self.save()
-        # Update account balances
-        for item in self.items.all():
-            account = item.account
-            if account.account_type in ("asset", "expense", "cogs", "bank"):
-                account.current_balance += item.debit - item.credit
-            else:
-                account.current_balance += item.credit - item.debit
-            account.save(update_fields=["current_balance"])
+            # Check financial close lock date
+            if (
+                locked_entry.company.accounting_lock_date
+                and locked_entry.date <= locked_entry.company.accounting_lock_date
+            ):
+                raise ValueError(
+                    f"Cannot post entry before lock date: {locked_entry.company.accounting_lock_date}"
+                )
+
+            if not locked_entry.is_balanced():
+                raise ValueError(f"Journal entry {locked_entry.number} is not balanced")
+
+            # Lock all accounts involved in the journal entry in a fixed, sorted order to avoid deadlock
+            account_ids = sorted(list(set(item.account_id for item in locked_entry.items.all())))
+            accounts_map = {
+                acc.id: acc
+                for acc in Account.objects.select_for_update().filter(id__in=account_ids)
+            }
+
+            locked_entry.status = self.Status.POSTED
+            locked_entry.posted_at = timezone.now()
+            if user:
+                locked_entry.posted_by = user
+            locked_entry.save(update_fields=["status", "posted_at", "posted_by"])
+
+            # Update account balances atomically
+            for item in locked_entry.items.all():
+                account = accounts_map[item.account_id]
+                if account.account_type in ("asset", "expense", "cogs", "bank"):
+                    account.current_balance += item.debit - item.credit
+                else:
+                    account.current_balance += item.credit - item.debit
+                account.save(update_fields=["current_balance"])
+
+            # Propagate values to the current instance (self)
+            self.status = locked_entry.status
+            self.posted_at = locked_entry.posted_at
+            self.posted_by = locked_entry.posted_by
 
 
 class JournalItem(models.Model):
