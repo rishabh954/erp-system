@@ -9,6 +9,7 @@ from .views import (
     LogoutAPIView,
     ModulePermissionViewSet,
     RoleViewSet,
+    TwoFactorVerifyAPIView,
     UserViewSet,
 )
 
@@ -25,5 +26,6 @@ router.register("activity-logs", ActivityLogViewSet, basename="activity-log")
 urlpatterns = [
     path("login/", LoginAPIView.as_view(), name="login"),
     path("logout/", LogoutAPIView.as_view(), name="logout"),
+    path("2fa/verify/", TwoFactorVerifyAPIView.as_view(), name="2fa-verify"),
     path("", include(router.urls)),
 ]

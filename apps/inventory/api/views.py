@@ -82,12 +82,44 @@ class ProductViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 {"error": "Warehouse not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        # In a real app, this would use a service to perform the adjustment, update StockRecord, and create StockMovement
+        # Delegate to StockService to perform the adjustment with proper
+        # concurrency guards (select_for_update + transaction.atomic).
+        from decimal import Decimal, InvalidOperation
+
+        from apps.inventory.services import StockService
+
+        try:
+            quantity = Decimal(str(quantity))
+        except (InvalidOperation, TypeError):
+            return Response(
+                {"error": "quantity must be a valid number"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        notes = request.data.get("notes", "")
+        stock_service = StockService(company=product.company, user=request.user)
+        try:
+            if adjustment_type == "add":
+                record = stock_service.receive_stock(
+                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
+                )
+            elif adjustment_type == "remove":
+                record = stock_service.issue_stock(
+                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
+                )
+            else:  # set
+                record = stock_service.set_stock(
+                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
+                )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(
             {
                 "status": "stock_adjusted",
                 "product": product.name,
                 "warehouse": warehouse.name,
+                "new_quantity": str(record.quantity_on_hand),
             }
         )
 
@@ -195,7 +227,30 @@ class InventoryTransferViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         transfer.received_at = timezone.now()
         transfer.save(update_fields=["status", "received_by", "received_at"])
 
-        # In a real app, this would also trigger the stock movements here
+        # Trigger actual stock movements for the transfer lines
+        from django.db import transaction as db_transaction
+
+        from apps.inventory.services import StockService
+
+        with db_transaction.atomic():
+            stock_service = StockService(company=transfer.company, user=request.user)
+            for line in transfer.lines.select_related("product").all():
+                if line.product:
+                    stock_service.issue_stock(
+                        product=line.product,
+                        warehouse=transfer.source_warehouse,
+                        qty=line.quantity,
+                        reference=f"TRANSFER:{transfer.number}",
+                        notes=f"Transfer to {transfer.destination_warehouse.name}",
+                    )
+                    stock_service.receive_stock(
+                        product=line.product,
+                        warehouse=transfer.destination_warehouse,
+                        qty=line.quantity,
+                        reference=f"TRANSFER:{transfer.number}",
+                        notes=f"Transfer from {transfer.source_warehouse.name}",
+                    )
+
         return Response({"status": "received"})
 
 
@@ -219,49 +274,71 @@ class BarcodeScanViewSet(viewsets.ViewSet):
         qty = request.data.get("quantity", 1)
 
         if not barcode or not warehouse_id:
-            return Response({"error": "barcode and warehouse are required"}, status=400)
+            return Response(
+                {"error": "barcode and warehouse are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        from decimal import Decimal
+        from decimal import Decimal, InvalidOperation
 
-        qty = Decimal(str(qty))
+        try:
+            qty = Decimal(str(qty))
+        except (InvalidOperation, TypeError):
+            return Response(
+                {"error": "quantity must be a valid number"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        company = getattr(request.user, "primary_company", None)
-        product = Product.objects.filter(
-            barcode=barcode, company=company
-        ).first()
+        if qty <= 0:
+            return Response(
+                {"error": "quantity must be greater than zero"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # Always use request.company (set by TenantMiddleware) for correct scoping
+        company = getattr(request, "company", None) or getattr(request.user, "primary_company", None)
+        if not company:
+            return Response(
+                {"error": "No active company context."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        product = Product.objects.filter(barcode=barcode, company=company).first()
         if not product:
-            return Response({"error": f"Product with barcode {barcode} not found"}, status=44)
+            return Response(
+                {"error": f"Product with barcode '{barcode}' not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         try:
             warehouse = Warehouse.objects.get(pk=warehouse_id, company=company)
         except Warehouse.DoesNotExist:
-            return Response({"error": "Warehouse not found"}, status=404)
+            return Response(
+                {"error": "Warehouse not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        stock_record, _ = StockRecord.objects.get_or_create(
-            company=company,
-            product=product,
-            warehouse=warehouse,
-            defaults={"quantity_on_hand": 0},
-        )
+        # Delegate to StockService so all concurrency guards (select_for_update,
+        # transaction.atomic, StockMovement creation) happen in one place.
+        from apps.inventory.services import StockService
 
-        stock_record.quantity_on_hand += qty
-        stock_record.save(update_fields=["quantity_on_hand"])
-
-        StockMovement.objects.create(
-            company=company,
-            product=product,
-            warehouse=warehouse,
-            movement_type=StockMovement.MovementType.RECEIPT,
-            quantity=qty,
-            reference="BARCODE_SCAN",
-            performed_by=request.user,
-        )
+        stock_service = StockService(company=company, user=request.user)
+        try:
+            record = stock_service.receive_stock(
+                product=product,
+                warehouse=warehouse,
+                qty=qty,
+                reference="BARCODE_SCAN",
+                notes=f"Barcode scan receipt by {request.user.email}",
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             {
                 "status": "success",
                 "product": product.name,
-                "new_quantity": str(stock_record.quantity_on_hand),
-            }
+                "new_quantity": str(record.quantity_on_hand),
+            },
+            status=status.HTTP_200_OK,
         )

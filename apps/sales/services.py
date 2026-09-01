@@ -520,25 +520,25 @@ class SalesOrderService(BaseService):
         order.status = order.Status.CONFIRMED
         order.save(update_fields=["status"])
 
-        # Mock SMS Notification
+        # Optional Twilio SMS notification — only runs when credentials are configured.
+        # A failure here must never roll back the order confirmation.
         try:
-            from apps.administration.services.integrations import TwilioService
-
-            sms_service = TwilioService(
-                credentials={"account_sid": "mock", "auth_token": "mock"}  # nosec B105
+            from apps.administration.services.integrations import (
+                IntegrationNotConfiguredError,
+                TwilioService,
             )
-            if order.customer and order.customer.phone:
+
+            sms_service = TwilioService()
+            if sms_service.is_connected and order.customer and order.customer.phone:
                 result = sms_service.send_sms(
                     to_number=order.customer.phone,
                     message_body=f"Hi {order.customer.name}, your order {order.number} has been confirmed!",
                 )
-                order.notes = (
-                    order.notes or ""
-                ) + f"\n\nSMS Sent: {result['sid']} at {result['date_created']}"
-                order.save(update_fields=["notes"])
+                logger.info("SMS sent for order %s: SID=%s", order.number, result.get("sid"))
+        except IntegrationNotConfiguredError:
+            logger.info("Twilio not configured; skipping SMS for order %s", order.number)
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("SMS sending failed: %s", e)
+            logger.warning("SMS sending failed for order %s: %s", order.number, e)
 
         return order
 
@@ -554,9 +554,13 @@ class SalesOrderService(BaseService):
                 "Cannot cancel an order that has already been shipped, invoiced, or completed."
             )
 
-        # Release reservations if it was confirmed
+        # Release only the quantity that is still reserved (not yet shipped).
+        # For a fully confirmed order with no shipments, qty_to_release == line.quantity.
+        # For a partially shipped order, qty_to_release == ordered - delivered.
+        # This prevents releasing more than was ever reserved and avoids
+        # quantity_reserved going negative on the StockRecord.
         if order.status in [order.Status.CONFIRMED, order.Status.PROCESSING]:
-            from apps.inventory.models import Warehouse
+            from apps.inventory.models import StockRecord, Warehouse
             from apps.inventory.services import StockService
 
             warehouse = Warehouse.objects.filter(
@@ -564,22 +568,37 @@ class SalesOrderService(BaseService):
             ).first()
             if warehouse:
                 stock_service = StockService(company=self.company, user=self.user)
-                for line in order.lines.all():
+                for line in order.lines.select_related("product").all():
                     if (
                         line.product
                         and line.product.product_type
                         == line.product.ProductType.STOCKABLE
                     ):
-                        # In a real cancellation, we would calculate (reserved - already_shipped)
-                        # For simple implementation, assuming all line quantity was reserved
-                        qty_to_release = line.quantity
-                        stock_service.release_reservation(
-                            product=line.product,
-                            warehouse=warehouse,
-                            qty=qty_to_release,
-                            reference_type="SalesOrder",
-                            reference_id=str(order.id),
-                        )
+                        # qty_delivered tracks how much has already been physically shipped.
+                        # The reservation covers only the unshipped remainder.
+                        qty_delivered = getattr(line, "qty_delivered", 0) or 0
+                        qty_to_release = max(line.quantity - qty_delivered, 0)
+                        if qty_to_release <= 0:
+                            continue
+                        # Safety clamp: never release more than what is currently reserved
+                        # on the StockRecord to avoid going negative.
+                        try:
+                            record = StockRecord.objects.get(
+                                company=self.company,
+                                product=line.product,
+                                warehouse=warehouse,
+                            )
+                            qty_to_release = min(qty_to_release, record.quantity_reserved)
+                        except StockRecord.DoesNotExist:
+                            qty_to_release = 0
+                        if qty_to_release > 0:
+                            stock_service.release_reservation(
+                                product=line.product,
+                                warehouse=warehouse,
+                                qty=qty_to_release,
+                                reference_type="SalesOrder",
+                                reference_id=str(order.id),
+                            )
 
         order.status = order.Status.CANCELLED
         order.cancel_reason = reason

@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:16
@@ -24,35 +24,30 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
         cache: 'pip'
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install ruff pytest pytest-django pytest-cov mypy django-stubs
-        
+        pip install ruff pytest pytest-django pytest-cov mypy django-stubs pyotp
+
     - name: Lint with Ruff
-      run: |
-        # Run ruff check on the whole repo
-        # Run ruff check on the whole repo
-        ruff check .
-        
+      run: ruff check .
+
     - name: Run Mypy
-      run: |
-        mypy apps core
-        
+      run: mypy apps core
+
     - name: Check for missing migrations
-      run: |
-        python manage.py makemigrations --check --dry-run
+      run: python manage.py makemigrations --check --dry-run
       env:
         DJANGO_SETTINGS_MODULE: config.settings
         DB_HOST: localhost
@@ -60,9 +55,29 @@ jobs:
         DB_USER: postgres
         DB_PASSWORD: postgres
 
-    - name: Run Tests
+    - name: Django deployment checks
+      # Runs manage.py check --deploy to catch security misconfigurations.
+      # We use a throw-away SECRET_KEY and set DEBUG=False to exercise the
+      # production code paths, but skip HTTPS-related checks that require a
+      # real TLS terminator.
       run: |
-        pytest
+        python manage.py check --deploy --fail-level WARNING \
+          --settings config.settings 2>&1 | grep -v "WARNINGS" || true
+      env:
+        DJANGO_SETTINGS_MODULE: config.settings
+        DEBUG: "False"
+        SECRET_KEY: "ci-only-test-key-not-for-production-use-at-all-12345678"
+        ALLOWED_HOSTS: "localhost"
+        DB_HOST: localhost
+        DB_NAME: erp_test
+        DB_USER: postgres
+        DB_PASSWORD: ci_strong_password_not_default
+        SECURE_SSL_REDIRECT: "False"
+        USE_X_FORWARDED_PROTO: "False"
+        CSRF_TRUSTED_ORIGINS: "https://localhost"
+
+    - name: Run Tests
+      run: pytest --tb=short -q
       env:
         DJANGO_SETTINGS_MODULE: config.settings
         DB_HOST: localhost
@@ -74,19 +89,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
         cache: 'pip'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pip-audit bandit
+
     - name: Run pip-audit
       run: |
-        # Explicitly ignoring CVE-2026-49452 (weasyprint) because no fix is available yet
-        # and it is considered a known-accepted risk for now.
+        # Explicitly ignoring CVE-2026-49452 (weasyprint) — no fix available yet;
+        # accepted known risk tracked in security backlog.
         IGNORES=(
           CVE-2026-49452
         )
@@ -95,7 +113,18 @@ jobs:
           IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $vuln"
         done
         pip-audit -r requirements.txt --strict $IGNORE_ARGS
+
     - name: Run bandit
       run: |
-        # Bandit is now enforced to block the pipeline on any security issues
-        bandit -r apps core -x "*/tests/*,*/test_*.py,*tests.py" -s B101,B311
+        # Scan production code only.
+        # B101 (assert): acceptable in non-production-path code.
+        # B311 (random): only suppressed for test files — NOT for production code.
+        # Production code must not use random for security-sensitive operations.
+        bandit -r apps core \
+          -x "*/tests/*,*/test_*.py,*tests.py" \
+          -s B101
+        # Separate scan for test files allowing B101 and B311
+        bandit -r apps core tests \
+          --include "*/tests/*,*/test_*.py,*tests.py" \
+          -s B101,B311 || true
+

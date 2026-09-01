@@ -304,8 +304,13 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         self.update_balance()
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
         super().save(*args, **kwargs)
-        if self.status in [self.Status.SENT]:
+        # Only auto-post journal when a new Invoice first reaches SENT status.
+        # Running on every update would create duplicate journal entries.
+        if is_new and self.status in [self.Status.SENT]:
+            from django.db import transaction
+
             from apps.accounting.models import JournalEntry
 
             if not JournalEntry.objects.filter(
@@ -313,7 +318,8 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
             ).exists():
                 from apps.accounting.services import AutoJournalService
 
-                AutoJournalService.post_sales_invoice(self)
+                with transaction.atomic():
+                    AutoJournalService.post_sales_invoice(self)
 
     def update_balance(self):
         from django.db.models import Sum
@@ -411,10 +417,13 @@ class Payment(CompanyScoped, SequenceMixin):
         return f"{self.number} | {self.invoice.number} | {self.amount}"
 
     def save(self, *args, **kwargs):
-        self._state.adding
+        is_new = self._state.adding
         super().save(*args, **kwargs)
         self.invoice.update_balance()
-        if self.status == self.Status.COMPLETED:
+        # Only post journal entry on creation of a COMPLETED payment, not on every update.
+        if is_new and self.status == self.Status.COMPLETED:
+            from django.db import transaction
+
             from apps.accounting.models import JournalEntry
 
             if not JournalEntry.objects.filter(
@@ -422,7 +431,8 @@ class Payment(CompanyScoped, SequenceMixin):
             ).exists():
                 from apps.accounting.services import AutoJournalService
 
-                AutoJournalService.post_sales_payment(self)
+                with transaction.atomic():
+                    AutoJournalService.post_sales_payment(self)
 
 
 # ════════════════════════ ENTERPRISE SALES ═══════════════════════════════════

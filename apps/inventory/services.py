@@ -638,25 +638,33 @@ class DeliveryService(BaseService):
         delivery.shipped_date = timezone.now()
         delivery.shipped_by = user
 
-        # Mock Shiprocket Integration
+        # Optional Shiprocket integration — only runs when credentials are configured.
+        # Failures are logged but never block the shipment record from being saved.
         try:
-            from apps.administration.services.integrations import ShiprocketService
+            from apps.administration.services.integrations import (
+                IntegrationNotConfiguredError,
+                ShiprocketService,
+            )
 
-            shiprocket = ShiprocketService(credentials={"token": "mock"})  # nosec B105
-            shipment = shiprocket.create_shipment(
-                order_id=delivery.number,
-                pickup_pincode="110001",
-                delivery_pincode="400001",
-                weight=1.5,
-                dimensions="10x10x10",
-            )
-            delivery.tracking_number = shipment["awb_code"]
-            delivery.notes = (
-                (delivery.notes or "")
-                + f"\n\nShipped via {shipment['courier_name']}. Est Delivery: {shipment['estimated_delivery']}"
-            )
+            shiprocket = ShiprocketService()
+            if shiprocket.is_connected:
+                shipment = shiprocket.create_shipment(
+                    order_id=delivery.number,
+                    pickup_pincode=getattr(delivery.warehouse, "pincode", "000000") or "000000",
+                    delivery_pincode=getattr(delivery.sales_order, "delivery_pincode", "000000") or "000000",
+                    weight=1.5,
+                    dimensions="10x10x10",
+                )
+                delivery.tracking_number = shipment["awb_code"]
+                delivery.notes = (
+                    (delivery.notes or "")
+                    + f"\n\nShipped via {shipment['courier_name']}. Est Delivery: {shipment['estimated_delivery']}"
+                )
+            # If not configured, skip silently — tracking number stays blank
+        except IntegrationNotConfiguredError:
+            logger.info("Shiprocket not configured; skipping shipment creation for %s", delivery.number)
         except Exception as e:
-            logger.warning("Shiprocket integration failed: %s", e)  # Non-critical failure
+            logger.warning("Shiprocket integration failed for %s: %s", delivery.number, e)
 
         delivery.save()
 

@@ -3,6 +3,8 @@ Authentication REST API
 JWT login, user management, RBAC endpoints
 """
 
+import logging
+
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -22,6 +24,8 @@ from apps.authentication.api.serializers import (
 from apps.authentication.models import ActivityLog, ModulePermission, Role, User
 from core.permissions import IsCompanyAdminOrSuperAdmin, IsSuperAdmin
 
+logger = logging.getLogger(__name__)
+
 # --- API Views ----------------------------------------------------------------
 
 
@@ -33,6 +37,19 @@ class LoginAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user_data = serializer.validated_data
+
+        # 2FA required — return partial token only; no JWT issued yet
+        if user_data.get("requires_2fa"):
+            return Response(
+                {
+                    "success": True,
+                    "requires_2fa": True,
+                    "partial_token": user_data["partial_token"],
+                    "message": "2FA verification required. Submit your TOTP code to /api/v1/auth/2fa/verify/.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
         user = User.objects.get(email=request.data["email"])
 
         # Update login metadata
@@ -51,15 +68,102 @@ class LoginAPIView(APIView):
         return Response(
             {
                 "success": True,
-                "data": user_data,
+                "data": {
+                    "access": user_data["access"],
+                    "refresh": user_data["refresh"],
+                    "user": user_data["user"],
+                },
             },
             status=status.HTTP_200_OK,
         )
 
     @staticmethod
     def _get_ip(request):
+        from django.conf import settings
+        trusted = getattr(settings, "TRUSTED_PROXY_IPS", None)
         xff = request.META.get("HTTP_X_FORWARDED_FOR")
-        return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "")
+        if xff:
+            remote = request.META.get("REMOTE_ADDR", "")
+            if trusted is None or remote in trusted:
+                return xff.split(",")[0].strip()
+        return request.META.get("REMOTE_ADDR", "")
+
+
+class TwoFactorVerifyAPIView(APIView):
+    """Exchange a partial_token + TOTP code for a full JWT pair."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        import pyotp
+        from django.core.cache import cache
+
+        partial_token = request.data.get("partial_token")
+        totp_code = request.data.get("code")
+
+        if not partial_token or not totp_code:
+            return Response(
+                {"error": "partial_token and code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cache_key = f"2fa_partial:{partial_token}"
+        user_pk = cache.get(cache_key)
+        if not user_pk:
+            return Response(
+                {"error": "Invalid or expired token. Please log in again."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            user = User.objects.get(pk=user_pk)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.two_factor_enabled or not user.totp_secret:
+            return Response(
+                {"error": "2FA is not configured for this account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        totp = pyotp.TOTP(user.totp_secret)
+        if not totp.verify(totp_code, valid_window=1):
+            return Response(
+                {"error": "Invalid 2FA code."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Code is valid — delete the partial token so it cannot be reused
+        cache.delete(cache_key)
+
+        refresh = RefreshToken.for_user(user)
+
+        user.failed_login_attempts = 0
+        user.last_login_ip = LoginAPIView._get_ip(request)
+        user.save(update_fields=["failed_login_attempts", "last_login_ip"])
+
+        ActivityLog.objects.create(
+            user=user,
+            company=user.primary_company,
+            action="login",
+            module="auth",
+            ip_address=LoginAPIView._get_ip(request),
+        )
+
+        return Response(
+            {
+                "success": True,
+                "data": {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": UserSerializer(user).data,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LogoutAPIView(APIView):
@@ -70,8 +174,7 @@ class LogoutAPIView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("Failed to blacklist token: %s", e)
+            logger.warning("Failed to blacklist token: %s", e)
 
         ActivityLog.objects.create(
             user=request.user,
@@ -102,7 +205,12 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == User.Role.SUPER_ADMIN or user.is_superuser:
             return User.objects.all()
-        return User.objects.filter(companies=user.primary_company)
+        # Use request.company (set by TenantMiddleware) so multi-company
+        # users always see data for their *active* company, not just their primary.
+        company = getattr(self.request, "company", None) or user.primary_company
+        if not company:
+            return User.objects.none()
+        return User.objects.filter(companies=company)
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)
@@ -193,10 +301,17 @@ class RoleViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == User.Role.SUPER_ADMIN or user.is_superuser:
             return Role.objects.all()
-        return Role.objects.filter(company=user.primary_company)
+        company = getattr(self.request, "company", None) or user.primary_company
+        if not company:
+            return Role.objects.none()
+        return Role.objects.filter(company=company)
 
     def perform_create(self, serializer):
-        serializer.save(company=self.request.user.primary_company)
+        company = getattr(self.request, "company", None) or self.request.user.primary_company
+        if not company:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("No active company context. Cannot create a role.")
+        serializer.save(company=company)
 
 
 class ModulePermissionViewSet(viewsets.ModelViewSet):
@@ -228,7 +343,10 @@ class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = ActivityLog.objects.filter(company=user.primary_company).order_by(
+        company = getattr(self.request, "company", None) or user.primary_company
+        if not company:
+            return ActivityLog.objects.none()
+        qs = ActivityLog.objects.filter(company=company).order_by(
             "-created_at"
         )
         # Filter by current user unless admin

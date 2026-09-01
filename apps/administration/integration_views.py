@@ -69,29 +69,43 @@ class GenericIntegrationSetupView(LoginRequiredMixin, AdminRequiredMixin, View):
 
 
 class OAuthMockConnectView(LoginRequiredMixin, AdminRequiredMixin, View):
+    """
+    OAuth connect placeholder.
+
+    Real OAuth flows require a provider-specific client_id, client_secret, and
+    a redirect URI registered with the provider. This view previously stored
+    hardcoded fake tokens as real credentials, which silently broke any code
+    that tried to use them.
+
+    The view now returns HTTP 501 Not Implemented and tells the admin exactly
+    what environment variables need to be configured before OAuth can work.
+    Replace this view with a real OAuth flow (e.g. via python-social-auth or
+    authlib) once provider credentials are available.
+    """
+
     template_name = "administration/integrations/oauth_connect.html"
 
     def get(self, request, provider):
-        return render(request, self.template_name, {"provider": provider})
+        return render(
+            request,
+            self.template_name,
+            {
+                "provider": provider,
+                "not_implemented": True,
+                "message": (
+                    f"OAuth for '{provider}' is not yet configured. "
+                    "Set the required environment variables and implement the "
+                    "real OAuth flow before connecting this provider."
+                ),
+            },
+        )
 
     def post(self, request, provider):
-        company = request.user.primary_company
-        integration_type = request.POST.get("integration_type", "custom")
-
-        integration, created = Integration.objects.get_or_create(
-            company=company,
-            provider=provider,
-            defaults={"integration_type": integration_type, "name": provider.title()},
-        )
-        integration.credentials = {
-            "oauth_token": "mock_token_123",  # nosec B105
-            "refresh_token": "mock_refresh_456",  # nosec B105
-        }
-        integration.status = Integration.Status.CONNECTED
-        integration.save()
-
-        messages.success(
-            request, f"Successfully authenticated with {provider.title()}."
+        messages.error(
+            request,
+            f"OAuth authentication for '{provider.title()}' is not yet implemented. "
+            "Configure the provider credentials in your environment and implement "
+            "the real OAuth callback before using this feature.",
         )
         return redirect("administration:integrations_dashboard")
 

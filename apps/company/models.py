@@ -331,12 +331,22 @@ class FiscalYear(TimeStampedModel):
         return f"{self.company.name} — {self.name} ({self.status})"
 
     def save(self, *args, **kwargs):
-        # Only one fiscal year can be current per company
+        # Atomically ensure only one fiscal year is current per company.
+        # Without the lock, two concurrent saves of different years as
+        # is_current=True could both read zero current rows after each
+        # other's UPDATE, leaving two rows with is_current=True.
         if self.is_current:
-            FiscalYear.objects.filter(company=self.company, is_current=True).update(
-                is_current=False
-            )
-        super().save(*args, **kwargs)
+            from django.db import transaction
+            with transaction.atomic():
+                # Lock all existing current fiscal years for this company
+                # before clearing them, preventing concurrent writers from
+                # racing past the UPDATE.
+                FiscalYear.objects.select_for_update().filter(
+                    company=self.company, is_current=True
+                ).exclude(pk=self.pk).update(is_current=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
 
 class TaxGroup(TimeStampedModel):

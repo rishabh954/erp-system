@@ -36,9 +36,34 @@ class Command(BaseCommand):
             action="store_true",
             help="Clear existing demo data before seeding",
         )
+        parser.add_argument(
+            "--yes-i-know-this-is-destructive",
+            action="store_true",
+            dest="confirmed",
+            help="Required in production to prevent accidental seeding",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
+        from django.conf import settings
+
+        # ── Production safety guard ──────────────────────────────────────────
+        # Seeding demo data in production creates a known superuser account
+        # (admin@acme.com / admin) and overwrites real business data.
+        # We block this unless the operator passes --yes-i-know-this-is-destructive
+        # AND DEBUG is False is acknowledged.
+        if not settings.DEBUG and not options.get("confirmed"):
+            self.stderr.write(
+                self.style.ERROR(
+                    "REFUSED: seed_demo_data will not run against a production database "
+                    "(DEBUG=False) without explicit confirmation.\n"
+                    "If you truly intend to seed a non-DEBUG environment, re-run with:\n"
+                    "  --yes-i-know-this-is-destructive\n"
+                    "WARNING: This will create the demo admin@acme.com / admin account."
+                )
+            )
+            return
+
         fake = Faker()
 
         self.stdout.write(self.style.SUCCESS("Starting data seeding process..."))

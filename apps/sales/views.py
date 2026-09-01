@@ -791,8 +791,12 @@ class InvoiceDetailView(CompanyMixin, DetailView):
 
 class InvoiceGeneratePaymentLinkView(CompanyMixin, View):
     required_permission = "sales.approve"
+
     def post(self, request, pk):
-        from apps.administration.services.integrations import RazorpayService
+        from apps.administration.services.integrations import (
+            IntegrationNotConfiguredError,
+            RazorpayService,
+        )
 
         invoice = get_object_or_404(
             Invoice, pk=pk, company=self.company(), is_deleted=False
@@ -804,10 +808,17 @@ class InvoiceGeneratePaymentLinkView(CompanyMixin, View):
             )
             return redirect("sales:invoice_detail", pk=pk)
 
-        service = RazorpayService(credentials={"api_key": "mock", "api_secret": "mock"})  # nosec B105
+        service = RazorpayService()  # reads credentials from settings / env vars
+
+        if not service.is_connected:
+            messages.error(
+                request,
+                "Razorpay integration is not configured. "
+                "Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your environment.",
+            )
+            return redirect("sales:invoice_detail", pk=pk)
 
         try:
-            # Calculate remaining amount
             paid_amount = sum(
                 p.amount for p in invoice.payments.filter(status="completed")
             )
@@ -822,13 +833,14 @@ class InvoiceGeneratePaymentLinkView(CompanyMixin, View):
                 customer_phone=invoice.customer.phone if invoice.customer else "",
             )
 
-            # Save the link in invoice notes or just show it in a message for mock purposes
             invoice.notes = (
                 invoice.notes or ""
             ) + f"\n\nPayment Link Generated: {link['short_url']}"
             invoice.save(update_fields=["notes"])
 
             messages.success(request, f"Payment link generated: {link['short_url']}")
+        except IntegrationNotConfiguredError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error generating payment link: {e}")
 

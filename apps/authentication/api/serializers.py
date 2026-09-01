@@ -97,7 +97,13 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class CustomTokenObtainSerializer(serializers.Serializer):
-    """JWT login with extra user data in response."""
+    """JWT login with extra user data in response.
+
+    When a user has 2FA enabled the response will NOT include access/refresh
+    tokens.  Instead it returns ``requires_2fa: true`` and a short-lived
+    ``partial_token`` that the client must exchange via the ``/2fa/verify/``
+    endpoint after supplying a valid TOTP code.
+    """
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -108,14 +114,49 @@ class CustomTokenObtainSerializer(serializers.Serializer):
 
         user = authenticate(username=email, password=password)
         if not user:
+            # Increment failed login counter for API path (mirrors web login)
+            from apps.authentication.models import User as _User
+            _u = _User.objects.filter(email=email).first()
+            if _u:
+                _u.failed_login_attempts += 1
+                policy = getattr(_u.primary_company, "password_policy", None)
+                max_attempts = policy.max_failed_logins if policy else 5
+                lockout_minutes = policy.lockout_time_minutes if policy else 30
+                if _u.failed_login_attempts >= max_attempts:
+                    from datetime import timedelta
+
+                    from django.utils import timezone
+                    _u.locked_until = timezone.now() + timedelta(minutes=lockout_minutes)
+                _u.save(update_fields=["failed_login_attempts", "locked_until"])
             raise serializers.ValidationError("Invalid credentials.")
         if not user.is_active:
             raise serializers.ValidationError("Account is deactivated.")
         if user.is_locked:
             raise serializers.ValidationError("Account is temporarily locked.")
 
+        # ── 2FA Gate ──────────────────────────────────────────────────────────
+        if user.two_factor_enabled:
+            # Issue a limited partial token (no scopes / short TTL).
+            # The client must POST this + a TOTP code to /api/v1/auth/2fa/verify/
+            # to receive a real access/refresh pair.
+            import secrets
+
+            from django.core.cache import cache
+            partial_token = secrets.token_urlsafe(32)
+            # Store user pk for 5 minutes – enough time to complete 2FA
+            cache.set(f"2fa_partial:{partial_token}", str(user.pk), timeout=300)
+            return {
+                "requires_2fa": True,
+                "partial_token": partial_token,
+                "user": None,
+                "access": None,
+                "refresh": None,
+            }
+
         refresh = RefreshToken.for_user(user)
         return {
+            "requires_2fa": False,
+            "partial_token": None,
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "user": UserSerializer(user).data,

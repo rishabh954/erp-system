@@ -1,6 +1,33 @@
 from django.utils import timezone
 
 
+def _get_client_ip(request) -> str:
+    """
+    Extract the real client IP address.
+
+    Only trusts X-Forwarded-For when the direct REMOTE_ADDR is in the
+    TRUSTED_PROXY_IPS setting (a set/list of proxy IP strings).  This prevents
+    clients from spoofing their IP by sending a crafted X-Forwarded-For header
+    when there is no trusted reverse-proxy in front of the application.
+
+    Configure in settings.py:
+        TRUSTED_PROXY_IPS = {'10.0.0.1', '10.0.0.2'}   # your load balancer IPs
+    Set to None (the default) to trust ALL proxies — suitable only when
+    the app is always behind a known proxy and REMOTE_ADDR is reliable.
+    """
+    from django.conf import settings
+
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        trusted = getattr(settings, "TRUSTED_PROXY_IPS", None)
+        remote = request.META.get("REMOTE_ADDR", "")
+        # Trust XFF only if TRUSTED_PROXY_IPS is unconfigured (legacy) OR
+        # the direct connection comes from a known proxy.
+        if trusted is None or remote in trusted:
+            return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
 class AuditLogMiddleware:
     """Captures user IP and user-agent for audit logs."""
 
@@ -13,10 +40,7 @@ class AuditLogMiddleware:
 
     @staticmethod
     def get_client_ip(request) -> str:
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "")
+        return _get_client_ip(request)
 
 
 class RequestLoggingMiddleware:
@@ -31,20 +55,15 @@ class RequestLoggingMiddleware:
         user_id = str(request.user.pk) if hasattr(request, "user") and request.user.is_authenticated else "anonymous"  # noqa: E501
         company_id = str(request.company.pk) if hasattr(request, "company") and request.company else "none"  # noqa: E501
 
-        # In case the company is set in another middleware running AFTER this one,
-        # we still do our best here, or we place RequestLoggingMiddleware after TenantMiddleware.  # noqa: E501
-
         set_logging_context(
             user_id=user_id,
             company_id=company_id,
             request_path=request.path,
-            client_ip=AuditLogMiddleware.get_client_ip(request)
+            client_ip=_get_client_ip(request),
         )
 
         response = self.get_response(request)
-
         clear_logging_context()
-
         return response
 
 
@@ -132,14 +151,38 @@ class TenantMiddleware:
 
 
 class ActiveUserMiddleware:
-    """Updates user's last_active timestamp on each request."""
+    """
+    Updates user's last_active timestamp on each request.
+
+    To avoid a DB write on every single request (high load = O(n) writes/sec),
+    we use a short-lived cache key per user.  The DB is only updated when the
+    cache key is absent, i.e. at most once per LAST_ACTIVE_UPDATE_INTERVAL
+    seconds (default: 5 minutes).
+    """
+
+    CACHE_TTL = 300  # seconds between DB updates (5 minutes)
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.user.is_authenticated:
-            from apps.authentication.models import User
+        response = self.get_response(request)
 
-            User.objects.filter(pk=request.user.pk).update(last_active=timezone.now())
-        return self.get_response(request)
+        if request.user.is_authenticated:
+            self._update_last_active(request.user.pk)
+
+        return response
+
+    @staticmethod
+    def _update_last_active(user_pk):
+        from django.core.cache import cache
+
+        from apps.authentication.models import User
+
+        cache_key = f"last_active:{user_pk}"
+        if cache.get(cache_key):
+            # Already updated recently — skip the DB write
+            return
+        User.objects.filter(pk=user_pk).update(last_active=timezone.now())
+        cache.set(cache_key, 1, timeout=ActiveUserMiddleware.CACHE_TTL)
+

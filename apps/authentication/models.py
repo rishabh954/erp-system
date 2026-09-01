@@ -14,6 +14,8 @@ from django.db import models
 from django.utils import timezone as dj_timezone
 from django.utils.translation import gettext_lazy as _
 
+from core.fields import EncryptedCharField
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -98,7 +100,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=[("totp", "Authenticator App")],
         default="totp",
     )
-    totp_secret = models.CharField(max_length=32, blank=True)
+    # TOTP seed stored encrypted at rest using Fernet symmetric encryption.
+    # The EncryptedCharField transparently encrypts on write and decrypts on
+    # read.  Plain-text values already in the DB are returned unchanged until
+    # the user re-saves their 2FA settings (graceful migration path).
+    # max_length=500 accommodates the Fernet ciphertext overhead (~160 chars
+    # for a 32-char secret).
+    totp_secret = EncryptedCharField(max_length=500, blank=True)
 
     # Activity
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)

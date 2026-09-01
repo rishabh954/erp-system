@@ -203,6 +203,16 @@ DATABASES = {
     }
 }
 
+# Guard: refuse to start in production with a default/weak DB password.
+if not DEBUG and not TESTING and DB_ENGINE != 'django.db.backends.sqlite3':
+    _db_password = os.environ.get('DB_PASSWORD', '')
+    if not _db_password or _db_password in ('erp_password', 'postgres', 'password', 'secret'):
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "DB_PASSWORD must be set to a strong, unique value in production. "
+            "Do not use the default 'erp_password' or other well-known weak values."
+        )
+
 # ─── Cache (Redis) ────────────────────────────────────────────────────────────
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
@@ -292,6 +302,8 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
+    ] if not DEBUG else [
+        'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
@@ -353,7 +365,58 @@ AI_MAX_TOKENS    = int(os.environ.get('AI_MAX_TOKENS', '2048'))
 AI_ENABLED       = bool(OPENAI_API_KEY or GEMINI_API_KEY)
 
 # Workflow escalation + reminder periodic tasks
+# NOTE: All beat tasks are defined here. config/celery.py previously also set
+# app.conf.beat_schedule which was overwritten by this dict when
+# app.config_from_object ran. Both sets of tasks are now merged here so nothing
+# is silently dropped.
 CELERY_BEAT_SCHEDULE = {
+    # ── Operational tasks (previously in celery.py) ───────────────────────
+    # Daily: Check overdue invoices and send reminders
+    'check-overdue-invoices': {
+        'task': 'apps.sales.tasks.check_overdue_invoices',
+        'schedule': 28800,  # 08:00 UTC daily (crontab not serialisable without celery import)
+    },
+    # Daily: Process attendance auto-marking
+    'auto-mark-attendance': {
+        'task': 'apps.hrms.tasks.auto_mark_attendance',
+        'schedule': 86340,  # 23:59 UTC daily
+    },
+    # Daily: Send low stock alerts
+    'low-stock-alerts': {
+        'task': 'apps.inventory.tasks.send_low_stock_alerts',
+        'schedule': 32400,  # 09:00 UTC daily
+    },
+    # Daily: Update exchange rates
+    'update-exchange-rates': {
+        'task': 'apps.company.tasks.update_exchange_rates',
+        'schedule': 1800,   # 00:30 UTC daily
+    },
+    # Weekly: Generate depreciation entries (Monday 02:00 UTC)
+    'process-depreciation': {
+        'task': 'apps.assets.tasks.process_depreciation',
+        'schedule': 604800,  # weekly
+    },
+    # Every 30 min: Check SLA breaches for helpdesk tickets
+    'check-sla-breaches': {
+        'task': 'apps.helpdesk.tasks.check_sla_breaches',
+        'schedule': 1800,
+    },
+    # Hourly: Clean up expired sessions
+    'cleanup-sessions': {
+        'task': 'apps.authentication.tasks.cleanup_expired_sessions',
+        'schedule': 3600,
+    },
+    # Daily: Cleanup old audit logs
+    'cleanup-audit-logs': {
+        'task': 'apps.authentication.tasks.cleanup_old_audit_logs',
+        'schedule': 10800,  # 03:00 UTC
+    },
+    # Daily: Clean up expired password reset / email tokens
+    'cleanup-expired-tokens': {
+        'task': 'apps.authentication.tasks.cleanup_expired_tokens',
+        'schedule': 14400,  # 04:00 UTC
+    },
+    # ── Workflow / Analytics tasks ────────────────────────────────────────
     'workflow-check-escalations': {
         'task': 'workflow.check_escalations',
         'schedule': 1800,  # every 30 minutes
@@ -372,6 +435,53 @@ CELERY_BEAT_SCHEDULE = {
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
 TWILIO_AUTH_TOKEN  = os.environ.get('TWILIO_AUTH_TOKEN', '')
 TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM', '')  # e.g. +14155238886
+
+# ─── Third-Party Integration Credentials ──────────────────────────────────────
+# All credentials are read from environment variables — never hard-coded.
+# Set the relevant variables in your .env file or deployment secrets manager.
+#
+# Razorpay (payment links)
+#   RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
+#   RAZORPAY_KEY_SECRET=<secret>
+RAZORPAY_KEY_ID     = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+
+# Shiprocket (logistics / shipment tracking)
+#   SHIPROCKET_EMAIL=you@yourstore.com
+#   SHIPROCKET_PASSWORD=<password>
+SHIPROCKET_EMAIL    = os.environ.get('SHIPROCKET_EMAIL', '')
+SHIPROCKET_PASSWORD = os.environ.get('SHIPROCKET_PASSWORD', '')
+
+# Twilio SMS
+#   TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   TWILIO_AUTH_TOKEN=<token>
+#   TWILIO_SMS_FROM=+15005550006
+TWILIO_SMS_FROM = os.environ.get('TWILIO_SMS_FROM', '')
+
+# WhatsApp Business Cloud API (Meta)
+#   WHATSAPP_ACCESS_TOKEN=<long-lived token>
+#   WHATSAPP_PHONE_NUMBER_ID=<phone number ID from Meta Business Manager>
+WHATSAPP_ACCESS_TOKEN    = os.environ.get('WHATSAPP_ACCESS_TOKEN', '')
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
+
+# Stripe (optional payment gateway)
+#   STRIPE_SECRET_KEY=sk_live_xxxx
+#   STRIPE_PUBLISHABLE_KEY=pk_live_xxxx
+STRIPE_SECRET_KEY      = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+
+# Google Service Account (Drive / Calendar integrations)
+# Option A: path to a JSON key file on the server filesystem (never commit this file)
+#   GOOGLE_CREDENTIALS_PATH=/run/secrets/google_credentials.json
+# Option B: inline JSON as an env var (useful for container deployments)
+#   GOOGLE_CREDENTIALS_JSON={"type":"service_account",...}
+# The GoogleDriveService in apps/administration/services/integrations.py reads
+# config/google_credentials.json by default.  Override via GOOGLE_CREDENTIALS_PATH.
+GOOGLE_CREDENTIALS_PATH = os.environ.get(
+    'GOOGLE_CREDENTIALS_PATH',
+    str(BASE_DIR / 'config' / 'google_credentials.json'),
+)
+GOOGLE_CREDENTIALS_JSON = os.environ.get('GOOGLE_CREDENTIALS_JSON', '')
 
 
 # ─── Email ────────────────────────────────────────────────────────────────────
@@ -437,6 +547,23 @@ CSRF_COOKIE_HTTPONLY = not DEBUG
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# ─── Trusted Reverse Proxy IPs ────────────────────────────────────────────────
+# Set this to a comma-separated list of your load balancer / reverse proxy IP
+# addresses so that X-Forwarded-For is only trusted when the direct TCP
+# connection originates from a known proxy.
+#
+# Example .env entry:
+#   TRUSTED_PROXY_IPS=10.0.0.1,10.0.0.2
+#
+# Leave unset (empty string) to fall back to the legacy behaviour of trusting
+# any X-Forwarded-For header — only acceptable if the app is always behind
+# a proxy and REMOTE_ADDR is always the proxy IP.
+_raw_trusted_proxies = os.environ.get('TRUSTED_PROXY_IPS', '')
+TRUSTED_PROXY_IPS = (
+    {ip.strip() for ip in _raw_trusted_proxies.split(',') if ip.strip()}
+    or None  # None means "trust all" (legacy / single-proxy setups)
+)
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 LOGGING = {

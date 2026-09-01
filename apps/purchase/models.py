@@ -381,9 +381,10 @@ class GoodsReceipt(CompanyScoped, SequenceMixin, NotesMixin):
         return f"{self.number} | {self.purchase_order.number}"
 
     def save(self, *args, **kwargs):
-        self._state.adding
+        is_new = self._state.adding
         super().save(*args, **kwargs)
-        if self.status == self.Status.COMPLETED:
+        # Only update vendor scorecard when first marking as COMPLETED (not on every save)
+        if is_new and self.status == self.Status.COMPLETED:
             self.purchase_order.vendor.update_scorecard()
 
 
@@ -477,9 +478,13 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         self.save(update_fields=["amount_paid", "balance_due", "status"])
 
     def save(self, *args, **kwargs):
-        self._state.adding
+        is_new = self._state.adding
         super().save(*args, **kwargs)
-        if self.status in [self.Status.OPEN]:
+        # Only post journal entry when a new Bill is first moved to OPEN status.
+        # Running on every save would create duplicate entries on balance updates.
+        if is_new and self.status in [self.Status.OPEN]:
+            from django.db import transaction
+
             from apps.accounting.models import JournalEntry
 
             if not JournalEntry.objects.filter(
@@ -487,7 +492,8 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
             ).exists():
                 from apps.accounting.services import AutoJournalService
 
-                AutoJournalService.post_purchase_bill(self)
+                with transaction.atomic():
+                    AutoJournalService.post_purchase_bill(self)
 
 
 class BillLine(models.Model):
@@ -567,10 +573,13 @@ class Payment(CompanyScoped, SequenceMixin, CurrencyMixin):
         return f"{self.number} | {self.bill.number} | {self.amount}"
 
     def save(self, *args, **kwargs):
-        self._state.adding
+        is_new = self._state.adding
         super().save(*args, **kwargs)
         self.bill.update_balance()
-        if self.status == self.Status.COMPLETED:
+        # Only post journal entry on creation of a COMPLETED payment, not on every update.
+        if is_new and self.status == self.Status.COMPLETED:
+            from django.db import transaction
+
             from apps.accounting.models import JournalEntry
 
             if not JournalEntry.objects.filter(
@@ -578,7 +587,8 @@ class Payment(CompanyScoped, SequenceMixin, CurrencyMixin):
             ).exists():
                 from apps.accounting.services import AutoJournalService
 
-                AutoJournalService.post_purchase_payment(self)
+                with transaction.atomic():
+                    AutoJournalService.post_purchase_payment(self)
 
 
 # ════════════════════════ ENTERPRISE PURCHASE ═════════════════════════════════

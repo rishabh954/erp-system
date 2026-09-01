@@ -223,19 +223,32 @@ class EmployeeUpdateView(CompanyMixin, View):
 
     def _ensure_user_account(self, emp, company):
         if emp.email and not emp.user_id:
+            import secrets
+
             from apps.authentication.models import User, UserCompany
 
             user = User.objects.filter(email=emp.email).first()
             if not user:
+                # Generate a cryptographically random temporary password.
+                # The employee must reset it on first login via the password-reset flow.
+                temp_password = secrets.token_urlsafe(16)
                 user = User.objects.create_user(
                     email=emp.email,
                     username=emp.email,
-                    password="Welcome@123",  # nosec B106
+                    password=temp_password,
                     first_name=emp.first_name,
                     last_name=emp.last_name,
                     role=User.Role.EMPLOYEE,
                     primary_company=company,
                 )
+                # Send a password-reset email so the employee can set their own password
+                try:
+                    from apps.authentication.services import AuthService
+                    AuthService().send_password_reset_email(user, None)
+                except Exception:
+                    logger.warning(
+                        "Could not send welcome/reset email to new employee %s", emp.email
+                    )
             elif not user.primary_company:
                 user.primary_company = company
                 user.save(update_fields=["primary_company"])
@@ -296,18 +309,30 @@ class EmployeeCreateView(CompanyMixin, View):
 
     def _ensure_user_account(self, emp, company):
         if emp.email and not emp.user_id:
+            import secrets
+
             from apps.authentication.models import User, UserCompany
 
             user = User.objects.filter(email=emp.email).first()
             if not user:
+                # Generate a cryptographically random temporary password.
+                # The employee must reset it on first login via the password-reset flow.
+                temp_password = secrets.token_urlsafe(16)
                 user = User.objects.create_user(
                     email=emp.email,
                     username=emp.email,
-                    password="Welcome@123",  # nosec B106
+                    password=temp_password,
                     first_name=emp.first_name,
                     last_name=emp.last_name,
                     role=User.Role.EMPLOYEE,
                 )
+                try:
+                    from apps.authentication.services import AuthService
+                    AuthService().send_password_reset_email(user, None)
+                except Exception:
+                    logger.warning(
+                        "Could not send welcome/reset email to new employee %s", emp.email
+                    )
             emp.user = user
             emp.save(update_fields=["user"])
             UserCompany.objects.get_or_create(
