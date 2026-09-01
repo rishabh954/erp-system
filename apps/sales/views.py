@@ -776,9 +776,13 @@ class InvoiceDetailView(CompanyMixin, DetailView):
     context_object_name = "invoice"
 
     def get_object(self):
-        return get_object_or_404(
-            Invoice, pk=self.kwargs["pk"], company=self.company(), is_deleted=False
-        )
+        # Explicitly filter by company to enforce tenant isolation
+        # get_object_or_404 will return 404 for cross-company access
+        try:
+            return Invoice.objects.get(pk=self.kwargs["pk"], company=self.company(), is_deleted=False)
+        except Invoice.DoesNotExist:
+            from django.http import Http404
+            raise Http404(f"Invoice not found or you do not have access to it.")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -892,10 +896,15 @@ class InvoicePDFView(CompanyMixin, View):
 
 class RecordPaymentView(CompanyMixin, View):
     required_permission = "sales.approve"
+    
     def post(self, request, pk):
-        invoice = get_object_or_404(
-            Invoice, pk=pk, company=self.company(), is_deleted=False
-        )
+        # Explicitly verify invoice exists and belongs to the current company
+        # get_object_or_404 will raise Http404 for cross-company access
+        try:
+            invoice = Invoice.objects.get(pk=pk, company=self.company(), is_deleted=False)
+        except Invoice.DoesNotExist:
+            return HttpResponse(status=404)
+        
         try:
             from .services import PaymentService
 

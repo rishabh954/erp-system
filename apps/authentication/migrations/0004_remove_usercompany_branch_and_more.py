@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="user",
             name="totp_secret",
-            field=models.CharField(blank=True, max_length=32),
+            field=models.CharField(blank=True, max_length=500),
         ),
         migrations.AddField(
             model_name="usercompany",

@@ -441,7 +441,7 @@ TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM', '')  # e.g. +14155
 # Set the relevant variables in your .env file or deployment secrets manager.
 #
 # Razorpay (payment links)
-#   RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
+#   RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 #   RAZORPAY_KEY_SECRET=<secret>
 RAZORPAY_KEY_ID     = os.environ.get('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
@@ -465,8 +465,8 @@ WHATSAPP_ACCESS_TOKEN    = os.environ.get('WHATSAPP_ACCESS_TOKEN', '')
 WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
 
 # Stripe (optional payment gateway)
-#   STRIPE_SECRET_KEY=sk_live_xxxx
-#   STRIPE_PUBLISHABLE_KEY=pk_live_xxxx
+#   STRIPE_SECRET_KEY=sk_test_xxxx
+#   STRIPE_PUBLISHABLE_KEY=pk_test_xxxx
 STRIPE_SECRET_KEY      = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 

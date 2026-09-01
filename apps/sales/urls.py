@@ -163,5 +163,10 @@ urlpatterns = [
         RecordPaymentView.as_view(),
         name="invoice_payment",
     ),
+    path(
+        "invoices/<uuid:pk>/record-payment/",
+        RecordPaymentView.as_view(),
+        name="record_payment",
+    ),
     path("payments/", PaymentListView.as_view(), name="payments"),
 ]

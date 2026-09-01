@@ -18,6 +18,6 @@ router.register("warehouses", WarehouseViewSet, basename="warehouse")
 router.register("stock-records", StockRecordViewSet, basename="stock-record")
 router.register("movements", StockMovementViewSet, basename="movement")
 router.register("transfers", InventoryTransferViewSet, basename="transfer")
-router.register("barcode", BarcodeScanViewSet, basename="barcode-scan")
+router.register("barcodes", BarcodeScanViewSet, basename="barcode-scan")
 
 urlpatterns = [path("", include(router.urls))]

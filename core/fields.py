@@ -47,23 +47,36 @@ def _get_fernet():
 
 def encrypt_value(plaintext: str) -> str:
     """Encrypt *plaintext* and return the ciphertext as a UTF-8 string."""
-    if not plaintext:
+    if plaintext is None or plaintext == "":
+        return plaintext
+    if not isinstance(plaintext, str):
+        plaintext = str(plaintext)
+    if plaintext.startswith("gAA"):
         return plaintext
     fernet = _get_fernet()
     return fernet.encrypt(plaintext.encode("utf-8")).decode("utf-8")
 
 
-def decrypt_value(ciphertext: str) -> str:
+def decrypt_value(ciphertext):
     """Decrypt *ciphertext* and return the plaintext as a UTF-8 string.
 
-    Returns the ciphertext unchanged if it does not look like a Fernet token
-    (e.g. plain-text values that were stored before encryption was enabled).
+    Returns the original value unchanged when it is blank or when it is a legacy
+    plain-text value already in the database (graceful migration path).
     """
-    if not ciphertext:
-        return ciphertext
-    # Fernet tokens always start with 'gAA'
+    if ciphertext is None:
+        return None
+    if ciphertext == "":
+        return ""
+
+    if isinstance(ciphertext, bytes):
+        ciphertext = ciphertext.decode("utf-8")
+
+    if not isinstance(ciphertext, str):
+        return str(ciphertext)
+
     if not ciphertext.startswith("gAA"):
         return ciphertext
+
     try:
         fernet = _get_fernet()
         return fernet.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
@@ -84,15 +97,25 @@ class EncryptedCharField(models.CharField):
     """
 
     def from_db_value(self, value, expression, connection):
-        return decrypt_value(value) if value else value
+        return decrypt_value(value)
 
     def to_python(self, value):
         value = super().to_python(value)
-        return decrypt_value(value) if value else value
+        return decrypt_value(value)
 
     def get_prep_value(self, value):
+        if value is None:
+            return None
+        if value == "":
+            return ""
+        if isinstance(value, str) and value.startswith("gAA"):
+            return value
         value = super().get_prep_value(value)
-        return encrypt_value(value) if value else value
+        return encrypt_value(value)
+
+    def pre_save(self, model_instance, add):
+        value = getattr(model_instance, self.attname)
+        return self.get_prep_value(value)
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()

@@ -1,0 +1,5 @@
+@echo off
+cd /d c:\Users\OM\Documents\GitHub\erp-system
+set DB_HOST=sqlite
+set DB_ENGINE=django.db.backends.sqlite3
+.\venv\Scripts\python.exe -c "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','config.settings'); import django; django.setup(); from django.db import connection; from apps.authentication.models import User; from core.factories import CompanyFactory; c = CompanyFactory(); u = User.objects.create(email='x9@example.com', username='x9', first_name='A', last_name='B', primary_company=c, role=User.Role.COMPANY_ADMIN); u.totp_secret='JBSWY3DPEHPK3PXP'; u.save(update_fields=['totp_secret']); print('instance', repr(u.totp_secret)); cur = connection.cursor(); cur.execute('SELECT totp_secret FROM auth_users WHERE id = %s', [str(u.pk)]); row = cur.fetchone(); print('raw', row); print('raw_value', repr(row[0]) if row else None); print('readback', repr(User.objects.get(pk=u.pk).totp_secret));"

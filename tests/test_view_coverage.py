@@ -140,6 +140,7 @@ def other_purchase_order(db, other_company, other_vendor):
         vendor=other_vendor,
         order_date=date.today(),
         status=PurchaseOrder.Status.DRAFT,
+        number="PO-99999",
         total=Decimal("500.00"),
         balance_due=Decimal("500.00"),
     )
@@ -175,6 +176,7 @@ def other_invoice(db, other_company, other_customer):
         due_date=date.today() + timedelta(days=30),
         status=Invoice.Status.SENT,
         currency=c,
+        number="INV-99999",
         total=Decimal("999.00"),
         balance_due=Decimal("999.00"),
     )
@@ -298,9 +300,12 @@ class TestPurchaseOrderServiceMoneyMovement:
 
         class FakeData:
             """Simulate Django QueryDict-like data for the service."""
-            def __init__(self, mapping, lists):
-                self._mapping = mapping
-                self._lists = lists
+            def __init__(self, mapping=None, lists=None):
+                self._mapping = mapping or {}
+                self._lists = lists or {}
+
+            def __getitem__(self, key):
+                return self._mapping[key]
 
             def get(self, key, default=None):
                 return self._mapping.get(key, default)
@@ -340,6 +345,10 @@ class TestPurchaseOrderServiceMoneyMovement:
         from apps.purchase.services import PurchaseOrderService
 
         class FakeData:
+            def __getitem__(self, key):
+                mapping = {"vendor": str(vendor.pk), "payment_terms": "30"}
+                return mapping[key]
+
             def get(self, key, default=None):
                 return {"vendor": str(vendor.pk), "payment_terms": "30"}.get(key, default)
 
@@ -464,6 +473,13 @@ class TestGoodsReceiptServiceStockMovement:
         service = PurchaseOrderService(user=admin_user, company=company)
 
         class FakeData:
+            def __getitem__(self, key):
+                mapping = {
+                    "warehouse": str(warehouse.pk),
+                    f"qty_{line.pk}": "5",
+                }
+                return mapping[key]
+
             def get(self, key, default=None):
                 mapping = {
                     "warehouse": str(warehouse.pk),
@@ -512,6 +528,13 @@ class TestGoodsReceiptServiceStockMovement:
         service = PurchaseOrderService(user=admin_user, company=company)
 
         class FakeData:
+            def __getitem__(self, key):
+                mapping = {
+                    "warehouse": str(warehouse.pk),
+                    f"qty_{line.pk}": "6",
+                }
+                return mapping[key]
+
             def get(self, key, default=None):
                 return {
                     "warehouse": str(warehouse.pk),
@@ -556,6 +579,9 @@ class TestGoodsReceiptServiceStockMovement:
         service = PurchaseOrderService(user=admin_user, company=company)
 
         class FakeData:
+            def __getitem__(self, key):
+                return {"warehouse": str(warehouse.pk)}[key]
+
             def get(self, key, default=None):
                 return {"warehouse": str(warehouse.pk)}.get(key, default)
 
@@ -573,6 +599,9 @@ class TestPurchaseRequestService:
         from apps.purchase.services import PurchaseRequestService
 
         class FakeData:
+            def __getitem__(self, key):
+                return {"title": "Q1 Stationery", "priority": "medium"}[key]
+
             def get(self, key, default=None):
                 return {"title": "Q1 Stationery", "priority": "medium"}.get(key, default)
 
@@ -606,6 +635,9 @@ class TestPurchaseRequestService:
         )
 
         class FakeData:
+            def __getitem__(self, key):
+                return {"title": "Changed"}[key]
+
             def get(self, key, default=None):
                 return {"title": "Changed"}.get(key, default)
 

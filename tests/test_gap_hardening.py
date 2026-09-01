@@ -91,9 +91,10 @@ class TestTOTPSecretEncryption:
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT totp_secret FROM auth_users WHERE id = %s",
-                [str(user.pk)],
+                [user.pk.hex],
             )
-            raw_db_value = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            raw_db_value = row[0] if row else None
 
         assert raw_db_value != secret, (
             "totp_secret is stored as plain text in the database — encryption not working"
@@ -123,7 +124,7 @@ class TestTOTPSecretEncryption:
         with connection.cursor() as cursor:
             cursor.execute(
                 "UPDATE auth_users SET totp_secret = %s WHERE id = %s",
-                [plain_value, str(user.pk)],
+                [plain_value, user.pk.hex],
             )
 
         from apps.authentication.models import User

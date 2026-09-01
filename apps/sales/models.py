@@ -304,6 +304,11 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         self.update_balance()
 
     def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = BaseService.generate_sequence_number(
+                "INV", self.__class__, self.company_id
+            )
+
         is_new = self._state.adding
         super().save(*args, **kwargs)
         # Only auto-post journal when a new Invoice first reaches SENT status.

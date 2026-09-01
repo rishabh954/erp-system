@@ -100,6 +100,9 @@ class AutoJournalService:
 
         journal = AutoJournalService.get_or_create_journal(company, "sales")
 
+        invoice_total = invoice.total or Decimal("0")
+        revenue_credit = invoice.subtotal or invoice_total
+
         entry = JournalEntry.objects.create(
             company=company,
             journal=journal,
@@ -107,8 +110,8 @@ class AutoJournalService:
             reference=f"INV: {invoice.number}",
             status=JournalEntry.Status.DRAFT,
             currency=invoice.currency,
-            total_debit=invoice.total,
-            total_credit=invoice.total,
+            total_debit=invoice_total,
+            total_credit=invoice_total,
         )
 
 
@@ -117,19 +120,19 @@ class AutoJournalService:
             journal_entry=entry,
             account=ar_account,
             description=f"Receivable for {invoice.number}",
-            debit=invoice.total,
+            debit=invoice_total,
             credit=0,
             partner_type="customer",
             partner_id=str(invoice.customer.id),
         )
 
-        # Credit Revenue (Subtotal)
+        # Credit Revenue (Subtotal, with a safe fallback to the invoice total)
         JournalItem.objects.create(
             journal_entry=entry,
             account=revenue_account,
             description=f"Revenue for {invoice.number}",
             debit=0,
-            credit=invoice.subtotal,
+            credit=revenue_credit,
             partner_type="customer",
             partner_id=str(invoice.customer.id),
         )

@@ -153,6 +153,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         if not self.username:
             self.username = self.email
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            fields = list(dict.fromkeys(list(update_fields) + ["username"]))
+            kwargs["update_fields"] = fields
         super().save(*args, **kwargs)
 
     def get_permissions_for_module(self, module):
