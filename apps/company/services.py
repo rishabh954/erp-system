@@ -5,7 +5,6 @@ from django.utils import timezone
 
 from apps.accounting.models import Account, Journal, JournalEntry, JournalItem
 from apps.company.models import (
-    Company,
     IntercompanyRule,
     IntercompanySettlement,
     IntercompanyTransaction,

@@ -3,8 +3,9 @@ Tests for Security & RBAC in ERP system.
 """
 import pytest
 from django.urls import reverse
-from apps.authentication.models import User, ModulePermission
+
 from apps.administration.models import RolePermission
+from apps.authentication.models import ModulePermission
 
 
 @pytest.mark.django_db
@@ -19,10 +20,10 @@ class TestSecurity:
         """Test: cross-company data access returns 403 or 404"""
         from apps.company.models import Company
         from apps.crm.models import Customer
-        
+
         company2 = Company.objects.create(name="Other Co", legal_name="Other", company_type="LLC")
         cust2 = Customer.objects.create(company=company2, name="Cross Co Customer")
-        
+
         client.force_login(user)
         response = client.get(reverse('crm:customer_detail', kwargs={'pk': cust2.pk}))
         assert response.status_code == 404
@@ -34,7 +35,7 @@ class TestSecurity:
         user.is_superuser = False
         user.save()
         client.force_login(user)
-        
+
         response = client.get(reverse('ai:hub'))
         assert response.status_code in (403, 302, 404)
 

@@ -195,7 +195,7 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
         with transaction.atomic():
             # Lock the journal entry row to prevent race conditions and check status
             locked_entry = JournalEntry.objects.select_for_update().get(pk=self.pk)
-            
+
             if locked_entry.status == self.Status.POSTED:
                 return
 

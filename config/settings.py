@@ -453,7 +453,7 @@ SHIPROCKET_EMAIL    = os.environ.get('SHIPROCKET_EMAIL', '')
 SHIPROCKET_PASSWORD = os.environ.get('SHIPROCKET_PASSWORD', '')
 
 # Twilio SMS
-#   TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   TWILIO_ACCOUNT_SID=AC<your-twilio-account-sid>
 #   TWILIO_AUTH_TOKEN=<token>
 #   TWILIO_SMS_FROM=+15005550006
 TWILIO_SMS_FROM = os.environ.get('TWILIO_SMS_FROM', '')

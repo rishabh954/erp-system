@@ -57,7 +57,7 @@ def _get_gemini(company=None):
     """Build a Gemini client using the company DB key, falling back to .env."""
     try:
         from google import genai
-        from google.genai import types
+        from google.genai import types  # noqa: F401
 
         config = _get_ai_config(company)
         if config:

@@ -1,6 +1,6 @@
-from django.test import TestCase, RequestFactory
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpResponse
+from django.test import RequestFactory, TestCase
 
 from apps.authentication.models import User, UserCompany
 from apps.company.models import Company

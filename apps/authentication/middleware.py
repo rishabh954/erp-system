@@ -24,7 +24,7 @@ class SecurityMiddleware:
         # 1. IP Restriction Check
         # Check global or user-specific IP rules (cached)
         from django.core.cache import cache
-        
+
         company_id = getattr(request.user, "primary_company_id", None)
         cache_key = f"ip_restrictions:{request.user.id}:{company_id}"
         allowed_ips = cache.get(cache_key)

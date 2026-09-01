@@ -28,7 +28,7 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def password(self, create, extracted, **kwargs):
-        password = extracted if extracted else "password123"
+        password = extracted if extracted else "password"
         self.set_password(password)
         if create:
             self.save()

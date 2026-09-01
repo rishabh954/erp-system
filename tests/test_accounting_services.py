@@ -1,12 +1,14 @@
 """
 Tests for Accounting Services in ERP system.
 """
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 from apps.accounting.models import Account, Journal, JournalEntry, JournalItem
 from apps.accounting.services import FinancialReportingService
+
 
 @pytest.fixture
 def accounting_data(company):
@@ -44,7 +46,7 @@ class TestAccountingServices:
         )
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["bank"], debit=Decimal("100.00"), credit=0)
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["revenue"], debit=0, credit=Decimal("100.00"))
-        
+
         assert entry.is_balanced()
         entry.post()
         assert entry.status == JournalEntry.Status.POSTED
@@ -61,7 +63,7 @@ class TestAccountingServices:
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["bank"], debit=Decimal("200.00"), credit=0)
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["revenue"], debit=0, credit=Decimal("200.00"))
         entry.post()
-        
+
         assert accounting_data["bank"].get_balance() == Decimal("200.00")
         assert accounting_data["revenue"].get_balance() == Decimal("200.00")
 
@@ -116,6 +118,6 @@ class TestAccountingServices:
         )
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["bank"], debit=Decimal("100.00"), credit=0)
         JournalItem.objects.create(journal_entry=entry, account=accounting_data["revenue"], debit=0, credit=Decimal("100.00"))
-        
+
         with pytest.raises(ValueError, match="Cannot post entry before lock date"):
             entry.post()

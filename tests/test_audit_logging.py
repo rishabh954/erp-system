@@ -2,6 +2,7 @@
 Tests for Audit Logging System.
 """
 import pytest
+
 from apps.administration.models import AuditLog
 from apps.crm.models import Customer
 

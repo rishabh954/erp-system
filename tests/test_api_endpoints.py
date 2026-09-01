@@ -3,8 +3,10 @@ Tests for API Endpoints & Tenant Isolation in ERP system.
 """
 import pytest
 from rest_framework_simplejwt.tokens import RefreshToken
-from apps.sales.models import Invoice
+
 from apps.company.models import Company
+from apps.sales.models import Invoice
+
 
 @pytest.fixture
 def api_client():
@@ -33,7 +35,7 @@ class TestAPIEndpoints:
         """Test: POST /api/sales/invoices/ creates invoice"""
         from apps.crm.models import Customer
         customer = Customer.objects.create(company=company, name="Test Customer")
-        
+
         api_client.credentials(HTTP_AUTHORIZATION='Bearer ' + jwt_auth)
         data = {
             "customer": customer.id,
@@ -49,19 +51,19 @@ class TestAPIEndpoints:
     def test_get_products_filtered_by_company(self, api_client, jwt_auth, company, user):
         """Test: GET /api/inventory/products/ filtered by company (JWT Auth)"""
         from apps.inventory.models import Product
-        
+
         comp2 = Company.objects.create(name="Other Company")
         Product.objects.create(company=company, name="Product 1", sku="P1")
         Product.objects.create(company=comp2, name="Product 2", sku="P2")
-        
+
         api_client.credentials(HTTP_AUTHORIZATION='Bearer ' + jwt_auth)
         response = api_client.get('/api/v1/inventory/products/')
         assert response.status_code == 200
-        
+
         data = response.json()
         results = data.get("results", data) if isinstance(data, dict) and "results" in data else data
         skus = [p["sku"] for p in results]
-        
+
         assert "P1" in skus
         assert "P2" not in skus
 
@@ -87,6 +89,7 @@ class TestAPIEndpoints:
     def test_hrms_employees_filtered_by_company(self, api_client, jwt_auth, company, user):
         """Test: GET /api/v1/hrms/employees/ filtered by company (JWT Auth)"""
         from django.utils import timezone
+
         from apps.hrms.models import Employee
         user.is_superuser = True
         user.save()

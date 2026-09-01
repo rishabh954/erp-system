@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
+
 from core.api.mixins import TenantScopedViewSetMixin
 from core.permissions import HasModulePermission
 

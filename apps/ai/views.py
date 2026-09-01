@@ -740,8 +740,8 @@ class AISettingsView(CompanyMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        from apps.ai.models import AIConfiguration
         from apps.ai.forms import AIConfigurationForm
+        from apps.ai.models import AIConfiguration
 
         company = self.company()
         config, _ = AIConfiguration.objects.get_or_create(company=company)
@@ -777,14 +777,14 @@ class AISettingsView(CompanyMixin, TemplateView):
         return ctx
 
     def post(self, request, *args, **kwargs):
-        from apps.ai.models import AIConfiguration
         from apps.ai.forms import AIConfigurationForm
-        
+        from apps.ai.models import AIConfiguration
+
         config, created = AIConfiguration.objects.get_or_create(company=self.company())
         form = AIConfigurationForm(request.POST, instance=config)
         if form.is_valid():
             form.save()
             messages.success(request, "AI configuration updated successfully.")
             return redirect("ai:settings")
-        
+
         return self.render_to_response(self.get_context_data(form=form))

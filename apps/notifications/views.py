@@ -11,6 +11,8 @@ from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
+
 from .models import EmailLog, Notification, NotificationPreference, SMSLog, WhatsAppLog
 
 
@@ -30,9 +32,6 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
-
-
-from core.api.mixins import TenantScopedViewSetMixin
 
 
 class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):

@@ -354,9 +354,9 @@ class TestHRMSEmployeePasswordCreation:
     def test_new_employee_user_gets_random_password(self, company):
         """A new employee account must be created with a random password, not a fixed one."""
         from apps.authentication.models import User
-        from apps.hrms.views import EmployeeEditView
+        from apps.hrms.views import EmployeeUpdateView
 
-        view = EmployeeEditView()
+        view = EmployeeUpdateView()
         view.request = MagicMock()
         view.request.user.primary_company = company
 

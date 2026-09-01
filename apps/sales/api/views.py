@@ -12,7 +12,7 @@ from rest_framework.decorators import action  # noqa: E402
 from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
 from rest_framework.response import Response  # noqa: E402
 
-from core.api.mixins import TenantScopedViewSetMixin
+from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
 
 from ..models import (  # noqa: E402
     Invoice,
