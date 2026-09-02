@@ -12,7 +12,7 @@ class TestRBAC:
     @pytest.fixture
     def setup_data(self):
         self.company = Company.objects.create(name="Test Company")
-        self.super_admin = User.objects.create_superuser("admin@test.com", "pass", first_name="Admin", last_name="User")
+        self.super_admin = User.objects.create_superuser("admin@test.com", "pass", first_name="Admin", last_name="User", primary_company=self.company)
 
         # User with limited role
         self.employee = User.objects.create_user(

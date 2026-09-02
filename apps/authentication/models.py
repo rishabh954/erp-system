@@ -161,12 +161,23 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_permissions_for_module(self, module):
         """Return user's effective permissions for a module."""
-        return ModulePermission.objects.filter(role=self.role, module=module).first()
+        role = self.role
+        if self.primary_company:
+            # Prefer role from the active company context
+            uc = self.usercompany_set.filter(company=self.primary_company, is_active=True).first()
+            if uc:
+                role = uc.role
+            else:
+                return None  # No active role in this company
+
+        return ModulePermission.objects.filter(role=role, module=module).first()
 
     def has_module_permission(self, module, action):
+        if self.is_superuser:
+            return True
         perm = self.get_permissions_for_module(module)
         if not perm:
-            return self.is_superuser
+            return False
         return getattr(perm, f"can_{action}", False)
 
 

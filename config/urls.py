@@ -13,6 +13,13 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
+    # Health Checks
+    path('health/', include([
+        path('', getattr(__import__('apps.api.health', fromlist=['HealthCheckView']), 'HealthCheckView').as_view(), name='health'),
+        path('live/', getattr(__import__('apps.api.health', fromlist=['LiveCheckView']), 'LiveCheckView').as_view(), name='health_live'),
+        path('ready/', getattr(__import__('apps.api.health', fromlist=['ReadyCheckView']), 'ReadyCheckView').as_view(), name='health_ready'),
+    ])),
+
     # API v1
     path('api/v1/', include([
         path('auth/', include('apps.authentication.api.urls', namespace='api_auth')),

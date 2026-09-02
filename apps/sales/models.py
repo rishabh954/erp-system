@@ -59,6 +59,13 @@ class Quotation(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     class Meta:
         db_table = "sales_quotations"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "number"], name="uniq_sales_quotation_number"),
+            models.CheckConstraint(condition=models.Q(subtotal__gte=0) & models.Q(tax_amount__gte=0) & models.Q(discount_amount__gte=0) & models.Q(total__gte=0), name="chk_quotation_amounts_non_neg"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status"]),
+        ]
 
     def __str__(self):
         return f"{self.number} | {self.customer.name}"
@@ -98,6 +105,12 @@ class QuotationLine(models.Model):
     class Meta:
         db_table = "sales_quotation_lines"
         ordering = ["sort_order"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0) & models.Q(unit_price__gte=0) & models.Q(discount_percent__gte=0) & models.Q(discount_percent__lte=100),
+                name="chk_quotation_line_valid"
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
@@ -167,6 +180,13 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     class Meta:
         db_table = "sales_orders"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "number"], name="uniq_sales_order_number"),
+            models.CheckConstraint(condition=models.Q(subtotal__gte=0) & models.Q(tax_amount__gte=0) & models.Q(discount_amount__gte=0) & models.Q(total__gte=0), name="chk_so_amounts_non_neg"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status", "order_date"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.number:
@@ -213,6 +233,12 @@ class SalesOrderLine(models.Model):
     class Meta:
         db_table = "sales_order_lines"
         ordering = ["sort_order"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0) & models.Q(unit_price__gte=0) & models.Q(qty_delivered__gte=0) & models.Q(qty_invoiced__gte=0) & models.Q(qty_delivered__lte=models.F('quantity')) & models.Q(qty_invoiced__lte=models.F('quantity')),
+                name="chk_soline_quantities_valid"
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
@@ -286,9 +312,16 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     class Meta:
         db_table = "sales_invoices"
         ordering = ["-invoice_date"]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "number"], name="uniq_sales_invoice_number"),
+            models.CheckConstraint(condition=models.Q(subtotal__gte=0) & models.Q(total__gte=0) & models.Q(amount_paid__gte=0) & models.Q(balance_due__gte=0), name="chk_invoice_amounts_valid"),
+            models.CheckConstraint(condition=models.Q(due_date__gte=models.F('invoice_date')), name="chk_invoice_due_after_invoice_date"),
+        ]
         indexes = [
             models.Index(fields=["company", "status", "due_date"]),
             models.Index(fields=["customer", "status"]),
+            models.Index(fields=["company", "invoice_date"]),
+            models.Index(fields=["sales_order", "status"]),
         ]
 
     def __str__(self):
@@ -375,6 +408,15 @@ class InvoiceLine(models.Model):
     class Meta:
         db_table = "sales_invoice_lines"
         ordering = ["sort_order"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0) & models.Q(unit_price__gte=0) & models.Q(discount_percent__gte=0) & models.Q(discount_percent__lte=100),
+                name="chk_invoice_line_valid"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["invoice", "sort_order"]),
+        ]
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
@@ -417,6 +459,15 @@ class Payment(CompanyScoped, SequenceMixin):
     class Meta:
         db_table = "sales_payments"
         ordering = ["-payment_date"]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "number"], name="uniq_sales_payment_number"),
+            models.CheckConstraint(condition=models.Q(amount__gt=0), name="chk_payment_amount_gt_zero"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "payment_date"]),
+            models.Index(fields=["invoice", "status"]),
+            models.Index(fields=["customer", "payment_date"]),
+        ]
 
     def __str__(self):
         return f"{self.number} | {self.invoice.number} | {self.amount}"

@@ -12,8 +12,8 @@ from apps.purchase.models import PurchaseOrder
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def generate_monthly_reports(company_id):
+@shared_task(bind=True, max_retries=3, default_retry_delay=300, time_limit=600, soft_time_limit=500)
+def generate_monthly_reports(self, company_id):
     """
     Auto-generate P&L snapshot for the closed month and notify the finance team.
     """
@@ -77,8 +77,8 @@ def generate_monthly_reports(company_id):
     return "No recipients found for monthly report."
 
 
-@shared_task
-def check_overdue_payments():
+@shared_task(bind=True, max_retries=3, default_retry_delay=300, time_limit=300, soft_time_limit=240)
+def check_overdue_payments(self):
     """
     Remind finance team about overdue vendor payments.
     """
