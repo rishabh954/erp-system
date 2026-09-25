@@ -24,7 +24,7 @@ class Quotation(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         "company.Branch", null=True, blank=True, on_delete=models.SET_NULL
     )
     status = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.DRAFT, db_index=True
+        max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True
     )
     validity_date = models.DateField(null=True, blank=True)
     delivery_date = models.DateField(null=True, blank=True)
@@ -142,7 +142,16 @@ class SalesOrder(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         "company.Branch", null=True, blank=True, on_delete=models.SET_NULL
     )
     status = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.DRAFT, db_index=True
+        max_length=25, choices=Status.choices, default=Status.DRAFT, db_index=True
+    )
+    credit_hold = models.BooleanField(default=False)
+    credit_override_reason = models.TextField(blank=True)
+    credit_override_by = models.ForeignKey(
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="credit_override_orders",
     )
     order_date = models.DateField(db_index=True)
     delivery_date = models.DateField(null=True, blank=True, db_index=True)
@@ -342,22 +351,23 @@ class Invoice(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
                 "INV", self.__class__, self.company_id
             )
 
-        is_new = self._state.adding
         super().save(*args, **kwargs)
-        # Only auto-post journal when a new Invoice first reaches SENT status.
-        # Running on every update would create duplicate journal entries.
-        if is_new and self.status in [self.Status.SENT]:
+        # Idempotently post journal entry when Invoice reaches SENT, PARTIAL, or PAID status.
+        if self.status in [self.Status.SENT, self.Status.PARTIAL, self.Status.PAID]:
             from django.db import transaction
 
             from apps.accounting.models import JournalEntry
 
-            if not JournalEntry.objects.filter(
-                reference=f"INV: {self.number}"
-            ).exists():
+            ref_prefix = "CN" if self.document_type == self.DocumentType.CREDIT_NOTE else "INV"
+            ref = f"{ref_prefix}: {self.number}"
+            if not JournalEntry.objects.filter(company=self.company, reference=ref).exists():
                 from apps.accounting.services import AutoJournalService
 
                 with transaction.atomic():
-                    AutoJournalService.post_sales_invoice(self)
+                    if self.document_type == self.DocumentType.CREDIT_NOTE:
+                        AutoJournalService.post_credit_note(self)
+                    else:
+                        AutoJournalService.post_sales_invoice(self)
 
     def update_balance(self):
         from django.db.models import Sum
@@ -473,18 +483,17 @@ class Payment(CompanyScoped, SequenceMixin):
         return f"{self.number} | {self.invoice.number} | {self.amount}"
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
         super().save(*args, **kwargs)
-        self.invoice.update_balance()
-        # Only post journal entry on creation of a COMPLETED payment, not on every update.
-        if is_new and self.status == self.Status.COMPLETED:
+        if self.invoice:
+            self.invoice.update_balance()
+        # Idempotently post journal entry when payment is COMPLETED
+        if self.status == self.Status.COMPLETED:
             from django.db import transaction
 
             from apps.accounting.models import JournalEntry
 
-            if not JournalEntry.objects.filter(
-                reference=f"PAY: {self.number}"
-            ).exists():
+            ref = f"PAY: {self.number}"
+            if not JournalEntry.objects.filter(company=self.company, reference=ref).exists():
                 from apps.accounting.services import AutoJournalService
 
                 with transaction.atomic():
@@ -724,3 +733,76 @@ class SalesCommission(CompanyScoped):
 
     class Meta:
         db_table = "sales_commissions"
+
+
+class SalesReturn(CompanyScoped, SequenceMixin, NotesMixin):
+    from core.constants.sales import ReturnReason, SalesReturnStatus
+    Status = SalesReturnStatus
+    Reason = ReturnReason
+
+    sales_order = models.ForeignKey(
+        "SalesOrder", on_delete=models.PROTECT, related_name="returns"
+    )
+    customer = models.ForeignKey(
+        "crm.Customer", on_delete=models.PROTECT, related_name="sales_returns"
+    )
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse", on_delete=models.PROTECT, related_name="sales_returns"
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True
+    )
+    return_reason = models.CharField(
+        max_length=25, choices=Reason.choices, default=Reason.DEFECTIVE
+    )
+    return_date = models.DateField(db_index=True)
+    credit_note = models.OneToOneField(
+        CreditNote, null=True, blank=True, on_delete=models.SET_NULL, related_name="sales_return"
+    )
+    total_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    approved_by = models.ForeignKey(
+        "authentication.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="approved_returns"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "sales_returns"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.number} | {self.sales_order.number} | {self.customer.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            self.number = BaseService.generate_sequence_number("RET", self.__class__, self.company_id)
+        super().save(*args, **kwargs)
+
+    def recalculate_totals(self):
+        total = sum((line.subtotal for line in self.lines.all()), 0)
+        self.total_amount = total
+        self.save(update_fields=["total_amount"])
+
+
+class SalesReturnLine(models.Model):
+    import uuid as _uuid
+
+    id = models.UUIDField(primary_key=True, default=_uuid.uuid4, editable=False)
+    sales_return = models.ForeignKey(
+        SalesReturn, on_delete=models.CASCADE, related_name="lines"
+    )
+    order_line = models.ForeignKey(
+        "SalesOrderLine", null=True, blank=True, on_delete=models.SET_NULL, related_name="return_lines"
+    )
+    product = models.ForeignKey("inventory.Product", on_delete=models.PROTECT)
+    quantity = models.DecimalField(max_digits=15, decimal_places=4)
+    unit_price = models.DecimalField(max_digits=15, decimal_places=4)
+    subtotal = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    condition = models.CharField(max_length=50, blank=True, default="resellable")
+
+    class Meta:
+        db_table = "sales_return_lines"
+
+    def save(self, *args, **kwargs):
+        self.subtotal = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+

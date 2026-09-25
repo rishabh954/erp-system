@@ -5,20 +5,52 @@ from django.utils.translation import gettext_lazy as _
 class QuotationStatus(models.TextChoices):
     DRAFT = "draft", _("Draft")
     SENT = "sent", _("Sent")
+    VIEWED = "viewed", _("Viewed")
+    ACCEPTED = "accepted", _("Accepted")
     APPROVED = "approved", _("Approved")
     REJECTED = "rejected", _("Rejected")
     EXPIRED = "expired", _("Expired")
     CONVERTED = "converted", _("Converted to SO")
+    CANCELLED = "cancelled", _("Cancelled")
 
 class SalesOrderStatus(models.TextChoices):
     DRAFT = "draft", _("Draft")
+    PENDING_APPROVAL = "pending_approval", _("Pending Approval")
     CONFIRMED = "confirmed", _("Confirmed")
     PROCESSING = "processing", _("Processing")
+    PARTIALLY_DELIVERED = "partially_delivered", _("Partially Delivered")
     SHIPPED = "shipped", _("Shipped")
     DELIVERED = "delivered", _("Delivered")
-    INVOICED = "invoiced", _("Invoiced")
+    PARTIALLY_INVOICED = "partially_invoiced", _("Partially Invoiced")
+    INVOICED = "invoiced", _("Fully Invoiced")
     COMPLETED = "completed", _("Completed")
     CANCELLED = "cancelled", _("Cancelled")
+
+class DeliveryOrderStatus(models.TextChoices):
+    DRAFT = "draft", _("Draft")
+    READY = "ready", _("Ready")
+    PICKING = "picking", _("Picking")
+    PACKING = "packing", _("Packing")
+    SHIPPED = "shipped", _("Shipped")
+    DELIVERED = "delivered", _("Delivered")
+    CANCELLED = "cancelled", _("Cancelled")
+
+class SalesReturnStatus(models.TextChoices):
+    DRAFT = "draft", _("Draft")
+    PENDING_APPROVAL = "pending_approval", _("Pending Approval")
+    APPROVED = "approved", _("Approved")
+    RECEIVED = "received", _("Items Received")
+    INSPECTED = "inspected", _("Quality Inspected")
+    COMPLETED = "completed", _("Completed")
+    REJECTED = "rejected", _("Rejected")
+
+class ReturnReason(models.TextChoices):
+    DAMAGED = "damaged", _("Damaged Goods")
+    DEFECTIVE = "defective", _("Defective Product")
+    WRONG_ITEM = "wrong_item", _("Wrong Item Shipped")
+    NOT_AS_DESCRIBED = "not_as_described", _("Not As Described")
+    BUYER_REMORSE = "buyer_remorse", _("Customer Return")
+    OTHER = "other", _("Other")
 
 class InvoiceStatus(models.TextChoices):
     DRAFT = "draft", _("Draft")

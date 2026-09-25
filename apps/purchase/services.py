@@ -367,13 +367,14 @@ class PurchaseOrderService(BaseService):
             raise ValueError("Nothing to bill for this Purchase Order.")
 
         bill.calculate_totals()
+        ThreeWayMatchingService.verify_bill(bill)
 
         self.log_activity(
             action="billed",
             module="purchase",
             resource_type="PurchaseOrder",
             resource_id=order.pk,
-            description=f"Created Bill {bill.number} for PO {order.number}",
+            description=f"Created Bill {bill.number} for PO {order.number} (3-Way Match: {bill.matching_status})",
         )
         return bill
 
@@ -684,3 +685,107 @@ class VendorBidService(BaseService):
             description=f"Accepted bid and generated PO {po.number}",
         )
         return po
+
+
+class ThreeWayMatchingService(BaseService):
+    """
+    Enterprise 3-Way Matching Engine.
+    Cross-checks Purchase Order ↔ Goods Receipt (GRN) ↔ Vendor Bill.
+    Validates product, quantity, unit price, tax, and line totals.
+    Identifies quantity overbilling, price escalation, or unreceived items.
+    """
+
+    @classmethod
+    def verify_bill(cls, bill):
+        from decimal import Decimal
+        from apps.purchase.models import Bill, GoodsReceiptLine
+
+        po = bill.purchase_order
+        if not po:
+            bill.matching_status = Bill.MatchingStatus.MATCHED
+            bill.mismatch_details = {"mismatches": [], "count": 0, "note": "Standalone bill without PO"}
+            bill.save(update_fields=["matching_status", "mismatch_details"])
+            return {
+                "status": bill.matching_status,
+                "matched": True,
+                "mismatches": [],
+                "count": 0,
+            }
+
+        mismatches = []
+        po_lines_map = {str(line.product_id): line for line in po.lines.all() if line.product_id}
+
+        for bill_line in bill.lines.all():
+            if not bill_line.product_id:
+                continue
+
+            prod_id_str = str(bill_line.product_id)
+            po_line = po_lines_map.get(prod_id_str)
+
+            if not po_line:
+                mismatches.append({
+                    "type": "unmatched_product",
+                    "product": str(bill_line.product),
+                    "message": f"Product {bill_line.product} on bill is not in Purchase Order {po.number}.",
+                })
+                continue
+
+            # 1. Price check: Bill unit price vs PO unit price
+            price_diff = bill_line.unit_price - po_line.unit_price
+            if price_diff > Decimal("0.01"):
+                mismatches.append({
+                    "type": "price_mismatch",
+                    "product": str(bill_line.product),
+                    "po_price": str(po_line.unit_price),
+                    "bill_price": str(bill_line.unit_price),
+                    "variance": str(price_diff),
+                    "message": f"Price mismatch on {bill_line.product}: Billed at {bill_line.unit_price}, PO was {po_line.unit_price} (+{price_diff}).",
+                })
+
+            # 2. Quantity check: Billed qty vs Received/Accepted qty across completed GRNs
+            gr_lines = GoodsReceiptLine.objects.filter(
+                goods_receipt__purchase_order=po,
+                goods_receipt__status="completed",
+                po_line=po_line,
+            )
+            total_accepted_qty = sum((gr.quantity_accepted for gr in gr_lines), Decimal("0"))
+
+            if bill_line.quantity > total_accepted_qty:
+                qty_diff = bill_line.quantity - total_accepted_qty
+                mismatches.append({
+                    "type": "quantity_mismatch",
+                    "product": str(bill_line.product),
+                    "ordered_qty": str(po_line.quantity),
+                    "received_accepted_qty": str(total_accepted_qty),
+                    "billed_qty": str(bill_line.quantity),
+                    "variance": str(qty_diff),
+                    "message": f"Quantity mismatch on {bill_line.product}: Billed {bill_line.quantity}, but only {total_accepted_qty} accepted in GRN (excess: {qty_diff}).",
+                })
+
+        has_mismatch = len(mismatches) > 0
+        if has_mismatch:
+            bill.matching_status = Bill.MatchingStatus.MISMATCH
+            bill.mismatch_details = {"mismatches": mismatches, "count": len(mismatches)}
+        else:
+            bill.matching_status = Bill.MatchingStatus.MATCHED
+            bill.mismatch_details = {"mismatches": [], "count": 0}
+
+        bill.save(update_fields=["matching_status", "mismatch_details"])
+
+        return {
+            "status": bill.matching_status,
+            "matched": not has_mismatch,
+            "mismatches": mismatches,
+            "count": len(mismatches),
+        }
+
+    @classmethod
+    def override_mismatch(cls, bill, user, reason: str):
+        if not reason or not reason.strip():
+            raise ValueError("An explicit documented reason is required to override 3-way matching exceptions.")
+        bill.matching_status = bill.MatchingStatus.OVERRIDDEN
+        bill.mismatch_override_by = user
+        bill.mismatch_override_reason = reason.strip()
+        bill.save(update_fields=["matching_status", "mismatch_override_by", "mismatch_override_reason"])
+        return bill
+

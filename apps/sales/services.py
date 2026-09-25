@@ -23,8 +23,8 @@ class SalesService(BaseService):
         """Convert an approved Quotation into a Sales Order."""
         if quotation.status == Quotation.Status.CONVERTED:
             raise ValueError("Quotation is already converted.")
-        if quotation.status not in [Quotation.Status.APPROVED, Quotation.Status.SENT]:
-            raise ValueError("Only approved or sent quotations can be converted.")
+        if quotation.status not in [Quotation.Status.APPROVED, Quotation.Status.SENT, Quotation.Status.ACCEPTED]:
+            raise ValueError("Only approved, accepted, or sent quotations can be converted.")
 
         # Create Sales Order
         order = SalesOrder.objects.create(
@@ -283,10 +283,123 @@ class SalesService(BaseService):
 
     def verify_credit_limit(self, customer, amount) -> bool:
         """Check if customer has enough credit limit for this amount."""
-        if customer.credit_limit <= 0:
-            return True  # Unlimited or not enforced
+        res = CreditControlService.evaluate_credit(customer, amount)
+        return res["allowed"]
 
-        return customer.outstanding_balance + amount <= customer.credit_limit
+
+class CreditControlService(BaseService):
+    """
+    Enterprise credit control and risk management service.
+    Evaluates customer credit limits, outstanding balances, overdue invoices,
+    and payment risk before order confirmation.
+    """
+
+    @staticmethod
+    def evaluate_credit(customer, order_amount=0):
+        from decimal import Decimal
+        from django.utils import timezone
+        from apps.sales.models import Invoice
+
+        order_amount = Decimal(str(order_amount or "0"))
+        credit_limit = Decimal(str(customer.credit_limit or "0"))
+        outstanding = Decimal(str(customer.outstanding_balance or "0"))
+        projected_balance = outstanding + order_amount
+        available_credit = max(Decimal("0"), credit_limit - outstanding) if credit_limit > 0 else Decimal("999999999")
+
+        # Overdue invoices check
+        today = timezone.localdate()
+        overdue_invoices = Invoice.objects.filter(
+            customer=customer,
+            status__in=[Invoice.Status.SENT, Invoice.Status.PARTIAL, Invoice.Status.OVERDUE],
+            due_date__lt=today,
+            balance_due__gt=0,
+            is_deleted=False,
+        )
+        has_overdue = overdue_invoices.exists()
+        overdue_count = overdue_invoices.count()
+        overdue_amount = sum((inv.balance_due for inv in overdue_invoices), Decimal("0"))
+
+        reasons = []
+        warnings = []
+        hold_required = False
+
+        if credit_limit > 0 and projected_balance > credit_limit:
+            hold_required = True
+            excess = projected_balance - credit_limit
+            reasons.append(
+                f"Credit limit exceeded: Limit is {credit_limit}, current outstanding is {outstanding}, "
+                f"new order is {order_amount}. Projected total {projected_balance} exceeds limit by {excess}."
+            )
+
+        if has_overdue:
+            warnings.append(
+                f"Customer has {overdue_count} overdue invoice(s) totaling {overdue_amount}."
+            )
+            if credit_limit > 0 and overdue_amount > (credit_limit * Decimal("0.2")):
+                hold_required = True
+                reasons.append(f"Significant overdue invoices: {overdue_amount} overdue.")
+
+        return {
+            "allowed": not hold_required,
+            "hold_required": hold_required,
+            "credit_limit": credit_limit,
+            "outstanding_balance": outstanding,
+            "order_amount": order_amount,
+            "projected_balance": projected_balance,
+            "available_credit": available_credit,
+            "has_overdue": has_overdue,
+            "overdue_count": overdue_count,
+            "overdue_amount": overdue_amount,
+            "reasons": reasons,
+            "warnings": warnings,
+        }
+
+    @transaction.atomic
+    def check_and_apply_credit_hold(self, order, user=None):
+        """
+        Evaluate order against customer credit limit.
+        If credit is breached and not overridden, place order on credit hold.
+        """
+        if order.credit_override_by:
+            return True, "Credit hold previously overridden."
+
+        evaluation = self.evaluate_credit(order.customer, order.total)
+        if evaluation["hold_required"]:
+            order.status = order.Status.PENDING_APPROVAL
+            order.credit_hold = True
+            order.save(update_fields=["status", "credit_hold"])
+            self.log_activity(
+                action="credit_hold",
+                module="sales",
+                resource_type="SalesOrder",
+                resource_id=order.pk,
+                description="Order placed on credit hold: " + "; ".join(evaluation["reasons"]),
+            )
+            return False, "; ".join(evaluation["reasons"])
+
+        return True, "Credit check passed."
+
+    @transaction.atomic
+    def override_credit_hold(self, order, user, reason: str):
+        """Manager override for credit hold."""
+        if not reason or not reason.strip():
+            raise ValueError("A documented override reason is required to bypass credit hold.")
+
+        order.credit_hold = False
+        order.credit_override_by = user
+        order.credit_override_reason = reason.strip()
+        order.status = order.Status.DRAFT
+        order.save(update_fields=["credit_hold", "credit_override_by", "credit_override_reason", "status"])
+
+        self.log_activity(
+            action="credit_override",
+            module="sales",
+            resource_type="SalesOrder",
+            resource_id=order.pk,
+            description=f"Credit hold overridden by {user}: {reason}",
+        )
+        return order
+
 
 
 
@@ -479,10 +592,16 @@ class SalesOrderService(BaseService):
 
     @transaction.atomic
     def confirm_order(self, order):
-        if order.status != order.Status.DRAFT:
-            raise ValueError("Only draft orders can be confirmed.")
+        if order.status not in [order.Status.DRAFT, order.Status.PENDING_APPROVAL]:
+            raise ValueError(f"Only draft or pending approval orders can be confirmed, current: {order.status}.")
 
-        from apps.inventory.models import Warehouse
+        # 1. Credit Control Evaluation
+        credit_service = CreditControlService(company=self.company, user=self.user)
+        passed, msg = credit_service.check_and_apply_credit_hold(order, self.user)
+        if not passed:
+            raise ValueError(f"Order cannot be confirmed due to credit hold: {msg}")
+
+        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine, Warehouse
         from apps.inventory.services import StockService
 
         # Assumption: If SalesOrder doesn't have a warehouse, use the first active one.
@@ -519,6 +638,27 @@ class SalesOrderService(BaseService):
 
         order.status = order.Status.CONFIRMED
         order.save(update_fields=["status"])
+
+        # Auto-create DeliveryOrder in READY status if not already existing
+        if not order.delivery_orders.filter(status__in=[DeliveryOrder.Status.READY, DeliveryOrder.Status.DRAFT, DeliveryOrder.Status.PICKING, DeliveryOrder.Status.PACKING]).exists():
+            delivery = DeliveryOrder.objects.create(
+                company=self.company,
+                number=BaseService.generate_sequence_number("DEL", DeliveryOrder, self.company.pk),
+                sales_order=order,
+                warehouse=warehouse,
+                status=DeliveryOrder.Status.READY,
+                scheduled_date=order.delivery_date,
+            )
+            for line in order.lines.all():
+                qty_remaining = line.quantity - (line.qty_delivered or 0)
+                if qty_remaining > 0:
+                    DeliveryOrderLine.objects.create(
+                        delivery_order=delivery,
+                        product=line.product,
+                        description=line.description,
+                        quantity_ordered=qty_remaining,
+                        quantity_shipped=qty_remaining,
+                    )
 
         # Optional Twilio SMS notification — only runs when credentials are configured.
         # A failure here must never roll back the order confirmation.
@@ -613,6 +753,13 @@ class InvoiceService(BaseService):
 
         from apps.sales.models import Invoice, InvoiceLine
 
+        # Support both Django QueryDict (has getlist) and plain dict (from tests/API).
+        def _getlist(key):
+            if hasattr(data, "getlist"):
+                return data.getlist(key)
+            val = data.get(key, [])
+            return val if isinstance(val, list) else [val]
+
         invoice = Invoice(
             company=self.company,
             customer_id=data["customer"],
@@ -628,32 +775,33 @@ class InvoiceService(BaseService):
         )
         invoice.save()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        prices = data.getlist("unit_price[]")
-        discounts = data.getlist("discount_percent[]")
-        taxes = data.getlist("tax[]")
+        products = _getlist("product[]")
+        descs = _getlist("description[]")
+        quantities = _getlist("quantity[]")
+        prices = _getlist("unit_price[]")
+        discounts = _getlist("discount_percent[]")
+        taxes = _getlist("tax[]")
 
         for i, desc in enumerate(descs):
             if not desc.strip():
                 continue
             line = InvoiceLine(
                 invoice=invoice,
-                product_id=products[i] if products[i] else None,
+                product_id=products[i] if i < len(products) and products[i] else None,
                 description=desc,
-                quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal("1"),
-                unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
+                quantity=Decimal(str(quantities[i])) if i < len(quantities) and quantities[i] else Decimal("1"),
+                unit_price=Decimal(str(prices[i])) if i < len(prices) and prices[i] else Decimal("0"),
                 discount_percent=(
-                    Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
+                    Decimal(str(discounts[i])) if i < len(discounts) and discounts[i] else Decimal("0")
                 ),
-                tax_id=taxes[i] if taxes[i] else None,
+                tax_id=taxes[i] if i < len(taxes) and taxes[i] else None,
                 sort_order=i,
             )
             line.save()
 
         invoice.recalculate_totals()
         return invoice
+
 
 
 class PaymentService(BaseService):
@@ -692,3 +840,159 @@ class PaymentService(BaseService):
             description=f"Processed {payment.currency.code} {amount} payment for invoice {invoice.number}",
         )
         return payment
+
+
+class SalesReturnService(BaseService):
+    """
+    Enterprise RMA / Sales Return Service.
+    Handles customer returns, inspection, stock restocking, credit note generation,
+    and accounting reversals.
+    """
+
+    @transaction.atomic
+    def create_return(self, order, lines_data, reason, user=None):
+        from decimal import Decimal
+        from apps.sales.models import SalesReturn, SalesReturnLine
+        from apps.inventory.models import Warehouse
+
+        warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
+        if not warehouse:
+            raise ValueError("No active warehouse found for receiving returned goods.")
+
+        ret = SalesReturn.objects.create(
+            company=self.company,
+            sales_order=order,
+            customer=order.customer,
+            warehouse=warehouse,
+            return_reason=reason,
+            return_date=timezone.now().date(),
+            status=SalesReturn.Status.DRAFT,
+        )
+
+        total = Decimal("0")
+        for item in lines_data:
+            order_line = order.lines.get(pk=item["order_line_id"])
+            qty = Decimal(str(item["quantity"]))
+            unit_price = Decimal(str(item.get("unit_price", order_line.unit_price)))
+            line_sub = qty * unit_price
+            condition = item.get("condition", "resellable")
+
+            SalesReturnLine.objects.create(
+                sales_return=ret,
+                order_line=order_line,
+                product=order_line.product,
+                quantity=qty,
+                unit_price=unit_price,
+                subtotal=line_sub,
+                condition=condition,
+            )
+            total += line_sub
+
+        ret.total_amount = total
+        ret.save(update_fields=["total_amount"])
+
+        self.log_activity(
+            action="return_created",
+            module="sales",
+            resource_type="SalesReturn",
+            resource_id=ret.pk,
+            description=f"Created Sales Return {ret.number} for Order {order.number}",
+        )
+        return ret
+
+    @transaction.atomic
+    def approve_return(self, sales_return, user):
+        if sales_return.status != sales_return.Status.DRAFT:
+            raise ValueError("Only draft returns can be approved.")
+        sales_return.status = sales_return.Status.APPROVED
+        sales_return.approved_by = user
+        sales_return.approved_at = timezone.now()
+        sales_return.save(update_fields=["status", "approved_by", "approved_at"])
+
+        self.log_activity(
+            action="return_approved",
+            module="sales",
+            resource_type="SalesReturn",
+            resource_id=sales_return.pk,
+            description=f"Approved Sales Return {sales_return.number}",
+        )
+        return sales_return
+
+    @transaction.atomic
+    def complete_return(self, sales_return, user=None):
+        """
+        Completes the return:
+        1. Restocks resellable items in inventory via StockMovement (RETURN_IN)
+        2. Generates Credit Note and triggers accounting reversal
+        3. Sets status to COMPLETED
+        """
+        from decimal import Decimal
+        from apps.inventory.models import StockMovement, StockRecord
+        from apps.sales.models import CreditNote, CreditNoteLine
+        from apps.accounting.services import AutoJournalService
+
+        if sales_return.status not in [sales_return.Status.APPROVED, sales_return.Status.RECEIVED, sales_return.Status.INSPECTED]:
+            raise ValueError(f"Cannot complete return in status {sales_return.status}.")
+
+        # 1. Restock resellable products
+        for line in sales_return.lines.all():
+            if line.condition == "resellable" and line.product:
+                stock_record, _ = StockRecord.objects.select_for_update().get_or_create(
+                    company=self.company,
+                    product=line.product,
+                    warehouse=sales_return.warehouse,
+                    defaults={"quantity_on_hand": 0, "average_cost": line.unit_price, "quantity_reserved": 0},
+                )
+                stock_record.quantity_on_hand += line.quantity
+                stock_record.save(update_fields=["quantity_on_hand"])
+
+                StockMovement.objects.create(
+                    company=self.company,
+                    product=line.product,
+                    warehouse=sales_return.warehouse,
+                    movement_type=StockMovement.MovementType.RETURN_IN,
+                    quantity=line.quantity,
+                    unit_cost=stock_record.average_cost,
+                    total_cost=line.quantity * stock_record.average_cost,
+                    movement_date=timezone.now().date(),
+                    reference_type="SalesReturn",
+                    reference_id=str(sales_return.id),
+                    notes=f"Restocked from Return {sales_return.number}",
+                    stock_after=stock_record.quantity_on_hand,
+                )
+
+        # 2. Generate Credit Note
+        cn = CreditNote.objects.create(
+            company=self.company,
+            customer=sales_return.customer,
+            status=CreditNote.Status.ISSUED,
+            date=timezone.now().date(),
+            amount=sales_return.total_amount,
+            reason=f"Credit for Return {sales_return.number} (Reason: {sales_return.get_return_reason_display()})",
+        )
+        for line in sales_return.lines.all():
+            CreditNoteLine.objects.create(
+                credit_note=cn,
+                product=line.product,
+                description=f"Return: {line.product.name if line.product else ''}",
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                subtotal=line.subtotal,
+            )
+
+        sales_return.credit_note = cn
+        sales_return.status = sales_return.Status.COMPLETED
+        sales_return.save(update_fields=["credit_note", "status"])
+
+        # 3. Post to accounting
+        AutoJournalService.post_credit_note(cn)
+
+        self.log_activity(
+            action="return_completed",
+            module="sales",
+            resource_type="SalesReturn",
+            resource_id=sales_return.pk,
+            description=f"Completed Return {sales_return.number}, issued Credit Note {cn.number}",
+        )
+        return sales_return
+

@@ -7,6 +7,7 @@ import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
@@ -442,11 +443,8 @@ class InventoryTransferLine(models.Model):
 
 
 class DeliveryOrder(CompanyScoped, SequenceMixin, NotesMixin):
-    class Status(models.TextChoices):
-        DRAFT = "draft", _("Draft")
-        READY = "ready", _("Ready")
-        SHIPPED = "shipped", _("Shipped")
-        CANCELLED = "cancelled", _("Cancelled")
+    from core.constants.sales import DeliveryOrderStatus
+    Status = DeliveryOrderStatus
 
     sales_order = models.ForeignKey(
         "sales.SalesOrder", on_delete=models.CASCADE, related_name="delivery_orders"
@@ -455,10 +453,11 @@ class DeliveryOrder(CompanyScoped, SequenceMixin, NotesMixin):
         Warehouse, on_delete=models.PROTECT, related_name="delivery_orders"
     )
     status = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.DRAFT, db_index=True
+        max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True
     )
     scheduled_date = models.DateField(null=True, blank=True)
     shipped_date = models.DateTimeField(null=True, blank=True)
+    delivered_date = models.DateTimeField(null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
     shipped_by = models.ForeignKey(
         "authentication.User",
@@ -475,10 +474,29 @@ class DeliveryOrder(CompanyScoped, SequenceMixin, NotesMixin):
     def __str__(self):
         return self.number
 
+    def start_picking(self, user=None):
+        if self.status not in [self.Status.READY, self.Status.DRAFT]:
+            raise ValueError(f"Cannot start picking delivery in {self.status} status.")
+        self.status = self.Status.PICKING
+        self.save(update_fields=["status"])
+
+    def start_packing(self, user=None):
+        if self.status != self.Status.PICKING:
+            raise ValueError(f"Cannot start packing delivery in {self.status} status.")
+        self.status = self.Status.PACKING
+        self.save(update_fields=["status"])
+
     def ship(self, user):
         from .services import DeliveryService
 
         DeliveryService(company=self.company).ship_delivery(self, user)
+
+    def mark_delivered(self, user=None):
+        if self.status != self.Status.SHIPPED:
+            raise ValueError("Only shipped deliveries can be marked delivered.")
+        self.status = self.Status.DELIVERED
+        self.delivered_date = timezone.now()
+        self.save(update_fields=["status", "delivered_date"])
 
 
 class DeliveryOrderLine(models.Model):

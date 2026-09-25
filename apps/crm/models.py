@@ -304,7 +304,7 @@ class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
 
         return (
             Invoice.objects.filter(
-                customer=self, status__in=["sent", "partial"]
+                customer=self, status__in=["sent", "partial", "overdue"]
             ).aggregate(total=Sum("balance_due"))["total"]
             or 0
         )

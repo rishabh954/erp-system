@@ -162,6 +162,74 @@ class AutoJournalService:
 
     @staticmethod
     @transaction.atomic
+    def post_credit_note(credit_note):
+        """
+        Post journal entry for a Credit Note (Customer Return / Allowance).
+        Debit: Sales Returns & Allowances  (amount)
+        Credit: Accounts Receivable         (amount)
+        SUM(Debit) == SUM(Credit).
+        CreditNote model has: amount, customer, invoice(FK), date, number, company.
+        No tax_amount / subtotal / currency fields — amount is the net total.
+        """
+        from decimal import Decimal
+
+        company = credit_note.company
+        ar_account = AutoJournalService.get_or_create_ar(company)
+
+        return_account, _ = Account.objects.get_or_create(
+            company=company,
+            code="4100",
+            defaults={"name": "Sales Returns & Allowances", "account_type": "revenue"},
+        )
+
+        journal = AutoJournalService.get_or_create_journal(company, "sales")
+        total_amount = credit_note.amount or Decimal("0")
+
+        # Derive currency from linked invoice or fall back to company default
+        currency = None
+        if credit_note.invoice_id:
+            currency = getattr(credit_note.invoice, "currency", None)
+        if not currency:
+            currency = getattr(company, "default_currency", None)
+
+        entry = JournalEntry.objects.create(
+            company=company,
+            journal=journal,
+            date=credit_note.date or timezone.now().date(),
+            reference=f"CN: {credit_note.number}",
+            status=JournalEntry.Status.DRAFT,
+            currency=currency,
+            total_debit=total_amount,
+            total_credit=total_amount,
+        )
+
+        # Debit Sales Returns & Allowances
+        JournalItem.objects.create(
+            journal_entry=entry,
+            account=return_account,
+            description=f"Sales Return for {credit_note.number}",
+            debit=total_amount,
+            credit=0,
+            partner_type="customer",
+            partner_id=str(credit_note.customer.id),
+        )
+
+        # Credit Accounts Receivable
+        JournalItem.objects.create(
+            journal_entry=entry,
+            account=ar_account,
+            description=f"Credit Note for {credit_note.number}",
+            debit=0,
+            credit=total_amount,
+            partner_type="customer",
+            partner_id=str(credit_note.customer.id),
+        )
+
+        entry.post()
+        return entry
+
+    @staticmethod
+    @transaction.atomic
     def post_sales_payment(payment):
         company = payment.company
         ar_account = AutoJournalService.get_or_create_ar(company)

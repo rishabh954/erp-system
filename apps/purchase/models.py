@@ -89,9 +89,22 @@ class Vendor(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
     def outstanding_balance(self):
         from django.db.models import Sum
 
+        from apps.purchase.models import Bill
+
         return (
-            PurchaseOrder.objects.filter(
-                vendor=self, status__in=["approved", "partial"]
+            Bill.objects.filter(
+                vendor=self, status__in=["open", "partial", "overdue"]
+            ).aggregate(total=Sum("balance_due"))["total"]
+            or 0
+        )
+
+    @property
+    def committed_po_balance(self):
+        from django.db.models import Sum
+
+        return (
+            self.purchase_orders.filter(
+                status__in=["approved", "confirmed", "partial"]
             ).aggregate(total=Sum("balance_due"))["total"]
             or 0
         )
@@ -416,6 +429,12 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         OVERDUE = "overdue", _("Overdue")
         CANCELLED = "cancelled", _("Cancelled")
 
+    class MatchingStatus(models.TextChoices):
+        PENDING = "pending", _("Pending Verification")
+        MATCHED = "matched", _("3-Way Matched")
+        MISMATCH = "mismatch", _("Mismatch Flagged")
+        OVERRIDDEN = "overridden", _("Mismatch Overridden")
+
     vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="bills")
     purchase_order = models.ForeignKey(
         PurchaseOrder,
@@ -427,6 +446,21 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.DRAFT, db_index=True
     )
+    matching_status = models.CharField(
+        max_length=20,
+        choices=MatchingStatus.choices,
+        default=MatchingStatus.PENDING,
+        db_index=True,
+    )
+    mismatch_details = models.JSONField(default=dict, blank=True)
+    mismatch_override_by = models.ForeignKey(
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="overridden_bills",
+    )
+    mismatch_override_reason = models.TextField(blank=True)
     bill_date = models.DateField()
     due_date = models.DateField(null=True, blank=True)
 
@@ -478,18 +512,15 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         self.save(update_fields=["amount_paid", "balance_due", "status"])
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
         super().save(*args, **kwargs)
-        # Only post journal entry when a new Bill is first moved to OPEN status.
-        # Running on every save would create duplicate entries on balance updates.
-        if is_new and self.status in [self.Status.OPEN]:
+        # Idempotently post journal entry when Bill is OPEN, PARTIAL, or PAID
+        if self.status in [self.Status.OPEN, self.Status.PARTIAL, self.Status.PAID]:
             from django.db import transaction
 
             from apps.accounting.models import JournalEntry
 
-            if not JournalEntry.objects.filter(
-                reference=f"BILL: {self.number}"
-            ).exists():
+            ref = f"BILL: {self.number}"
+            if not JournalEntry.objects.filter(company=self.company, reference=ref).exists():
                 from apps.accounting.services import AutoJournalService
 
                 with transaction.atomic():
@@ -573,18 +604,17 @@ class Payment(CompanyScoped, SequenceMixin, CurrencyMixin):
         return f"{self.number} | {self.bill.number} | {self.amount}"
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
         super().save(*args, **kwargs)
-        self.bill.update_balance()
-        # Only post journal entry on creation of a COMPLETED payment, not on every update.
-        if is_new and self.status == self.Status.COMPLETED:
+        if self.bill:
+            self.bill.update_balance()
+        # Idempotently post journal entry when payment is COMPLETED
+        if self.status == self.Status.COMPLETED:
             from django.db import transaction
 
             from apps.accounting.models import JournalEntry
 
-            if not JournalEntry.objects.filter(
-                reference=f"VPAY: {self.number}"
-            ).exists():
+            ref = f"VPAY: {self.number}"
+            if not JournalEntry.objects.filter(company=self.company, reference=ref).exists():
                 from apps.accounting.services import AutoJournalService
 
                 with transaction.atomic():

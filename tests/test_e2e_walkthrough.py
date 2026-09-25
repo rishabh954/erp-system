@@ -146,49 +146,33 @@ class SmokeTest(LiveServerTestCase):
 
         self.assertEqual(so.status, "confirmed")
 
-        # 9. Create Invoice from Order
-        # There's likely an action or we can just create an invoice manually.
-        invoice_data = {
-            "customer": customer.id,
-            "sales_order": so.id,
-            "currency": currency.id,
+        # 9. Create Invoice from Order — use service layer directly (UI uses JS-array format)
+        from apps.sales.services import InvoiceService, PaymentService
+
+        invoice = InvoiceService(user=user, company=company).create_invoice({
+            "customer": str(customer.id),
+            "currency": str(currency.id),
             "invoice_date": "2026-07-02",
             "due_date": "2026-07-16",
-            "status": "draft",
-            "lines-TOTAL_FORMS": "1",
-            "lines-INITIAL_FORMS": "0",
-            "lines-MIN_NUM_FORMS": "0",
-            "lines-MAX_NUM_FORMS": "1000",
-            "lines-0-product": product.id,
-            "lines-0-quantity": "2",
-            "lines-0-unit_price": "100.00",
-        }
-        resp = self.client.post(reverse("sales:invoice_create"), invoice_data)
-        self.assertEqual(resp.status_code, 302)
+            "payment_terms": "30",
+            "product[]": [str(product.id)],
+            "description[]": ["E2E Item"],
+            "quantity[]": ["2"],
+            "unit_price[]": ["100.00"],
+            "discount_percent[]": ["0"],
+            "tax[]": [""],
+        })
 
-        from apps.sales.models import Invoice, InvoiceLine
-
-        invoice = Invoice.objects.first()
-
-        # Ensure invoice has a total so payment doesn't fail or result in negative balance  # noqa: E501
-        InvoiceLine.objects.create(
-            invoice=invoice,
-            product=product,
-            description="E2E Item",
-            quantity=Decimal("2"),
-            unit_price=Decimal("100.00"),
-        )
-        invoice.recalculate_totals()
+        self.assertIsNotNone(invoice)
+        invoice.refresh_from_db()
 
         # Approve/Send Invoice
         invoice.status = "sent"
         invoice.save(update_fields=["status"])
 
         # 10. Record Payment programmatically to see any exceptions
-        from apps.sales.services import PaymentService
-
         payment_data = {
-            "amount": "200.00",
+            "amount": str(invoice.total),
             "payment_date": "2026-07-03",
             "method": "bank_transfer",
             "reference": "E2E-PAY-01",
@@ -196,7 +180,7 @@ class SmokeTest(LiveServerTestCase):
         PaymentService(user=user, company=company).record_payment(invoice, payment_data)
 
         invoice.refresh_from_db()
-        self.assertEqual(invoice.amount_paid, Decimal("200.00"))
+        self.assertEqual(invoice.amount_paid, invoice.total)
         self.assertEqual(invoice.balance_due, Decimal("0.00"))
 
         # 11. Verify Journal Entries (Double Entry Math)
@@ -210,3 +194,4 @@ class SmokeTest(LiveServerTestCase):
             total_debits = sum(item.debit for item in entry.items.all())
             total_credits = sum(item.credit for item in entry.items.all())
             self.assertEqual(total_debits, total_credits)
+
