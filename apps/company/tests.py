@@ -21,7 +21,12 @@ class TimezoneTests(TestCase):
             last_name="User",
             role=User.Role.COMPANY_ADMIN,
         )
-        UserCompany.objects.create(user=self.user, company=self.company, is_active=True)
+        UserCompany.objects.create(
+            user=self.user,
+            company=self.company,
+            role=User.Role.COMPANY_ADMIN,
+            is_active=True,
+        )
         self.user.primary_company = self.company
         self.user.save()
 

@@ -1,6 +1,6 @@
 import pytest
 
-from apps.authentication.models import User
+from apps.authentication.models import User, UserCompany
 from apps.company.models import Company
 
 
@@ -28,10 +28,22 @@ def pos_user_with_read(db, pos_company):
     ModulePermission.objects.create(role=User.Role.CUSTOMER_PORTAL, module="pos", can_read=True, can_create=False)
     user.role = User.Role.CUSTOMER_PORTAL
     user.save()
+    UserCompany.objects.create(
+        user=user,
+        company=pos_company,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     return user
 
 @pytest.fixture
 def pos_user_with_create(db, pos_company):
     # EMPLOYEE role has pos.create because of our earlier setup_permissions.py change
     user = User.objects.create_user(email="create@pos.com", password="password", primary_company=pos_company, role=User.Role.EMPLOYEE)
+    UserCompany.objects.create(
+        user=user,
+        company=pos_company,
+        role=User.Role.EMPLOYEE,
+        is_active=True,
+    )
     return user

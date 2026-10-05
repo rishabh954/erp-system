@@ -289,14 +289,26 @@ def test_banking_service_reconcile(company, user, currency):
 def test_issue_credit_note_permissions(client, company):
     from django.urls import reverse
 
-    from apps.authentication.models import ModulePermission, User
+    from apps.authentication.models import ModulePermission, User, UserCompany
 
     # 1. Setup users
     user_read = User.objects.create_user(email="read@acc.com", password="password", primary_company=company, role=User.Role.CUSTOMER_PORTAL)
+    UserCompany.objects.create(
+        user=user_read,
+        company=company,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     ModulePermission.objects.filter(role=User.Role.CUSTOMER_PORTAL, module="accounting").delete()
     ModulePermission.objects.create(role=User.Role.CUSTOMER_PORTAL, module="accounting", can_read=True, can_create=False)
 
     user_create = User.objects.create_user(email="create@acc.com", password="password", primary_company=company, role=User.Role.EMPLOYEE)
+    UserCompany.objects.create(
+        user=user_create,
+        company=company,
+        role=User.Role.EMPLOYEE,
+        is_active=True,
+    )
     ModulePermission.objects.filter(role=User.Role.EMPLOYEE, module="accounting").delete()
     ModulePermission.objects.create(role=User.Role.EMPLOYEE, module="accounting", can_read=True, can_create=True)
 
