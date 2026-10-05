@@ -261,6 +261,28 @@ class ShiftAssignment(CompanyScoped):
         return f"{self.employee.full_name} - {self.schedule.name}"
 
 
+class BiometricDevice(CompanyScoped):
+    """Machine-to-machine biometric device registration for a tenant."""
+
+    device_id = models.CharField(max_length=100)
+    key_hash = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "hrms_biometric_devices"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "device_id"],
+                name="uniq_hrms_biometric_device_company_device",
+            )
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.company.name} :: {self.device_id}"
+
+
 class BiometricLog(models.Model):
     class PunchType(models.TextChoices):
         IN = "in", _("Check In")
