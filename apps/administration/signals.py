@@ -2,7 +2,14 @@
 Administration Signals
 Automatically captures field-level changes for all registered models
 into AuditLog without modifying any existing model code.
+
+The legacy implementation previously used a process-wide mutable dictionary to
+store pre-save state. That pattern is unsafe across concurrent requests,
+multiple Gunicorn workers, Celery tasks, and async execution. This version uses
+context-local state instead so each execution context tracks its own snapshot.
 """
+
+import contextvars
 
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -24,8 +31,8 @@ AUDITED_MODELS = [
     "apps.accounting.models.JournalEntry",
 ]
 
-# Map model class → previous state storage key
-_PRE_SAVE_STATE = {}
+# Context-local storage avoids global mutable request state.
+_PRE_SAVE_STATE = contextvars.ContextVar("audit_pre_save_state", default=None)
 
 
 def _get_model_class(model_path):
@@ -71,31 +78,37 @@ def register_audit_signals():
         try:
             model_cls = _get_model_class(model_path)
 
-            # Pre-save: capture old state
             def make_pre_save(cls):
                 @receiver(pre_save, sender=cls, weak=False)
                 def _pre_save(sender, instance, **kwargs):
-                    if instance.pk:
-                        try:
-                            old = sender.objects.get(pk=instance.pk)
-                            _PRE_SAVE_STATE[str(instance.pk)] = _serialize_instance(old)
-                        except sender.DoesNotExist:
-                            pass
+                    if not instance.pk:
+                        return
+                    try:
+                        old = sender.objects.get(pk=instance.pk)
+                    except sender.DoesNotExist:
+                        return
+                    state = _PRE_SAVE_STATE.get() or {}
+                    state[str(instance.pk)] = _serialize_instance(old)
+                    _PRE_SAVE_STATE.set(state)
 
                 return _pre_save
 
-            # Post-save: diff and write
             def make_post_save(cls):
                 @receiver(post_save, sender=cls, weak=False)
                 def _post_save(sender, instance, created, **kwargs):
                     action = "create" if created else "update"
                     changes = {}
                     if not created:
-                        old_state = _PRE_SAVE_STATE.pop(str(instance.pk), {})
+                        state = _PRE_SAVE_STATE.get() or {}
+                        old_state = state.pop(str(instance.pk), {})
                         new_state = _serialize_instance(instance)
                         for k, v in new_state.items():
                             if old_state.get(k) != v:
                                 changes[k] = {"old": old_state.get(k), "new": v}
+                        if state:
+                            _PRE_SAVE_STATE.set(state)
+                        else:
+                            _PRE_SAVE_STATE.set(None)
                     _write_audit(action, instance, changes)
 
                 return _post_save
@@ -113,7 +126,7 @@ def register_audit_signals():
 
         except Exception as e:
             import logging
-            logging.getLogger(__name__).warning("Model not found: %s", e)  # If a model can't be imported yet, skip gracefully
+            logging.getLogger(__name__).warning("Model not found: %s", e)
 
 
 # Register on app ready

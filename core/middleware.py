@@ -1,3 +1,5 @@
+import uuid
+
 from django.http import HttpResponseForbidden
 from django.utils import timezone
 
@@ -44,6 +46,39 @@ class AuditLogMiddleware:
         return _get_client_ip(request)
 
 
+class AuditContextMiddleware:
+    """Attach request-scoped audit metadata generated from headers or the current session."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from core.logging import set_logging_context
+
+        request_id = request.headers.get('X-Request-ID') or uuid.uuid4().hex
+        correlation_id = request.headers.get('X-Correlation-ID') or request_id
+        session_id = getattr(request.session, 'session_key', None) if hasattr(request, 'session') else None
+        user_agent = request.headers.get('User-Agent', '')
+        http_method = request.method
+
+        request.request_id = request_id
+        request.correlation_id = correlation_id
+        request.session_id = session_id
+        request.user_agent = user_agent
+        request.http_method = http_method
+
+        set_logging_context(
+            request_id=request_id,
+            correlation_id=correlation_id,
+            session_id=session_id,
+            user_agent=user_agent,
+            http_method=http_method,
+        )
+
+        response = self.get_response(request)
+        return response
+
+
 class RequestLoggingMiddleware:
     """Populates contextvars for the logging filter."""
 
@@ -56,11 +91,22 @@ class RequestLoggingMiddleware:
         user_id = str(request.user.pk) if hasattr(request, "user") and request.user.is_authenticated else "anonymous"  # noqa: E501
         company_id = str(request.company.pk) if hasattr(request, "company") and request.company else "none"  # noqa: E501
 
+        request_id = getattr(request, 'request_id', None) or request.headers.get('X-Request-ID') or uuid.uuid4().hex
+        correlation_id = getattr(request, 'correlation_id', None) or request.headers.get('X-Correlation-ID') or request_id
+        session_id = getattr(request, 'session_id', None) or (request.session.session_key if hasattr(request, 'session') and getattr(request.session, 'session_key', None) else None)
+        user_agent = getattr(request, 'user_agent', None) or request.headers.get('User-Agent', '')
+        http_method = getattr(request, 'http_method', None) or request.method
+
         set_logging_context(
             user_id=user_id,
             company_id=company_id,
             request_path=request.path,
             client_ip=_get_client_ip(request),
+            request_id=request_id,
+            correlation_id=correlation_id,
+            session_id=session_id,
+            user_agent=user_agent,
+            http_method=http_method,
         )
 
         response = self.get_response(request)

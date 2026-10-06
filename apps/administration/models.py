@@ -488,7 +488,159 @@ class BackupRecord(CompanyScoped):
             return f"{self.file_size / 1024**2:.1f} MB"
 
 
-# ════════════════════════════ AUDIT & ACTIVITY LOGS ══════════════════════════
+# ════════════════════════════ AUDIT CENTER ════════════════════════════════════
+
+
+class AuditCategory(models.TextChoices):
+    AUTHENTICATION = "AUTHENTICATION", _("Authentication")
+    AUTHORIZATION = "AUTHORIZATION", _("Authorization")
+    SECURITY = "SECURITY", _("Security")
+    BUSINESS_DATA = "BUSINESS_DATA", _("Business Data")
+    FINANCIAL = "FINANCIAL", _("Financial")
+    SALES = "SALES", _("Sales")
+    PURCHASE = "PURCHASE", _("Purchase")
+    INVENTORY = "INVENTORY", _("Inventory")
+    ACCOUNTING = "ACCOUNTING", _("Accounting")
+    HRMS = "HRMS", _("HRMS")
+    MANUFACTURING = "MANUFACTURING", _("Manufacturing")
+    POS = "POS", _("POS")
+    CRM = "CRM", _("CRM")
+    PROJECTS = "PROJECTS", _("Projects")
+    HELPDESK = "HELPDESK", _("Helpdesk")
+    DOCUMENTS = "DOCUMENTS", _("Documents")
+    WORKFLOW = "WORKFLOW", _("Workflow")
+    EXCEPTION = "EXCEPTION", _("Exception")
+    API = "API", _("API")
+    CELERY = "CELERY", _("Celery")
+    AI = "AI", _("AI")
+    SYSTEM = "SYSTEM", _("System")
+    ADMINISTRATION = "ADMINISTRATION", _("Administration")
+    DATA_EXPORT = "DATA_EXPORT", _("Data Export")
+    DATA_IMPORT = "DATA_IMPORT", _("Data Import")
+
+
+class AuditEvent(UUIDModel):
+    """Central append-only audit record used across the ERP."""
+
+    class ActorType(models.TextChoices):
+        USER = "USER", _("User")
+        ADMIN = "ADMIN", _("Admin")
+        SERVICE = "SERVICE", _("Service")
+        SYSTEM = "SYSTEM", _("System")
+        CELERY = "CELERY", _("Celery")
+        API = "API", _("API")
+        AI = "AI", _("AI")
+        ANONYMOUS = "ANONYMOUS", _("Anonymous")
+
+    class EventStatus(models.TextChoices):
+        SUCCESS = "SUCCESS", _("Success")
+        FAILED = "FAILED", _("Failed")
+        DENIED = "DENIED", _("Denied")
+        PARTIAL = "PARTIAL", _("Partial")
+
+    class EventSeverity(models.TextChoices):
+        INFO = "INFO", _("Info")
+        LOW = "LOW", _("Low")
+        MEDIUM = "MEDIUM", _("Medium")
+        HIGH = "HIGH", _("High")
+        CRITICAL = "CRITICAL", _("Critical")
+
+    company = models.ForeignKey(
+        "company.Company",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_events",
+    )
+    branch = models.ForeignKey(
+        "company.Branch",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_events",
+    )
+    department = models.ForeignKey(
+        "company.Department",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_events",
+    )
+    actor_type = models.CharField(
+        max_length=20,
+        choices=ActorType.choices,
+        default=ActorType.SYSTEM,
+        db_index=True,
+    )
+    actor_user = models.ForeignKey(
+        "authentication.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_events",
+    )
+    service_account = models.CharField(max_length=200, blank=True)
+    actor_identifier = models.CharField(max_length=200, blank=True)
+    action = models.CharField(max_length=80, db_index=True)
+    category = models.CharField(
+        max_length=40,
+        choices=AuditCategory.choices,
+        default=AuditCategory.SYSTEM,
+        db_index=True,
+    )
+    module = models.CharField(max_length=80, blank=True, db_index=True)
+    event_type = models.CharField(max_length=80, blank=True, db_index=True)
+    model_name = models.CharField(max_length=100, blank=True, db_index=True)
+    object_id = models.CharField(max_length=200, blank=True, db_index=True)
+    object_reference = models.CharField(max_length=500, blank=True)
+    object_repr = models.CharField(max_length=500, blank=True)
+    old_values = models.JSONField(default=dict, blank=True)
+    new_values = models.JSONField(default=dict, blank=True)
+    changed_fields = models.JSONField(default=dict, blank=True)
+    request_id = models.CharField(max_length=100, blank=True, db_index=True)
+    correlation_id = models.CharField(max_length=100, blank=True, db_index=True)
+    session_id = models.CharField(max_length=100, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    endpoint = models.CharField(max_length=500, blank=True)
+    http_method = models.CharField(max_length=10, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=EventStatus.choices,
+        default=EventStatus.SUCCESS,
+        db_index=True,
+    )
+    result = models.JSONField(default=dict, blank=True)
+    error_code = models.CharField(max_length=100, blank=True)
+    severity = models.CharField(
+        max_length=20,
+        choices=EventSeverity.choices,
+        default=EventSeverity.INFO,
+        db_index=True,
+    )
+    risk_score = models.PositiveSmallIntegerField(default=0, db_index=True)
+    risk_reason = models.CharField(max_length=255, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    previous_hash = models.CharField(max_length=128, blank=True, db_index=True)
+    event_hash = models.CharField(max_length=128, blank=True, db_index=True)
+    reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "admin_audit_events"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["company", "created_at"]),
+            models.Index(fields=["actor_user", "created_at"]),
+            models.Index(fields=["module", "created_at"]),
+            models.Index(fields=["category", "created_at"]),
+            models.Index(fields=["correlation_id", "created_at"]),
+            models.Index(fields=["request_id", "created_at"]),
+            models.Index(fields=["model_name", "object_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.action} ({self.status}) @ {self.created_at}"
 
 
 class AuditLog(UUIDModel):

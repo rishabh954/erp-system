@@ -31,6 +31,7 @@ class Command(BaseCommand):
             "analytics",
             "ai",
             "authentication",
+            "administration",
         ]
 
         self_service = (False, True, True, False, False, False, False, False)

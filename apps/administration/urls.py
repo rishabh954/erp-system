@@ -102,6 +102,7 @@ urlpatterns = [
         name="backup_schedule",
     ),
     # Logs
+    path("audit-center/", views.AuditCenterView.as_view(), name="audit_center"),
     path("audit-logs/", views.AuditLogView.as_view(), name="audit_logs"),
     path(
         "audit-logs/<uuid:pk>/detail/",

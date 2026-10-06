@@ -13,6 +13,8 @@ from .models import (
     ActivityLog,
     APIKey,
     ApprovalMatrix,
+    AuditCategory,
+    AuditEvent,
     AuditLog,
     BackupRecord,
     CustomDashboard,
@@ -197,6 +199,11 @@ class AdminDashboardView(AdminRequiredMixin, TemplateView):
                 ),
                 "recent_audit_logs": (
                     AuditLog.objects.filter(company=company).order_by("-timestamp")[:10]
+                    if company
+                    else []
+                ),
+                "recent_central_audit_events": (
+                    AuditEvent.objects.filter(company=company).order_by("-created_at")[:10]
                     if company
                     else []
                 ),
@@ -642,6 +649,51 @@ class BackupRestoreView(AdminRequiredMixin, View):
 
 
 # ── 12. Audit Logs ────────────────────────────────────────────────────────────
+
+
+class AuditCenterView(AdminRequiredMixin, View):
+    required_permission = "administration.read"
+    template_name = "administration/audit_center.html"
+
+    def get(self, request):
+        qs = AuditEvent.objects.filter(company=self.company).order_by("-created_at")
+
+        action = request.GET.get("action")
+        category = request.GET.get("category")
+        module = request.GET.get("module")
+        user_id = request.GET.get("user")
+        status = request.GET.get("status")
+        date_from = request.GET.get("date_from")
+        date_to = request.GET.get("date_to")
+
+        if action:
+            qs = qs.filter(action__icontains=action)
+        if category:
+            qs = qs.filter(category=category)
+        if module:
+            qs = qs.filter(module__icontains=module)
+        if user_id:
+            qs = qs.filter(actor_user_id=user_id)
+        if status:
+            qs = qs.filter(status=status)
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        from apps.authentication.models import User
+
+        users = User.objects.filter(companies=self.company, is_active=True)
+        return render(
+            request,
+            self.template_name,
+            {
+                "events": qs[:200],
+                "categories": AuditCategory.choices,
+                "statuses": AuditEvent.EventStatus.choices,
+                "users": users,
+            },
+        )
 
 
 class AuditLogView(AdminRequiredMixin, View):

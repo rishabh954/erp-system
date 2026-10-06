@@ -133,6 +133,7 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.AuditContextMiddleware',
     'core.middleware.AuditLogMiddleware',
     'core.middleware.TenantMiddleware',
     'core.middleware.ModulePermissionMiddleware',
