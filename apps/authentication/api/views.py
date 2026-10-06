@@ -22,7 +22,11 @@ from apps.authentication.api.serializers import (
     UserUpdateSerializer,
 )
 from apps.authentication.models import ActivityLog, ModulePermission, Role, User
-from core.permissions import IsCompanyAdminOrSuperAdmin, IsSuperAdmin
+from core.permissions import (
+    HasModulePermission,
+    IsCompanyAdminOrSuperAdmin,
+    IsSuperAdmin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,13 +190,14 @@ class LogoutAPIView(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    required_permission = "authentication.read"
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
     def get_permissions(self):
         if self.action in ["create", "toggle_active", "reset_password", "destroy"]:
-            return [IsCompanyAdminOrSuperAdmin()]
-        return [permissions.IsAuthenticated()]
+            return [IsCompanyAdminOrSuperAdmin(), HasModulePermission()]
+        return [permissions.IsAuthenticated(), HasModulePermission()]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -290,12 +295,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class RoleViewSet(viewsets.ModelViewSet):
+    required_permission = "authentication.read"
     serializer_class = RoleSerializer
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsCompanyAdminOrSuperAdmin()]
-        return [permissions.IsAuthenticated()]
+            return [IsCompanyAdminOrSuperAdmin(), HasModulePermission()]
+        return [permissions.IsAuthenticated(), HasModulePermission()]
 
     def get_queryset(self):
         user = self.request.user
@@ -315,13 +321,14 @@ class RoleViewSet(viewsets.ModelViewSet):
 
 
 class ModulePermissionViewSet(viewsets.ModelViewSet):
+    required_permission = "authentication.read"
     serializer_class = ModulePermissionSerializer
     queryset = ModulePermission.objects.all()
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsSuperAdmin()]
-        return [permissions.IsAuthenticated()]
+            return [IsSuperAdmin(), HasModulePermission()]
+        return [permissions.IsAuthenticated(), HasModulePermission()]
 
     def get_queryset(self):
         user = self.request.user
@@ -339,7 +346,9 @@ class ModulePermissionViewSet(viewsets.ModelViewSet):
 
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+    required_permission = "authentication.read"
     serializer_class = ActivityLogSerializer
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     def get_queryset(self):
         user = self.request.user

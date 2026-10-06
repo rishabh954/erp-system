@@ -135,6 +135,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.AuditLogMiddleware',
     'core.middleware.TenantMiddleware',
+    'core.middleware.ModulePermissionMiddleware',
     'core.middleware.RequestLoggingMiddleware',
     'core.middleware.ActiveUserMiddleware',
     'apps.authentication.middleware.SecurityMiddleware',

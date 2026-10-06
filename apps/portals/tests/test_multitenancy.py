@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 from django.urls import reverse
 
+from apps.authentication.models import User, UserCompany
 from apps.crm.models import Customer
 from apps.purchase.models import PurchaseOrder, Vendor
 from apps.sales.models import SalesOrder
@@ -18,13 +19,33 @@ def company_b():
 
 @pytest.fixture
 def customer_a(company):
-    user = UserFactory(email="cust_a@test.com", primary_company=company)
+    user = UserFactory(
+        email="cust_a@test.com",
+        primary_company=company,
+        role=User.Role.CUSTOMER_PORTAL,
+    )
+    UserCompany.objects.create(
+        user=user,
+        company=company,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     return Customer.objects.create(company=company, name="Customer A", portal_user=user)
 
 
 @pytest.fixture
 def customer_b(company_b):
-    user = UserFactory(email="cust_b@test.com", primary_company=company_b)
+    user = UserFactory(
+        email="cust_b@test.com",
+        primary_company=company_b,
+        role=User.Role.CUSTOMER_PORTAL,
+    )
+    UserCompany.objects.create(
+        user=user,
+        company=company_b,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     return Customer.objects.create(
         company=company_b, name="Customer B", portal_user=user
     )
@@ -32,7 +53,17 @@ def customer_b(company_b):
 
 @pytest.fixture
 def vendor_a(company):
-    user = UserFactory(email="vendor_a@test.com", primary_company=company)
+    user = UserFactory(
+        email="vendor_a@test.com",
+        primary_company=company,
+        role=User.Role.CUSTOMER_PORTAL,
+    )
+    UserCompany.objects.create(
+        user=user,
+        company=company,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     return Vendor.objects.create(
         company=company, name="Vendor A", portal_user=user, email="vendor_a@test.com"
     )
@@ -40,7 +71,17 @@ def vendor_a(company):
 
 @pytest.fixture
 def vendor_b(company_b):
-    user = UserFactory(email="vendor_b@test.com", primary_company=company_b)
+    user = UserFactory(
+        email="vendor_b@test.com",
+        primary_company=company_b,
+        role=User.Role.CUSTOMER_PORTAL,
+    )
+    UserCompany.objects.create(
+        user=user,
+        company=company_b,
+        role=User.Role.CUSTOMER_PORTAL,
+        is_active=True,
+    )
     return Vendor.objects.create(
         company=company_b, name="Vendor B", portal_user=user, email="vendor_b@test.com"
     )

@@ -1,4 +1,9 @@
 
+from rest_framework.permissions import IsAuthenticated
+
+from core.permissions import HasModulePermission
+
+
 class TenantScopedViewSetMixin:
     """
     Mixin for DRF ViewSets to enforce strict tenant isolation.
@@ -6,6 +11,8 @@ class TenantScopedViewSetMixin:
     (or request.user.companies if multi-company accessible), avoiding dependency on middleware.
     Returns an empty queryset if user or company is missing.
     """
+
+    permission_classes = [IsAuthenticated, HasModulePermission]
 
     def get_queryset(self):
         qs = super().get_queryset()

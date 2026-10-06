@@ -3,6 +3,7 @@ from django.views.generic import TemplateView
 
 
 class APIExplorerView(LoginRequiredMixin, TemplateView):
+    required_permission = "dashboard.read"
     template_name = "api/explorer.html"
 
     def get_context_data(self, **kwargs):

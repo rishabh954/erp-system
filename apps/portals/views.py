@@ -137,7 +137,7 @@ class CustomerInvoiceListView(CustomerPortalMixin, TemplateView):
 
 
 class CustomerPaymentListView(CustomerPortalMixin, TemplateView):
-    required_permission = "portals.approve"
+    required_permission = "portals.read"
     template_name = "portals/customer_payments.html"
 
     def get_context_data(self, **kwargs):
@@ -481,7 +481,7 @@ class VendorBillListView(VendorPortalMixin, TemplateView):
 
 
 class VendorPaymentListView(VendorPortalMixin, TemplateView):
-    required_permission = "portals.approve"
+    required_permission = "portals.read"
     template_name = "portals/vendor_payments.html"
 
     def get_context_data(self, **kwargs):

@@ -15,7 +15,25 @@ from core.api.mixins import TenantScopedViewSetMixin
 from core.pagination import StandardResultsSetPagination
 
 
-class EmployeeViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class HRMSPermissionMixin:
+    required_permission = "hrms.read"
+
+    def get_required_permission(self, request=None):
+        action = getattr(self, "action", None)
+        if action == "create":
+            permission_action = "create"
+        elif action in {"update", "partial_update", "check_in", "check_out"}:
+            permission_action = "update"
+        elif action == "destroy":
+            permission_action = "delete"
+        elif action in {"approve", "reject", "process"}:
+            permission_action = "approve"
+        else:
+            permission_action = "read"
+        return f"hrms.{permission_action}"
+
+
+class EmployeeViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
     pagination_class = StandardResultsSetPagination
@@ -77,7 +95,7 @@ class EmployeeViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class AttendanceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+class AttendanceViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
     pagination_class = StandardResultsSetPagination
@@ -114,7 +132,7 @@ class AttendanceViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet)
         )
 
 
-class LeaveRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class LeaveRequestViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all()
     serializer_class = LeaveRequestSerializer
     pagination_class = StandardResultsSetPagination
@@ -149,7 +167,7 @@ class LeaveRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return Response({"status": "rejected"})
 
 
-class PayrollPeriodViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+class PayrollPeriodViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = PayrollPeriod.objects.all()
     serializer_class = PayrollPeriodSerializer
     pagination_class = StandardResultsSetPagination
@@ -171,7 +189,7 @@ class PayrollPeriodViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewS
         return Response({"status": "processing_started"})
 
 
-class PayslipViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+class PayslipViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Payslip.objects.all()
     serializer_class = PayslipSerializer
     pagination_class = StandardResultsSetPagination

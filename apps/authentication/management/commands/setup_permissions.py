@@ -30,7 +30,10 @@ class Command(BaseCommand):
             "portals",
             "analytics",
             "ai",
+            "authentication",
         ]
+
+        self_service = (False, True, True, False, False, False, False, False)
 
         # Define the basic matrix: role -> module -> permissions (create, read, update, delete, approve, export, import)
         # We will use a helper structure:
@@ -42,37 +45,45 @@ class Command(BaseCommand):
 
         matrix = {
             User.Role.HR_MANAGER: {
+                "authentication": self_service,
                 "hrms": (True, True, True, True, True, True, True, False),
                 "company": (False, True, False, False, False, False, False, False),
             },
             User.Role.FINANCE_MANAGER: {
+                "authentication": self_service,
                 "accounting": (True, True, True, True, True, True, True, False),
                 "sales": (False, True, False, False, True, True, False, False),
                 "purchase": (False, True, False, False, True, True, False, False),
                 "hrms": (False, True, False, False, False, True, False, False),  # Read payroll
             },
             User.Role.SALES_MANAGER: {
+                "authentication": self_service,
                 "sales": (True, True, True, True, True, True, True, False),
                 "crm": (True, True, True, True, True, True, True, False),
                 "pos": (True, True, True, True, True, True, True, False),
                 "inventory": (False, True, False, False, False, False, False, False),
             },
             User.Role.PURCHASE_MANAGER: {
+                "authentication": self_service,
                 "purchase": (True, True, True, True, True, True, True, False),
                 "inventory": (False, True, False, False, False, False, False, False),
                 "accounting": (False, True, False, False, False, False, False, False),
             },
             User.Role.INVENTORY_MANAGER: {
+                "authentication": self_service,
                 "inventory": (True, True, True, True, True, True, True, False),
                 "purchase": (False, True, False, False, False, False, False, False),
                 "sales": (False, True, False, False, False, False, False, False),
             },
             User.Role.PROJECT_MANAGER: {
+                "authentication": self_service,
                 "projects": (True, True, True, True, True, True, True, False),
                 "crm": (False, True, False, False, False, False, False, False),
                 "hrms": (False, True, False, False, False, False, False, False),
             },
             User.Role.EMPLOYEE: {
+                "authentication": self_service,
+                "portals": (False, True, True, False, False, False, False, False),
                 "hrms": (
                     False,
                     True,
@@ -97,6 +108,8 @@ class Command(BaseCommand):
                 "company": (False, True, False, False, False, False, False, False),
             },
             User.Role.CUSTOMER_PORTAL: {
+                "authentication": self_service,
+                "portals": (True, True, True, False, False, False, False, False),
                 "sales": (
                     False,
                     True,

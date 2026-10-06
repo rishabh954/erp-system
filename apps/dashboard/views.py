@@ -16,6 +16,8 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import HasModulePermission
+
 
 def get_period_dates(period="month"):
     today = timezone.localdate()
@@ -49,7 +51,7 @@ class CEODashboardAPIView(APIView):
             elif request.method == "DELETE":
                 return "dashboard.delete"
         return self.required_permission
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
@@ -306,7 +308,7 @@ class HRDashboardAPIView(APIView):
             elif request.method == "DELETE":
                 return "dashboard.delete"
         return self.required_permission
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
@@ -386,7 +388,7 @@ class SalesDashboardAPIView(APIView):
             elif request.method == "DELETE":
                 return "dashboard.delete"
         return self.required_permission
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
@@ -447,7 +449,7 @@ class FinanceDashboardAPIView(APIView):
             elif request.method == "DELETE":
                 return "dashboard.delete"
         return self.required_permission
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     @method_decorator(cache_page(60 * 15))
     def get(self, request):
@@ -517,7 +519,7 @@ class GlobalSearchAPIView(APIView):
             elif request.method == "DELETE":
                 return "dashboard.delete"
         return self.required_permission
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
     def get(self, request):
         q = request.query_params.get("q", "").strip()

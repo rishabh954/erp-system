@@ -1,3 +1,4 @@
+from django.http import HttpResponseForbidden
 from django.utils import timezone
 
 
@@ -148,6 +149,49 @@ class TenantMiddleware:
         # No deterministic company found; leave as None (views/services must enforce checks)
         request.company = None
         return self.get_response(request)
+
+
+class ModulePermissionMiddleware:
+    """Enforce module permissions declared by class-based views and ViewSets."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        # DRF authenticates inside APIView.dispatch, after Django middleware.
+        view_class = getattr(view_func, "view_class", None)
+        if view_class is None:
+            return None
+
+        view_initkwargs = getattr(view_func, "view_initkwargs", None) or getattr(
+            view_func, "initkwargs", {}
+        )
+        view = view_class(**view_initkwargs)
+        view.setup(request, *view_args, **view_kwargs)
+        view.action_map = getattr(view_func, "actions", {})
+        view.action = view.action_map.get(request.method.lower())
+
+        get_required_permission = getattr(view, "get_required_permission", None)
+        if callable(get_required_permission):
+            required_permission = get_required_permission(request)
+        else:
+            required_permission = getattr(view_class, "required_permission", None)
+
+        if not required_permission:
+            return None
+        if not request.user.is_authenticated:
+            return None
+
+        permission_parts = required_permission.split(".")
+        if len(permission_parts) != 2:
+            return HttpResponseForbidden()
+        module, action = permission_parts
+        if not request.user.has_module_permission(module, action):
+            return HttpResponseForbidden()
+        return None
 
 
 class ActiveUserMiddleware:

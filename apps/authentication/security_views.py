@@ -12,6 +12,7 @@ from apps.authentication.models import IPRestriction, LoginHistory, UserSession
 
 
 class SecurityDashboardView(LoginRequiredMixin, TemplateView):
+    required_permission = "authentication.read"
     template_name = "authentication/security_dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -23,6 +24,7 @@ class SecurityDashboardView(LoginRequiredMixin, TemplateView):
 
 
 class TwoFactorSetupView(LoginRequiredMixin, View):
+    required_permission = "authentication.update"
     template_name = "authentication/2fa_setup.html"
 
     def get(self, request):
