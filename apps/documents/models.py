@@ -3,6 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.documents.validators import validate_document_file
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
 
 # ═══════════════════════════════ DOCUMENT MANAGEMENT ══════════════════════════
@@ -43,9 +44,11 @@ class Document(CompanyScoped, SequenceMixin, NotesMixin):
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.DRAFT
     )
-    file = models.FileField(upload_to="documents/%Y/%m/")
+    file = models.FileField(
+        upload_to="documents/%Y/%m/", validators=[validate_document_file]
+    )
     file_size = models.PositiveIntegerField(default=0)
-    file_type = models.CharField(max_length=50, blank=True)
+    file_type = models.CharField(max_length=127, blank=True)
     version = models.CharField(max_length=20, default="1.0")
     tags = models.JSONField(default=list)
     is_public = models.BooleanField(default=False)
@@ -69,7 +72,9 @@ class DocumentVersion(CompanyScoped):
         Document, on_delete=models.CASCADE, related_name="versions"
     )
     version = models.CharField(max_length=20)
-    file = models.FileField(upload_to="documents/versions/%Y/%m/")
+    file = models.FileField(
+        upload_to="documents/versions/%Y/%m/", validators=[validate_document_file]
+    )
     change_notes = models.TextField(blank=True)
     file_size = models.PositiveIntegerField(default=0)
     uploaded_by = models.ForeignKey("authentication.User", on_delete=models.PROTECT)

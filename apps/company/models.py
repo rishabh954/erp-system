@@ -6,6 +6,7 @@ Multi-company, multi-branch, departments, fiscal years, currency, tax
 import uuid
 
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 from core.models import (
@@ -34,6 +35,7 @@ class Company(SoftDeleteModel, AddressMixin, ContactMixin):
         SUSPENDED = "suspended", _("Suspended")
 
     name = models.CharField(max_length=255, db_index=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
     parent = models.ForeignKey(
         "self",
         null=True,
@@ -131,6 +133,19 @@ class Company(SoftDeleteModel, AddressMixin, ContactMixin):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)[:90] or "company"
+            candidate = base_slug
+            suffix = 2
+            while type(self)._base_manager.filter(slug=candidate).exclude(
+                pk=self.pk
+            ).exists():
+                candidate = f"{base_slug[:89]}-{suffix}"
+                suffix += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
 
     def get_all_subsidiary_ids(self):
         """Recursively fetch ordered IDs of all child subsidiaries (including self)."""

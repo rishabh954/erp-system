@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, View
 
+from core.permissions import HttpMethodPermissionMixin
 from core.tenancy import get_active_company
 
 from .models import (
@@ -39,7 +40,30 @@ from .models import (
 )
 
 
-class AdminRequiredMixin(LoginRequiredMixin):
+class AdministrationPermissionMixin(HttpMethodPermissionMixin):
+    required_permission_module = "administration"
+
+    def get_required_permission(self, request=None):
+        if request and request.method.upper() == "POST":
+            action = request.POST.get("action")
+            if action in ("delete", "reject"):
+                return "administration.delete"
+            if action == "approve":
+                return "administration.approve"
+            if action in ("update", "uninstall"):
+                return "administration.update"
+            if action == "import":
+                return "administration.import"
+            if action == "export":
+                return "administration.export"
+
+            configured_permission = getattr(self, "required_permission", None)
+            if configured_permission and configured_permission != "administration.read":
+                return configured_permission
+        return super().get_required_permission(request)
+
+
+class AdminRequiredMixin(LoginRequiredMixin, AdministrationPermissionMixin):
     """Only company admins / super admins can access Administration Center."""
 
     def dispatch(self, request, *args, **kwargs):
@@ -224,7 +248,7 @@ class AdminDashboardView(AdminRequiredMixin, TemplateView):
         return ctx
 
 
-class HRManagerOrAdminMixin(LoginRequiredMixin):
+class HRManagerOrAdminMixin(LoginRequiredMixin, AdministrationPermissionMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
@@ -402,7 +426,7 @@ class EmailConfigDeleteView(AdminRequiredMixin, View):
 
 
 class EmailConfigTestView(AdminRequiredMixin, View):
-    required_permission = "administration.read"
+    required_permission = "administration.update"
     """Send a test email to the authenticated user."""
 
     def post(self, request, pk):
@@ -1011,38 +1035,51 @@ class PendingUserApprovalListView(AdminRequiredMixin, View):
     def get(self, request):
         from apps.authentication.models import User
 
-        if request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser:
-            pending_users = User.objects.filter(is_active=False).order_by(
-                "-date_joined"
-            )
-        else:
-            pending_users = User.objects.filter(
-                is_active=False, companies=self.company
-            ).order_by("-date_joined")
+        pending_users = User.objects.filter(
+            is_active=False, is_rejected=False
+        ).order_by("-date_joined")
+        if not request.user.is_superuser:
+            pending_users = pending_users.filter(companies=self.company)
         return render(request, self.template_name, {"pending_users": pending_users})
 
 
 class PendingUserApprovalActionView(AdminRequiredMixin, View):
-    required_permission = "administration.read"
-    def post(self, request, pk):
-        from apps.authentication.models import User
+    required_permission = "administration.approve"
 
-        if request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser:
+    def get_required_permission(self, request=None):
+        if request and request.method.upper() == "POST":
+            if request.POST.get("action") == "reject":
+                return "administration.delete"
+            return "administration.approve"
+        return "administration.read"
+
+    def post(self, request, pk):
+        from apps.authentication.models import User, UserCompany
+
+        if request.user.is_superuser:
             user = get_object_or_404(User, pk=pk, is_active=False)
         else:
             user = get_object_or_404(
-                User, pk=pk, companies=self.company, is_active=False
+                User, pk=pk, companies=self.company, is_active=False, is_rejected=False
             )
 
         action = request.POST.get("action")
 
         if action == "approve":
             user.is_active = True
-            # Auto-assign to admin's company if they have none
-            if not user.companies.exists() and self.company:
-                user.companies.add(self.company)
+            if self.company:
+                membership, _ = UserCompany.objects.get_or_create(
+                    user=user,
+                    company=self.company,
+                    defaults={"role": User.Role.EMPLOYEE, "is_active": False},
+                )
+                membership.is_active = True
+                membership.save(update_fields=["is_active"])
+            if not user.primary_company and self.company:
                 user.primary_company = self.company
-            user.save()
+                user.save(update_fields=["is_active", "primary_company"])
+            else:
+                user.save(update_fields=["is_active"])
             ActivityLog.objects.create(
                 user=request.user,
                 company=self.company,
@@ -1053,14 +1090,20 @@ class PendingUserApprovalActionView(AdminRequiredMixin, View):
             messages.success(request, f"User {user.email} approved successfully.")
         elif action == "reject":
             email = user.email
-            user.delete()
+            user.is_active = False
+            user.is_rejected = True
+            user.save(update_fields=["is_active", "is_rejected"])
+            if self.company:
+                UserCompany.objects.filter(user=user, company=self.company).update(
+                    is_active=False
+                )
             ActivityLog.objects.create(
                 user=request.user,
                 company=self.company,
                 activity_type=ActivityLog.ActivityType.SETTINGS_CHANGE,
                 module="auth",
-                description=f"Rejected and deleted pending user: {email}",
+                description=f"Rejected pending user: {email}",
             )
-            messages.success(request, f"User {email} rejected and removed.")
+            messages.success(request, f"User {email} rejected.")
 
         return redirect("administration:pending_approvals")

@@ -6,6 +6,8 @@ Login, Register, Password Reset, Profile, 2FA
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
+from apps.company.models import Company
+
 from .models import User
 
 
@@ -24,6 +26,11 @@ class LoginForm(forms.Form):
 
 
 class RegisterForm(forms.ModelForm):
+    tenant_slug = forms.SlugField(
+        required=False,
+        label=_("Company tenant slug"),
+        help_text=_("Enter the slug provided by your company administrator."),
+    )
     password1 = forms.CharField(
         widget=forms.PasswordInput(attrs={"placeholder": "••••••••"}),
         label=_("Password"),
@@ -51,10 +58,22 @@ class RegisterForm(forms.ModelForm):
         return email
 
     def clean(self):
-        cd = super().clean()
-        if cd.get("password1") != cd.get("password2"):
+        cleaned_data = super().clean()
+        tenant_slug = cleaned_data.get("tenant_slug")
+        self.company = None
+        if tenant_slug:
+            self.company = Company.objects.filter(
+                slug=tenant_slug.lower(),
+                status__in=(Company.Status.ACTIVE, Company.Status.TRIAL),
+            ).first()
+            if not self.company:
+                self.add_error(
+                    "tenant_slug",
+                    _("No active company was found for this tenant slug."),
+                )
+        if cleaned_data.get("password1") != cleaned_data.get("password2"):
             self.add_error("password2", _("Passwords do not match."))
-        return cd
+        return cleaned_data
 
 
 class PasswordResetRequestForm(forms.Form):

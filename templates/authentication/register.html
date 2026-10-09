@@ -58,6 +58,15 @@
       </div>
 
       <div class="mb-3">
+        <label class="form-label" for="id_tenant_slug">Company tenant slug (optional)</label>
+        <input type="text" name="tenant_slug" id="id_tenant_slug"
+          class="form-control {% if form.tenant_slug.errors %}is-invalid{% endif %}"
+          placeholder="your-company"
+          value="{{ form.tenant_slug.value|default:'' }}">
+        {% if form.tenant_slug.errors %}<div class="invalid-feedback d-block">{{ form.tenant_slug.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="mb-3">
         <label class="form-label mb-1" for="id_password1">Password</label>
         <div style="position:relative">
           <i class="fas fa-lock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>

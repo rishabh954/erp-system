@@ -3,18 +3,22 @@ Document Management Views
 Upload, Categories, Version Control, Approval Workflow
 """
 
-import os
+from pathlib import PurePosixPath
+from urllib.parse import quote
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import FileResponse, Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import content_disposition_header
 from django.views.generic import DetailView, ListView, View
 
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
 from .models import Document, DocumentCategory, DocumentVersion
+from .validators import get_document_file_type
 
 
 class DocumentListView(CompanyMixin, ListView):
@@ -117,14 +121,30 @@ class DocumentUploadView(CompanyMixin, View):
             return redirect("documents:upload")
 
         try:
+            file_type = get_document_file_type(file)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+            return redirect("documents:upload")
+
+        category_id = data.get("category")
+        category = None
+        if category_id:
+            category = DocumentCategory.objects.filter(
+                pk=category_id, company=company, is_deleted=False
+            ).first()
+            if not category:
+                messages.error(request, "Select a valid document category.")
+                return redirect("documents:upload")
+
+        try:
             doc = Document(
                 company=company,
                 title=data.get("title") or file.name,
-                category_id=data.get("category") or None,
+                category=category,
                 description=data.get("description", ""),
                 file=file,
                 file_size=file.size,
-                file_type=file.content_type or "",
+                file_type=file_type,
                 version=data.get("version", "1.0"),
                 status=data.get("status", "draft"),
                 is_public=data.get("is_public") == "on",
@@ -169,6 +189,12 @@ class DocumentNewVersionView(CompanyMixin, View):
             return redirect("documents:detail", pk=pk)
 
         try:
+            file_type = get_document_file_type(file)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+            return redirect("documents:detail", pk=pk)
+
+        try:
             # Bump version
             parts = doc.version.split(".")
             parts[-1] = str(int(parts[-1]) + 1)
@@ -187,7 +213,8 @@ class DocumentNewVersionView(CompanyMixin, View):
             doc.file = file
             doc.version = new_version
             doc.file_size = file.size
-            doc.save(update_fields=["file", "version", "file_size"])
+            doc.file_type = file_type
+            doc.save(update_fields=["file", "version", "file_size", "file_type"])
 
             messages.success(request, f"Version {new_version} uploaded.")
         except Exception as e:
@@ -234,20 +261,33 @@ class DocumentDownloadView(CompanyMixin, View):
             Document, pk=pk, company=self.company(), is_deleted=False
         )
         if not doc.is_public and doc.created_by != request.user:
-            if request.user.role not in ("company_admin", "super_admin"):
+            role = request.user.get_role_for_company(self.company())
+            if not request.user.is_superuser and role not in (
+                "company_admin",
+                "super_admin",
+            ):
                 raise Http404
 
         if not doc.file:
             raise Http404
 
-        try:
-            response = FileResponse(doc.file.open("rb"))
-            response["Content-Disposition"] = (
-                f'attachment; filename="{os.path.basename(doc.file.name)}"'
-            )
-            return response
-        except FileNotFoundError:
+        file_name = doc.file.name
+        path_parts = PurePosixPath(file_name).parts
+        if (
+            "\\" in file_name
+            or not path_parts
+            or any(part in ("", ".", "..") for part in path_parts)
+        ):
             raise Http404
+        response = HttpResponse()
+        response["X-Accel-Redirect"] = (
+            f"/_protected_media/{quote(file_name, safe='/')}"
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            True, PurePosixPath(file_name).name
+        )
+        response["Content-Type"] = "application/octet-stream"
+        return response
 
 
 class DocumentCategoryCreateView(CompanyMixin, View):

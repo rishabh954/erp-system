@@ -33,6 +33,7 @@ from .models import (
     EmailVerificationToken,
     PasswordResetToken,
     User,
+    UserCompany,
     UserSession,
 )
 from .services import AuthService
@@ -234,7 +235,17 @@ class RegisterView(View):
         user = form.save(commit=False)
         user.is_active = False  # Require admin approval before login
         user.set_password(form.cleaned_data["password1"])
+        company = form.company
+        if company:
+            user.primary_company = company
         user.save()
+        if company:
+            UserCompany.objects.create(
+                user=user,
+                company=company,
+                role=User.Role.EMPLOYEE,
+                is_active=False,
+            )
 
         service = AuthService()
         service.send_email_verification(user, request)

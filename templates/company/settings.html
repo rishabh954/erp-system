@@ -59,6 +59,7 @@
             <div class="col-md-6">
               <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span></label>
               <input type="text" name="name" class="form-control" value="{{ company.name }}" required>
+              <div class="form-text">Signup tenant slug: <strong>{{ company.slug }}</strong></div>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Legal/Registered Name</label>
@@ -191,4 +192,3 @@
   });
 </script>
 {% endblock %}
-

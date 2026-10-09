@@ -69,6 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    is_rejected = models.BooleanField(default=False)
 
     # Multi-company
     companies = models.ManyToManyField(
