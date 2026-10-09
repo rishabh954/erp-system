@@ -764,7 +764,9 @@ class EmployeeSalaryCreateView(CompanyMixin, View):
         from apps.company.models import Currency
 
         curr = get_object_or_404(Currency, pk=data.get("currency"))
-        struct = get_object_or_404(SalaryStructure, pk=data.get("salary_structure"))
+        struct = get_object_or_404(
+            SalaryStructure, pk=data.get("salary_structure"), company=self.company()
+        )
 
         sal = EmployeeSalary(
             company=self.company(),

@@ -147,8 +147,12 @@ class WorkflowEngine:
         ]:
             raise ValueError("Workflow is not in an approvable state.")
 
+        role = user.get_role_for_company(instance.company)
+        if not user.is_superuser and role is None:
+            raise PermissionError("You are not an active member of this company.")
+
         approvers = cls.get_pending_approvers(instance)
-        is_admin = getattr(user, "role", "") in ("super_admin", "company_admin")
+        is_admin = user.is_superuser or role in ("super_admin", "company_admin")
 
         if user not in approvers and not is_admin:
             raise PermissionError("You are not authorised to reject this step.")
@@ -173,6 +177,16 @@ class WorkflowEngine:
     @classmethod
     def delegate(cls, instance, user, delegatee, comment: str = ""):
         """Delegate this step from `user` to `delegatee`."""
+        from apps.authentication.models import UserCompany
+
+        if not UserCompany.objects.filter(
+            user=delegatee,
+            company=instance.company,
+            is_active=True,
+            user__is_active=True,
+        ).exists():
+            raise PermissionError("The delegatee is not an active company member.")
+
         approvers = cls.get_pending_approvers(instance)
         if user not in approvers:
             raise PermissionError("Only pending approvers can delegate.")

@@ -85,7 +85,13 @@ class SavedReport(models.Model):
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="saved_reports"
     )
-    company_id = models.IntegerField(null=True, blank=True, db_index=True)
+    company = models.ForeignKey(
+        "company.Company",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="saved_reports",
+    )
     is_public = models.BooleanField(
         default=False, help_text="Visible to all users in the company"
     )

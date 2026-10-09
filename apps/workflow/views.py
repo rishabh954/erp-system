@@ -24,6 +24,7 @@ from apps.workflow.models import (
     WorkflowStep,
 )
 from core.mixins import CompanyMixin
+from core.tenancy import get_active_company
 
 logger = logging.getLogger(__name__)
 
@@ -392,7 +393,8 @@ class PendingApprovalsListView(CompanyMixin, ListView):
         result = []
         for inst in all_instances:
             approvers = WorkflowEngine.get_pending_approvers(inst)
-            is_admin = getattr(self.request.user, "role", "") in (
+            role = self.request.user.get_role_for_company(company)
+            is_admin = self.request.user.is_superuser or role in (
                 "super_admin",
                 "company_admin",
             )
@@ -419,7 +421,10 @@ class WorkflowActionAPIView(LoginRequiredMixin, View):
         delegatee_id = request.POST.get("delegatee_id")
 
         try:
-            instance = get_object_or_404(WorkflowInstance, pk=instance_id)
+            company = get_active_company(request)
+            instance = get_object_or_404(
+                WorkflowInstance, pk=instance_id, company=company
+            )
 
             if action == "approve":
                 WorkflowEngine.approve(instance, request.user, comment)
@@ -432,7 +437,14 @@ class WorkflowActionAPIView(LoginRequiredMixin, View):
             elif action == "delegate":
                 from apps.authentication.models import User
 
-                delegatee = get_object_or_404(User, pk=delegatee_id)
+                delegatee = get_object_or_404(
+                    User.objects.filter(
+                        usercompany__company=company,
+                        usercompany__is_active=True,
+                        is_active=True,
+                    ),
+                    pk=delegatee_id,
+                )
                 WorkflowEngine.delegate(instance, request.user, delegatee, comment)
                 messages.success(
                     request, f"Approval delegated to {delegatee.get_full_name()}."
@@ -592,10 +604,19 @@ class ApprovalDelegationCreateView(CompanyMixin, View):
         data = request.POST
         from apps.authentication.models import User
 
-        delegatee = get_object_or_404(User, pk=data.get("delegatee"))
+        delegatee = get_object_or_404(
+            User.objects.filter(
+                usercompany__company=self.company(),
+                usercompany__is_active=True,
+                is_active=True,
+            ),
+            pk=data.get("delegatee"),
+        )
         workflow = None
         if data.get("workflow"):
-            workflow = WorkflowDefinition.objects.filter(pk=data["workflow"]).first()
+            workflow = get_object_or_404(
+                WorkflowDefinition, pk=data["workflow"], company=self.company()
+            )
 
         ApprovalDelegation.objects.create(
             company=self.company(),

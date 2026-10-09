@@ -8,6 +8,8 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
@@ -25,9 +27,27 @@ class ReportsMixin(LoginRequiredMixin):
     """Base mixin for all reporting views."""
 
     @property
-    def company_id(self):
+    def company(self):
         company = get_active_company(self.request)
-        return company.id if company else None
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        return company
+
+    @property
+    def company_id(self):
+        return self.company.pk
+
+    def get_saved_reports(self):
+        company = self.company
+        return SavedReport.objects.filter(
+            (Q(company=company) & (Q(created_by=self.request.user) | Q(is_public=True)))
+            | Q(company__isnull=True, created_by=self.request.user)
+        )
+
+    def get_scheduled_reports(self):
+        return ScheduledReport.objects.filter(
+            report__in=self.get_saved_reports(), created_by=self.request.user
+        )
 
 
 # ── Report Builder ─────────────────────────────────────────────────────────────
@@ -51,9 +71,7 @@ class ReportBuilderView(ReportsMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["modules"] = SavedReport.Module.choices
         ctx["chart_types"] = SavedReport.ChartType.choices
-        ctx["saved_reports"] = SavedReport.objects.filter(
-            created_by=self.request.user
-        ).order_by("-created_at")[:10]
+        ctx["saved_reports"] = self.get_saved_reports().order_by("-created_at")[:10]
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -81,7 +99,7 @@ class ReportBuilderView(ReportsMixin, TemplateView):
             pivot_col=data.get("pivot_col", ""),
             pivot_value=data.get("pivot_value", ""),
             created_by=request.user,
-            company_id=self.company_id,
+            company=self.company,
             is_public=data.get("is_public") == "on",
         )
         messages.success(request, f"Report '{report.name}' saved successfully!")
@@ -108,9 +126,7 @@ class SavedReportsListView(ReportsMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return SavedReport.objects.filter(created_by=self.request.user).order_by(
-            "-created_at"
-        )
+        return self.get_saved_reports().order_by("-created_at")
 
 
 class ExecutionLogListView(ReportsMixin, ListView):
@@ -131,7 +147,7 @@ class ExecutionLogListView(ReportsMixin, ListView):
 
     def get_queryset(self):
         return ReportExecution.objects.filter(
-            report__created_by=self.request.user
+            report__in=self.get_saved_reports(), triggered_by=self.request.user
         ).order_by("-started_at")
 
 
@@ -154,7 +170,7 @@ class ReportDetailView(ReportsMixin, DetailView):
     context_object_name = "report"
 
     def get_object(self):
-        return get_object_or_404(SavedReport, pk=self.kwargs["pk"])
+        return get_object_or_404(self.get_saved_reports(), pk=self.kwargs["pk"])
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -207,8 +223,12 @@ class ReportDetailView(ReportsMixin, DetailView):
                 data, report.pivot_row, report.pivot_col, report.pivot_value
             )
 
-        ctx["schedules"] = report.schedules.filter(is_active=True)
-        ctx["executions"] = report.executions.order_by("-started_at")[:10]
+        ctx["schedules"] = report.schedules.filter(
+            is_active=True, created_by=self.request.user
+        )
+        ctx["executions"] = report.executions.filter(
+            triggered_by=self.request.user
+        ).order_by("-started_at")[:10]
         return ctx
 
 
@@ -230,7 +250,7 @@ class ReportExportView(ReportsMixin, View):
     """Handle CSV, Excel, PDF export for a saved report."""
 
     def get(self, request, pk, fmt):
-        report = get_object_or_404(SavedReport, pk=pk)
+        report = get_object_or_404(self.get_saved_reports(), pk=pk)
         data = get_data(
             module=report.module,
             company_id=self.company_id,
@@ -330,7 +350,7 @@ class ReportDataAPIView(ReportsMixin, View):
     """Returns report data as JSON for dynamic chart rendering."""
 
     def get(self, request, pk):
-        report = get_object_or_404(SavedReport, pk=pk)
+        report = get_object_or_404(self.get_saved_reports(), pk=pk)
         page = int(request.GET.get("page", 1))
         page_size = int(request.GET.get("page_size", 50))
         offset = (page - 1) * page_size
@@ -615,7 +635,7 @@ class ScheduleReportView(ReportsMixin, View):
     """Create or update a report schedule."""
 
     def post(self, request, pk):
-        report = get_object_or_404(SavedReport, pk=pk)
+        report = get_object_or_404(self.get_saved_reports(), pk=pk)
         data = request.POST
         schedule = ScheduledReport.objects.create(
             report=report,
@@ -637,7 +657,7 @@ class ScheduleReportView(ReportsMixin, View):
 class ScheduleDeleteView(ReportsMixin, View):
     required_permission = "analytics.delete"
     def post(self, request, pk):
-        schedule = get_object_or_404(ScheduledReport, pk=pk)
+        schedule = get_object_or_404(self.get_scheduled_reports(), pk=pk)
         report_pk = schedule.report_id
         schedule.delete()
         messages.success(request, "Schedule removed.")
@@ -664,17 +684,17 @@ class AnalyticsDashboardView(ReportsMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        ctx["saved_reports"] = SavedReport.objects.filter(created_by=user).order_by(
-            "-updated_at"
-        )[:8]
+        ctx["saved_reports"] = self.get_saved_reports().order_by("-updated_at")[:8]
         ctx["recent_executions"] = (
-            ReportExecution.objects.filter(triggered_by=user)
+            ReportExecution.objects.filter(
+                report__in=self.get_saved_reports(), triggered_by=user
+            )
             .select_related("report")
             .order_by("-started_at")[:10]
         )
         ctx["modules"] = SavedReport.Module.choices
-        ctx["scheduled_count"] = ScheduledReport.objects.filter(
-            created_by=user, is_active=True
+        ctx["scheduled_count"] = self.get_scheduled_reports().filter(
+            is_active=True
         ).count()
         return ctx
 
@@ -685,7 +705,7 @@ class AnalyticsDashboardView(ReportsMixin, TemplateView):
 class ReportDeleteView(ReportsMixin, View):
     required_permission = "analytics.delete"
     def post(self, request, pk):
-        report = get_object_or_404(SavedReport, pk=pk, created_by=request.user)
+        report = get_object_or_404(self.get_saved_reports(), pk=pk)
         report.delete()
         messages.success(request, f"Report '{report.name}' deleted.")
         return redirect("analytics:saved_reports")
@@ -697,9 +717,7 @@ class ReportBulkDeleteView(ReportsMixin, View):
         pks = request.POST.get("pks", "")
         pk_list = [pk.strip() for pk in pks.split(",") if pk.strip()]
         if pk_list:
-            deleted, _ = SavedReport.objects.filter(
-                pk__in=pk_list, created_by=request.user
-            ).delete()
+            deleted, _ = self.get_saved_reports().filter(pk__in=pk_list).delete()
             messages.success(request, f"Successfully deleted {deleted} reports.")
         return redirect("analytics:saved_reports")
 

@@ -139,13 +139,22 @@ class TicketCreateView(CompanyMixin, View):
     def post(self, request):
         data = request.POST
         company = self.company()
+        category_id = data.get("category") or None
+        category = None
+        if category_id:
+            category = get_object_or_404(
+                TicketCategory,
+                pk=category_id,
+                company=company,
+                is_active=True,
+                is_deleted=False,
+            )
         try:
-            category_id = data.get("category") or None
             ticket = Ticket(
                 company=company,
                 title=data["title"],
                 description=data["description"],
-                category_id=category_id,
+                category=category,
                 requester=request.user,
                 priority=data.get("priority", "medium"),
                 source=data.get("source", "portal"),
@@ -156,17 +165,14 @@ class TicketCreateView(CompanyMixin, View):
             )
 
             # Set SLA due time
-            if category_id:
-                try:
-                    cat = TicketCategory.objects.get(pk=category_id)
-                    from datetime import timedelta
+            if category:
+                from datetime import timedelta
 
-                    ticket.sla_due_at = timezone.now() + timedelta(hours=cat.sla_hours)
-                    # Auto-assign if configured
-                    if cat.auto_assign_to:
-                        ticket.assigned_to = cat.auto_assign_to
-                except TicketCategory.DoesNotExist:
-                    pass
+                ticket.sla_due_at = timezone.now() + timedelta(
+                    hours=category.sla_hours
+                )
+                if category.auto_assign_to:
+                    ticket.assigned_to = category.auto_assign_to
 
             ticket.save()
             messages.success(request, f"Ticket {ticket.number} created.")
