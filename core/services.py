@@ -171,25 +171,31 @@ class BaseService:
     def generate_sequence_number(
         prefix: str, model_class, company_id, field_name: str = "number"
     ) -> str:
-        """Thread-safe sequence number generation."""
+        """Atomically reserve the next numeric suffix for a company and prefix."""
+        from apps.company.models import SequenceCounter
+
         with transaction.atomic():
-            filter_kwargs = {
-                "company_id": company_id,
-                f"{field_name}__startswith": f"{prefix}-",
-            }
-            last = (
-                model_class.all_objects.select_for_update()
-                .filter(**filter_kwargs)
-                .order_by(f"-{field_name}")
-                .first()
+            counter, _ = SequenceCounter.objects.get_or_create(
+                company_id=company_id, prefix=prefix
             )
-            if last and getattr(last, field_name):
-                try:
-                    seq = int(getattr(last, field_name).split("-")[-1]) + 1
-                except (ValueError, IndexError):
-                    seq = 1
-            else:
-                seq = 1
+            counter = SequenceCounter.objects.select_for_update().get(pk=counter.pk)
+            manager = getattr(model_class, "all_objects", None)
+            if manager is None:
+                manager = model_class._base_manager
+            existing_numbers = manager.filter(
+                company_id=company_id,
+                **{f"{field_name}__startswith": f"{prefix}-"},
+            ).values_list(field_name, flat=True)
+            highest_suffix = 0
+            prefix_with_separator = f"{prefix}-"
+            for number in existing_numbers:
+                suffix = number[len(prefix_with_separator) :]
+                if suffix.isascii() and suffix.isdecimal():
+                    highest_suffix = max(highest_suffix, int(suffix))
+
+            counter.last_value = max(counter.last_value, highest_suffix) + 1
+            counter.save(update_fields=["last_value"])
+            seq = counter.last_value
             return f"{prefix}-{seq:05d}"
 
 

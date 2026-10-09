@@ -551,7 +551,7 @@ class DiscountRule(CompanyScoped):
 
 
 class Coupon(CompanyScoped):
-    code = models.CharField(max_length=50, unique=True, db_index=True)
+    code = models.CharField(max_length=50, db_index=True)
     discount_rule = models.ForeignKey(
         DiscountRule, on_delete=models.CASCADE, related_name="coupons"
     )
@@ -563,6 +563,11 @@ class Coupon(CompanyScoped):
 
     class Meta:
         db_table = "sales_coupons"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "code"], name="uniq_sales_coupon_company_code"
+            )
+        ]
 
     def __str__(self):
         return self.code
@@ -616,13 +621,18 @@ class ShipmentLine(models.Model):
 
 class ProductBundle(CompanyScoped):
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "sales_product_bundles"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "code"], name="uniq_sales_bundle_company_code"
+            )
+        ]
 
     def __str__(self):
         return self.name
@@ -805,4 +815,3 @@ class SalesReturnLine(models.Model):
     def save(self, *args, **kwargs):
         self.subtotal = self.quantity * self.unit_price
         super().save(*args, **kwargs)
-

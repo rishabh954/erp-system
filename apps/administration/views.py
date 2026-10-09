@@ -5,6 +5,7 @@ Centralized Administration Center: 27 modules in one place.
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, View
@@ -933,7 +934,12 @@ class SystemSettingsView(AdminRequiredMixin, View):
     template_name = "administration/system_settings.html"
 
     def get(self, request):
-        settings = SystemSetting.objects.all().order_by("category", "key")
+        company = get_active_company(request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        settings = SystemSetting.objects.filter(company=company).order_by(
+            "category", "key"
+        )
         by_category = {}
         for s in settings:
             by_category.setdefault(s.get_category_display(), []).append(s)
@@ -947,15 +953,21 @@ class SystemSettingsView(AdminRequiredMixin, View):
         )
 
     def post(self, request):
+        company = get_active_company(request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
         action = request.POST.get("action")
         if action == "update":
             for key, value in request.POST.items():
                 if key.startswith("setting_"):
                     setting_key = key[len("setting_") :]
-                    SystemSetting.objects.filter(key=setting_key).update(value=value)
+                    SystemSetting.objects.filter(
+                        company=company, key=setting_key
+                    ).update(value=value)
             messages.success(request, "System settings updated.")
         elif action == "create":
             SystemSetting.objects.get_or_create(
+                company=company,
                 key=request.POST.get("key"),
                 defaults={
                     "value": request.POST.get("value", ""),

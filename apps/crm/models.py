@@ -148,6 +148,11 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
     class Meta:
         db_table = "crm_leads"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "number"], name="uniq_crm_lead_company_number"
+            )
+        ]
 
     def __str__(self):
         return f"{self.number} | {self.name}"
@@ -191,6 +196,12 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        if not self.number:
+            from core.services import BaseService
+
+            self.number = BaseService.generate_sequence_number(
+                "LD", type(self), self.company_id
+            )
 
         # Only auto-calculate if we're not explicitly updating specific fields that exclude lead_score
         update_fields = kwargs.get("update_fields")
@@ -292,9 +303,24 @@ class Customer(CompanyScoped, AddressMixin, ContactMixin, NotesMixin):
 
     class Meta:
         db_table = "crm_customers"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "customer_code"],
+                name="uniq_crm_customer_company_code",
+            )
+        ]
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.customer_code:
+            from core.services import BaseService
+
+            self.customer_code = BaseService.generate_sequence_number(
+                "CUST", type(self), self.company_id, field_name="customer_code"
+            )
+        super().save(*args, **kwargs)
 
     @property
     def outstanding_balance(self):

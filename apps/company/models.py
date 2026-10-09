@@ -3,6 +3,8 @@ Company Management Models
 Multi-company, multi-branch, departments, fiscal years, currency, tax
 """
 
+import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -216,6 +218,25 @@ class Branch(SoftDeleteModel, AddressMixin, ContactMixin):
 
     def __str__(self):
         return f"{self.company.name} — {self.name}"
+
+
+class SequenceCounter(models.Model):
+    """Persisted numeric counter for one company and document prefix."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="sequence_counters"
+    )
+    prefix = models.CharField(max_length=50)
+    last_value = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        db_table = "company_sequence_counters"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "prefix"], name="uniq_company_sequence_prefix"
+            )
+        ]
 
 
 class Department(SoftDeleteModel):

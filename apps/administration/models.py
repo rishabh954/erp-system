@@ -6,7 +6,6 @@ Covers: Designations, Number Series, Approval Matrix, Communication Config,
 """
 
 import secrets
-import uuid
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -969,7 +968,7 @@ class CustomReport(CompanyScoped):
 
 
 class SystemSetting(UUIDModel):
-    """Global system-level key/value settings (not company-scoped)."""
+    """Key/value settings scoped to a company or left global when company is null."""
 
     class Category(models.TextChoices):
         GENERAL = "general", _("General")
@@ -978,7 +977,14 @@ class SystemSetting(UUIDModel):
         MAINTENANCE = "maintenance", _("Maintenance")
         LOCALIZATION = "localization", _("Localization")
 
-    key = models.CharField(max_length=200, unique=True, db_index=True)
+    key = models.CharField(max_length=200, db_index=True)
+    company = models.ForeignKey(
+        "company.Company",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="system_settings",
+    )
     value = models.TextField(blank=True)
     value_type = models.CharField(
         max_length=10,
@@ -1004,25 +1010,29 @@ class SystemSetting(UUIDModel):
     class Meta:
         db_table = "admin_system_settings"
         ordering = ["category", "key"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "key"], name="uniq_admin_setting_company_key"
+            )
+        ]
 
     def __str__(self):
         return f"{self.key} = {self.value if not self.is_sensitive else '***'}"
 
     @classmethod
-    def get(cls, key, default=None):
-        try:
-            obj = cls.objects.get(key=key)
-            if obj.value_type == "boolean":
-                return obj.value.lower() in ("true", "1", "yes")
-            elif obj.value_type == "integer":
-                return int(obj.value)
-            elif obj.value_type == "json":
-                import json
-
-                return json.loads(obj.value)
-            return obj.value
-        except cls.DoesNotExist:
+    def get(cls, key, default=None, company=None):
+        obj = cls.objects.filter(key=key, company=company).first()
+        if not obj:
             return default
+        if obj.value_type == "boolean":
+            return obj.value.lower() in ("true", "1", "yes")
+        elif obj.value_type == "integer":
+            return int(obj.value)
+        elif obj.value_type == "json":
+            import json
+
+            return json.loads(obj.value)
+        return obj.value
 
 
 class RolePermission(CompanyScoped):
