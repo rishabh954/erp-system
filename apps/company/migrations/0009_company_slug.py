@@ -33,12 +33,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='company',
             name='slug',
-            field=models.SlugField(blank=True, max_length=100),
+            field=models.SlugField(blank=True, db_index=False, max_length=100),
         ),
         migrations.RunPython(populate_company_slugs, migrations.RunPython.noop),
-        migrations.AlterField(
+        migrations.AddConstraint(
             model_name='company',
-            name='slug',
-            field=models.SlugField(blank=True, max_length=100, unique=True),
+            constraint=models.UniqueConstraint(
+                fields=('slug',), name='company_companies_slug_uniq'
+            ),
         ),
     ]

@@ -35,7 +35,7 @@ class Company(SoftDeleteModel, AddressMixin, ContactMixin):
         SUSPENDED = "suspended", _("Suspended")
 
     name = models.CharField(max_length=255, db_index=True)
-    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    slug = models.SlugField(max_length=100, blank=True, db_index=False)
     parent = models.ForeignKey(
         "self",
         null=True,
@@ -130,6 +130,9 @@ class Company(SoftDeleteModel, AddressMixin, ContactMixin):
         db_table = "company_companies"
         verbose_name = _("Company")
         verbose_name_plural = _("Companies")
+        constraints = [
+            models.UniqueConstraint(fields=["slug"], name="company_companies_slug_uniq")
+        ]
 
     def __str__(self):
         return self.name
