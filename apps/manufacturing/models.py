@@ -1,7 +1,6 @@
 import uuid
 
-from django.db import models
-from django.utils import timezone
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CompanyScoped, NotesMixin, SequenceMixin
@@ -189,18 +188,24 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
                         * self.quantity_to_produce,
                     )
 
+    @transaction.atomic
     def mark_done(self):
         if self.status in [self.Status.CONFIRMED, self.Status.IN_PROGRESS]:
-            self.status = self.Status.DONE
             self.quantity_produced = self.quantity_to_produce
-            self.save(update_fields=["status", "quantity_produced"])
             self._process_inventory_transfer()
+            self.status = self.Status.DONE
+            self.save(update_fields=["status", "quantity_produced"])
 
     def _process_inventory_transfer(self):
         """Automatically create inventory stock movements to consume raw materials and produce finished goods."""
         from decimal import Decimal
 
         from apps.inventory.models import StockMovement
+        from apps.inventory.services import StockService
+
+        if not self.warehouse_id:
+            raise ValueError("A warehouse is required to complete production.")
+        stock_service = StockService(company=self.company)
 
         # Consume raw materials (Stock out)
         for line in self.bom.lines.all():
@@ -212,25 +217,25 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
                     Decimal(line.scrap_percentage) / Decimal(100)
                 )
 
-            StockMovement.objects.create(
-                company=self.company,
+            stock_service.adjust_stock(
                 product=line.component,
                 warehouse=self.warehouse,
-                quantity=-qty_to_consume,
+                qty_input=qty_to_consume,
+                adjustment_type="remove",
                 movement_type=StockMovement.MovementType.PRODUCTION_OUT,
-                movement_date=self.updated_at.date() if self.updated_at else timezone.now().date(),
+                reference_type="ManufacturingOrder",
                 reference_id=f"MO-{self.number}",
                 notes=f"Consumed via BOM {self.bom.number}",
             )
 
         # Produce finished goods (Stock in)
-        StockMovement.objects.create(
-            company=self.company,
+        stock_service.adjust_stock(
             product=self.product,
             warehouse=self.warehouse,
-            quantity=self.quantity_produced,
+            qty_input=self.quantity_produced,
+            adjustment_type="add",
             movement_type=StockMovement.MovementType.PRODUCTION_IN,
-            movement_date=self.updated_at.date() if self.updated_at else timezone.now().date(),
+            reference_type="ManufacturingOrder",
             reference_id=f"MO-{self.number}",
             notes=f"Produced via BOM {self.bom.number}",
         )
@@ -307,28 +312,32 @@ class ScrapOrder(CompanyScoped, SequenceMixin, NotesMixin):
             self.number = BaseService.generate_sequence_number("SCRAP", self.__class__, self.company_id)
         super().save(*args, **kwargs)
 
+    @transaction.atomic
     def mark_done(self):
         if self.status == self.Status.DRAFT:
-            self.status = self.Status.DONE
-            self.save(update_fields=["status"])
-
-            # Create inventory adjustment for scrap
             from apps.inventory.models import StockMovement
+            from apps.inventory.services import StockService
 
-            StockMovement.objects.create(
-                company=self.company,
+            warehouse = (
+                self.manufacturing_order.warehouse
+                if self.manufacturing_order
+                else None
+            )
+            if not warehouse:
+                raise ValueError("A warehouse is required to complete a scrap order.")
+
+            StockService(company=self.company).adjust_stock(
                 product=self.product,
-                warehouse=(
-                    self.manufacturing_order.warehouse
-                    if self.manufacturing_order
-                    else None
-                ),
-                quantity=-self.quantity,
+                warehouse=warehouse,
+                qty_input=self.quantity,
+                adjustment_type="remove",
                 movement_type=StockMovement.MovementType.ADJUSTMENT,
-                movement_date=self.updated_at.date() if self.updated_at else None,
+                reference_type="ScrapOrder",
                 reference_id=self.number,
                 notes=f"Scrapped: {self.reason}",
             )
+            self.status = self.Status.DONE
+            self.save(update_fields=["status"])
 
 
 class DowntimeLog(CompanyScoped):

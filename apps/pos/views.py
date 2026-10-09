@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.http import JsonResponse
@@ -11,6 +12,16 @@ from apps.inventory.models import Product, ProductCategory, StockMovement, Wareh
 from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
 
 logger = logging.getLogger(__name__)
+
+
+def _to_decimal(value, field_name):
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} must be a valid decimal amount.") from exc
+    if not amount.is_finite():
+        raise ValueError(f"{field_name} must be a finite decimal amount.")
+    return amount
 
 
 class POSIndexView(CompanyMixin, View):
@@ -60,7 +71,9 @@ class POSIndexView(CompanyMixin, View):
                 {
                     "id": str(p.id),
                     "name": p.name,
-                    "price": float(p.sale_price),
+                    "price": str(p.sale_price),
+                    "sale_price": str(p.sale_price),
+                    "sku": p.sku,
                     "category_id": str(p.category.id) if p.category else None,
                     "image_url": p.image.url if p.image else None,
                 }
@@ -82,7 +95,9 @@ class POSCheckoutAPIView(CompanyMixin, View):
             session_id = data.get("session_id")
             cart = data.get("cart", [])
             payment_method = data.get("payment_method", "cash")
-            tendered = float(data.get("tendered", 0))
+            tendered = _to_decimal(data.get("tendered", 0), "Tendered amount")
+            if tendered < 0:
+                raise ValueError("Tendered amount cannot be negative.")
 
             if not cart:
                 return JsonResponse(
@@ -96,10 +111,19 @@ class POSCheckoutAPIView(CompanyMixin, View):
             with transaction.atomic():
                 # 1. Create Order
                 subtotal = sum(
-                    float(item["price"]) * float(item["qty"]) for item in cart
+                    (
+                        _to_decimal(item["price"], "Unit price")
+                        * _to_decimal(item["qty"], "Quantity")
+                        for item in cart
+                    ),
+                    Decimal("0"),
                 )
                 total = subtotal
-                change = max(0, tendered - total) if payment_method == "cash" else 0
+                change = (
+                    max(Decimal("0"), tendered - total)
+                    if payment_method == "cash"
+                    else Decimal("0")
+                )
 
                 order = POSOrder.objects.create(
                     company=self.company(),
@@ -114,8 +138,12 @@ class POSCheckoutAPIView(CompanyMixin, View):
 
                 for item in cart:
                     product = Product.objects.get(id=item["id"], company=self.company())
-                    qty = float(item["qty"])
-                    price = float(item["price"])
+                    qty = _to_decimal(item["qty"], "Quantity")
+                    price = _to_decimal(item["price"], "Unit price")
+                    if qty <= 0 or price < 0:
+                        raise ValueError(
+                            "Quantity must be positive and unit price cannot be negative."
+                        )
 
                     POSOrderLine.objects.create(
                         order=order,
@@ -166,6 +194,10 @@ class POSCheckoutAPIView(CompanyMixin, View):
             return JsonResponse(
                 {"status": "error", "message": "A product in the cart was not found."},
                 status=400,
+            )
+        except ValueError as exc:
+            return JsonResponse(
+                {"status": "error", "message": str(exc)}, status=400
             )
         except Exception:
             logger.error("POS checkout failed", exc_info=True)

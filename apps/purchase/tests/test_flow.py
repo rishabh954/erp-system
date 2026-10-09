@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
-from apps.purchase.models import Bill, GoodsReceipt, Payment, PurchaseOrder
+from apps.purchase.models import Bill, BillLine, GoodsReceipt, Payment, PurchaseOrder
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def purchase_flow_data(vendor, product, warehouse, tax):
         "payment_terms": "30",
         "product[]": [product.pk],
         "description[]": ["Test Product"],
-        "quantity[]": ["10"],
+        "quantity[]": ["1.25"],
         "unit_price[]": ["100.00"],
         "discount_percent[]": ["0"],
         "tax[]": [tax.pk],
@@ -66,7 +66,7 @@ def test_purchase_full_flow(
     receipt_data = {"warehouse": warehouse.pk, "notes": "Received fine"}
     # Add quantity for the line
     line = po.lines.first()
-    receipt_data[f"qty_{line.pk}"] = "10"
+    receipt_data[f"qty_{line.pk}"] = "1.25"
     receipt_data[f"batch_{line.pk}"] = "BATCH123"
 
     response = client.post(url, data=receipt_data)
@@ -86,6 +86,7 @@ def test_purchase_full_flow(
     bill = Bill.objects.first()
     assert bill is not None
     assert bill.status == Bill.Status.DRAFT
+    assert BillLine.objects.get(bill=bill).quantity == Decimal("1.25")
 
     # Let's open the bill
     bill.status = Bill.Status.OPEN

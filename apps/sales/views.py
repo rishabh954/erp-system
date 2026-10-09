@@ -1398,11 +1398,6 @@ class SalesDashboardView(CompanyMixin, TemplateView):
             company=c, status__in=["confirmed", "processing", "shipped"]
         ).count()
 
-        # Profit & Margin Analysis (Simplified: Assuming 40% average margin if COGS isn't strictly tracked)
-        profit = float(total_rev) * 0.40
-        ctx["profit_analysis"] = profit
-        ctx["margin_analysis"] = 40.0  # 40%
-
         # Sales Forecast (Sum of all sent/approved quotations)
         ctx["sales_forecast"] = (
             Quotation.objects.filter(
@@ -1471,7 +1466,12 @@ class POSAPIView(CompanyMixin, View):
             data = json.loads(request.body)
             customer_id = data.get("customer_id") or ""
             items = data.get("items", [])
-            amount_paid = float(data.get("amount_paid", 0))
+            amount_paid = Decimal(str(data.get("amount_paid", 0)))
+            if not amount_paid.is_finite() or amount_paid < 0:
+                return JsonResponse(
+                    {"success": False, "error": "Amount paid must be non-negative."},
+                    status=400,
+                )
             payment_method = data.get("payment_method", "cash")
 
             if not items:
@@ -1479,13 +1479,27 @@ class POSAPIView(CompanyMixin, View):
                     {"success": False, "error": "Cart is empty."}, status=400
                 )
 
-            from decimal import Decimal
-
-            from apps.company.models import Currency
-            from apps.crm.models import Customer
-            from apps.inventory.models import Product
-
             company = self.company()
+
+            prepared_items = []
+            for item in items:
+                product = Product.objects.get(pk=item["product_id"], company=company)
+                quantity = Decimal(str(item["quantity"]))
+                price = Decimal(str(item["price"]))
+                if not quantity.is_finite() or quantity <= 0:
+                    return JsonResponse(
+                        {"success": False, "error": "Quantity must be positive."},
+                        status=400,
+                    )
+                if not price.is_finite() or price < 0:
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "error": "Unit price must be non-negative.",
+                        },
+                        status=400,
+                    )
+                prepared_items.append((product, quantity, price))
 
             # ── Customer ─────────────────────────────────────────────────────
             if customer_id:
@@ -1520,10 +1534,7 @@ class POSAPIView(CompanyMixin, View):
             )
 
             # ── Create Invoice Lines ──────────────────────────────────────────
-            for item in items:
-                prod = Product.objects.get(pk=item["product_id"], company=company)
-                qty = Decimal(str(item["quantity"]))
-                price = Decimal(str(item["price"]))
+            for prod, qty, price in prepared_items:
                 subtotal = qty * price
                 InvoiceLine.objects.create(
                     invoice=invoice,
@@ -1548,7 +1559,7 @@ class POSAPIView(CompanyMixin, View):
                     company=company,
                     invoice=invoice,
                     customer=customer,
-                    amount=Decimal(str(amount_paid)),
+                    amount=amount_paid,
                     currency=currency,
                     payment_date=timezone.localdate(),
                     method=payment_method,
@@ -1558,14 +1569,14 @@ class POSAPIView(CompanyMixin, View):
                 invoice.refresh_from_db()
                 invoice.update_balance()
 
-            change_due = max(0, amount_paid - float(invoice.total))
+            change_due = max(Decimal("0"), amount_paid - invoice.total)
 
             return JsonResponse(
                 {
                     "success": True,
                     "invoice_id": str(invoice.pk),
                     "invoice_number": invoice.number,
-                    "invoice_total": float(invoice.total),
+                    "invoice_total": invoice.total,
                     "amount_paid": amount_paid,
                     "change_due": round(change_due, 2),
                 }

@@ -346,19 +346,19 @@ class PurchaseOrderService(BaseService):
 
         lines_created = 0
         for line in order.lines.all():
-            qty_to_bill = float(line.qty_received) - float(line.qty_invoiced)
+            qty_to_bill = line.qty_received - line.qty_invoiced
             if qty_to_bill <= 0:
                 continue
             BillLine.objects.create(
                 bill=bill,
                 product=line.product,
                 description=line.description,
-                quantity=Decimal(str(qty_to_bill)),
+                quantity=qty_to_bill,
                 unit_price=line.unit_price,
                 discount_percent=line.discount_percent,
                 tax=line.tax,
             )
-            line.qty_invoiced += Decimal(str(qty_to_bill))
+            line.qty_invoiced += qty_to_bill
             line.save(update_fields=["qty_invoiced"])
             lines_created += 1
 
@@ -697,7 +697,6 @@ class ThreeWayMatchingService(BaseService):
 
     @classmethod
     def verify_bill(cls, bill):
-        from decimal import Decimal
         from apps.purchase.models import Bill, GoodsReceiptLine
 
         po = bill.purchase_order
@@ -788,4 +787,3 @@ class ThreeWayMatchingService(BaseService):
         bill.mismatch_override_reason = reason.strip()
         bill.save(update_fields=["matching_status", "mismatch_override_by", "mismatch_override_reason"])
         return bill
-

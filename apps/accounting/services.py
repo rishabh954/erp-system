@@ -1,9 +1,47 @@
+from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 
 from core.services import BaseService
 
 from .models import Account, Journal, JournalEntry, JournalItem
+
+
+def get_open_fiscal_year(company, posting_date, fiscal_year_id=None):
+    from apps.company.models import FiscalYear
+
+    fiscal_years = FiscalYear.objects.select_for_update().filter(company=company)
+    matching_years = fiscal_years.filter(
+        start_date__lte=posting_date, end_date__gte=posting_date
+    )
+    closed_year = matching_years.filter(
+        status__in=(FiscalYear.Status.CLOSED, FiscalYear.Status.LOCKED)
+    ).first()
+    if closed_year:
+        raise ValueError(
+            f"Cannot post into {closed_year.get_status_display()} fiscal year "
+            f"{closed_year.name}."
+        )
+
+    if fiscal_year_id:
+        fiscal_year = fiscal_years.filter(pk=fiscal_year_id).first()
+        if not fiscal_year:
+            raise ValueError("The fiscal year does not belong to this company.")
+        if not (
+            fiscal_year.start_date <= posting_date <= fiscal_year.end_date
+        ):
+            raise ValueError("The journal entry date is outside its fiscal year.")
+        if fiscal_year.status != FiscalYear.Status.OPEN:
+            raise ValueError(
+                f"Cannot post into {fiscal_year.get_status_display()} fiscal year "
+                f"{fiscal_year.name}."
+            )
+        return fiscal_year
+
+    return matching_years.filter(status=FiscalYear.Status.OPEN).order_by(
+        "-start_date"
+    ).first()
 
 
 class AutoJournalService:

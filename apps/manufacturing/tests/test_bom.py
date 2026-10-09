@@ -4,6 +4,7 @@ import pytest
 from django.urls import reverse
 
 from apps.inventory.models import Product, StockMovement, StockRecord
+from apps.inventory.services import StockService
 from apps.manufacturing.models import (
     BillOfMaterial,
     BillOfMaterialLine,
@@ -143,7 +144,23 @@ def test_bom_creation_mo_and_mrp(client, company, user, warehouse):
     assert item2.shortage == Decimal("16.5")
 
     # 4. Test Component Consumption (MO Done)
-    client.post(mo_action_url, {"action": "done"})
+    with pytest.raises(ValueError, match="Insufficient stock"):
+        mo.mark_done()
+    mo.refresh_from_db()
+    assert mo.status == ManufacturingOrder.Status.IN_PROGRESS
+    assert mo.quantity_produced == Decimal("0")
+    assert not StockMovement.objects.filter(
+        reference_id=f"MO-{mo.number}"
+    ).exists()
+
+    stock_service = StockService(company=company, user=user)
+    stock_service.receive_stock(
+        comp1, warehouse, Decimal("5"), Decimal("10"), "test", mo.number
+    )
+    stock_service.receive_stock(
+        comp2, warehouse, Decimal("16.5"), Decimal("15"), "test", mo.number
+    )
+    mo.mark_done()
     mo.refresh_from_db()
     assert mo.status == "done"
     assert mo.quantity_produced == Decimal("5")
@@ -206,11 +223,22 @@ def test_mo_cancel_and_scrap(client, company, user, warehouse):
         reason="Damaged",
     )
 
+    with pytest.raises(ValueError, match="Insufficient stock"):
+        scrap.mark_done()
+    scrap.refresh_from_db()
+    assert scrap.status == ScrapOrder.Status.DRAFT
+    assert not StockMovement.objects.filter(reference_id=scrap.number).exists()
+
+    StockService(company=company, user=user).receive_stock(
+        comp1, warehouse, Decimal("1"), Decimal("10"), "test", scrap.number
+    )
     scrap.mark_done()
     scrap.refresh_from_db()
     assert scrap.status == "done"
 
     # Verify stock movement for scrap
-    movement = StockMovement.objects.get(reference_id=scrap.number)
+    movement = StockMovement.objects.get(
+        reference_id=scrap.number, movement_type="adjustment"
+    )
     assert movement.movement_type == "adjustment"
     assert movement.quantity == Decimal("-1")

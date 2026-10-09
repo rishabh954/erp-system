@@ -182,7 +182,17 @@ class StockService(BaseService):
                 )
 
     @transaction.atomic
-    def adjust_stock(self, product, warehouse, qty_input, adjustment_type, notes=""):
+    def adjust_stock(
+        self,
+        product,
+        warehouse,
+        qty_input,
+        adjustment_type,
+        notes="",
+        movement_type=StockMovement.MovementType.ADJUSTMENT,
+        reference_type="",
+        reference_id="",
+    ):
         qty = Decimal(str(qty_input))
 
         # Get or create stock record with lock
@@ -213,16 +223,27 @@ class StockService(BaseService):
             company=self.company,
             product=product,
             warehouse=warehouse,
-            movement_type=StockMovement.MovementType.ADJUSTMENT,
+            movement_type=movement_type,
             quantity=actual_qty,
             unit_cost=unit_cost,
             total_cost=Decimal(abs(actual_qty)) * unit_cost,
             movement_date=timezone.localdate(),
+            reference_type=reference_type,
+            reference_id=str(reference_id),
             notes=notes,
             stock_after=stock.quantity_on_hand,
         )
+        sequence_prefix = (
+            "PROD"
+            if movement_type
+            in (
+                StockMovement.MovementType.PRODUCTION_IN,
+                StockMovement.MovementType.PRODUCTION_OUT,
+            )
+            else "ADJ"
+        )
         mov.number = BaseService.generate_sequence_number(
-            "ADJ", StockMovement, self.company.pk
+            sequence_prefix, StockMovement, self.company.pk
         )
         mov.save()
 

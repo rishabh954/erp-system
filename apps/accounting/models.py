@@ -208,6 +208,14 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
                     f"Cannot post entry before lock date: {locked_entry.company.accounting_lock_date}"
                 )
 
+            from .services import get_open_fiscal_year
+
+            locked_entry.fiscal_year = get_open_fiscal_year(
+                locked_entry.company,
+                locked_entry.date,
+                locked_entry.fiscal_year_id,
+            )
+
             if not locked_entry.is_balanced():
                 raise ValueError(f"Journal entry {locked_entry.number} is not balanced")
 
@@ -222,7 +230,9 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
             locked_entry.posted_at = timezone.now()
             if user:
                 locked_entry.posted_by = user
-            locked_entry.save(update_fields=["status", "posted_at", "posted_by"])
+            locked_entry.save(
+                update_fields=["status", "posted_at", "posted_by", "fiscal_year"]
+            )
 
             # Update account balances atomically
             for item in locked_entry.items.all():

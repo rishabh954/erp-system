@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 """
 Inventory Views
@@ -157,11 +158,11 @@ class ProductCreateView(CompanyMixin, View):
                 category_id=data.get("category") or None,
                 brand_id=data.get("brand") or None,
                 uom_id=data.get("uom") or None,
-                cost_price=float(data.get("cost_price", 0)),
-                sale_price=float(data.get("sale_price", 0)),
-                min_stock_level=float(data.get("min_stock_level", 0)),
-                reorder_point=float(data.get("reorder_point", 0)),
-                reorder_quantity=float(data.get("reorder_quantity", 0)),
+                cost_price=Decimal(data.get("cost_price") or "0"),
+                sale_price=Decimal(data.get("sale_price") or "0"),
+                min_stock_level=Decimal(data.get("min_stock_level") or "0"),
+                reorder_point=Decimal(data.get("reorder_point") or "0"),
+                reorder_quantity=Decimal(data.get("reorder_quantity") or "0"),
                 tax_id=data.get("tax") or None,
                 is_active=data.get("is_active") == "on",
                 is_purchasable=data.get("is_purchasable") == "on",
