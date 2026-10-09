@@ -1,6 +1,7 @@
 from rest_framework import permissions
 
 from apps.authentication.models import User
+from core.tenancy import get_active_company
 
 
 class IsCompanyAdminOrSuperAdmin(permissions.BasePermission):
@@ -9,11 +10,13 @@ class IsCompanyAdminOrSuperAdmin(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
+        company = get_active_company(request)
         return bool(
             request.user
             and request.user.is_authenticated
             and (
-                request.user.role in [User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN]
+                request.user.get_role_for_company(company)
+                in [User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN]
                 or request.user.is_superuser
             )
         )
@@ -25,11 +28,13 @@ class IsSuperAdmin(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
+        company = get_active_company(request)
         return bool(
             request.user
             and request.user.is_authenticated
             and (
-                request.user.role == User.Role.SUPER_ADMIN or request.user.is_superuser
+                request.user.get_role_for_company(company) == User.Role.SUPER_ADMIN
+                or request.user.is_superuser
             )
         )
 
@@ -59,7 +64,9 @@ class HasModulePermission(permissions.BasePermission):
 
         try:
             module, action = required_perm.split('.')
-            return request.user.has_module_permission(module, action)
+            return request.user.has_module_permission(
+                module, action, company=get_active_company(request)
+            )
         except ValueError:
             return False
 
@@ -90,7 +97,9 @@ class PermissionRequiredMixin(AccessMixin):
         required_perm = self.get_required_permission(request)
         try:
             module, action = required_perm.split('.')
-            if not request.user.has_module_permission(module, action):
+            if not request.user.has_module_permission(
+                module, action, company=get_active_company(request)
+            ):
                 return self.handle_no_permission()
         except ValueError:
             return self.handle_no_permission()
@@ -130,5 +139,3 @@ class HttpMethodPermissionMixin(PermissionRequiredMixin):
         else:
             action = "read"
         return f"{self.required_permission_module}.{action}"
-
-

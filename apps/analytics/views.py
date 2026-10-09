@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, View
 
+from core.tenancy import get_active_company
+
 from .models import CustomReport, ReportExecution, SavedReport, ScheduledReport
 from .services import export_csv, export_excel, export_pdf, get_data, get_pivot_data
 
@@ -24,7 +26,7 @@ class ReportsMixin(LoginRequiredMixin):
 
     @property
     def company_id(self):
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
         return company.id if company else None
 
 

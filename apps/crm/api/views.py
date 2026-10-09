@@ -1,5 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from apps.crm.api.serializers import (
@@ -12,6 +13,7 @@ from apps.crm.api.serializers import (
 from apps.crm.models import Campaign, Contract, Customer, Lead, LeadActivity
 from core.api.mixins import TenantScopedViewSetMixin
 from core.pagination import StandardResultsSetPagination
+from core.tenancy import get_active_company
 
 
 class CampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -51,7 +53,10 @@ class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        company = user.primary_company
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         lead = serializer.save(company=company, created_by=user)
         from apps.crm.notifications import notify_lead_created
 
@@ -175,8 +180,10 @@ class LeadActivityViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        user = getattr(self.request, "user", None)
-        company = getattr(user, "primary_company", None)
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         serializer.save(company=company)
 
 

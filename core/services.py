@@ -83,7 +83,9 @@ class BaseService:
     def check_permission(self, module: str, action: str):
         """Raise PermissionDenied if user lacks permission."""
         if self.user and not self.user.is_superuser:
-            if not self.user.has_module_permission(module, action):
+            if not self.user.has_module_permission(
+                module, action, company=self.company
+            ):
                 raise PermissionDenied(
                     f"You do not have permission to {action} in module '{module}'"
                 )

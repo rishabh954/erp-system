@@ -6,11 +6,13 @@ All viewsets are company-scoped, with filtering, search & ordering.
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 
 from core.api.mixins import TenantScopedViewSetMixin
 from core.permissions import HasModulePermission
+from core.tenancy import get_active_company
 
 from . import serializers
 
@@ -24,17 +26,14 @@ class CompanyScopedViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
     def get_company(self):
-        user = getattr(self.request, "user", None)
-        if not user or not user.is_authenticated:
-            return None
-        return getattr(user, "primary_company", None) or getattr(user, "company", None)
+        return get_active_company(self.request)
 
     def perform_create(self, serializer):
         company = self.get_company()
-        if company:
-            serializer.save(company=company)
-        else:
-            serializer.save()
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
+        serializer.save(company=company)
 
 
 

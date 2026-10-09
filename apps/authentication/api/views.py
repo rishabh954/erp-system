@@ -27,6 +27,7 @@ from core.permissions import (
     IsCompanyAdminOrSuperAdmin,
     IsSuperAdmin,
 )
+from core.tenancy import get_active_company
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,11 @@ class LoginAPIView(APIView):
 
         ActivityLog.objects.create(
             user=user,
-            company=user.primary_company,
+            company=(
+                user.primary_company
+                if user.get_role_for_company(user.primary_company)
+                else None
+            ),
             action="login",
             module="auth",
             ip_address=self._get_ip(request),
@@ -151,7 +156,11 @@ class TwoFactorVerifyAPIView(APIView):
 
         ActivityLog.objects.create(
             user=user,
-            company=user.primary_company,
+            company=(
+                user.primary_company
+                if user.get_role_for_company(user.primary_company)
+                else None
+            ),
             action="login",
             module="auth",
             ip_address=LoginAPIView._get_ip(request),
@@ -182,7 +191,7 @@ class LogoutAPIView(APIView):
 
         ActivityLog.objects.create(
             user=request.user,
-            company=request.user.primary_company,
+            company=get_active_company(request),
             action="logout",
             module="auth",
         )
@@ -208,22 +217,24 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == User.Role.SUPER_ADMIN or user.is_superuser:
+        if user.is_superuser:
             return User.objects.all()
         # Use request.company (set by TenantMiddleware) so multi-company
         # users always see data for their *active* company, not just their primary.
-        company = getattr(self.request, "company", None) or user.primary_company
+        company = get_active_company(self.request)
         if not company:
             return User.objects.none()
+        self.request.company = company
         return User.objects.filter(companies=company)
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)
         if self.action in ["update", "partial_update", "destroy"]:
+            company = get_active_company(request)
+            role = request.user.get_role_for_company(company)
             if (
                 request.user != obj
-                and request.user.role
-                not in [User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN]
+                and role not in [User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN]
                 and not request.user.is_superuser
             ):
                 self.permission_denied(
@@ -305,18 +316,20 @@ class RoleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == User.Role.SUPER_ADMIN or user.is_superuser:
+        if user.is_superuser:
             return Role.objects.all()
-        company = getattr(self.request, "company", None) or user.primary_company
+        company = get_active_company(self.request)
         if not company:
             return Role.objects.none()
+        self.request.company = company
         return Role.objects.filter(company=company)
 
     def perform_create(self, serializer):
-        company = getattr(self.request, "company", None) or self.request.user.primary_company
+        company = get_active_company(self.request)
         if not company:
             from rest_framework.exceptions import ValidationError
             raise ValidationError("No active company context. Cannot create a role.")
+        self.request.company = company
         serializer.save(company=company)
 
 
@@ -337,8 +350,12 @@ class ModulePermissionViewSet(viewsets.ModelViewSet):
 
         # Only superusers can see all module permissions.
         # Other users can only see the module permissions for their current role.
-        if user.role != User.Role.SUPER_ADMIN and not user.is_superuser:
-            qs = qs.filter(role=user.role)
+        if not user.is_superuser:
+            company = get_active_company(self.request)
+            role = user.get_role_for_company(company)
+            if not role:
+                return qs.none()
+            qs = qs.filter(role=role)
         elif role_param:
             qs = qs.filter(role=role_param)
 
@@ -352,15 +369,17 @@ class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        company = getattr(self.request, "company", None) or user.primary_company
+        company = get_active_company(self.request)
         if not company:
             return ActivityLog.objects.none()
+        self.request.company = company
         qs = ActivityLog.objects.filter(company=company).order_by(
             "-created_at"
         )
         # Filter by current user unless admin
+        role = user.get_role_for_company(company)
         if (
-            user.role not in (User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN)
+            role not in (User.Role.SUPER_ADMIN, User.Role.COMPANY_ADMIN)
             and not user.is_superuser
         ):
             qs = qs.filter(user=user)

@@ -14,8 +14,8 @@ Over the course of this transformation, the following critical enterprise-grade 
   * Check constraints preventing negative amounts, quantities, and invalid date sequences (e.g., `due_date >= invoice_date`).
 
 ### 2. Multi-Tenant Security & Isolation
-* **RBAC Resolution Flaw:** Fixed a critical multi-tenant leakage flaw where `User.has_module_permission()` evaluated a user's global role instead of their `UserCompany` role. Role resolution is now securely scoped to the active `primary_company`.
-* **API Scoping:** `TenantScopedViewSetMixin` successfully segregates read and list traffic. 
+* **RBAC Resolution Flaw:** `User.has_module_permission()` resolves the role from the active company's active `UserCompany` membership. Session and post-authentication DRF requests share the same validated company resolver.
+* **API Scoping:** `TenantScopedViewSetMixin` segregates tenant data and requires a per-module consolidation grant for consolidated reads.
 
 ### 3. Application Reliability & DevOps
 * **Health Checks:** Introduced `/health/`, `/health/live/`, and `/health/ready/` observability endpoints checking PostgreSQL and Redis cache availability.

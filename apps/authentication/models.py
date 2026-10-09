@@ -159,23 +159,26 @@ class User(AbstractBaseUser, PermissionsMixin):
             kwargs["update_fields"] = fields
         super().save(*args, **kwargs)
 
-    def get_permissions_for_module(self, module):
-        """Return user's effective permissions for a module."""
-        role = self.role
-        if self.primary_company:
-            # Prefer role from the active company context
-            uc = self.usercompany_set.filter(company=self.primary_company, is_active=True).first()
-            if uc:
-                role = uc.role
-            else:
-                return None  # No active role in this company
+    def get_role_for_company(self, company):
+        """Return this user's active role for a company, if they belong to it."""
+        if not company:
+            return None
+        membership = self.usercompany_set.filter(
+            company=company, is_active=True
+        ).first()
+        return membership.role if membership else None
 
+    def get_permissions_for_module(self, module, company=None):
+        """Return user's effective permissions for a module."""
+        role = self.get_role_for_company(company)
+        if role is None:
+            return None
         return ModulePermission.objects.filter(role=role, module=module).first()
 
-    def has_module_permission(self, module, action):
+    def has_module_permission(self, module, action, company=None):
         if self.is_superuser:
             return True
-        perm = self.get_permissions_for_module(module)
+        perm = self.get_permissions_for_module(module, company=company)
         if not perm:
             return False
         return getattr(perm, f"can_{action}", False)
@@ -311,6 +314,7 @@ class ModulePermission(models.Model):
     can_export = models.BooleanField(default=False)
     can_import = models.BooleanField(default=False)
     can_manage_users = models.BooleanField(default=False)
+    can_consolidate = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("role", "module")

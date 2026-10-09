@@ -9,10 +9,12 @@ from django_filters.rest_framework import DjangoFilterBackend  # noqa: E402
 from drf_spectacular.utils import extend_schema, inline_serializer  # noqa: E402
 from rest_framework import serializers, viewsets  # noqa: E402
 from rest_framework.decorators import action  # noqa: E402
+from rest_framework.exceptions import PermissionDenied  # noqa: E402
 from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
 from rest_framework.response import Response  # noqa: E402
 
 from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
+from core.tenancy import get_active_company  # noqa: E402
 
 from ..models import (  # noqa: E402
     Invoice,
@@ -260,7 +262,10 @@ class QuotationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         from core.services import BaseService
 
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         number = BaseService.generate_sequence_number("QUO", Quotation, company.pk)
         serializer.save(company=company, number=number, created_by=self.request.user)
 
@@ -309,9 +314,10 @@ class QuotationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         # Delegate to service
         from apps.sales.services import SalesService
 
-        so = SalesService(
-            user=request.user, company=request.user.primary_company
-        ).convert_quote_to_order(quot)
+        company = get_active_company(request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        so = SalesService(user=request.user, company=company).convert_quote_to_order(quot)
         return Response({"order_id": str(so.pk), "order_number": so.number}, status=201)
 
 
@@ -340,7 +346,10 @@ class SalesOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         from core.services import BaseService
 
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         number = BaseService.generate_sequence_number("SO", SalesOrder, company.pk)
         serializer.save(company=company, number=number, created_by=self.request.user)
 
@@ -350,9 +359,10 @@ class SalesOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         from apps.sales.services import SalesOrderService
 
         try:
-            order = SalesOrderService(
-                user=request.user, company=request.user.primary_company
-            ).confirm_order(order)
+            company = get_active_company(request)
+            if not company:
+                raise PermissionDenied("No active company membership.")
+            order = SalesOrderService(user=request.user, company=company).confirm_order(order)
             return Response(SalesOrderSerializer(order).data)
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
@@ -374,9 +384,10 @@ class SalesOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         order = self.get_object()
         from apps.sales.services import SalesService
 
-        inv = SalesService(
-            user=request.user, company=request.user.primary_company
-        ).create_invoice_from_order(order)
+        company = get_active_company(request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        inv = SalesService(user=request.user, company=company).create_invoice_from_order(order)
         return Response(
             {"invoice_id": str(inv.pk), "invoice_number": inv.number}, status=201
         )
@@ -407,7 +418,10 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         from core.services import BaseService
 
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         number = BaseService.generate_sequence_number("INV", Invoice, company.pk)
         serializer.save(company=company, number=number, created_by=self.request.user)
 
@@ -434,7 +448,10 @@ class InvoiceViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         from core.services import BaseService
 
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        self.request.company = company
         number = BaseService.generate_sequence_number("PAY", Payment, company.pk)
         payment = serializer.save(
             company=company, number=number, created_by=request.user

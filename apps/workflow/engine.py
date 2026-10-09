@@ -102,8 +102,12 @@ class WorkflowEngine:
         ]:
             raise ValueError("Workflow is not in an approvable state.")
 
+        role = user.get_role_for_company(instance.company)
+        if not user.is_superuser and role is None:
+            raise PermissionError("You are not an active member of this company.")
+
         approvers = cls.get_pending_approvers(instance)
-        is_admin = getattr(user, "role", "") in ("super_admin", "company_admin")
+        is_admin = user.is_superuser or role in ("super_admin", "company_admin")
 
         if user not in approvers and not is_admin:
             raise PermissionError("You are not authorised to approve this step.")
@@ -365,7 +369,7 @@ class WorkflowEngine:
 
             approvers.update(
                 User.objects.filter(
-                    role=step.approver_role,
+                    usercompany__role=step.approver_role,
                     usercompany__company=instance.company,
                     usercompany__is_active=True,
                 )
@@ -390,7 +394,7 @@ class WorkflowEngine:
 
                 approvers.update(
                     User.objects.filter(
-                        role="department_head",
+                        usercompany__role="department_head",
                         usercompany__company=instance.company,
                         usercompany__is_active=True,
                     )

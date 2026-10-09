@@ -9,6 +9,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, View
 
+from core.tenancy import get_active_company
+
 from .models import (
     ActivityLog,
     APIKey,
@@ -42,7 +44,9 @@ class AdminRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
-        if request.user.role not in ["super_admin", "company_admin"]:
+        company = get_active_company(request)
+        role = request.user.get_role_for_company(company)
+        if not request.user.is_superuser and role not in ["super_admin", "company_admin"]:
             messages.error(
                 request,
                 "You do not have permission to access the Administration Center.",
@@ -52,7 +56,7 @@ class AdminRequiredMixin(LoginRequiredMixin):
 
     @property
     def company(self):
-        return getattr(self.request.user, "primary_company", None)
+        return get_active_company(self.request)
 
 
 class AppStoreView(AdminRequiredMixin, TemplateView):
@@ -61,7 +65,7 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        company = self.request.user.primary_company
+        company = self.company
         installed = InstalledApp.objects.filter(
             company=company, is_active=True
         ).values_list("app_label", flat=True)
@@ -159,7 +163,7 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
         return ctx
 
     def post(self, request):
-        company = request.user.primary_company
+        company = get_active_company(request)
         app_label = request.POST.get("app_label")
         action = request.POST.get("action")
 
@@ -223,7 +227,8 @@ class HRManagerOrAdminMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
-        role = getattr(request.user, "role", "")
+        company = get_active_company(request)
+        role = request.user.get_role_for_company(company)
         if (
             role not in ("super_admin", "company_admin", "hr_manager")
             and not request.user.is_superuser
@@ -234,7 +239,7 @@ class HRManagerOrAdminMixin(LoginRequiredMixin):
 
     @property
     def company(self):
-        return self.request.user.primary_company
+        return get_active_company(self.request)
 
 
 # ── 2. Designation Management (Job Titles) ────────────────────────────────────

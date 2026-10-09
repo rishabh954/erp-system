@@ -295,13 +295,15 @@ class BarcodeScanViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Always use request.company (set by TenantMiddleware) for correct scoping
-        company = getattr(request, "company", None) or getattr(request.user, "primary_company", None)
+        from core.tenancy import get_active_company
+
+        company = get_active_company(request)
         if not company:
             return Response(
                 {"error": "No active company context."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        request.company = company
 
         product = Product.objects.filter(barcode=barcode, company=company).first()
         if not product:
