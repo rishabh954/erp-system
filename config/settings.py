@@ -8,6 +8,8 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file if it exists
@@ -366,70 +368,109 @@ AI_TEMPERATURE   = float(os.environ.get('AI_TEMPERATURE', '0.3'))
 AI_MAX_TOKENS    = int(os.environ.get('AI_MAX_TOKENS', '2048'))
 AI_ENABLED       = bool(OPENAI_API_KEY or GEMINI_API_KEY)
 
-# Workflow escalation + reminder periodic tasks
+# Periodic Celery tasks
 # NOTE: All beat tasks are defined here. config/celery.py previously also set
 # app.conf.beat_schedule which was overwritten by this dict when
 # app.config_from_object ran. Both sets of tasks are now merged here so nothing
 # is silently dropped.
 CELERY_BEAT_SCHEDULE = {
-    # ── Operational tasks (previously in celery.py) ───────────────────────
-    # Daily: Check overdue invoices and send reminders
+    # Operational tasks
     'check-overdue-invoices': {
         'task': 'apps.sales.tasks.check_overdue_invoices',
-        'schedule': 28800,  # 08:00 UTC daily (crontab not serialisable without celery import)
+        'schedule': crontab(hour=8, minute=0),
     },
-    # Daily: Process attendance auto-marking
     'auto-mark-attendance': {
         'task': 'apps.hrms.tasks.auto_mark_attendance',
-        'schedule': 86340,  # 23:59 UTC daily
+        'schedule': crontab(hour=23, minute=59),
     },
-    # Daily: Send low stock alerts
     'low-stock-alerts': {
         'task': 'apps.inventory.tasks.send_low_stock_alerts',
-        'schedule': 32400,  # 09:00 UTC daily
+        'schedule': crontab(hour=9, minute=0),
     },
-    # Daily: Update exchange rates
     'update-exchange-rates': {
         'task': 'apps.company.tasks.update_exchange_rates',
-        'schedule': 1800,   # 00:30 UTC daily
+        'schedule': crontab(hour=0, minute=30),
     },
-    # Weekly: Generate depreciation entries (Monday 02:00 UTC)
     'process-depreciation': {
         'task': 'apps.assets.tasks.process_depreciation',
-        'schedule': 604800,  # weekly
+        'schedule': crontab(day_of_month=1, hour=2, minute=0),
     },
-    # Every 30 min: Check SLA breaches for helpdesk tickets
     'check-sla-breaches': {
         'task': 'apps.helpdesk.tasks.check_sla_breaches',
-        'schedule': 1800,
+        'schedule': crontab(minute='*/30'),
     },
-    # Hourly: Clean up expired sessions
     'cleanup-sessions': {
         'task': 'apps.authentication.tasks.cleanup_expired_sessions',
-        'schedule': 3600,
+        'schedule': crontab(minute=0),
     },
-    # Daily: Cleanup old audit logs
     'cleanup-audit-logs': {
         'task': 'apps.authentication.tasks.cleanup_old_audit_logs',
-        'schedule': 10800,  # 03:00 UTC
+        'schedule': crontab(hour=3, minute=0),
     },
-    # Daily: Clean up expired password reset / email tokens
     'cleanup-expired-tokens': {
         'task': 'apps.authentication.tasks.cleanup_expired_tokens',
-        'schedule': 14400,  # 04:00 UTC
+        'schedule': crontab(hour=4, minute=0),
     },
-    # ── Workflow / Analytics tasks ────────────────────────────────────────
+    # CRM and accounting
+    'calculate-lead-scores': {
+        'task': 'apps.crm.tasks.calculate_lead_scores',
+        'schedule': crontab(hour=2, minute=0),
+    },
+    'follow-up-leads': {
+        'task': 'apps.crm.tasks.follow_up_leads',
+        'schedule': crontab(hour=9, minute=0),
+    },
+    'check-overdue-vendor-payments': {
+        'task': 'apps.accounting.tasks.check_overdue_payments',
+        'schedule': crontab(hour=8, minute=15),
+    },
+    'generate-monthly-reports': {
+        'task': 'apps.accounting.tasks.generate_monthly_reports_for_all_companies',
+        'schedule': crontab(day_of_month=1, hour=3, minute=0),
+    },
+    # HR and subscriptions
+    'reset-annual-leave-balances': {
+        'task': 'apps.hrms.tasks.reset_annual_leave_balances',
+        'schedule': crontab(month_of_year=1, day_of_month=1, hour=0, minute=10),
+    },
+    'send-trial-expiry-reminders': {
+        'task': 'apps.company.tasks.send_trial_expiry_reminders',
+        'schedule': crontab(hour=8, minute=30),
+    },
+    # Projects
+    'send-task-deadline-reminders': {
+        'task': 'apps.projects.tasks.send_task_deadline_reminders',
+        'schedule': crontab(hour=7, minute=30),
+    },
+    'update-project-progress': {
+        'task': 'apps.projects.tasks.auto_update_project_progress',
+        'schedule': crontab(hour=0, minute=30),
+    },
+    # AI summaries and forecasts
+    'refresh-sales-forecast': {
+        'task': 'ai.refresh_sales_forecast',
+        'schedule': crontab(hour=1, minute=0),
+    },
+    'refresh-inventory-forecast': {
+        'task': 'ai.refresh_inventory_forecast',
+        'schedule': crontab(hour=1, minute=30),
+    },
+    'generate-financial-summaries': {
+        'task': 'ai.generate_financial_summaries',
+        'schedule': crontab(day_of_week='mon', hour=2, minute=0),
+    },
+    # Workflow and scheduled reports
     'workflow-check-escalations': {
         'task': 'workflow.check_escalations',
-        'schedule': 1800,  # every 30 minutes
+        'schedule': crontab(minute='*/30'),
     },
     'workflow-send-pending-reminders': {
         'task': 'workflow.send_pending_reminders',
-        'schedule': 86400,  # daily
+        'schedule': crontab(hour=9, minute=30),
     },
     'run-scheduled-reports': {
         'task': 'analytics.run_scheduled_reports_daily',
-        'schedule': 3600,  # hourly check
+        'schedule': crontab(hour=0, minute=0),
     },
 }
 

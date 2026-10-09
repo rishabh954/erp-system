@@ -123,3 +123,13 @@ def check_overdue_payments(self):
         send_bulk_notification.delay(notifications)
         return f"Queued {len(notifications)} overdue payment notifications."
     return "No finance users found to notify."
+
+
+@shared_task(name="apps.accounting.tasks.generate_monthly_reports_for_all_companies")
+def generate_monthly_reports_for_all_companies():
+    company_ids = Company.objects.filter(
+        status="active", is_deleted=False
+    ).values_list("pk", flat=True)
+    for company_id in company_ids:
+        generate_monthly_reports.delay(str(company_id))
+    return len(company_ids)

@@ -3,9 +3,75 @@ Enterprise Reporting Engine — Celery Tasks
 Handles scheduled report execution and email delivery.
 """
 
+import calendar
+from datetime import timedelta
+
 from celery import shared_task
 from django.core.mail import EmailMessage
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
+
+
+def _advance_schedule(current, frequency):
+    if frequency == "daily":
+        return current + timedelta(days=1)
+    if frequency == "weekly":
+        return current + timedelta(weeks=1)
+    if frequency == "biweekly":
+        return current + timedelta(weeks=2)
+
+    if frequency not in ("monthly", "quarterly"):
+        raise ValueError(f"Unsupported scheduled report frequency: {frequency}")
+
+    months = 1 if frequency == "monthly" else 3
+    month_index = current.month - 1 + months
+    year = current.year + month_index // 12
+    month = month_index % 12 + 1
+    current_month_end = calendar.monthrange(current.year, current.month)[1]
+    target_month_end = calendar.monthrange(year, month)[1]
+    day = (
+        target_month_end
+        if current.day == current_month_end
+        else min(current.day, target_month_end)
+    )
+    return current.replace(year=year, month=month, day=day)
+
+
+@shared_task(name="analytics.run_scheduled_reports_daily")
+def run_scheduled_reports_daily():
+    """Queue active report schedules that are due."""
+    from .models import ScheduledReport
+
+    now = timezone.now()
+    queued_ids = []
+    with transaction.atomic():
+        due_schedules = (
+            ScheduledReport.objects.select_for_update()
+            .filter(is_active=True)
+            .filter(Q(next_run__isnull=True) | Q(next_run__lte=now))
+        )
+        for schedule in due_schedules:
+            next_run = schedule.next_run or _advance_schedule(
+                schedule.created_at, schedule.frequency
+            )
+            if schedule.next_run is None and next_run > now:
+                schedule.next_run = next_run
+                schedule.save(update_fields=["next_run"])
+                continue
+            while next_run <= now:
+                next_run = _advance_schedule(next_run, schedule.frequency)
+            schedule.next_run = next_run
+            schedule.save(update_fields=["next_run"])
+            schedule_id = str(schedule.pk)
+            queued_ids.append(schedule_id)
+            transaction.on_commit(
+                lambda report_schedule_id=schedule_id: run_scheduled_report.delay(
+                    report_schedule_id
+                )
+            )
+
+    return len(queued_ids)
 
 
 @shared_task(bind=True, max_retries=3)
