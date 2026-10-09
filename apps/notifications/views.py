@@ -162,6 +162,7 @@ class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
             pref.email_enabled = request.POST.get(f"email_{pref.pk}") == "on"
             pref.sms_enabled = request.POST.get(f"sms_{pref.pk}") == "on"
             pref.whatsapp_enabled = request.POST.get(f"whatsapp_{pref.pk}") == "on"
+            pref.push_enabled = request.POST.get(f"push_{pref.pk}") == "on"
             pref.save()
         messages.success(request, "Notification preferences updated successfully.")
         return self.get(request, *args, **kwargs)

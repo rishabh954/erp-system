@@ -554,8 +554,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     function pollNotifications() {
-        fetch('/api/notifications/notifications/unread_count/')
-            .then(res => res.json())
+        fetch('/api/v1/notifications/notifications/unread_count/')
+            .then(res => {
+                if (!res.ok) throw new Error(`Notification count request failed: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
                 const badge = document.querySelector('.notification-badge');
                 if (data.count > 0) {
@@ -576,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(err => console.error('Error fetching notifications:', err));
     }
-    // Poll every 30 seconds
+    pollNotifications();
     setInterval(pollNotifications, 30000);
 });
 </script>

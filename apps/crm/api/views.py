@@ -49,6 +49,14 @@ class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = LeadSerializer
     pagination_class = StandardResultsSetPagination
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = user.primary_company
+        lead = serializer.save(company=company, created_by=user)
+        from apps.crm.notifications import notify_lead_created
+
+        notify_lead_created(lead, user)
+
     @action(detail=True, methods=["post"])
     def convert_to_customer(self, request, pk=None):
         lead = self.get_object()

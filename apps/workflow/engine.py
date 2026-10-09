@@ -617,23 +617,32 @@ class WorkflowEngine:
                 WorkflowNotificationTemplate.Event.DELEGATED: f"{doc_label} approval has been delegated to you.",
             }
             from apps.notifications.models import Notification
+            from apps.notifications.services import NotificationService
 
             for recipient in recipients:
                 if recipient:
-                    Notification.objects.create(
-                        company=instance.company,
+                    title = title_map.get(
+                        event, f"Workflow Update: {doc_label}"
+                    )
+                    message = msg_map.get(
+                        event, f"Workflow update on {doc_label}."
+                    )
+                    notification_type = (
+                        Notification.NotificationType.SUCCESS
+                        if event == WorkflowNotificationTemplate.Event.APPROVED
+                        else (
+                            Notification.NotificationType.ERROR
+                            if event == WorkflowNotificationTemplate.Event.REJECTED
+                            else Notification.NotificationType.WARNING
+                        )
+                    )
+                    NotificationService.send(
                         recipient=recipient,
-                        title=title_map.get(event, f"Workflow Update: {doc_label}"),
-                        message=msg_map.get(event, f"Workflow update on {doc_label}."),
-                        notification_type=(
-                            Notification.NotificationType.SUCCESS
-                            if event == WorkflowNotificationTemplate.Event.APPROVED
-                            else (
-                                Notification.NotificationType.ERROR
-                                if event == WorkflowNotificationTemplate.Event.REJECTED
-                                else Notification.NotificationType.WARNING
-                            )
-                        ),
+                        title=title,
+                        message=message,
+                        notification_type=notification_type,
+                        channels=["in_app"],
+                        company=instance.company,
                     )
 
         # ── Email ─────────────────────────────────────────────────────────────
@@ -647,8 +656,7 @@ class WorkflowEngine:
     @classmethod
     def _send_email(cls, instance, event, recipients, ctx, doc_label):
         try:
-            from django.conf import settings
-            from django.core.mail import send_mail
+            from apps.notifications.services import NotificationService
 
             tmpl = WorkflowNotificationTemplate.objects.filter(
                 workflow=instance.definition,
@@ -671,19 +679,19 @@ class WorkflowEngine:
                     f"Please log in to your ERP system to take action.\n"
                 )
 
-            email_list = [
-                r.email for r in recipients if r and getattr(r, "email", None)
-            ]
-            if email_list:
-                send_mail(
-                    subject=subject,
-                    message=body,
-                    from_email=getattr(
-                        settings, "DEFAULT_FROM_EMAIL", "noreply@erp.com"
-                    ),
-                    recipient_list=email_list,
-                    fail_silently=True,
-                )
+            for recipient in recipients:
+                if recipient and getattr(recipient, "email", None):
+                    NotificationService.send_email(
+                        recipient=recipient,
+                        subject=subject,
+                        message=body,
+                        template="workflow_email",
+                        context={"message": body, "title": subject, **ctx},
+                        company=instance.company,
+                        notification_type="info",
+                        recipient_name=getattr(recipient, "get_full_name", lambda: "")(),
+                        use_preferences=True,
+                    )
         except Exception as e:
             logger.error(f"WorkflowEngine email error: {e}")
 
@@ -694,19 +702,7 @@ class WorkflowEngine:
         Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM in settings.
         """
         try:
-            from django.conf import settings
-
-            account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", None)
-            auth_token = getattr(settings, "TWILIO_AUTH_TOKEN", None)
-            from_number = getattr(settings, "TWILIO_WHATSAPP_FROM", None)
-
-            if not all([account_sid, auth_token, from_number]):
-                logger.debug("WhatsApp not configured — skipping.")
-                return
-
-            from twilio.rest import Client  # type: ignore
-
-            client = Client(account_sid, auth_token)
+            from apps.notifications.services import NotificationService
 
             tmpl = WorkflowNotificationTemplate.objects.filter(
                 workflow=instance.definition,
@@ -731,10 +727,13 @@ class WorkflowEngine:
                     recipient, "phone", None
                 )
                 if phone:
-                    client.messages.create(
-                        from_=f"whatsapp:{from_number}",
-                        to=f"whatsapp:{phone}",
-                        body=body,
+                    NotificationService.send_whatsapp(
+                        recipient=recipient,
+                        template_name="workflow_notification",
+                        template_data={"body": body},
+                        company=instance.company,
+                        notification_type="info",
+                        message=body,
                     )
         except Exception as e:
             logger.error(f"WorkflowEngine WhatsApp error: {e}")

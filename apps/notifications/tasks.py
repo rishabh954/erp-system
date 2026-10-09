@@ -11,6 +11,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
+from apps.notifications.services import NotificationService
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +21,7 @@ def send_email_task(
     self, to_email, to_name, subject, template, context, company_id=None
 ):
     """Send a rendered HTML email with plain text fallback."""
+    company = None
     try:
         if company_id:
             from apps.company.models import Company
@@ -46,32 +49,35 @@ def send_email_task(
         msg.attach_alternative(html_content, "text/html")
         msg.send()
 
-        # Log it
-        from apps.notifications.models import EmailLog
+        if company:
+            from apps.notifications.models import EmailLog
 
-        EmailLog.objects.create(
-            recipient_email=to_email,
-            recipient_name=to_name,
-            subject=subject,
-            body=html_content[:5000],
-            status="sent",
-            template=template,
-        )
+            EmailLog.objects.create(
+                company=company,
+                recipient_email=to_email,
+                recipient_name=to_name,
+                subject=subject,
+                body=html_content[:5000],
+                status="sent",
+                template=template,
+            )
         logger.info(f"Email sent to {to_email}: {subject}")
 
     except Exception as exc:
         logger.error(f"Email send failed to {to_email}: {exc}")
-        from apps.notifications.models import EmailLog
+        if company:
+            from apps.notifications.models import EmailLog
 
-        EmailLog.objects.create(
-            recipient_email=to_email,
-            recipient_name=to_name,
-            subject=subject,
-            body="",
-            status="failed",
-            error_message=str(exc),
-            template=template,
-        )
+            EmailLog.objects.create(
+                company=company,
+                recipient_email=to_email,
+                recipient_name=to_name,
+                subject=subject,
+                body="",
+                status="failed",
+                error_message=str(exc),
+                template=template,
+            )
         raise self.retry(exc=exc)
 
 
@@ -86,7 +92,6 @@ def send_bulk_notification(
 ):
     """Send in-app notifications to multiple users."""
     from apps.authentication.models import User
-    from apps.notifications.models import Notification
 
     if not company_id:
         return
@@ -99,19 +104,16 @@ def send_bulk_notification(
         return
 
     users = User.objects.filter(pk__in=recipient_ids, is_active=True)
-    notifications = [
-        Notification(
-            company=company,
-            recipient=user,
-            notification_type=notification_type,
-            title=title,
-            message=message,
-            action_url=action_url,
-        )
-        for user in users
-    ]
-    Notification.objects.bulk_create(notifications, batch_size=500)
-    logger.info(f"Bulk notification sent to {len(notifications)} users: {title}")
+    sent = NotificationService.send_bulk(
+        recipients=list(users),
+        title=title,
+        message=message,
+        notification_type=notification_type,
+        channels=["in_app"],
+        action_url=action_url,
+        company=company,
+    )
+    logger.info(f"Bulk notification sent to {len(sent)} users: {title}")
 
 
 @shared_task

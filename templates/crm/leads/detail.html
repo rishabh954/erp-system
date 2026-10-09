@@ -291,59 +291,80 @@
 {% endblock %}
 
 {% block extra_js %}
-<script> {{ current_company.default_currency.symbol|default:'$' }}(document).ready(function() {
-  $('.status-change-btn').click(function(e) {
-    e.preventDefault();
-    const newStatus = $(this).data('value');
-    const newColorClass = $(this).data('color-class');
-    
-    // Update button text visually
-    const dropdownBtn = $('#leadStatusDropdown');
-    dropdownBtn.text($(this).text());
-    
-    // Update button color class
-    dropdownBtn.removeClass('btn-primary btn-success btn-danger btn-warning btn-info text-white text-dark').addClass(newColorClass);
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const dropdownButton = document.getElementById('leadStatusDropdown');
+  const statusOptions = document.querySelectorAll('.status-change-btn');
+  const statusUrl = "{% url 'crm:lead_update_status' lead.pk %}";
+  const csrfToken = '{{ csrf_token }}';
+  const statusClasses = [
+    'btn-primary',
+    'btn-success',
+    'btn-danger',
+    'btn-warning',
+    'btn-info',
+    'text-white',
+    'text-dark'
+  ];
 
-    $('.status-change-btn').removeClass('active');
-    $(this).addClass('active');
-    const csrfToken = '{{ csrf_token }}';
-    
-    $.ajax({
-      url: "{% url 'crm:lead_update_status' lead.pk %}",
-      method: "POST",
-      data: {
-        'status': newStatus,
-        'csrfmiddlewaretoken': csrfToken
-      },
-      success: function(response) {
-        if (response.ok) {
+  statusOptions.forEach(function(option) {
+    option.addEventListener('click', async function(event) {
+      event.preventDefault();
+      const newStatus = option.dataset.value;
+      const formData = new URLSearchParams({
+        status: newStatus,
+        csrfmiddlewaretoken: csrfToken
+      });
+
+      dropdownButton.disabled = true;
+      try {
+        const response = await fetch(statusUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `Request failed (${response.status})`);
+        }
+
+        dropdownButton.textContent = result.label;
+        dropdownButton.classList.remove(...statusClasses);
+        dropdownButton.classList.add(...option.dataset.colorClass.split(' '));
+        statusOptions.forEach(function(item) {
+          item.classList.toggle('active', item === option);
+        });
+
+        if (window.Swal) {
           Swal.fire({
             icon: 'success',
             title: 'Status Updated',
-            text: 'Lead status successfully updated to ' + response.label,
+            text: 'Lead status successfully updated to ' + result.label,
             timer: 2000,
             showConfirmButton: false,
             toast: true,
             position: 'top-end'
           });
-          // Optionally reload to update any conditional layout elements
-          if (newStatus === 'won') {
-            setTimeout(function() { location.reload(); }, 1500);
-          }
-        } else {
+        }
+        if (newStatus === 'won') {
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Failed to update lead status:', error);
+        if (window.Swal) {
           Swal.fire({
             icon: 'error',
-            title: 'Error',
-            text: 'Could not update status.'
+            title: 'Status Update Failed',
+            text: error.message
           });
+        } else {
+          window.alert(`Could not update lead status: ${error.message}`);
         }
-      },
-      error: function(xhr, status, error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'AJAX Error',
-          text: 'Request failed: ' + error
-        });
+      } finally {
+        dropdownButton.disabled = false;
       }
     });
   });

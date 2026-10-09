@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 from apps.crm.models import Customer, Lead
+from apps.notifications.models import Notification
 
 pytestmark = pytest.mark.django_db
 
@@ -52,20 +53,50 @@ def test_lead_crud(client, user, company):
 
     # Create
     create_url = reverse("crm:lead_create")
+    invalid_response = client.post(
+        create_url,
+        {"name": "Lead With Invalid Email", "email": "invalid-email"},
+    )
+    assert invalid_response.status_code == 200
+    assert invalid_response.context["form"].errors["email"]
+    assert b"toast-error" in invalid_response.content
+    assert b"Email: Enter a valid email address." in invalid_response.content
+    assert b"invalid-feedback d-block" not in invalid_response.content
+    assert b"Please correct the following errors" not in invalid_response.content
+    assert b'value="Lead With Invalid Email"' in invalid_response.content
+
     res = client.post(
         create_url,
         {
             "name": "Test Lead CRUD",
-            "expected_revenue": "1000.00",
             "status": Lead.Status.NEW,
             "probability": 50,
         },
+        follow=True,
     )
-    if res.status_code != 302:
-        print("FORM ERRORS:", res.context['form'].errors)
-    assert res.status_code == 302
+    assert res.status_code == 200
+    assert b"Lead Test Lead CRUD created." in res.content
     lead = Lead.objects.filter(name="Test Lead CRUD").first()
     assert lead is not None
+    assert lead.expected_revenue == 0
+    notification = Notification.objects.filter(
+        recipient=user,
+        company=company,
+        title="New lead created",
+        content_type__model="lead",
+        object_id=str(lead.pk),
+    ).first()
+    assert notification is not None
+    assert notification.action_url == reverse(
+        "crm:lead_detail", kwargs={"pk": lead.pk}
+    )
+
+    status_url = reverse("crm:lead_update_status", kwargs={"pk": lead.pk})
+    status_response = client.post(status_url, {"status": Lead.Status.PROPOSAL})
+    assert status_response.status_code == 200
+    assert status_response.json()["ok"] is True
+    lead.refresh_from_db()
+    assert lead.status == Lead.Status.PROPOSAL
 
     # Read Detail
     detail_url = reverse("crm:lead_detail", kwargs={"pk": lead.pk})

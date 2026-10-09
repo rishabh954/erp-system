@@ -123,6 +123,13 @@ class WhatsAppLog(CompanyScoped):
 
 
 class NotificationPreference(CompanyScoped):
+    class Channel(models.TextChoices):
+        IN_APP = "in_app", _("In-App")
+        EMAIL = "email", _("Email")
+        SMS = "sms", _("SMS")
+        WHATSAPP = "whatsapp", _("WhatsApp")
+        PUSH = "push", _("Push")
+
     user = models.ForeignKey(
         "authentication.User",
         on_delete=models.CASCADE,
@@ -135,6 +142,7 @@ class NotificationPreference(CompanyScoped):
     email_enabled = models.BooleanField(default=True)
     sms_enabled = models.BooleanField(default=False)
     whatsapp_enabled = models.BooleanField(default=False)
+    push_enabled = models.BooleanField(default=False)
 
     class Meta:
         db_table = "notifications_preferences"

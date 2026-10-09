@@ -23,6 +23,18 @@ from core.services import BaseService
 from .forms import LeadForm
 from .models import Campaign, Contract, Customer, Lead, LeadActivity
 
+
+def _add_form_error_message(request, form):
+    errors = [
+        f"{field.label}: {error}"
+        for field in form
+        for error in field.errors
+    ]
+    errors.extend(str(error) for error in form.non_field_errors())
+    if errors:
+        messages.error(request, "Please check the lead details: " + "; ".join(errors))
+
+
 # ════════════════════════ LEADS ═══════════════════════════════════════════════
 
 
@@ -150,12 +162,22 @@ class LeadCreateView(CompanyMixin, CreateView):
 
     def form_valid(self, form):
         # Generate sequence number and set other defaults
-        form.instance.company = self.request.user.primary_company
+        company = self.company()
+        form.instance.company = company
+        form.instance.created_by = self.request.user
         form.instance.number = BaseService.generate_sequence_number(
-            "LD", Lead, self.request.user.primary_company.pk
+            "LD", Lead, company.pk
         )
-        messages.success(self.request, f"Lead {form.instance.name} created.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        from .notifications import notify_lead_created
+
+        notify_lead_created(self.object, self.request.user)
+        messages.success(self.request, f"Lead {self.object.name} created.")
+        return response
+
+    def form_invalid(self, form):
+        _add_form_error_message(self.request, form)
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy("crm:lead_detail", kwargs={"pk": self.object.pk})
@@ -186,6 +208,10 @@ class LeadUpdateView(CompanyMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Lead updated successfully.")
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        _add_form_error_message(self.request, form)
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy("crm:lead_detail", kwargs={"pk": self.object.pk})

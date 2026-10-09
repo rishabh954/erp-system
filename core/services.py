@@ -124,27 +124,21 @@ class BaseService:
         action_label: str = "",
         related_object=None,
     ):
-        """Queue an in-app notification."""
-        from django.contrib.contenttypes.models import ContentType
-
-        from apps.notifications.models import Notification
+        """Queue a notification through the central notification service."""
+        from apps.notifications.services import NotificationService
 
         try:
-            kwargs = dict(
-                company=self.company,
+            NotificationService.send(
                 recipient=recipient,
-                notification_type=notification_type,
                 title=title,
                 message=message,
+                notification_type=notification_type,
+                channels=["in_app"],
                 action_url=action_url,
                 action_label=action_label,
+                company=self.company,
+                related_object=related_object,
             )
-            if related_object:
-                kwargs["content_type"] = ContentType.objects.get_for_model(
-                    related_object
-                )
-                kwargs["object_id"] = str(related_object.pk)
-            Notification.objects.create(**kwargs)
         except Exception as e:
             logger.warning(f"Failed to create notification: {e}")
 
@@ -156,16 +150,19 @@ class BaseService:
         context: dict,
         to_name: str = "",
     ):
-        """Queue an email via Celery."""
-        from apps.notifications.tasks import send_email_task
+        """Queue an email via the central notification service."""
+        from apps.notifications.services import NotificationService
 
-        send_email_task.delay(
-            to_email=to_email,
-            to_name=to_name,
+        NotificationService.send_email(
+            recipient=to_email,
             subject=subject,
+            message=context.get("message", ""),
             template=template,
             context=context,
-            company_id=str(self.company.pk) if self.company else None,
+            company=self.company,
+            notification_type="info",
+            recipient_name=to_name,
+            use_preferences=False,
         )
 
     @staticmethod

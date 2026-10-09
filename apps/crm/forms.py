@@ -1,9 +1,18 @@
+from decimal import Decimal
+
 from django import forms
 
 from .models import Campaign, Customer, Lead
 
 
 class LeadForm(forms.ModelForm):
+    expected_revenue = forms.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+    )
+
     class Meta:
         model = Lead
         fields = [
@@ -20,6 +29,9 @@ class LeadForm(forms.ModelForm):
             "notes",
             "campaign",
         ]
+
+    def clean_expected_revenue(self):
+        return self.cleaned_data["expected_revenue"] or Decimal("0")
 
 
 class CustomerForm(forms.ModelForm):
