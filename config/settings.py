@@ -145,26 +145,6 @@ MIDDLEWARE = [
     'apps.company.middleware.TimezoneMiddleware',
 ]
 
-if not DEBUG:
-    # ─── Production Security Settings ──────────────────────────────────────
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-
-    if os.environ.get('USE_X_FORWARDED_PROTO', 'True') == 'True':
-        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-    if os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True':
-        SECURE_SSL_REDIRECT = True
-        SESSION_COOKIE_SECURE = True
-        CSRF_COOKIE_SECURE = True
-        SECURE_HSTS_SECONDS = 31536000  # 1 year
-        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-        SECURE_HSTS_PRELOAD = True
-else:
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-
 ROOT_URLCONF = 'config.urls'
 
 # ─── Templates ────────────────────────────────────────────────────────────────
@@ -561,11 +541,18 @@ SECURE_REFERRER_POLICY = 'same-origin'
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
-    CSRF_COOKIE_SECURE = True
+    if os.environ.get('USE_X_FORWARDED_PROTO', 'True') == 'True':
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    if SECURE_SSL_REDIRECT:
+        SECURE_HSTS_SECONDS = 31536000
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
+    else:
+        SECURE_HSTS_SECONDS = 0
     X_FRAME_OPTIONS = 'DENY'
 else:
     SECURE_SSL_REDIRECT = False
