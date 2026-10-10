@@ -743,6 +743,12 @@ class SalesCommission(CompanyScoped):
 
     class Meta:
         db_table = "sales_commissions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "invoice", "sales_rep"],
+                name="uniq_sales_commission_invoice_rep",
+            ),
+        ]
 
 
 class SalesReturn(CompanyScoped, SequenceMixin, NotesMixin):

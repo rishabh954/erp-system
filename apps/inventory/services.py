@@ -576,6 +576,7 @@ class DeliveryService(BaseService):
 
         stock_service = StockService(company=self.company, user=self.user)
 
+        stock_movements = []
         for line in delivery.lines.all():
             if line.quantity_shipped <= 0:
                 continue
@@ -624,7 +625,7 @@ class DeliveryService(BaseService):
             stock_record.quantity_on_hand -= line.quantity_shipped
             stock_record.save(update_fields=["quantity_on_hand"])
 
-            StockMovement.objects.create(
+            movement = StockMovement.objects.create(
                 company=self.company,
                 product=line.product,
                 warehouse=delivery.warehouse,
@@ -640,6 +641,7 @@ class DeliveryService(BaseService):
                 notes=f"Shipped via {delivery.number} for {delivery.sales_order.number}",
                 stock_after=stock_record.quantity_on_hand,
             )
+            stock_movements.append(movement)
 
             # STEP A.3: Release reservation on shipment
             stock_service.release_reservation(
@@ -688,6 +690,11 @@ class DeliveryService(BaseService):
             logger.warning("Shiprocket integration failed for %s: %s", delivery.number, e)
 
         delivery.save()
+
+        if stock_movements:
+            from apps.accounting.services import AutoJournalService
+
+            AutoJournalService.post_delivery(delivery, stock_movements)
 
         all_delivered = True
         for so_line in delivery.sales_order.lines.all():

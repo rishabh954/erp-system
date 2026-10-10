@@ -5,12 +5,13 @@ from rest_framework import serializers, viewsets
 from rest_framework.routers import DefaultRouter
 
 from apps.workflow.models import WorkflowInstance
+from core.api.fields import TenantModelSerializer
 from core.permissions import HasModulePermission
 
 app_name = "api_workflow"
 
 
-class WorkflowInstanceSerializer(serializers.ModelSerializer):
+class WorkflowInstanceSerializer(TenantModelSerializer):
     class Meta:
         model = WorkflowInstance
         fields = "__all__"

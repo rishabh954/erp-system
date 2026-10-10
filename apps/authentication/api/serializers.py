@@ -3,9 +3,10 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.authentication.models import ActivityLog, ModulePermission, Role, User
+from core.api.fields import TenantModelSerializer
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(TenantModelSerializer):
     full_name = serializers.ReadOnlyField()
     company_name = serializers.SerializerMethodField()
 
@@ -36,7 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.primary_company.name if obj.primary_company else None
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(TenantModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
 
@@ -69,7 +70,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
+class UserUpdateSerializer(TenantModelSerializer):
     class Meta:
         model = User
         fields = [
@@ -163,7 +164,7 @@ class CustomTokenObtainSerializer(serializers.Serializer):
         }
 
 
-class ActivityLogSerializer(serializers.ModelSerializer):
+class ActivityLogSerializer(TenantModelSerializer):
     user_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -183,14 +184,14 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         return obj.user.full_name if obj.user else "System"
 
 
-class RoleSerializer(serializers.ModelSerializer):
+class RoleSerializer(TenantModelSerializer):
     class Meta:
         model = Role
         fields = ["id", "name", "code", "description", "is_system", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 
-class ModulePermissionSerializer(serializers.ModelSerializer):
+class ModulePermissionSerializer(TenantModelSerializer):
     class Meta:
         model = ModulePermission
         fields = [

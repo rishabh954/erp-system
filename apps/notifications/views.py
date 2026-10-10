@@ -12,12 +12,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
+from core.api.fields import TenantModelSerializer  # noqa: E402
 from core.permissions import HasModulePermission  # noqa: E402
 
 from .models import EmailLog, Notification, NotificationPreference, SMSLog, WhatsAppLog
 
 
-class NotificationSerializer(serializers.ModelSerializer):
+class NotificationSerializer(TenantModelSerializer):
     class Meta:
         model = Notification
         fields = [

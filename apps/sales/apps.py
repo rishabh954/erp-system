@@ -6,4 +6,4 @@ class SalesConfig(AppConfig):
     name = "apps.sales"
 
     def ready(self):
-        pass
+        from . import signals  # noqa: F401

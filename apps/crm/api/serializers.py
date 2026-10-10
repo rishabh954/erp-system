@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
+from core.api.fields import TenantModelSerializer
 from apps.crm.models import Campaign, Contract, Customer, Lead, LeadActivity
 
 
-class CampaignSerializer(serializers.ModelSerializer):
+class CampaignSerializer(TenantModelSerializer):
     total_leads_count = serializers.IntegerField(read_only=True)
     opportunities_count = serializers.IntegerField(read_only=True)
     won_count = serializers.IntegerField(read_only=True)
@@ -24,7 +25,7 @@ class CampaignSerializer(serializers.ModelSerializer):
         ]
 
 
-class LeadSerializer(serializers.ModelSerializer):
+class LeadSerializer(TenantModelSerializer):
     class Meta:
         model = Lead
         fields = "__all__"
@@ -37,7 +38,7 @@ class LeadSerializer(serializers.ModelSerializer):
         ]
 
 
-class CustomerSerializer(serializers.ModelSerializer):
+class CustomerSerializer(TenantModelSerializer):
     outstanding_balance = serializers.DecimalField(
         max_digits=18, decimal_places=2, read_only=True
     )
@@ -54,7 +55,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
 
 
-class LeadActivitySerializer(serializers.ModelSerializer):
+class LeadActivitySerializer(TenantModelSerializer):
     class Meta:
         model = LeadActivity
         fields = "__all__"
@@ -67,7 +68,7 @@ class LeadActivitySerializer(serializers.ModelSerializer):
         ]
 
 
-class ContractSerializer(serializers.ModelSerializer):
+class ContractSerializer(TenantModelSerializer):
     is_valid = serializers.BooleanField(read_only=True)
     days_until_expiry = serializers.IntegerField(read_only=True)
 

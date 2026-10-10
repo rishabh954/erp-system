@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
+from apps.accounting.models import Account, JournalEntry, JournalItem
 from apps.purchase.models import Bill, BillLine, GoodsReceipt, Payment, PurchaseOrder
 
 
@@ -77,6 +78,13 @@ def test_purchase_full_flow(
     receipt = GoodsReceipt.objects.first()
     assert receipt is not None
     assert receipt.status == GoodsReceipt.Status.COMPLETED
+    receipt_entry = JournalEntry.objects.get(
+        company=po.company, reference=f"GRN: {receipt.number}"
+    )
+    assert receipt_entry.status == JournalEntry.Status.POSTED
+    grni_account = Account.objects.get(company=po.company, code="2105")
+    receipt_grni = receipt_entry.items.get(account=grni_account)
+    assert receipt_grni.credit == Decimal("125.00")
 
     # 5. Create Bill from PO
     url = reverse("purchase:po_create_bill", kwargs={"pk": po.pk})
@@ -91,6 +99,18 @@ def test_purchase_full_flow(
     # Let's open the bill
     bill.status = Bill.Status.OPEN
     bill.save()
+    bill_entry = JournalEntry.objects.get(
+        company=po.company, reference=f"BILL: {bill.number}"
+    )
+    assert bill_entry.status == JournalEntry.Status.POSTED
+    assert bill_entry.items.get(account=grni_account).debit == Decimal("125.00")
+    grni_balance = JournalItem.objects.filter(
+        account=grni_account,
+        journal_entry__company=po.company,
+        journal_entry__source_id=str(po.pk),
+        journal_entry__status=JournalEntry.Status.POSTED,
+    )
+    assert sum(item.credit - item.debit for item in grni_balance) == Decimal("0")
 
     # 6. Record Payment for the Bill
     url = reverse("purchase:bill_record_payment", kwargs={"pk": bill.pk})

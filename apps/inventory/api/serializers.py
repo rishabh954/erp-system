@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.api.fields import TenantModelSerializer
 from apps.inventory.models import (
     InventoryTransfer,
     Product,
@@ -9,7 +10,7 @@ from apps.inventory.models import (
 )
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(TenantModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
@@ -22,7 +23,7 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
 
-class WarehouseSerializer(serializers.ModelSerializer):
+class WarehouseSerializer(TenantModelSerializer):
     class Meta:
         model = Warehouse
         fields = "__all__"
@@ -35,7 +36,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
         ]
 
 
-class StockRecordSerializer(serializers.ModelSerializer):
+class StockRecordSerializer(TenantModelSerializer):
     class Meta:
         model = StockRecord
         fields = "__all__"
@@ -48,7 +49,7 @@ class StockRecordSerializer(serializers.ModelSerializer):
         ]
 
 
-class StockMovementSerializer(serializers.ModelSerializer):
+class StockMovementSerializer(TenantModelSerializer):
     class Meta:
         model = StockMovement
         fields = "__all__"
@@ -61,7 +62,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
 
 
-class InventoryTransferSerializer(serializers.ModelSerializer):
+class InventoryTransferSerializer(TenantModelSerializer):
     class Meta:
         model = InventoryTransfer
         fields = "__all__"

@@ -4,12 +4,13 @@ Includes nested read fields and computed properties for all modules.
 """
 
 from rest_framework import serializers
+from core.api.fields import TenantModelSerializer
 
 # ─── CRM ──────────────────────────────────────────────────────────────────────
 from apps.crm.models import Customer, Lead
 
 
-class LeadSerializer(serializers.ModelSerializer):
+class LeadSerializer(TenantModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -21,7 +22,7 @@ class LeadSerializer(serializers.ModelSerializer):
         return obj.assigned_to.get_full_name() if obj.assigned_to else None
 
 
-class CustomerSerializer(serializers.ModelSerializer):
+class CustomerSerializer(TenantModelSerializer):
     class Meta:
         model = Customer
         fields = "__all__"
@@ -32,7 +33,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 from apps.sales.models import Invoice, Quotation, SalesOrder  # noqa: E402
 
 
-class ErpQuotationSerializer(serializers.ModelSerializer):
+class ErpQuotationSerializer(TenantModelSerializer):
     customer_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -45,7 +46,7 @@ class ErpQuotationSerializer(serializers.ModelSerializer):
         return obj.customer.name if obj.customer else None
 
 
-class ErpSalesOrderSerializer(serializers.ModelSerializer):
+class ErpSalesOrderSerializer(TenantModelSerializer):
     customer_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -58,7 +59,7 @@ class ErpSalesOrderSerializer(serializers.ModelSerializer):
         return obj.customer.name if obj.customer else None
 
 
-class ErpInvoiceSerializer(serializers.ModelSerializer):
+class ErpInvoiceSerializer(TenantModelSerializer):
     customer_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -75,14 +76,14 @@ class ErpInvoiceSerializer(serializers.ModelSerializer):
 from apps.purchase.models import Bill, PurchaseOrder, Vendor  # noqa: E402
 
 
-class ErpVendorSerializer(serializers.ModelSerializer):
+class ErpVendorSerializer(TenantModelSerializer):
     class Meta:
         model = Vendor
         fields = "__all__"
         read_only_fields = ("company", "created_at", "updated_at")
 
 
-class ErpPurchaseOrderSerializer(serializers.ModelSerializer):
+class ErpPurchaseOrderSerializer(TenantModelSerializer):
     vendor_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -95,7 +96,7 @@ class ErpPurchaseOrderSerializer(serializers.ModelSerializer):
         return obj.vendor.name if obj.vendor else None
 
 
-class ErpBillSerializer(serializers.ModelSerializer):
+class ErpBillSerializer(TenantModelSerializer):
     vendor_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -112,7 +113,7 @@ class ErpBillSerializer(serializers.ModelSerializer):
 from apps.inventory.models import Product, Warehouse  # noqa: E402
 
 
-class ErpProductSerializer(serializers.ModelSerializer):
+class ErpProductSerializer(TenantModelSerializer):
     category_name = serializers.SerializerMethodField()
     uom_code = serializers.SerializerMethodField()
     tracking_display = serializers.CharField(
@@ -131,7 +132,7 @@ class ErpProductSerializer(serializers.ModelSerializer):
         return obj.uom.abbreviation if obj.uom else None
 
 
-class ErpWarehouseSerializer(serializers.ModelSerializer):
+class ErpWarehouseSerializer(TenantModelSerializer):
     class Meta:
         model = Warehouse
         fields = "__all__"
@@ -142,7 +143,7 @@ class ErpWarehouseSerializer(serializers.ModelSerializer):
 from apps.hrms.models import Employee, LeaveRequest  # noqa: E402
 
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeSerializer(TenantModelSerializer):
     department_name = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
 
@@ -158,7 +159,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return f"{obj.first_name} {obj.last_name}".strip()
 
 
-class LeaveRequestSerializer(serializers.ModelSerializer):
+class LeaveRequestSerializer(TenantModelSerializer):
     employee_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -179,7 +180,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 from apps.manufacturing.models import BillOfMaterial, ManufacturingOrder  # noqa: E402
 
 
-class ManufacturingOrderSerializer(serializers.ModelSerializer):
+class ManufacturingOrderSerializer(TenantModelSerializer):
     product_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -192,7 +193,7 @@ class ManufacturingOrderSerializer(serializers.ModelSerializer):
         return obj.product.name if obj.product else None
 
 
-class BOMSerializer(serializers.ModelSerializer):
+class BOMSerializer(TenantModelSerializer):
     product_name = serializers.SerializerMethodField()
 
     class Meta:

@@ -80,8 +80,15 @@ class SalesService(BaseService):
     @transaction.atomic
     def create_invoice_from_order(self, order: SalesOrder) -> Invoice:
         """Generate an Invoice from a Sales Order."""
-        if order.status in [SalesOrder.Status.INVOICED, SalesOrder.Status.CANCELLED]:
-            raise ValueError("Order is already invoiced or cancelled.")
+        order = SalesOrder.objects.select_for_update().get(
+            pk=order.pk, company=self.company
+        )
+        if order.status in [SalesOrder.Status.DRAFT, SalesOrder.Status.CANCELLED]:
+            raise ValueError("Draft or cancelled orders cannot be invoiced.")
+        if order.status == SalesOrder.Status.INVOICED:
+            raise ValueError("Order is already invoiced.")
+        if order.invoices.exclude(status=Invoice.Status.CANCELLED).exists():
+            raise ValueError("A non-cancelled invoice already exists for this order.")
 
         # Create Invoice
         invoice = Invoice.objects.create(
@@ -455,6 +462,43 @@ class QuotationService(BaseService):
 
 
 class SalesOrderService(BaseService):
+    def _warehouse_for_order(self, order):
+        from apps.company.models import CompanySettings
+        from apps.inventory.models import Warehouse
+
+        if order.company_id != self.company.pk:
+            raise ValueError("Sales order does not belong to the active company.")
+
+        order_warehouse_id = getattr(order, "warehouse_id", None)
+        if order_warehouse_id:
+            warehouse = Warehouse.objects.filter(
+                pk=order_warehouse_id,
+                company=self.company,
+                is_active=True,
+            ).first()
+            if warehouse:
+                return warehouse
+            raise ValueError("Sales order warehouse is not active in this company.")
+
+        default_setting = CompanySettings.objects.filter(
+            company=self.company, key="default_warehouse"
+        ).first()
+        if default_setting:
+            warehouse = Warehouse.objects.filter(
+                pk=default_setting.value,
+                company=self.company,
+                is_active=True,
+            ).first()
+            if warehouse:
+                return warehouse
+            raise ValueError(
+                "The configured default warehouse is not active in this company."
+            )
+
+        return Warehouse.objects.filter(
+            company=self.company, is_active=True
+        ).order_by("pk").first()
+
     @transaction.atomic
     def create_order(self, data, user):
         from decimal import Decimal
@@ -506,18 +550,46 @@ class SalesOrderService(BaseService):
 
     @transaction.atomic
     def create_delivery(self, order):
-        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine, Warehouse
+        from django.db.models import Sum
 
+        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine
+
+        order = type(order).objects.select_for_update().get(
+            pk=order.pk, company=self.company
+        )
         if not order.lines.exists():
             raise ValueError("Cannot create delivery for empty order.")
 
-        warehouse = Warehouse.objects.filter(
-            company=self.company, is_active=True
-        ).first()
+        open_statuses = [
+            DeliveryOrder.Status.DRAFT,
+            DeliveryOrder.Status.READY,
+            DeliveryOrder.Status.PICKING,
+            DeliveryOrder.Status.PACKING,
+        ]
+        open_deliveries = list(
+            order.delivery_orders.select_for_update().filter(status__in=open_statuses)
+        )
+        if open_deliveries:
+            raise ValueError(
+                f"An open delivery already exists for order {order.number}."
+            )
+
+        warehouse = self._warehouse_for_order(order)
         if not warehouse:
             raise ValueError(
                 "No active warehouse found. Please create a warehouse first."
             )
+
+        open_quantities = dict(
+            DeliveryOrderLine.objects.filter(
+                delivery_order__company=self.company,
+                delivery_order__sales_order=order,
+                delivery_order__status__in=open_statuses,
+            )
+            .values("product_id")
+            .annotate(quantity=Sum("quantity_ordered"))
+            .values_list("product_id", "quantity")
+        )
 
         delivery = DeliveryOrder.objects.create(
             company=self.company,
@@ -530,7 +602,11 @@ class SalesOrderService(BaseService):
         )
 
         for line in order.lines.all():
-            qty_remaining = line.quantity - line.qty_delivered
+            qty_remaining = (
+                line.quantity
+                - line.qty_delivered
+                - open_quantities.get(line.product_id, 0)
+            )
             if qty_remaining > 0:
                 DeliveryOrderLine.objects.create(
                     delivery_order=delivery,
@@ -548,50 +624,16 @@ class SalesOrderService(BaseService):
 
     @transaction.atomic
     def create_invoice(self, order):
-        from datetime import timedelta
-
-        from apps.sales.models import Invoice, InvoiceLine
-
-        inv = Invoice(
-            company=order.company,
-            sales_order=order,
-            customer=order.customer,
-            invoice_date=timezone.now().date(),
-            due_date=timezone.now().date() + timedelta(days=order.payment_terms),
-            payment_terms=order.payment_terms,
-            currency=order.currency,
-            subtotal=order.subtotal,
-            tax_amount=order.tax_amount,
-            discount_amount=order.discount_amount,
-            total=order.total,
-            balance_due=order.total,
+        return SalesService(user=self.user, company=self.company).create_invoice_from_order(
+            order
         )
-        inv.number = BaseService.generate_sequence_number(
-            "INV", Invoice, order.company_id
-        )
-        inv.save()
-
-        for line in order.lines.all():
-            InvoiceLine.objects.create(
-                invoice=inv,
-                product=line.product,
-                description=line.description,
-                quantity=line.quantity,
-                unit_price=line.unit_price,
-                discount_percent=line.discount_percent,
-                tax=line.tax,
-                subtotal=line.subtotal,
-                tax_amount=line.tax_amount,
-                total=line.total,
-                sort_order=line.sort_order,
-            )
-
-        order.status = order.Status.INVOICED
-        order.save(update_fields=["status"])
-        return inv
 
     @transaction.atomic
     def confirm_order(self, order):
+        original_order = order
+        order = type(order).objects.select_for_update().get(
+            pk=order.pk, company=self.company
+        )
         if order.status not in [order.Status.DRAFT, order.Status.PENDING_APPROVAL]:
             raise ValueError(f"Only draft or pending approval orders can be confirmed, current: {order.status}.")
 
@@ -601,13 +643,23 @@ class SalesOrderService(BaseService):
         if not passed:
             raise ValueError(f"Order cannot be confirmed due to credit hold: {msg}")
 
-        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine, Warehouse
+        from apps.inventory.models import DeliveryOrder, DeliveryOrderLine
         from apps.inventory.services import StockService
 
-        # Assumption: If SalesOrder doesn't have a warehouse, use the first active one.
-        warehouse = Warehouse.objects.filter(
-            company=self.company, is_active=True
-        ).first()
+        open_statuses = [
+            DeliveryOrder.Status.READY,
+            DeliveryOrder.Status.DRAFT,
+            DeliveryOrder.Status.PICKING,
+            DeliveryOrder.Status.PACKING,
+        ]
+        existing_open = order.delivery_orders.filter(
+            status__in=open_statuses
+        ).select_related("warehouse").first()
+        warehouse = (
+            existing_open.warehouse
+            if existing_open
+            else self._warehouse_for_order(order)
+        )
 
         if not warehouse:
             raise ValueError("No active warehouse found to reserve stock against.")
@@ -640,7 +692,7 @@ class SalesOrderService(BaseService):
         order.save(update_fields=["status"])
 
         # Auto-create DeliveryOrder in READY status if not already existing
-        if not order.delivery_orders.filter(status__in=[DeliveryOrder.Status.READY, DeliveryOrder.Status.DRAFT, DeliveryOrder.Status.PICKING, DeliveryOrder.Status.PACKING]).exists():
+        if not existing_open:
             delivery = DeliveryOrder.objects.create(
                 company=self.company,
                 number=BaseService.generate_sequence_number("DEL", DeliveryOrder, self.company.pk),
@@ -680,10 +732,15 @@ class SalesOrderService(BaseService):
         except Exception as e:
             logger.warning("SMS sending failed for order %s: %s", order.number, e)
 
-        return order
+        original_order.status = order.status
+        return original_order
 
     @transaction.atomic
     def cancel_order(self, order, reason=""):
+        original_order = order
+        order = type(order).objects.select_for_update().get(
+            pk=order.pk, company=self.company
+        )
         if order.status in [
             order.Status.SHIPPED,
             order.Status.DELIVERED,
@@ -694,18 +751,31 @@ class SalesOrderService(BaseService):
                 "Cannot cancel an order that has already been shipped, invoiced, or completed."
             )
 
+        from apps.inventory.models import DeliveryOrder
+
+        open_statuses = [
+            DeliveryOrder.Status.DRAFT,
+            DeliveryOrder.Status.READY,
+            DeliveryOrder.Status.PICKING,
+            DeliveryOrder.Status.PACKING,
+        ]
         # Release only the quantity that is still reserved (not yet shipped).
         # For a fully confirmed order with no shipments, qty_to_release == line.quantity.
         # For a partially shipped order, qty_to_release == ordered - delivered.
         # This prevents releasing more than was ever reserved and avoids
         # quantity_reserved going negative on the StockRecord.
         if order.status in [order.Status.CONFIRMED, order.Status.PROCESSING]:
-            from apps.inventory.models import StockRecord, Warehouse
+            from apps.inventory.models import StockRecord
             from apps.inventory.services import StockService
 
-            warehouse = Warehouse.objects.filter(
-                company=self.company, is_active=True
-            ).first()
+            open_delivery = order.delivery_orders.filter(
+                status__in=open_statuses
+            ).select_related("warehouse").first()
+            warehouse = (
+                open_delivery.warehouse
+                if open_delivery
+                else self._warehouse_for_order(order)
+            )
             if warehouse:
                 stock_service = StockService(company=self.company, user=self.user)
                 for line in order.lines.select_related("product").all():
@@ -739,11 +809,16 @@ class SalesOrderService(BaseService):
                                 reference_type="SalesOrder",
                                 reference_id=str(order.id),
                             )
+        order.delivery_orders.filter(status__in=open_statuses).update(
+            status=DeliveryOrder.Status.CANCELLED
+        )
 
         order.status = order.Status.CANCELLED
         order.cancel_reason = reason
         order.save(update_fields=["status", "cancel_reason"])
-        return order
+        original_order.status = order.status
+        original_order.cancel_reason = order.cancel_reason
+        return original_order
 
 
 class InvoiceService(BaseService):
@@ -928,9 +1003,12 @@ class SalesReturnService(BaseService):
         """
         from decimal import Decimal
         from apps.inventory.models import StockMovement, StockRecord
-        from apps.sales.models import CreditNote, CreditNoteLine
+        from apps.sales.models import CreditNote, CreditNoteLine, Invoice, SalesReturn
         from apps.accounting.services import AutoJournalService
 
+        sales_return = SalesReturn.objects.select_for_update().get(
+            pk=sales_return.pk, company=self.company
+        )
         if sales_return.status not in [sales_return.Status.APPROVED, sales_return.Status.RECEIVED, sales_return.Status.INSPECTED]:
             raise ValueError(f"Cannot complete return in status {sales_return.status}.")
 
@@ -965,6 +1043,11 @@ class SalesReturnService(BaseService):
         cn = CreditNote.objects.create(
             company=self.company,
             customer=sales_return.customer,
+            invoice=sales_return.sales_order.invoices.filter(
+                company=self.company
+            ).exclude(status=Invoice.Status.CANCELLED).order_by(
+                "invoice_date", "created_at"
+            ).first(),
             status=CreditNote.Status.ISSUED,
             date=timezone.now().date(),
             amount=sales_return.total_amount,
@@ -995,4 +1078,3 @@ class SalesReturnService(BaseService):
             description=f"Completed Return {sales_return.number}, issued Credit Note {cn.number}",
         )
         return sales_return
-

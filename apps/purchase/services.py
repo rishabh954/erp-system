@@ -433,7 +433,11 @@ class PurchaseOrderService(BaseService):
                         product=line.product,
                         warehouse=receipt.warehouse,
                         qty=qty,
-                        unit_cost=line.unit_price,
+                        unit_cost=line.unit_price
+                        * (
+                            Decimal("1")
+                            - line.discount_percent / Decimal("100")
+                        ),
                         reference_type="GoodsReceipt",
                         reference_id=str(receipt.pk),
                         notes=f"Received against PO {order.number}",
@@ -446,6 +450,10 @@ class PurchaseOrderService(BaseService):
         if lines_created == 0:
             receipt.delete()
             raise ValueError("No quantities provided to receive.")
+
+        from apps.accounting.services import AutoJournalService
+
+        AutoJournalService.post_goods_receipt(receipt)
 
         # Update PO status
         order.status = (

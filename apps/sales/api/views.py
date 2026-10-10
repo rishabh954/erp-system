@@ -14,6 +14,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter  # noqa: E402
 from rest_framework.response import Response  # noqa: E402
 
 from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
+from core.api.fields import TenantModelSerializer  # noqa: E402
 from core.tenancy import get_active_company  # noqa: E402
 
 from ..models import (  # noqa: E402
@@ -32,7 +33,7 @@ from ..models import (  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-class QuotationLineSerializer(serializers.ModelSerializer):
+class QuotationLineSerializer(TenantModelSerializer):
     product_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -58,7 +59,7 @@ class QuotationLineSerializer(serializers.ModelSerializer):
         return obj.product.name if obj.product else None
 
 
-class QuotationSerializer(serializers.ModelSerializer):
+class QuotationSerializer(TenantModelSerializer):
     lines = QuotationLineSerializer(many=True, read_only=True)
     customer_name = serializers.SerializerMethodField()
     status_display = serializers.SerializerMethodField()
@@ -102,7 +103,7 @@ class QuotationSerializer(serializers.ModelSerializer):
         return obj.get_status_display()
 
 
-class SalesOrderLineSerializer(serializers.ModelSerializer):
+class SalesOrderLineSerializer(TenantModelSerializer):
     class Meta:
         model = SalesOrderLine
         fields = [
@@ -121,7 +122,7 @@ class SalesOrderLineSerializer(serializers.ModelSerializer):
         ]
 
 
-class SalesOrderSerializer(serializers.ModelSerializer):
+class SalesOrderSerializer(TenantModelSerializer):
     lines = SalesOrderLineSerializer(many=True, read_only=True)
     customer_name = serializers.SerializerMethodField()
 
@@ -152,7 +153,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         return obj.customer.name
 
 
-class InvoiceLineSerializer(serializers.ModelSerializer):
+class InvoiceLineSerializer(TenantModelSerializer):
     class Meta:
         model = InvoiceLine
         fields = [
@@ -169,7 +170,7 @@ class InvoiceLineSerializer(serializers.ModelSerializer):
         ]
 
 
-class InvoiceSerializer(serializers.ModelSerializer):
+class InvoiceSerializer(TenantModelSerializer):
     lines = InvoiceLineSerializer(many=True, read_only=True)
     customer_name = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
@@ -207,7 +208,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return obj.status in ("sent", "partial") and obj.due_date < timezone.localdate()
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+class PaymentSerializer(TenantModelSerializer):
     invoice_number = serializers.SerializerMethodField()
 
     class Meta:

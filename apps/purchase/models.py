@@ -483,8 +483,11 @@ class Bill(CompanyScoped, SequenceMixin, CurrencyMixin, NotesMixin):
         lines = self.lines.all()
         self.subtotal = sum(item.subtotal for item in lines)
         self.tax_amount = sum(item.tax_amount for item in lines)
+        self.discount_amount = sum(item.discount_amount for item in lines)
         self.total = self.subtotal + self.tax_amount - self.discount_amount
-        self.save(update_fields=["subtotal", "tax_amount", "total"])
+        self.save(
+            update_fields=["subtotal", "tax_amount", "discount_amount", "total"]
+        )
         self.update_balance()
 
     def update_balance(self):

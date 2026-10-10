@@ -6,6 +6,9 @@ from django.utils import timezone
 
 from apps.accounting.models import Account, JournalEntry
 from apps.accounting.services import AutoJournalService, FinancialReportingService
+from apps.crm.models import Customer
+from apps.purchase.models import Bill, BillLine
+from apps.sales.models import Invoice, InvoiceLine
 
 pytestmark = pytest.mark.django_db
 
@@ -19,6 +22,7 @@ def test_autojournal_post_sales_invoice(company, user):
     invoice.currency = None
     invoice.total = Decimal("110.00")
     invoice.subtotal = Decimal("100.00")
+    invoice.discount_amount = Decimal("0.00")
     invoice.tax_amount = Decimal("10.00")
     invoice.customer.id = 1
 
@@ -46,6 +50,7 @@ def test_autojournal_post_purchase_bill(company, user):
     bill.currency = None
     bill.total = Decimal("220.00")
     bill.subtotal = Decimal("200.00")
+    bill.discount_amount = Decimal("0.00")
     bill.tax_amount = Decimal("20.00")
     bill.vendor.id = 1
 
@@ -61,6 +66,66 @@ def test_autojournal_post_purchase_bill(company, user):
     assert entry.is_balanced() is True
     assert entry.status == JournalEntry.Status.POSTED
     assert entry.items.count() == 3  # AP, Expense, Tax
+
+
+def test_discounted_sales_invoice_and_purchase_bill_post_balanced(
+    company, vendor, product, tax
+):
+    invoice_date = timezone.localdate()
+    customer = Customer.objects.create(company=company, name="Discounted customer")
+    invoice = Invoice.objects.create(
+        company=company,
+        customer=customer,
+        invoice_date=invoice_date,
+        due_date=invoice_date,
+    )
+    InvoiceLine.objects.create(
+        invoice=invoice,
+        product=product,
+        description="Discounted sale",
+        quantity=Decimal("1"),
+        unit_price=Decimal("100"),
+        discount_percent=Decimal("10"),
+        tax=tax,
+    )
+    invoice.recalculate_totals()
+    invoice.status = Invoice.Status.SENT
+    invoice.save()
+
+    bill = Bill.objects.create(
+        company=company,
+        vendor=vendor,
+        bill_date=invoice_date,
+        status=Bill.Status.DRAFT,
+    )
+    BillLine.objects.create(
+        bill=bill,
+        product=product,
+        description="Discounted purchase",
+        quantity=Decimal("1"),
+        unit_price=Decimal("100"),
+        discount_percent=Decimal("10"),
+        tax=tax,
+    )
+    bill.calculate_totals()
+    bill.status = Bill.Status.OPEN
+    bill.save()
+
+    invoice_entry = JournalEntry.objects.get(
+        company=company, reference=f"INV: {invoice.number}"
+    )
+    bill_entry = JournalEntry.objects.get(
+        company=company, reference=f"BILL: {bill.number}"
+    )
+    for entry in (invoice_entry, bill_entry):
+        assert entry.status == JournalEntry.Status.POSTED
+        assert sum(item.debit for item in entry.items.all()) == sum(
+            item.credit for item in entry.items.all()
+        )
+    assert invoice.total == Decimal("99.00")
+    assert bill.total == Decimal("99.00")
+    assert invoice.discount_amount == Decimal("10.00")
+    assert bill.discount_amount == Decimal("10.00")
 
 def test_financial_reporting_trial_balance(company, user):
     """Test trial balance correctly aggregates debits and credits."""

@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
+from core.api.fields import TenantModelSerializer
 from apps.hrms.models import Attendance, Employee, LeaveRequest, PayrollPeriod, Payslip
 
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeSerializer(TenantModelSerializer):
     class Meta:
         model = Employee
         fields = "__all__"
@@ -16,7 +17,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         ]
 
 
-class AttendanceSerializer(serializers.ModelSerializer):
+class AttendanceSerializer(TenantModelSerializer):
     class Meta:
         model = Attendance
         fields = "__all__"
@@ -29,7 +30,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
         ]
 
 
-class LeaveRequestSerializer(serializers.ModelSerializer):
+class LeaveRequestSerializer(TenantModelSerializer):
     class Meta:
         model = LeaveRequest
         fields = "__all__"
@@ -43,7 +44,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
         ]
 
 
-class PayrollPeriodSerializer(serializers.ModelSerializer):
+class PayrollPeriodSerializer(TenantModelSerializer):
     class Meta:
         model = PayrollPeriod
         fields = "__all__"
@@ -56,7 +57,7 @@ class PayrollPeriodSerializer(serializers.ModelSerializer):
         ]
 
 
-class PayslipSerializer(serializers.ModelSerializer):
+class PayslipSerializer(TenantModelSerializer):
     class Meta:
         model = Payslip
         fields = "__all__"

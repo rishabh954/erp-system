@@ -115,6 +115,52 @@ class AutoJournalService:
         return bank
 
     @staticmethod
+    def get_or_create_cogs(company):
+        account, _ = Account.objects.get_or_create(
+            company=company,
+            code="5000",
+            defaults={
+                "name": "Cost of Goods Sold",
+                "account_type": Account.AccountType.COGS,
+            },
+        )
+        return account
+
+    @staticmethod
+    def get_or_create_inventory(company):
+        account, _ = Account.objects.get_or_create(
+            company=company,
+            code="1400",
+            defaults={
+                "name": "Inventory Asset",
+                "account_type": Account.AccountType.ASSET,
+                "account_subtype": Account.AccountSubtype.CURRENT_ASSET,
+            },
+        )
+        return account
+
+    @staticmethod
+    def get_or_create_grni(company):
+        account, _ = Account.objects.get_or_create(
+            company=company,
+            code="2105",
+            defaults={
+                "name": "Goods Received Not Invoiced",
+                "account_type": Account.AccountType.LIABILITY,
+                "account_subtype": Account.AccountSubtype.CURRENT_LIABILITY,
+            },
+        )
+        return account
+
+    @staticmethod
+    def _company_account(account, company, fallback):
+        if account is None:
+            return fallback
+        if account.company_id != company.pk:
+            raise ValueError("Product accounting account belongs to another company.")
+        return account
+
+    @staticmethod
     @transaction.atomic
     def post_sales_invoice(invoice):
         company = invoice.company
@@ -139,7 +185,9 @@ class AutoJournalService:
         journal = AutoJournalService.get_or_create_journal(company, "sales")
 
         invoice_total = invoice.total or Decimal("0")
-        revenue_credit = invoice.subtotal or invoice_total
+        # The persisted invoice total is authoritative (some legacy/imported
+        # invoices have totals but no subtotal); tax remains a separate credit.
+        revenue_credit = invoice_total - (invoice.tax_amount or Decimal("0"))
 
         entry = JournalEntry.objects.create(
             company=company,
@@ -164,7 +212,7 @@ class AutoJournalService:
             partner_id=str(invoice.customer.id),
         )
 
-        # Credit Revenue (Subtotal, with a safe fallback to the invoice total)
+        # Discounts reduce recognized revenue, while tax remains a separate liability.
         JournalItem.objects.create(
             journal_entry=entry,
             account=revenue_account,
@@ -268,6 +316,186 @@ class AutoJournalService:
 
     @staticmethod
     @transaction.atomic
+    def post_delivery(delivery, movements=None):
+        from apps.inventory.models import DeliveryOrder, StockMovement
+
+        delivery = DeliveryOrder.objects.select_for_update().get(pk=delivery.pk)
+
+        company = delivery.company
+        reference = f"DEL: {delivery.number}"
+        existing = (
+            JournalEntry.objects.select_for_update()
+            .filter(company=company, reference=reference)
+            .first()
+        )
+        if existing:
+            if existing.status == JournalEntry.Status.POSTED:
+                return existing
+            raise ValueError(f"Delivery journal {reference} already exists but is not posted.")
+
+        movements = list(
+            movements
+            if movements is not None
+            else StockMovement.objects.filter(
+                company=company,
+                reference_type="DeliveryOrder",
+                reference_id=str(delivery.pk),
+            ).select_related("product")
+        )
+        if not movements:
+            return None
+
+        journal = AutoJournalService.get_or_create_journal(company, "general")
+        currency = getattr(delivery.sales_order, "currency", None)
+        entry = JournalEntry.objects.create(
+            company=company,
+            journal=journal,
+            date=timezone.localdate(),
+            reference=reference,
+            status=JournalEntry.Status.DRAFT,
+            currency=currency,
+            total_debit=Decimal("0"),
+            total_credit=Decimal("0"),
+            source_type="delivery",
+            source_id=str(delivery.pk),
+        )
+
+        total_cost = Decimal("0")
+        for movement in movements:
+            amount = abs(Decimal(movement.total_cost or 0))
+            if amount == 0:
+                continue
+            product = movement.product
+            cogs_account = product.cogs_account if product else None
+            inventory_account = product.inventory_account if product else None
+            cogs = AutoJournalService._company_account(
+                cogs_account,
+                company,
+                AutoJournalService.get_or_create_cogs(company)
+                if cogs_account is None
+                else None,
+            )
+            inventory = AutoJournalService._company_account(
+                inventory_account,
+                company,
+                AutoJournalService.get_or_create_inventory(company)
+                if inventory_account is None
+                else None,
+            )
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=cogs,
+                description=f"COGS for {delivery.number}",
+                debit=amount,
+                credit=0,
+            )
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=inventory,
+                description=f"Inventory shipped via {delivery.number}",
+                debit=0,
+                credit=amount,
+            )
+            total_cost += amount
+
+        if total_cost == 0:
+            entry.delete()
+            return None
+
+        entry.total_debit = total_cost
+        entry.total_credit = total_cost
+        entry.save(update_fields=["total_debit", "total_credit"])
+        entry.post()
+        return entry
+
+    @staticmethod
+    @transaction.atomic
+    def post_goods_receipt(receipt):
+        from decimal import ROUND_HALF_UP
+
+        from apps.purchase.models import GoodsReceipt
+
+        receipt = (
+            GoodsReceipt.objects.select_for_update()
+            .select_related("company", "purchase_order")
+            .get(pk=receipt.pk)
+        )
+        company = receipt.company
+        reference = f"GRN: {receipt.number}"
+        existing = (
+            JournalEntry.objects.select_for_update()
+            .filter(company=company, reference=reference)
+            .first()
+        )
+        if existing:
+            if existing.status == JournalEntry.Status.POSTED:
+                return existing
+            raise ValueError(f"Goods receipt journal {reference} already exists but is not posted.")
+
+        grni = AutoJournalService.get_or_create_grni(company)
+        journal = AutoJournalService.get_or_create_journal(company, "purchase")
+        currency = getattr(receipt.purchase_order, "currency", None)
+        entry = JournalEntry.objects.create(
+            company=company,
+            journal=journal,
+            date=receipt.receipt_date,
+            reference=reference,
+            status=JournalEntry.Status.DRAFT,
+            currency=currency,
+            total_debit=Decimal("0"),
+            total_credit=Decimal("0"),
+            source_type="goods_receipt",
+            source_id=str(receipt.purchase_order_id),
+        )
+
+        total_value = Decimal("0")
+        for line in receipt.lines.select_related("po_line__product"):
+            product = line.po_line.product
+            if not product:
+                continue
+            unit_cost = line.po_line.unit_price * (
+                Decimal("1") - line.po_line.discount_percent / Decimal("100")
+            )
+            amount = (line.quantity_received * unit_cost).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            if amount <= 0:
+                continue
+            inventory = AutoJournalService._company_account(
+                product.inventory_account,
+                company,
+                AutoJournalService.get_or_create_inventory(company)
+                if product.inventory_account is None
+                else None,
+            )
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=inventory,
+                description=f"Inventory received via {receipt.number}",
+                debit=amount,
+                credit=0,
+            )
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=grni,
+                description=f"Goods received not invoiced: {receipt.number}",
+                debit=0,
+                credit=amount,
+            )
+            total_value += amount
+
+        if total_value == 0:
+            entry.delete()
+            return None
+
+        entry.total_debit = total_value
+        entry.total_credit = total_value
+        entry.save(update_fields=["total_debit", "total_credit"])
+        entry.post(user=receipt.received_by)
+        return entry
+
+    @staticmethod
+    @transaction.atomic
     def post_sales_payment(payment):
         company = payment.company
         ar_account = AutoJournalService.get_or_create_ar(company)
@@ -333,6 +561,32 @@ class AutoJournalService:
 
         journal = AutoJournalService.get_or_create_journal(company, "purchase")
 
+        # Use the persisted total so imported bills with incomplete subtotal
+        # fields still post a balanced entry; tax is debited separately below.
+        purchase_cost = (bill.total or Decimal("0")) - (
+            bill.tax_amount or Decimal("0")
+        )
+        grni_account = Account.objects.filter(company=company, code="2105").first()
+        grni_to_clear = Decimal("0")
+        if bill.purchase_order_id and grni_account:
+            from django.db.models import Sum
+
+            grni_balance = JournalItem.objects.filter(
+                account=grni_account,
+                journal_entry__company=company,
+                journal_entry__source_id=str(bill.purchase_order_id),
+                journal_entry__source_type__in=("goods_receipt", "purchase_bill"),
+                journal_entry__status=JournalEntry.Status.POSTED,
+            ).aggregate(
+                debit=Sum("debit"),
+                credit=Sum("credit"),
+            )
+            available_grni = (grni_balance["credit"] or Decimal("0")) - (
+                grni_balance["debit"] or Decimal("0")
+            )
+            grni_to_clear = min(purchase_cost, max(available_grni, Decimal("0")))
+        expense_amount = purchase_cost - grni_to_clear
+
         entry = JournalEntry.objects.create(
             company=company,
             journal=journal,
@@ -342,6 +596,8 @@ class AutoJournalService:
             currency=bill.currency,
             total_debit=bill.total,
             total_credit=bill.total,
+            source_type="purchase_bill",
+            source_id=str(bill.purchase_order_id or bill.pk),
         )
 
 
@@ -356,16 +612,27 @@ class AutoJournalService:
             partner_id=str(bill.vendor.id),
         )
 
-        # Debit Expense (Subtotal)
-        JournalItem.objects.create(
-            journal_entry=entry,
-            account=expense_account,
-            description=f"Expense for {bill.number}",
-            debit=bill.subtotal,
-            credit=0,
-            partner_type="vendor",
-            partner_id=str(bill.vendor.id),
-        )
+        if grni_to_clear > 0:
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=grni_account,
+                description=f"Clear goods received for {bill.number}",
+                debit=grni_to_clear,
+                credit=0,
+                partner_type="vendor",
+                partner_id=str(bill.vendor.id),
+            )
+
+        if expense_amount > 0:
+            JournalItem.objects.create(
+                journal_entry=entry,
+                account=expense_account,
+                description=f"Expense for {bill.number}",
+                debit=expense_amount,
+                credit=0,
+                partner_type="vendor",
+                partner_id=str(bill.vendor.id),
+            )
 
         # Debit Tax (if any)
         if bill.tax_amount > 0:

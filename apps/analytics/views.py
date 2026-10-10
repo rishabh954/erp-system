@@ -22,6 +22,21 @@ from .services import export_csv, export_excel, export_pdf, get_data, get_pivot_
 
 logger = logging.getLogger(__name__)
 
+REPORT_MODEL_MAP = {
+    "sales": ("sales", "SalesOrder", "company"),
+    "purchases": ("purchase", "PurchaseOrder", "company"),
+    "accounting": ("accounting", "JournalItem", "journal_entry__company"),
+}
+
+
+def get_reportable_fields(model_class):
+    """Return concrete scalar fields that can safely be used in report queries."""
+    return {
+        field.name
+        for field in model_class._meta.concrete_fields
+        if not field.is_relation
+    }
+
 
 class ReportsMixin(LoginRequiredMixin):
     """Base mixin for all reporting views."""
@@ -736,14 +751,10 @@ class GenerateReportAPIView(ReportsMixin, View):
 
         report = get_object_or_404(CustomReport, pk=report_id, created_by=request.user)
 
-        model_map = {
-            "sales": ("sales", "SalesOrder"),
-            "purchases": ("purchase", "PurchaseOrder"),
-            "accounting": ("accounting", "JournalItem"),
-        }
-        app_label, model_name = model_map.get(report.module_source, (None, None))
-        if not app_label:
+        model_info = REPORT_MODEL_MAP.get(report.module_source)
+        if not model_info:
             return JsonResponse({"error": "Invalid module source"}, status=400)
+        app_label, model_name, company_path = model_info
 
         try:
             ModelClass = django_apps.get_model(app_label, model_name)
@@ -752,14 +763,27 @@ class GenerateReportAPIView(ReportsMixin, View):
                 {"error": f"Model not found: {app_label}.{model_name}"}, status=400
             )
 
+        allowed_fields = get_reportable_fields(ModelClass)
+        if (
+            report.group_by_field not in allowed_fields
+            or report.aggregate_field not in allowed_fields
+        ):
+            return JsonResponse(
+                {"error": "Invalid report field."},
+                status=400,
+            )
+
         from django.db.models import Avg, Count, Sum
 
         agg_map = {"sum": Sum, "avg": Avg, "count": Count}
-        agg_func = agg_map.get(report.aggregate_function, Count)(report.aggregate_field)
+        aggregate_class = agg_map.get(report.aggregate_function)
+        if aggregate_class is None:
+            return JsonResponse({"error": "Invalid aggregate function."}, status=400)
+        agg_func = aggregate_class(report.aggregate_field)
 
         try:
             qs = (
-                ModelClass.objects.all()
+                ModelClass.objects.filter(**{company_path: self.company})
                 .values(report.group_by_field)
                 .annotate(value=agg_func)
                 .order_by(report.group_by_field)
@@ -795,21 +819,12 @@ class GetModuleFieldsAPIView(ReportsMixin, View):
         from django.apps import apps as django_apps
 
         module_source = request.GET.get("module", "")
-        model_map = {
-            "sales": ("sales", "SalesOrder"),
-            "purchases": ("purchase", "PurchaseOrder"),
-            "accounting": ("accounting", "JournalItem"),
-        }
-        app_label, model_name = model_map.get(module_source, (None, None))
-        if not app_label:
+        model_info = REPORT_MODEL_MAP.get(module_source)
+        if not model_info:
             return JsonResponse({"fields": []})
+        app_label, model_name, _company_path = model_info
         try:
             ModelClass = django_apps.get_model(app_label, model_name)
-            fields = [
-                f.name
-                for f in ModelClass._meta.get_fields()
-                if not f.is_relation or f.many_to_one
-            ]
-            return JsonResponse({"fields": sorted(fields)})
+            return JsonResponse({"fields": sorted(get_reportable_fields(ModelClass))})
         except LookupError:
             return JsonResponse({"fields": []})

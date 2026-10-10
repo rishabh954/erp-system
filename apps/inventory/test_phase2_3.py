@@ -4,6 +4,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+from apps.accounting.models import JournalEntry
 from apps.authentication.models import User
 from apps.company.models import Branch, Company
 from apps.inventory.models import DeliveryOrder, DeliveryOrderLine, StockRecord
@@ -123,6 +124,19 @@ def test_sales_order_reservation_lifecycle(setup_data):
     assert stock.quantity_reserved == Decimal("0")
     assert stock.quantity_on_hand == Decimal("80")
     assert stock.quantity_available == Decimal("80")
+    delivery_entry = JournalEntry.objects.get(
+        company=company, reference=f"DEL: {delivery.number}"
+    )
+    assert delivery_entry.status == JournalEntry.Status.POSTED
+    assert delivery_entry.total_debit == Decimal("1000.00")
+    assert delivery_entry.total_credit == Decimal("1000.00")
+
+    from apps.accounting.services import AutoJournalService
+
+    assert AutoJournalService.post_delivery(delivery) == delivery_entry
+    assert JournalEntry.objects.filter(
+        company=company, reference=f"DEL: {delivery.number}"
+    ).count() == 1
 
 
 @pytest.mark.django_db
