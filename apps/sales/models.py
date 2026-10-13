@@ -577,6 +577,22 @@ class Coupon(CompanyScoped):
 
 
 class Shipment(CompanyScoped, SequenceMixin, NotesMixin):
+    """
+    Sales-side shipment record linked directly to a SalesOrder.
+
+    DESIGN NOTE — Two Shipment models exist in this project:
+    - ``sales.Shipment``  (this model): a lightweight carrier-tracking record tied to a
+      SalesOrder. It records scheduled/shipped dates, carrier, and tracking number at the
+      order level. **It is NOT the canonical fulfillment record.**
+    - ``inventory.Shipment``: the **canonical** physical shipment model. It is linked to an
+      ``inventory.DeliveryOrder`` (which is the fulfilment document) and carries
+      tracking URL and shipping cost. All warehouse / stock-movement logic uses
+      ``inventory.Shipment`` (and its associated ``DeliveryOrder``).
+
+    Do not delete either model — ``sales.Shipment`` may be referenced by legacy customer
+    portal or carrier-sync features. For all new inventory/fulfilment code, use
+    ``inventory.Shipment`` via ``DeliveryOrder``.
+    """
     class Status(models.TextChoices):
         PENDING = "pending", _("Pending")
         PICKED = "picked", _("Picked")

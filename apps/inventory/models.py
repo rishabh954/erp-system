@@ -721,6 +721,21 @@ class PackingSlipLine(models.Model):
 
 
 class Shipment(CompanyScoped, SequenceMixin, NotesMixin):
+    """
+    Inventory-side (canonical) shipment record linked to a DeliveryOrder.
+
+    DESIGN NOTE — Two Shipment models exist in this project:
+    - ``inventory.Shipment`` (this model): the **canonical** physical shipment. It is
+      attached to an ``inventory.DeliveryOrder``, carries carrier, tracking URL, and
+      shipping cost, and is created by the ``DeliveryService``. All warehouse /
+      stock-movement and accounting logic flows through this model.
+    - ``sales.Shipment``: a lighter-weight carrier-tracking record linked directly to a
+      ``SalesOrder``. It is used by legacy carrier-sync / customer-portal features and
+      should NOT be used for new fulfilment logic.
+
+    For all new inventory/fulfilment code, use ``inventory.Shipment`` (this model)
+    via ``DeliveryOrder``.
+    """
     class Status(models.TextChoices):
         PENDING = "pending", _("Pending")
         SHIPPED = "shipped", _("Shipped")

@@ -9,6 +9,7 @@ from .models import LeadAssignmentRule, SalesTarget, Territory
 
 # ════════════════════════ TERRITORIES ═════════════════════════════════════════
 class TerritoryListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/setup/territory_list.html"
     context_object_name = "territories"
 
@@ -17,6 +18,7 @@ class TerritoryListView(CompanyMixin, ListView):
 
 
 class TerritoryCreateView(CompanyMixin, CreateView):
+    required_permission = "crm.create"
     model = Territory
     fields = ["name", "code", "manager", "sales_reps"]
     template_name = "crm/setup/territory_form.html"
@@ -29,6 +31,7 @@ class TerritoryCreateView(CompanyMixin, CreateView):
 
 
 class TerritoryUpdateView(CompanyMixin, UpdateView):
+    required_permission = "crm.update"
     model = Territory
     fields = ["name", "code", "manager", "sales_reps"]
     template_name = "crm/setup/territory_form.html"
@@ -43,6 +46,7 @@ class TerritoryUpdateView(CompanyMixin, UpdateView):
 
 
 class TerritoryDeleteView(CompanyMixin, DeleteView):  # type: ignore[misc]
+    required_permission = "crm.delete"
     model = Territory
     success_url = reverse_lazy("crm:territory_list")
 
@@ -52,6 +56,7 @@ class TerritoryDeleteView(CompanyMixin, DeleteView):  # type: ignore[misc]
 
 # ════════════════════════ LEAD ASSIGNMENT RULES ══════════════════════════════
 class LeadAssignmentRuleListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/setup/rule_list.html"
     context_object_name = "rules"
 
@@ -60,6 +65,7 @@ class LeadAssignmentRuleListView(CompanyMixin, ListView):
 
 
 class LeadAssignmentRuleCreateView(CompanyMixin, CreateView):
+    required_permission = "crm.create"
     model = LeadAssignmentRule
     fields = [
         "name",
@@ -80,6 +86,7 @@ class LeadAssignmentRuleCreateView(CompanyMixin, CreateView):
 
 
 class LeadAssignmentRuleUpdateView(CompanyMixin, UpdateView):
+    required_permission = "crm.update"
     model = LeadAssignmentRule
     fields = [
         "name",
@@ -102,6 +109,7 @@ class LeadAssignmentRuleUpdateView(CompanyMixin, UpdateView):
 
 
 class LeadAssignmentRuleDeleteView(CompanyMixin, DeleteView):
+    required_permission = "crm.delete"
     model = LeadAssignmentRule
     success_url = reverse_lazy("crm:rule_list")
 
@@ -111,6 +119,7 @@ class LeadAssignmentRuleDeleteView(CompanyMixin, DeleteView):
 
 # ════════════════════════ SALES TARGETS ══════════════════════════════════════
 class SalesTargetListView(CompanyMixin, ListView):
+    required_permission = "crm.read"
     template_name = "crm/setup/target_list.html"
     context_object_name = "targets"
 
@@ -121,6 +130,7 @@ class SalesTargetListView(CompanyMixin, ListView):
 
 
 class SalesTargetCreateView(CompanyMixin, CreateView):
+    required_permission = "crm.create"
     model = SalesTarget
     fields = [
         "sales_rep",
@@ -140,6 +150,7 @@ class SalesTargetCreateView(CompanyMixin, CreateView):
 
 
 class SalesTargetUpdateView(CompanyMixin, UpdateView):
+    required_permission = "crm.update"
     model = SalesTarget
     fields = [
         "sales_rep",
@@ -161,6 +172,7 @@ class SalesTargetUpdateView(CompanyMixin, UpdateView):
 
 
 class SalesTargetDeleteView(CompanyMixin, DeleteView):
+    required_permission = "crm.delete"
     model = SalesTarget
     success_url = reverse_lazy("crm:target_list")
 

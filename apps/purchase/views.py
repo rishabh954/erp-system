@@ -717,10 +717,10 @@ class CreateBillFromPOView(CompanyMixin, View):
             return redirect("purchase:bill_detail", pk=bill.pk)
         except ValueError as e:
             messages.error(request, str(e))
-            return redirect("purchase:po_detail", pk=pk)
+            return redirect("purchase:order_detail", pk=pk)
         except Exception as e:
             messages.error(request, f"Error: {e}")
-            return redirect("purchase:po_detail", pk=pk)
+            return redirect("purchase:order_detail", pk=pk)
 
 
 class BillUpdateView(CompanyMixin, UpdateView):

@@ -76,7 +76,7 @@ class AdminRequiredMixin(LoginRequiredMixin, AdministrationPermissionMixin):
                 request,
                 "You do not have permission to access the Administration Center.",
             )
-            return redirect("dashboard:home")
+            return redirect("dashboard:index")
         return super().dispatch(request, *args, **kwargs)
 
     @property
@@ -640,7 +640,7 @@ class DataImportView(AdminRequiredMixin, View):
             messages.success(
                 request, "Export job queued. You will be notified when ready."
             )
-        return redirect("administration:import_export")
+        return redirect("administration:data_import")
 
 
 # ── 11. Backup & Restore ──────────────────────────────────────────────────────

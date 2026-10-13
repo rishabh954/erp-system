@@ -392,7 +392,14 @@ class TestCompanyMixinUsesRequestCompany:
 
     def test_company_mixin_returns_request_company(self, rf, user_a, company_a, company_b):
         """CompanyMixin.company() must return request.company, not primary_company."""
+        from apps.authentication.models import UserCompany
         from core.mixins import CompanyMixin
+
+        # user_a must be an active member of company_b for get_active_company to
+        # accept company_b when request.company is set to it.
+        UserCompany.objects.get_or_create(
+            user=user_a, company=company_b, defaults={"is_active": True}
+        )
 
         mixin = CompanyMixin()
         request = rf.get("/")

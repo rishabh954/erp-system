@@ -1123,8 +1123,8 @@ class CreditNoteListView(CompanyMixin, ListView):
     context_object_name = "credit_notes"
 
     def get_queryset(self):
-        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related().select_related(
-            "customer", "invoice", "branch"
+        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related(
+            "customer", "invoice"
         )
 
 
@@ -1134,7 +1134,7 @@ class CreditNoteDetailView(CompanyMixin, DetailView):
     context_object_name = "credit_note"
 
     def get_queryset(self):
-        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related().select_related("customer", "invoice")
+        return CreditNote.objects.filter(company=self.company(), is_deleted=False).select_related("customer", "invoice")
 
 
 class SalesCommissionListView(CompanyMixin, ListView):

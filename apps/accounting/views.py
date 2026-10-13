@@ -896,12 +896,18 @@ class ARAgingReportView(CompanyMixin, TemplateView):
 
         from apps.sales.models import Invoice
 
-        # Get all posted, unpaid sales invoices
+        # Get all open (sent/partial/overdue) standard invoices with an outstanding balance.
+        # Invoice.Status has no POSTED value; open statuses are SENT, PARTIAL, and OVERDUE.
+        open_statuses = [
+            Invoice.Status.SENT,
+            Invoice.Status.PARTIAL,
+            Invoice.Status.OVERDUE,
+        ]
         invoices = Invoice.objects.filter(
             company=company,
-            status=Invoice.Status.POSTED,
+            status__in=open_statuses,
             document_type="standard",
-            amount_due__gt=0,
+            balance_due__gt=0,
             invoice_date__lte=as_of_date,
         ).select_related("customer")
 
@@ -912,7 +918,7 @@ class ARAgingReportView(CompanyMixin, TemplateView):
                 aging_data[cust] = {"current": 0, "30": 0, "60": 0, "90": 0, "total": 0}
 
             days_past = (as_of_date - inv.due_date).days
-            amount = inv.amount_due
+            amount = inv.balance_due
 
             if days_past <= 0:
                 aging_data[cust]["current"] += amount

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class BankStatementListView(CompanyMixin, ListView):
+    required_permission = "accounting.read"
     template_name = "accounting/bank_statements/list.html"
     context_object_name = "statements"
 
@@ -25,6 +26,7 @@ class BankStatementListView(CompanyMixin, ListView):
 
 
 class BankStatementCreateView(CompanyMixin, CreateView):
+    required_permission = "accounting.create"
     model = BankStatement
     template_name = "accounting/bank_statements/form.html"
     fields = [
