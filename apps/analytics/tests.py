@@ -28,13 +28,15 @@ def company_b(db):
 
 @pytest.fixture
 def user_a(db, company_a):
+    from django.core.management import call_command
+    call_command("setup_permissions")
     user = User.objects.create_user(
         email="analytics_user_a@example.com",
         password="password",
         role=User.Role.COMPANY_ADMIN,
         primary_company=company_a,
     )
-    UserCompany.objects.create(user=user, company=company_a, is_active=True)
+    UserCompany.objects.create(user=user, company=company_a, role=User.Role.COMPANY_ADMIN, is_active=True)
     return user
 
 
@@ -137,3 +139,50 @@ class TestReportBuilderTenantIsolation:
         assert response.status_code == 400, (
             f"Expected 400 for invalid field, got {response.status_code}"
         )
+
+    def test_generate_report_no_cross_tenant_leakage(self, user_a, company_a, company_b, customer_a, customer_b):
+        """
+        GenerateReportAPIView must only aggregate data for company_a and never leak company_b.
+        """
+        from decimal import Decimal
+        from django.test import Client
+        from apps.sales.models import SalesOrder
+        from apps.analytics.models import CustomReport
+
+        from datetime import date
+        # Company A order: total 100
+        SalesOrder.objects.create(
+            company=company_a,
+            customer=customer_a,
+            order_date=date.today(),
+            status=SalesOrder.Status.CONFIRMED,
+            total=Decimal("100.00"),
+        )
+        # Company B order: total 500
+        SalesOrder.objects.create(
+            company=company_b,
+            customer=customer_b,
+            order_date=date.today(),
+            status=SalesOrder.Status.CONFIRMED,
+            total=Decimal("500.00"),
+        )
+
+        report = CustomReport.objects.create(
+            created_by=user_a,
+            name="Sales Status Report",
+            module_source="sales",
+            group_by_field="status",
+            aggregate_field="total",
+            aggregate_function="sum",
+        )
+
+        c = Client()
+        c.force_login(user_a)
+        session = c.session
+        session["active_company_id"] = str(company_a.pk)
+        session.save()
+
+        response = c.get(f"/analytics/api/generate/?report_id={report.pk}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["values"] == [100.0], f"Expected [100.0] for company_a, got {data['values']} (leaked company_b?)"

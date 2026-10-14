@@ -118,17 +118,72 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
         return render(request, self.template_name, {"webhooks": webhooks})
 
     def post(self, request):
-        url = request.POST.get("url")
-        events = request.POST.get("events", "*")
+        url = request.POST.get("target_url") or request.POST.get("url")
+        secret = request.POST.get("secret", "")
+        events = request.POST.getlist("events") or ["*"]
+        name = request.POST.get("name", url or "Webhook")
         if url:
             WebhookEndpoint.objects.create(
                 company=request.user.primary_company,
+                name=name,
                 url=url,
-                subscribed_events=[e.strip() for e in events.split(",")],
+                secret=secret,
+                events=events,
                 status=WebhookEndpoint.Status.ACTIVE,
             )
             messages.success(request, "Webhook endpoint added.")
         return redirect("administration:webhooks")
+
+
+# Alias — the modal posts to webhook_create, same logic as WebhookManagementView.post
+WebhookCreateView = WebhookManagementView
+
+
+class WebhookToggleView(LoginRequiredMixin, AdminRequiredMixin, View):
+    """Toggle active/inactive status of a webhook endpoint."""
+
+    def post(self, request, pk):
+        try:
+            hook = WebhookEndpoint.objects.get(pk=pk, company=request.user.primary_company)
+            if hook.status == WebhookEndpoint.Status.ACTIVE:
+                hook.status = WebhookEndpoint.Status.INACTIVE
+            else:
+                hook.status = WebhookEndpoint.Status.ACTIVE
+            hook.save(update_fields=["status"])
+            messages.success(request, f"Webhook '{hook.name}' status updated.")
+        except WebhookEndpoint.DoesNotExist:
+            messages.error(request, "Webhook not found.")
+        return redirect("administration:webhooks")
+
+
+class WebhookDeleteView(LoginRequiredMixin, AdminRequiredMixin, View):
+    """Delete a webhook endpoint."""
+
+    def post(self, request, pk):
+        try:
+            hook = WebhookEndpoint.objects.get(pk=pk, company=request.user.primary_company)
+            hook.delete()
+            messages.success(request, "Webhook deleted.")
+        except WebhookEndpoint.DoesNotExist:
+            messages.error(request, "Webhook not found.")
+        return redirect("administration:webhooks")
+
+
+class IntegrationDisconnectView(LoginRequiredMixin, AdminRequiredMixin, View):
+    """Disconnect a third-party integration."""
+
+    def post(self, request, pk):
+        try:
+            integration = Integration.objects.get(
+                pk=pk, company=request.user.primary_company
+            )
+            integration.status = Integration.Status.DISCONNECTED
+            integration.credentials = {}
+            integration.save(update_fields=["status", "credentials"])
+            messages.success(request, f"'{integration.name}' disconnected.")
+        except Integration.DoesNotExist:
+            messages.error(request, "Integration not found.")
+        return redirect("administration:integrations_dashboard")
 
 
 class DataImportView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):

@@ -33,13 +33,15 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def admin_user(company):
+    from django.core.management import call_command
+    call_command("setup_permissions")
     u = User.objects.create_user(
         email="sales_admin@test.com",
         password="password",
         role=User.Role.COMPANY_ADMIN,
         primary_company=company,
     )
-    UserCompany.objects.create(user=u, company=company, is_active=True)
+    UserCompany.objects.create(user=u, company=company, role=User.Role.COMPANY_ADMIN, is_active=True)
     return u
 
 

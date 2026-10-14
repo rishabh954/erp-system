@@ -183,6 +183,8 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
         ]
 
         for app in ctx["apps"]:
+            app["pk"] = app["id"]
+            app["is_enabled"] = app["id"] in installed
             app["is_installed"] = app["id"] in installed
 
         return ctx
@@ -203,6 +205,25 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
             )
             messages.warning(request, f"Uninstalled {app_label.upper()}.")
 
+        return redirect("administration:app_store")
+
+
+class AppToggleView(AdminRequiredMixin, View):
+    required_permission = "administration.update"
+
+    def post(self, request, pk):
+        company = get_active_company(request)
+        app_label = pk
+        app_record = InstalledApp.objects.filter(company=company, app_label=app_label).first()
+        if app_record and app_record.is_active:
+            app_record.is_active = False
+            app_record.save(update_fields=["is_active"])
+            messages.warning(request, f"Disabled module {app_label.upper()}.")
+        else:
+            InstalledApp.objects.update_or_create(
+                company=company, app_label=app_label, defaults={"is_active": True}
+            )
+            messages.success(request, f"Enabled module {app_label.upper()}.")
         return redirect("administration:app_store")
 
 

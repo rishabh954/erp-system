@@ -1118,7 +1118,7 @@ class SubscriptionDetailView(CompanyMixin, DetailView):
 
 
 class CreditNoteListView(CompanyMixin, ListView):
-    required_permission = "sales.update"
+    required_permission = "sales.read"
     template_name = "sales/credit_notes/list.html"
     context_object_name = "credit_notes"
 
@@ -1129,7 +1129,7 @@ class CreditNoteListView(CompanyMixin, ListView):
 
 
 class CreditNoteDetailView(CompanyMixin, DetailView):
-    required_permission = "sales.update"
+    required_permission = "sales.read"
     template_name = "sales/credit_notes/detail.html"
     context_object_name = "credit_note"
 

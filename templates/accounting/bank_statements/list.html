@@ -7,7 +7,7 @@
         <h1 class="h3 text-primary mb-1">Bank Statements</h1>
         <p class="text-muted mb-0">Reconcile imported transactions.</p>
     </div>
-    <a href="{% url 'accounting:statement_import' %}" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Statement</a>
+    <a href="{% url 'accounting:bank_statement_import' %}" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Statement</a>
 </div>
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
@@ -29,7 +29,7 @@
                             <small class="text-muted">{{ stmt.lines.count }}/{{ stmt.lines.count }}</small>
                         </td>
                         <td><span class="badge bg-{{ stmt.status|slugify }}">{{ stmt.get_status_display }}</span></td>
-                        <td class="text-end"><a href="{% url 'accounting:statement_detail' stmt.pk %}" class="btn btn-sm btn-outline-primary">View / Reconcile</a></td>
+                        <td class="text-end"><a href="{% url 'accounting:bank_reconciliation' %}?bank_account={{ stmt.bank_account.id }}" class="btn btn-sm btn-outline-primary">View / Reconcile</a></td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="6" class="text-center text-muted py-4">No bank statements imported.</td></tr>

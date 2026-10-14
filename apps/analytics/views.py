@@ -741,7 +741,7 @@ class ReportBulkDeleteView(ReportsMixin, View):
 
 
 class GenerateReportAPIView(ReportsMixin, View):
-    required_permission = "analytics.approve"
+    required_permission = "analytics.read"
     def get(self, request, *args, **kwargs):
         from django.apps import apps as django_apps
 
