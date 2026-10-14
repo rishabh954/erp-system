@@ -28,7 +28,12 @@ class TicketService(BaseService):
         if category_id:
             from apps.helpdesk.models import TicketCategory
 
-            category = TicketCategory.objects.get(pk=category_id)
+            try:
+                category = TicketCategory.objects.get(
+                    pk=category_id, company=self.company
+                )
+            except TicketCategory.DoesNotExist:
+                raise ValueError("Ticket category not found for this company.") from None
             if category.auto_assign_to:
                 ticket.assigned_to = category.auto_assign_to
             ticket.sla_due_at = timezone.now() + timedelta(hours=category.sla_hours)

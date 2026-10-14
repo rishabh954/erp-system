@@ -184,11 +184,12 @@ class PurchaseOrderService(BaseService):
                 from apps.company.models import Tax
 
                 try:
-                    t = Tax.objects.get(pk=tax_id)
+                    t = Tax.objects.get(pk=tax_id, company=self.company)
                     tax_amt = t.compute(taxable)
                 except Exception as e:
                     import logging
                     logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
+                    tax_id = None
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
@@ -282,11 +283,12 @@ class PurchaseOrderService(BaseService):
                 from apps.company.models import Tax
 
                 try:
-                    t = Tax.objects.get(pk=tax_id)
+                    t = Tax.objects.get(pk=tax_id, company=self.company)
                     tax_amt = t.compute(taxable)
                 except Exception as e:
                     import logging
                     logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
+                    tax_id = None
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
@@ -378,6 +380,21 @@ class PurchaseOrderService(BaseService):
         )
         return bill
 
+    def _goods_receipt_overage_percent(self):
+        """Company setting for GRN overage, default 0 (no over-receipt)."""
+        from apps.company.models import CompanySettings
+
+        setting = CompanySettings.objects.filter(
+            company=self.company, key="goods_receipt_overage_percent"
+        ).first()
+        if not setting or not setting.value:
+            return Decimal("0")
+        try:
+            value = Decimal(str(setting.value))
+        except Exception:
+            return Decimal("0")
+        return max(Decimal("0"), value)
+
     @transaction.atomic
     def create_goods_receipt(self, order, data, user):
         from apps.inventory.models import Warehouse
@@ -386,7 +403,12 @@ class PurchaseOrderService(BaseService):
         if not warehouse_id:
             raise ValueError("Active warehouse required for receiving goods.")
 
-        warehouse = Warehouse.objects.get(pk=warehouse_id)
+        try:
+            warehouse = Warehouse.objects.get(pk=warehouse_id, company=self.company)
+        except Warehouse.DoesNotExist:
+            raise ValueError("Warehouse not found for this company.") from None
+
+        overage_percent = self._goods_receipt_overage_percent()
 
         receipt = GoodsReceipt.objects.create(
             company=self.company,
@@ -413,6 +435,15 @@ class PurchaseOrderService(BaseService):
                 continue
 
             qty = Decimal(str(qty_input))
+            remaining = line.quantity - line.qty_received
+            if remaining < 0:
+                remaining = Decimal("0")
+            max_qty = remaining * (Decimal("1") + overage_percent / Decimal("100"))
+            if qty > max_qty:
+                raise ValueError(
+                    f"Cannot receive {qty} for '{line.description}'; "
+                    f"remaining ordered quantity is {remaining}."
+                )
             if qty > 0:
                 GoodsReceiptLine.objects.create(
                     goods_receipt=receipt,

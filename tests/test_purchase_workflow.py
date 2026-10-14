@@ -198,6 +198,47 @@ class TestGoodsReceipt(PurchaseWorkflowTestCase):
         grn = self._po_service().create_goods_receipt(po, data, self.user)
         self.assertTrue(grn.number.startswith("GRN-"))
 
+    def test_over_receipt_is_rejected(self):
+        po = self._create_approved_po(qty="10")
+        data = {"warehouse": str(self.wh.pk)}
+        for line in po.lines.all():
+            data[f"qty_{line.pk}"] = "25"
+        with self.assertRaises(ValueError):
+            self._po_service().create_goods_receipt(po, data, self.user)
+        po.refresh_from_db()
+        line = po.lines.first()
+        self.assertEqual(line.qty_received, Decimal("0"))
+
+    def test_partial_then_remainder_receipts(self):
+        po = self._create_approved_po(qty="10")
+        first = {"warehouse": str(self.wh.pk)}
+        for line in po.lines.all():
+            first[f"qty_{line.pk}"] = "6"
+        self._po_service().create_goods_receipt(po, first, self.user)
+        po.refresh_from_db()
+        self.assertEqual(po.status, "partial")
+        self.assertEqual(po.lines.first().qty_received, Decimal("6"))
+
+        remainder = {"warehouse": str(self.wh.pk)}
+        for line in po.lines.all():
+            remainder[f"qty_{line.pk}"] = "4"
+        self._po_service().create_goods_receipt(po, remainder, self.user)
+        po.refresh_from_db()
+        self.assertEqual(po.status, "received")
+        self.assertEqual(po.lines.first().qty_received, Decimal("10"))
+
+    def test_second_receipt_over_remaining_is_rejected(self):
+        po = self._create_approved_po(qty="10")
+        first = {"warehouse": str(self.wh.pk)}
+        for line in po.lines.all():
+            first[f"qty_{line.pk}"] = "6"
+        self._po_service().create_goods_receipt(po, first, self.user)
+        too_much = {"warehouse": str(self.wh.pk)}
+        for line in po.lines.all():
+            too_much[f"qty_{line.pk}"] = "5"
+        with self.assertRaises(ValueError):
+            self._po_service().create_goods_receipt(po, too_much, self.user)
+
 
 # ---------------------------------------------------------------------------
 class TestThreeWayMatching(PurchaseWorkflowTestCase):
@@ -352,3 +393,31 @@ class TestPurchaseMultiTenantIsolation(TestCase):
         vendors_b = Vendor.objects.filter(company=self.company_b)
         for v in vendors_b:
             self.assertEqual(v.company, self.company_b)
+
+    def test_goods_receipt_rejects_other_company_warehouse(self):
+        product = _make_product(self.company_a, sku="PRD-ISO-001")
+        wh_a = _make_warehouse(self.company_a, name="WH-A")
+        wh_b = _make_warehouse(self.company_b, name="WH-B")
+        po = PurchaseOrder.objects.create(
+            company=self.company_a,
+            vendor=self.vendor_a,
+            currency=self.currency,
+            status="approved",
+            order_date=timezone.now().date(),
+        )
+        line = PurchaseOrderLine.objects.create(
+            purchase_order=po,
+            product=product,
+            description=product.name,
+            quantity=Decimal("10"),
+            unit_price=Decimal("50.00"),
+            subtotal=Decimal("500.00"),
+            tax_amount=Decimal("0"),
+            total=Decimal("500.00"),
+        )
+        service = PurchaseOrderService(user=self.user_a, company=self.company_a)
+        data = {"warehouse": str(wh_b.pk), f"qty_{line.pk}": "10"}
+        with self.assertRaises(ValueError) as ctx:
+            service.create_goods_receipt(po, data, self.user_a)
+        self.assertIn("warehouse", str(ctx.exception).lower())
+        self.assertTrue(Warehouse.objects.filter(pk=wh_a.pk, company=self.company_a).exists())

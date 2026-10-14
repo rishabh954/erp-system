@@ -40,6 +40,36 @@ def test_ticket_service_create(helpdesk_services, ticket_category):
 
 
 @pytest.mark.django_db
+def test_ticket_service_rejects_other_company_category(company, user):
+    from apps.company.models import Company, Currency
+
+    currency, _ = Currency.objects.get_or_create(
+        code="USD",
+        defaults={"name": "US Dollar", "symbol": "$"},
+    )
+    other = Company.objects.create(
+        name="Other Helpdesk Co",
+        legal_name="Other Helpdesk Co Ltd",
+        company_type="LLC",
+        fiscal_year_start="01-01",
+        default_currency=currency,
+    )
+    foreign_category = TicketCategory.objects.create(
+        company=other, name="Foreign", sla_hours=8
+    )
+    service = TicketService(company=company)
+    with pytest.raises(ValueError, match="category"):
+        service.create_ticket(
+            {
+                "title": "Cross tenant",
+                "description": "Should fail",
+                "category": foreign_category.pk,
+            },
+            user,
+        )
+
+
+@pytest.mark.django_db
 def test_ticket_service_assign_and_comment(helpdesk_services, ticket_category):
     service = helpdesk_services["ticket_service"]
     user = helpdesk_services["user"]
