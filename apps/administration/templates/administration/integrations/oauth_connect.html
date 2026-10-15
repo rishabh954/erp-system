@@ -18,8 +18,10 @@
         </div>
         
         <h3>Connect your {{ provider|title }} account</h3>
+        {% if not_implemented %}
+        <div class="alert alert-info" role="status">{{ message }}</div>
+        {% else %}
         <p class="text-muted mb-4">By connecting your account, you authorize the ERP system to access your files and calendars based on the requested permissions.</p>
-        
         <form method="POST">
             {% csrf_token %}
             <!-- This simulates the OAuth callback success -->
@@ -27,6 +29,7 @@
                 Authorize {{ provider|title }}
             </button>
         </form>
+        {% endif %}
         
         <div class="mt-4">
             <a href="{% url 'administration:integrations_dashboard' %}" class="text-decoration-none text-muted">Cancel and return to dashboard</a>

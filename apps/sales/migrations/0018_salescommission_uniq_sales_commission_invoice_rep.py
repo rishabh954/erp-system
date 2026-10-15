@@ -4,6 +4,25 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def deduplicate_commissions(apps, schema_editor):
+    SalesCommission = apps.get_model("sales", "SalesCommission")
+    alias = schema_editor.connection.alias
+    groups = (
+        SalesCommission.objects.using(alias)
+        .values("company_id", "invoice_id", "sales_rep_id")
+        .annotate(total=models.Count("pk"))
+        .filter(total__gt=1)
+    )
+    for group in list(groups):
+        rows = SalesCommission.objects.using(alias).filter(
+            company_id=group["company_id"],
+            invoice_id=group["invoice_id"],
+            sales_rep_id=group["sales_rep_id"],
+        ).order_by("created_at", "pk")
+        keep = rows.values_list("pk", flat=True).first()
+        rows.exclude(pk=keep).delete()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,6 +32,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(deduplicate_commissions, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name='salescommission',
             constraint=models.UniqueConstraint(fields=('company', 'invoice', 'sales_rep'), name='uniq_sales_commission_invoice_rep'),

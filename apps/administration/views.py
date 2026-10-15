@@ -828,14 +828,20 @@ class APIManagementView(AdminRequiredMixin, View):
     def post(self, request):
         action = request.POST.get("action")
         if action == "create":
-            key = APIKey.objects.create(
+            import hashlib
+            import secrets
+
+            raw_key = "erp_" + secrets.token_hex(20)
+            APIKey.objects.create(
                 company=self.company,
                 name=request.POST.get("name"),
+                key=hashlib.sha256(raw_key.encode()).hexdigest(),
+                key_prefix=raw_key[:12],
                 scopes=request.POST.getlist("scopes"),
                 rate_limit=int(request.POST.get("rate_limit", 1000)),
                 created_by=request.user,
             )
-            messages.success(request, f"API Key created. Copy it now: {key.key}")
+            messages.success(request, f"API Key created. Copy it now: {raw_key}")
         elif action == "revoke":
             pk = request.POST.get("pk")
             APIKey.objects.filter(pk=pk, company=self.company).update(status="revoked")

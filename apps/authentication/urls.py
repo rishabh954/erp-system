@@ -61,6 +61,11 @@ urlpatterns = [
         name="2fa_setup",
     ),
     path(
+        "security/2fa/disable/",
+        security_views.TwoFactorSetupView.as_view(),
+        name="2fa_disable",
+    ),
+    path(
         "security/sessions/<int:pk>/revoke/",
         security_views.SessionRevokeView.as_view(),
         name="session_revoke",

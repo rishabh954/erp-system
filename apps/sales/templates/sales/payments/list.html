@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Payments{% endblock %}
+{% block page_title %}Payments{% endblock %}
+{% block content %}
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-2"><select name="status" class="form-select"><option value="">All statuses</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if value == current_status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><select name="customer" class="form-select"><option value="">All customers</option>{% for customer in customers %}<option value="{{ customer.pk }}" {% if customer.pk|stringformat:"s" == current_customer %}selected{% endif %}>{{ customer.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><input type="date" name="start_date" value="{{ current_start_date }}" class="form-control"></div>
+    <div class="col-md-2"><input type="date" name="end_date" value="{{ current_end_date }}" class="form-control"></div>
+    <div class="col-md-2"><button class="btn btn-primary" type="submit">Filter</button></div>
+</form>
+<div class="table-responsive"><table class="table"><thead><tr><th>Payment</th><th>Invoice</th><th>Customer</th><th>Date</th><th>Method</th><th>Status</th><th class="text-end">Amount</th></tr></thead><tbody>
+{% for payment in payments %}<tr><td>{{ payment.number }}</td><td>{{ payment.invoice.number }}</td><td>{{ payment.customer.name }}</td><td>{{ payment.payment_date }}</td><td>{{ payment.get_method_display }}</td><td>{{ payment.get_status_display }}</td><td class="text-end">{{ payment.amount }}</td></tr>{% empty %}<tr><td colspan="7">No payments found.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if is_paginated %}<nav><ul class="pagination">{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}<li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}</ul></nav>{% endif %}
+{% endblock %}

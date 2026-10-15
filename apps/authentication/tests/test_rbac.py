@@ -66,3 +66,30 @@ class TestRBAC:
         url_create = reverse("accounting:account_create")
         response_create = client.get(url_create)
         assert response_create.status_code == 403
+@pytest.mark.django_db
+def test_two_factor_disable_requires_password_or_valid_totp(client, user):
+    import pyotp
+
+    user.totp_secret = pyotp.random_base32()
+    user.two_factor_enabled = True
+    user.set_password("current-password")
+    user.save()
+    client.force_login(user)
+    url = reverse("auth:2fa_disable")
+
+    response = client.post(url, {"action": "disable", "password": "wrong"})
+    assert response.status_code == 302
+    user.refresh_from_db()
+    assert user.two_factor_enabled
+
+    response = client.post(
+        url,
+        {
+            "action": "disable",
+            "disable_token": pyotp.TOTP(user.totp_secret).now(),
+        },
+    )
+    assert response.status_code == 302
+    user.refresh_from_db()
+    assert not user.two_factor_enabled
+    assert not user.totp_secret

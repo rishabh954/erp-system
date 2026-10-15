@@ -1,7 +1,11 @@
 import logging
+import secrets
+from urllib.parse import urlparse
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView, View
 
@@ -12,11 +16,18 @@ from apps.administration.models import (
     WebhookEndpoint,
     WhatsAppConfig,
 )
+from core.permissions import HttpMethodPermissionMixin
 
 logger = logging.getLogger(__name__)
 
 
-class AdminRequiredMixin(UserPassesTestMixin):
+class AdminRequiredMixin(HttpMethodPermissionMixin, UserPassesTestMixin):
+    required_permission_module = "administration"
+
+    def get_required_permission(self, request=None):
+        if request is not None and request.method.upper() == "POST":
+            return getattr(self, "required_permission", "administration.update")
+        return "administration.read"
     def test_func(self):
         return self.request.user.role in ["super_admin", "company_admin"]
 
@@ -119,11 +130,16 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
 
     def post(self, request):
         url = request.POST.get("target_url") or request.POST.get("url")
-        secret = request.POST.get("secret", "")
-        events = request.POST.getlist("events") or ["*"]
+        events = request.POST.getlist("events") or [
+            value.strip() for value in request.POST.get("events", "*").split(",") if value.strip()
+        ]
         name = request.POST.get("name", url or "Webhook")
-        if url:
-            WebhookEndpoint.objects.create(
+        parsed = urlparse(url or "")
+        secure_required = not settings.DEBUG
+        if url and parsed.scheme in ({"https"} if secure_required else {"http", "https"}) and parsed.netloc:
+            secret = "whsec_" + secrets.token_urlsafe(32)
+            with transaction.atomic():
+                WebhookEndpoint.objects.create(
                 company=request.user.primary_company,
                 name=name,
                 url=url,
@@ -131,7 +147,9 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
                 events=events,
                 status=WebhookEndpoint.Status.ACTIVE,
             )
-            messages.success(request, "Webhook endpoint added.")
+            messages.success(request, f"Webhook endpoint added. Copy its signing secret now: {secret}")
+        else:
+            messages.error(request, "Enter a valid webhook URL (HTTPS is required in production).")
         return redirect("administration:webhooks")
 
 

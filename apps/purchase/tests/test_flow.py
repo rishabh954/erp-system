@@ -5,7 +5,12 @@ from django.urls import reverse
 
 from apps.accounting.models import Account, JournalEntry, JournalItem
 from apps.purchase.models import (
-    Bill, BillLine, GoodsReceipt, GoodsReceiptLine, Payment, PurchaseOrder,
+    Bill,
+    BillLine,
+    GoodsReceipt,
+    GoodsReceiptLine,
+    Payment,
+    PurchaseOrder,
     PurchaseOrderLine,
 )
 from apps.purchase.services import PurchaseOrderService
@@ -138,8 +143,8 @@ def test_purchase_full_flow(
 
 @pytest.mark.django_db
 def test_goods_receipt_rejects_foreign_warehouse(company, user, vendor):
-    from core.factories import CompanyFactory
     from apps.inventory.models import Warehouse
+    from core.factories import CompanyFactory
 
     other_company = CompanyFactory()
     foreign_warehouse = Warehouse.objects.create(
@@ -184,3 +189,31 @@ def test_goods_receipt_caps_quantity_and_allows_partial_receipts(
     line.refresh_from_db()
     assert line.qty_received == 10
     assert GoodsReceiptLine.objects.filter(po_line=line).count() == 2
+
+
+@pytest.mark.django_db
+def test_goods_receipt_overage_setting_uses_original_order_quantity(
+    company, user, vendor, warehouse, product
+):
+    from apps.company.models import CompanySettings
+
+    order = PurchaseOrder.objects.create(
+        company=company, vendor=vendor, order_date="2025-01-01"
+    )
+    line = PurchaseOrderLine.objects.create(
+        purchase_order=order, product=product, description="Test",
+        quantity=Decimal("10"), unit_price=Decimal("1"),
+    )
+    CompanySettings.objects.create(
+        company=company, key="goods_receipt_overage_percent", value="10"
+    )
+    service = PurchaseOrderService(company=company)
+    with pytest.raises(ValueError, match="remaining ordered quantity is 10"):
+        service.create_goods_receipt(
+            order, {"warehouse": str(warehouse.pk), f"qty_{line.pk}": "12"}, user
+        )
+    service.create_goods_receipt(
+        order, {"warehouse": str(warehouse.pk), f"qty_{line.pk}": "11"}, user
+    )
+    line.refresh_from_db()
+    assert line.qty_received == 11

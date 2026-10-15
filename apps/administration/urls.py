@@ -8,6 +8,7 @@ urlpatterns = [
     # Dashboard
     path("", views.AdminDashboardView.as_view(), name="dashboard"),
     path("app-store/", views.AppStoreView.as_view(), name="app_store"),
+    path("app-store/toggle/", views.AppStoreView.as_view(), name="app_toggle"),
     # Organization
     path("designations/", views.DesignationListView.as_view(), name="designations"),
     path(
@@ -83,6 +84,10 @@ urlpatterns = [
         integration_views.WebhookManagementView.as_view(),
         name="webhooks",
     ),
+    path("integrations/webhooks/create/", integration_views.WebhookCreateView.as_view(), name="webhook_create"),
+    path("integrations/webhooks/<uuid:pk>/delete/", integration_views.WebhookDeleteView.as_view(), name="webhook_delete"),
+    path("integrations/webhooks/<uuid:pk>/toggle/", integration_views.WebhookToggleView.as_view(), name="webhook_toggle"),
+    path("integrations/<uuid:pk>/disconnect/", integration_views.IntegrationDisconnectView.as_view(), name="integration_disconnect"),
     path(
         "integrations/import/",
         integration_views.DataImportView.as_view(),
@@ -91,6 +96,7 @@ urlpatterns = [
     path("backup-restore/", views.BackupRestoreView.as_view(), name="backup_restore"),
     # Integrations & API
     path("api-keys/", security_views.APIKeyManagementView.as_view(), name="api_keys"),
+    path("api-keys/create/", security_views.APIKeyManagementView.as_view(), name="api_key_create"),
     path(
         "api-keys/<uuid:pk>/revoke/",
         security_views.APIKeyRevokeView.as_view(),
@@ -101,6 +107,7 @@ urlpatterns = [
         security_views.BackupSchedulerView.as_view(),
         name="backup_schedule",
     ),
+    path("backup-schedule/run-now/", security_views.BackupRunNowView.as_view(), name="backup_run_now"),
     # Logs
     path("audit-center/", views.AuditCenterView.as_view(), name="audit_center"),
     path("audit-logs/", views.AuditLogView.as_view(), name="audit_logs"),

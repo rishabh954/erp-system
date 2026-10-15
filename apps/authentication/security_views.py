@@ -5,6 +5,7 @@ import qrcode
 import qrcode.image.svg
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView, View
 
@@ -46,6 +47,26 @@ class TwoFactorSetupView(LoginRequiredMixin, View):
         )
 
     def post(self, request):
+        if request.POST.get("action") == "disable":
+            cache_key = f"2fa_disable_attempts:{request.user.pk}"
+            if cache.get(cache_key, 0) >= 5:
+                messages.error(request, "Too many attempts. Try again later.")
+                return redirect("auth:2fa_setup")
+            password = request.POST.get("password", "")
+            token = request.POST.get("disable_token", "")
+            valid = request.user.check_password(password) if password else False
+            if not valid and token and request.user.totp_secret:
+                valid = pyotp.TOTP(request.user.totp_secret).verify(token, valid_window=1)
+            if not valid:
+                cache.set(cache_key, cache.get(cache_key, 0) + 1, timeout=900)
+                messages.error(request, "Enter your password or a valid authenticator code.")
+                return redirect("auth:2fa_setup")
+            cache.delete(cache_key)
+            request.user.two_factor_enabled = False
+            request.user.totp_secret = ""
+            request.user.save(update_fields=["two_factor_enabled", "totp_secret"])
+            messages.success(request, "Two-factor authentication disabled.")
+            return redirect("auth:security_dashboard")
         token = request.POST.get("token")
         totp = pyotp.TOTP(request.user.totp_secret)
         if totp.verify(token):

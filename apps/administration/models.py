@@ -752,6 +752,7 @@ class APIKey(CompanyScoped):
 
     name = models.CharField(max_length=200)
     key = models.CharField(max_length=64, unique=True, editable=False)
+    key_prefix = models.CharField(max_length=12, blank=True, editable=False)
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.ACTIVE
     )

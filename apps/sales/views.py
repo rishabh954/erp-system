@@ -947,6 +947,15 @@ class PaymentListView(CompanyMixin, ListView):
             qs = qs.filter(status=status)
         if method:
             qs = qs.filter(method=method)
+        customer = self.request.GET.get("customer", "")
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        start_date = self.request.GET.get("start_date", "")
+        end_date = self.request.GET.get("end_date", "")
+        if start_date:
+            qs = qs.filter(payment_date__gte=start_date)
+        if end_date:
+            qs = qs.filter(payment_date__lte=end_date)
         return qs
 
     def get_context_data(self, **kwargs):
@@ -957,6 +966,12 @@ class PaymentListView(CompanyMixin, ListView):
         ctx["current_status"] = self.request.GET.get("status", "")
         ctx["current_method"] = self.request.GET.get("method", "")
         ctx["search_query"] = self.request.GET.get("q", "")
+        from apps.crm.models import Customer
+
+        ctx["customers"] = Customer.objects.filter(company=self.company()).order_by("name")
+        ctx["current_customer"] = self.request.GET.get("customer", "")
+        ctx["current_start_date"] = self.request.GET.get("start_date", "")
+        ctx["current_end_date"] = self.request.GET.get("end_date", "")
 
         # Dashboard aggregates
         ctx["total_received"] = (
@@ -1008,7 +1023,7 @@ urlpatterns = [
         name="invoice_payment",
     ),
     # Payments
-    path("payments/", InvoiceListView.as_view(), name="payments"),  # placeholder
+    path("payments/", PaymentListView.as_view(), name="payments"),
 ]
 
 # ════════════════════════ ENTERPRISE SALES VIEWS ═════════════════════════════

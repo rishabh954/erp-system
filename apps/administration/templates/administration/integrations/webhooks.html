@@ -40,19 +40,28 @@
                                 <th>URL</th>
                                 <th>Events</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for hook in webhooks %}
                             <tr>
                                 <td>{{ hook.url }}</td>
-                                <td>{{ hook.subscribed_events|join:", " }}</td>
+                                <td>{{ hook.events|join:", " }}</td>
                                 <td>
                                     {% if hook.status == 'active' %}
                                         <span class="badge bg-success">Active</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ hook.status|title }}</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <form method="post" action="{% url 'administration:webhook_toggle' hook.pk %}">{% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-primary" type="submit">Toggle</button>
+                                    </form>
+                                    <form method="post" action="{% url 'administration:webhook_delete' hook.pk %}">{% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                    </form>
                                 </td>
                             </tr>
                             {% endfor %}

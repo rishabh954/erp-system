@@ -3,6 +3,9 @@
 {% block page_title %}Backup Scheduler{% endblock %}
 
 {% block content %}
+<form method="post" action="{% url 'administration:backup_run_now' %}" class="mb-3">
+    {% csrf_token %}<button type="submit" class="btn btn-outline-primary">Run backup now</button>
+</form>
 <div class="row">
     <div class="col-md-4">
         <div class="card">
@@ -80,5 +83,11 @@
             </div>
         </div>
     </div>
+</div>
+<div class="card mt-4"><div class="card-header"><h5 class="mb-0">Recent backups</h5></div>
+    <div class="card-body"><table class="table"><thead><tr><th>Created</th><th>Status</th><th>File</th></tr></thead><tbody>
+    {% for backup in backups %}<tr><td>{{ backup.created_at }}</td><td>{{ backup.get_status_display }}</td><td>{{ backup.file_path }}</td></tr>{% empty %}
+    <tr><td colspan="3">No backups yet.</td></tr>{% endfor %}
+    </tbody></table></div>
 </div>
 {% endblock %}

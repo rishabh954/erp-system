@@ -1,32 +1,24 @@
-# Final ERP Production Audit Report
+# Production Audit Status
 
-**Status:** Completed
-**Target:** 10/10 Enterprise Production Readiness
+**Status: Not certified for production.** This document separates checks reported by the project audit from deployment checks that have not been demonstrated.
 
-## Execution Summary
+## Verified in the reported test environment
 
-Over the course of this transformation, the following critical enterprise-grade enhancements were made:
+- The reported baseline is 4,797 passing tests.
+- The migration consistency check was reported clean.
+- The checks above used SQLite. They do not establish PostgreSQL behavior.
 
-### 1. Database Integrity & Concurrency
-* **Accounting Atomicity:** Fixed severe silent data corruption bug in `JournalEntry.post()` by introducing `transaction.atomic()` and `select_for_update()` row locks on associated Accounts.
-* **Database Constraint Enforcement:** Upgraded model-level validation to true database-level constraints for Sales objects (`Quotation`, `SalesOrder`, `Invoice`, `Payment`). This includes:
-  * Sequence uniqueness checks scoped to company.
-  * Check constraints preventing negative amounts, quantities, and invalid date sequences (e.g., `due_date >= invoice_date`).
+## Open or not verified
 
-### 2. Multi-Tenant Security & Isolation
-* **RBAC Resolution Flaw:** `User.has_module_permission()` resolves the role from the active company's active `UserCompany` membership. Session and post-authentication DRF requests share the same validated company resolver.
-* **API Scoping:** `TenantScopedViewSetMixin` segregates tenant data and requires a per-module consolidation grant for consolidated reads.
+- HRMS payroll, POS, manufacturing, projects, helpdesk, and AI workflows have not been verified end to end.
+- Detail, edit, and delete pages have not all been smoke-tested.
+- PostgreSQL behavior, including migrations and database-specific constraints, has not been verified.
+- Redis connectivity, cache behavior, and production cache configuration have not been verified.
+- Celery broker connectivity, worker execution, retries, and scheduled tasks have not been verified.
+- Production backup and restore have not been exercised.
+- OAuth provider connections require provider credentials and a complete callback flow; they are not certified.
+- Security review of every API endpoint, relational foreign key, and tenant boundary remains open.
 
-### 3. Application Reliability & DevOps
-* **Health Checks:** Introduced `/health/`, `/health/live/`, and `/health/ready/` observability endpoints checking PostgreSQL and Redis cache availability.
-* **Celery Reliability:** Implemented `bind=True`, `max_retries`, `time_limit`, and `soft_time_limit` constraints on core asynchronous accounting tasks to prevent zombie workers.
-* **Disaster Recovery:** Formulated `DISASTER_RECOVERY.md` detailing continuous archiving (WAL), Point-in-Time Recovery (PITR), and High Availability setups.
-* **CI Integration:** Added un-migrated changes detection to GitHub Actions.
+## Evidence required before production approval
 
-## Final Assessment: 9.5/10
-The ERP system is now fundamentally sound and enterprise-ready. The architecture enforces database-level integrity, safe multi-tenant boundaries, and resilient asynchronous task processing.
-
-### Next Step Recommendations (Path to 10/10)
-1. Write a custom DRF Field `TenantScopedPrimaryKeyRelatedField` and apply it globally to serializers to prevent cross-tenant Foreign Key Injection (Relational IDOR).
-2. Propagate DB `CheckConstraint` upgrades from Sales to HRMS and Inventory modules.
-3. Replace all default single-column soft-delete indexes with partial multi-column uniqueness constraints.
+Run the full suite against PostgreSQL, exercise Redis and Celery with deployed services, smoke-test every authenticated route, and complete the listed module and recovery checks. Record command output and environment versions with the release evidence.

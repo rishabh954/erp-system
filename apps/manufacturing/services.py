@@ -50,7 +50,7 @@ class MRPService:
 
         # 3. Compare with on-hand inventory
         for comp_id, req_qty in requirements.items():
-            product = Product.objects.get(id=comp_id)
+            product = Product.objects.get(id=comp_id, company=company)
 
             # Get available quantity across all warehouses for this company
             on_hand = StockRecord.objects.filter(
