@@ -131,7 +131,9 @@ class BackupDownloadView(LoginRequiredMixin, AdminRequiredMixin, View):
         if not record or not record.file_path:
             raise Http404
         try:
-            file_handle = default_storage.open(record.file_path, "rb")
+            from apps.administration.tasks import _backup_storage
+
+            file_handle = _backup_storage().open(record.file_path, "rb")
         except (FileNotFoundError, OSError):
             raise Http404 from None
         return FileResponse(

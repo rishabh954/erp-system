@@ -6,10 +6,11 @@ import pytest
 from django.conf import settings
 
 
-@pytest.mark.django_db
-def test_0018_deduplicates_commissions_from_0017_on_fresh_sqlite(tmp_path):
+@pytest.mark.parametrize("insert_duplicates", [True, False])
+def test_0018_deduplicates_commissions_from_0017_on_fresh_sqlite(tmp_path, insert_duplicates):
     script = r'''
 import uuid
+import os
 import django
 from datetime import date, datetime, timezone
 from django.db import connection
@@ -19,13 +20,13 @@ django.setup()
 executor = MigrationExecutor(connection)
 executor.migrate([("sales", "0017_company_scoped_coupon_codes")])
 apps = executor.loader.project_state([("sales", "0017_company_scoped_coupon_codes")]).apps
-from apps.company.models import Company as CurrentCompany
+CurrentCompany = apps.get_model("company", "Company")
 Customer = apps.get_model("crm", "Customer")
 Invoice = apps.get_model("sales", "Invoice")
 Commission = apps.get_model("sales", "SalesCommission")
 
 company = CurrentCompany.objects.using("default").create(
-    name="Migration Tenant", slug=f"migration-{uuid.uuid4()}"
+    name="Migration Tenant"
 )
 rep_id = uuid.uuid4()
 with connection.cursor() as cursor:
@@ -60,8 +61,11 @@ invoice = Invoice.objects.using("default").create(
 earliest, later = uuid.uuid4(), uuid.uuid4()
 common = {"company_id": company.pk, "invoice_id": invoice.pk,
           "sales_rep_id": rep_id, "amount": "1.00"}
-Commission.objects.using("default").create(pk=earliest, **common, created_at=datetime(2025, 1, 1, tzinfo=timezone.utc))
-Commission.objects.using("default").create(pk=later, **common, created_at=datetime(2025, 1, 2, tzinfo=timezone.utc))
+if os.environ.get("INSERT_DUPLICATES", "1") == "1":
+    Commission.objects.using("default").create(pk=earliest, **common, created_at=datetime(2025, 1, 1, tzinfo=timezone.utc))
+    Commission.objects.using("default").create(pk=later, **common, created_at=datetime(2025, 1, 2, tzinfo=timezone.utc))
+else:
+    Commission.objects.using("default").create(pk=earliest, **common, created_at=datetime(2025, 1, 1, tzinfo=timezone.utc))
 executor = MigrationExecutor(connection)
 executor.migrate([("sales", "0018_salescommission_uniq_sales_commission_invoice_rep")])
 apps = executor.loader.project_state([("sales", "0018_salescommission_uniq_sales_commission_invoice_rep")]).apps
@@ -80,6 +84,7 @@ assert remaining == [earliest], remaining
             "DB_NAME": str(database_path),
             "DJANGO_TESTING": "1",
             "DEBUG": "True",
+            "INSERT_DUPLICATES": "1" if insert_duplicates else "0",
         }
     )
     result = subprocess.run(

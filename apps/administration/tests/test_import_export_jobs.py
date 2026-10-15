@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from apps.administration.models import ExportJob, ImportJob
 from apps.crm.models import Customer
+from apps.inventory.models import Product
 from core.factories import CompanyFactory
 
 pytestmark = pytest.mark.django_db
@@ -55,6 +56,42 @@ def test_bad_import_rows_are_skipped_and_reported(company, user):
     assert job.failed_rows == 1
     assert '"row": 3' in job.error_log
     assert Customer.objects.filter(company=company).count() == 1
+
+
+def test_product_duplicate_skus_in_file_are_reported_by_source_row(company, user):
+    from apps.administration.tasks import process_import_job
+
+    job = ImportJob.objects.create(
+        company=company, module="products",
+        file=ContentFile(b"name,sku\nFirst,SKU-1\nDuplicate,SKU-1\nGood,SKU-2\n", name="products.csv"),
+        imported_by=user,
+    )
+    process_import_job.run(str(job.pk), str(company.pk))
+    job.refresh_from_db()
+    assert (job.total_rows, job.imported_rows, job.failed_rows) == (3, 2, 1)
+    assert '"row": 3' in job.error_log
+    assert "duplicate sku 'SKU-1' also on row 2" in job.error_log
+    assert set(Product.objects.filter(company=company).values_list("sku", flat=True)) == {"SKU-1", "SKU-2"}
+
+
+def test_import_existing_sku_is_a_row_error_and_large_batch_saves_all_good_rows(company, user):
+    from apps.administration.tasks import IMPORT_BATCH_SIZE, process_import_job
+
+    Product.objects.create(company=company, name="Existing", sku="TAKEN")
+    rows = ["name,sku", "Conflict,TAKEN"]
+    rows.extend(f"Product {index},SKU-{index}" for index in range(IMPORT_BATCH_SIZE + 5))
+    job = ImportJob.objects.create(
+        company=company, module="products",
+        file=ContentFile(("\n".join(rows) + "\n").encode(), name="products.csv"),
+        imported_by=user,
+    )
+    process_import_job.run(str(job.pk), str(company.pk))
+    job.refresh_from_db()
+    assert job.total_rows == IMPORT_BATCH_SIZE + 6
+    assert job.imported_rows == IMPORT_BATCH_SIZE + 5
+    assert job.failed_rows == 1
+    assert '"row": 2' in job.error_log
+    assert "already exists for this company" in job.error_log
 
 
 def test_export_is_tenant_scoped_escaped_and_download_scoped(

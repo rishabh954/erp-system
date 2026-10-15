@@ -536,6 +536,7 @@ else:
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+PRIVATE_BACKUP_ROOT = Path(os.environ.get('PRIVATE_BACKUP_ROOT', BASE_DIR / 'private_backups'))
 
 # ─── Security Headers ─────────────────────────────────────────────────────────
 SECURE_REFERRER_POLICY = 'same-origin'
@@ -673,6 +674,12 @@ db_host = os.environ.get('DB_HOST')
 db_engine = os.environ.get('DB_ENGINE', 'django.db.backends.postgresql')
 
 if db_host == 'sqlite' or db_engine in {'django.db.backends.sqlite3', 'sqlite3'}:
-    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
+    }
 elif ('test' in sys.argv or 'pytest' in sys.modules) and (not db_host or db_host == 'sqlite'):
-    DATABASES['default'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
+    }
