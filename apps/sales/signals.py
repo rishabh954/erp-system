@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.company.models import CompanySettings
+from core.restore_context import is_restoring
 
 from .models import CreditNote, Invoice, Payment, SalesCommission
 
@@ -55,17 +56,23 @@ def sync_invoice_commission(invoice):
 
 @receiver(post_save, sender=Payment)
 def generate_sales_commission(sender, instance, **kwargs):
+    if kwargs.get("raw") or is_restoring():
+        return
     if instance.status == Payment.Status.COMPLETED and instance.invoice_id:
         sync_invoice_commission(instance.invoice)
 
 
 @receiver(post_save, sender=Invoice)
 def generate_paid_invoice_commission(sender, instance, **kwargs):
+    if kwargs.get("raw") or is_restoring():
+        return
     if instance.status == Invoice.Status.PAID:
         sync_invoice_commission(instance)
 
 
 @receiver(post_save, sender=CreditNote)
 def adjust_sales_commission_for_credit_note(sender, instance, **kwargs):
+    if kwargs.get("raw") or is_restoring():
+        return
     if instance.invoice_id and instance.company_id == instance.invoice.company_id:
         sync_invoice_commission(instance.invoice)

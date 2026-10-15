@@ -9,6 +9,7 @@ from apps.notifications.models import (
     SMSLog,
     WhatsAppLog,
 )
+from core.restore_context import is_restoring
 
 
 class NotificationService:
@@ -96,6 +97,8 @@ class NotificationService:
         related_object=None,
         extra_data=None,
     ):
+        if is_restoring():
+            return []
         recipients = cls._iter_recipients(recipient)
         if not recipients:
             return []
@@ -201,6 +204,8 @@ class NotificationService:
         related_object=None,
         extra_data=None,
     ):
+        if is_restoring():
+            return []
         results = []
         for recipient in recipients or []:
             results.extend(
@@ -236,6 +241,8 @@ class NotificationService:
         recipient_name="",
         use_preferences=True,
     ):
+        if is_restoring():
+            return None
         if not recipient:
             return None
 

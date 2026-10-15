@@ -13,6 +13,7 @@ from django.db.models import Q
 from apps.administration.tasks import SENSITIVE_MODEL_NAMES, _backup_company_path
 from apps.authentication.models import User
 from apps.company.models import Company
+from core.restore_context import restoring
 
 
 SCHEMA_VERSION = 1
@@ -92,7 +93,7 @@ def _validate_references(objects, rows_by_identity, company_id):
 
 
 class Command(BaseCommand):
-    help = "Restore a company-only JSON backup into its matching prepared company."
+    help = "Restore a company-only JSON backup into its matching prepared company. Signals and side effects are suppressed during restore."
 
     def add_arguments(self, parser):
         parser.add_argument("backup_file")
@@ -165,18 +166,29 @@ class Command(BaseCommand):
 
         loaded = Counter()
         try:
-            with transaction.atomic():
-                deserialized = []
-                for deserialized_obj in serializers.deserialize(
-                    "json", json.dumps(objects), handle_forward_references=True
-                ):
-                    if deserialized_obj.object.__class__ is Company:
-                        continue  # The target Company is a required restore prerequisite.
-                    deserialized.append(deserialized_obj)
-                    deserialized_obj.save()
-                    loaded[deserialized_obj.object._meta.label_lower] += 1
-                for deserialized_obj in deserialized:
-                    deserialized_obj.save_deferred_fields()
+            with restoring():
+                with transaction.atomic():
+                    deserialized = []
+                    for deserialized_obj in serializers.deserialize(
+                        "json", json.dumps(objects), handle_forward_references=True
+                    ):
+                        if deserialized_obj.object.__class__ is Company:
+                            continue
+                        deserialized.append(deserialized_obj)
+                        deserialized_obj.save()
+                        loaded[deserialized_obj.object._meta.label_lower] += 1
+                    for deserialized_obj in deserialized:
+                        deserialized_obj.save_deferred_fields()
+                    expected_counts = manifest.get("model_counts", {})
+                    for model_label, expected in expected_counts.items():
+                        model = apps.get_model(model_label)
+                        if model is Company:
+                            continue
+                        actual = _target_queryset(model, company_id).count()
+                        if actual != expected:
+                            raise ValueError(
+                                f"Restored count mismatch for {model_label}: expected {expected}, found {actual}."
+                            )
         except Exception as exc:
             raise CommandError(f"Restore aborted and rolled back: {exc}") from exc
         self.stdout.write("Restore completed.")

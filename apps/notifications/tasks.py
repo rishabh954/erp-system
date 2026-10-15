@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 from apps.notifications.services import NotificationService
+from core.restore_context import is_restoring
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ def send_email_task(
     self, to_email, to_name, subject, template, context, company_id=None
 ):
     """Send a rendered HTML email with plain text fallback."""
+    if is_restoring():
+        return
     company = None
     try:
         if company_id:
@@ -91,6 +94,8 @@ def send_bulk_notification(
     company_id=None,
 ):
     """Send in-app notifications to multiple users."""
+    if is_restoring():
+        return
     from apps.authentication.models import User
 
     if not company_id:

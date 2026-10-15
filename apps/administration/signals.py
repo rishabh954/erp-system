@@ -15,6 +15,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.db import transaction
 from django.dispatch import receiver
 from django.utils import timezone
+from core.restore_context import is_restoring
 
 # Models to audit — add any app.Model string here
 AUDITED_MODELS = [
@@ -54,6 +55,8 @@ def _serialize_instance(instance):
 
 
 def _write_audit(action, instance, changes=None, user=None):
+    if is_restoring():
+        return
     try:
         from apps.administration.models import AuditLog
 
@@ -82,6 +85,8 @@ def register_audit_signals():
             def make_pre_save(cls):
                 @receiver(pre_save, sender=cls, weak=False)
                 def _pre_save(sender, instance, **kwargs):
+                    if kwargs.get("raw") or is_restoring():
+                        return
                     if not instance.pk:
                         return
                     try:
@@ -97,6 +102,8 @@ def register_audit_signals():
             def make_post_save(cls):
                 @receiver(post_save, sender=cls, weak=False)
                 def _post_save(sender, instance, created, **kwargs):
+                    if kwargs.get("raw") or is_restoring():
+                        return
                     action = "create" if created else "update"
                     changes = {}
                     if not created:
@@ -117,6 +124,8 @@ def register_audit_signals():
             def make_post_delete(cls):
                 @receiver(post_delete, sender=cls, weak=False)
                 def _post_delete(sender, instance, **kwargs):
+                    if kwargs.get("raw") or is_restoring():
+                        return
                     _write_audit("delete", instance)
 
                 return _post_delete
@@ -135,6 +144,8 @@ register_audit_signals()
 
 
 def _queue_webhook(instance, event, payload):
+    if is_restoring():
+        return
     company_id = getattr(instance, "company_id", None)
     if not company_id:
         return
@@ -152,6 +163,8 @@ def register_webhook_signals():
     from apps.sales.models import Invoice, SalesOrder
 
     def invoice_pre_save(sender, instance, **kwargs):
+        if kwargs.get("raw") or is_restoring():
+            return
         instance._webhook_old_status = None
         if instance.pk:
             instance._webhook_old_status = (
@@ -161,6 +174,8 @@ def register_webhook_signals():
             )
 
     def invoice_post_save(sender, instance, created, **kwargs):
+        if kwargs.get("raw") or is_restoring():
+            return
         payload = {"number": instance.number, "status": instance.status}
         if created:
             _queue_webhook(instance, "invoice.created", payload)
@@ -171,6 +186,8 @@ def register_webhook_signals():
             _queue_webhook(instance, "invoice.paid", payload)
 
     def order_pre_save(sender, instance, **kwargs):
+        if kwargs.get("raw") or is_restoring():
+            return
         instance._webhook_old_status = None
         if instance.pk:
             instance._webhook_old_status = (
@@ -180,6 +197,8 @@ def register_webhook_signals():
             )
 
     def order_post_save(sender, instance, created, **kwargs):
+        if kwargs.get("raw") or is_restoring():
+            return
         if not created and (
             instance.status == SalesOrder.Status.CONFIRMED
             and instance._webhook_old_status != SalesOrder.Status.CONFIRMED
@@ -189,6 +208,8 @@ def register_webhook_signals():
             )
 
     def receipt_post_save(sender, instance, created, **kwargs):
+        if kwargs.get("raw") or is_restoring():
+            return
         if created:
             _queue_webhook(
                 instance, "goods_receipt.created",

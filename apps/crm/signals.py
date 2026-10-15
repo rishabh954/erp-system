@@ -2,10 +2,13 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import LeadActivity
+from core.restore_context import is_restoring
 
 
 @receiver(post_save, sender=LeadActivity)
 def update_lead_score(sender, instance, created, **kwargs):
+    if kwargs.get("raw") or is_restoring():
+        return
     if created:
         lead = instance.lead
         # Simple lead scoring algorithm

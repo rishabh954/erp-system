@@ -3,12 +3,15 @@ from django.dispatch import receiver
 
 from apps.purchase.models import RequestForQuotation, RFQLine
 from core.services import BaseService
+from core.restore_context import is_restoring
 
 from .models import StockMovement
 
 
 @receiver(post_save, sender=StockMovement)
 def trigger_reorder_rules(sender, instance, created, **kwargs):
+    if kwargs.get("raw") or is_restoring():
+        return
     if created and instance.movement_type in [
         StockMovement.MovementType.DELIVERY,
         StockMovement.MovementType.TRANSFER,

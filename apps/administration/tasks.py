@@ -11,6 +11,7 @@ from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from core.restore_context import is_restoring
 
 SENSITIVE_MODEL_NAMES = {
     "apikey",
@@ -477,6 +478,8 @@ def _pinned_webhook_post(parsed, address, body, headers, timeout=5):
 
 
 def dispatch_webhook_event(company_id, event, payload):
+    if is_restoring():
+        return
     from apps.administration.models import WebhookEndpoint
 
     endpoints = WebhookEndpoint.objects.filter(
@@ -491,6 +494,8 @@ def dispatch_webhook_event(company_id, event, payload):
 
 @shared_task(bind=True, max_retries=5)
 def deliver_webhook(self, endpoint_id, company_id, event, payload):
+    if is_restoring():
+        return
     import hashlib
     import hmac
 
