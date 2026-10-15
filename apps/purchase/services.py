@@ -408,8 +408,6 @@ class PurchaseOrderService(BaseService):
         except Warehouse.DoesNotExist:
             raise ValueError("Warehouse not found for this company.") from None
 
-        overage_percent = self._goods_receipt_overage_percent()
-
         receipt = GoodsReceipt.objects.create(
             company=self.company,
             purchase_order=order,
@@ -438,8 +436,7 @@ class PurchaseOrderService(BaseService):
             remaining = line.quantity - line.qty_received
             if remaining < 0:
                 remaining = Decimal("0")
-            max_qty = remaining * (Decimal("1") + overage_percent / Decimal("100"))
-            if qty > max_qty:
+            if qty > remaining:
                 raise ValueError(
                     f"Cannot receive {qty} for '{line.description}'; "
                     f"remaining ordered quantity is {remaining}."

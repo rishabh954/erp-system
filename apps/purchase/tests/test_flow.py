@@ -4,7 +4,11 @@ import pytest
 from django.urls import reverse
 
 from apps.accounting.models import Account, JournalEntry, JournalItem
-from apps.purchase.models import Bill, BillLine, GoodsReceipt, Payment, PurchaseOrder
+from apps.purchase.models import (
+    Bill, BillLine, GoodsReceipt, GoodsReceiptLine, Payment, PurchaseOrder,
+    PurchaseOrderLine,
+)
+from apps.purchase.services import PurchaseOrderService
 
 
 @pytest.fixture
@@ -130,3 +134,53 @@ def test_purchase_full_flow(
     payment = Payment.objects.first()
     assert payment is not None
     assert payment.amount == bill.total
+
+
+@pytest.mark.django_db
+def test_goods_receipt_rejects_foreign_warehouse(company, user, vendor):
+    from core.factories import CompanyFactory
+    from apps.inventory.models import Warehouse
+
+    other_company = CompanyFactory()
+    foreign_warehouse = Warehouse.objects.create(
+        company=other_company, name="Foreign", code="FOREIGN"
+    )
+    order = PurchaseOrder.objects.create(
+        company=company, vendor=vendor, order_date="2025-01-01"
+    )
+    with pytest.raises(ValueError, match="Warehouse not found for this company"):
+        PurchaseOrderService(company=company).create_goods_receipt(
+            order, {"warehouse": str(foreign_warehouse.pk)}, user
+        )
+    assert not GoodsReceipt.objects.filter(company=company).exists()
+
+
+@pytest.mark.django_db
+def test_goods_receipt_caps_quantity_and_allows_partial_receipts(
+    company, user, vendor, warehouse, product
+):
+    order = PurchaseOrder.objects.create(
+        company=company, vendor=vendor, order_date="2025-01-01"
+    )
+    line = PurchaseOrderLine.objects.create(
+        purchase_order=order, product=product, description="Test",
+        quantity=Decimal("10"), unit_price=Decimal("1"),
+    )
+    service = PurchaseOrderService(company=company)
+    with pytest.raises(ValueError, match="remaining ordered quantity is 10"):
+        service.create_goods_receipt(
+            order, {"warehouse": str(warehouse.pk), f"qty_{line.pk}": "25"}, user
+        )
+    line.refresh_from_db()
+    assert line.qty_received == 0
+    service.create_goods_receipt(
+        order, {"warehouse": str(warehouse.pk), f"qty_{line.pk}": "4"}, user
+    )
+    line.refresh_from_db()
+    assert line.qty_received == 4
+    service.create_goods_receipt(
+        order, {"warehouse": str(warehouse.pk), f"qty_{line.pk}": "6"}, user
+    )
+    line.refresh_from_db()
+    assert line.qty_received == 10
+    assert GoodsReceiptLine.objects.filter(po_line=line).count() == 2
