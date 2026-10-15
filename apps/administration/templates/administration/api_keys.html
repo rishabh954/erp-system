@@ -16,6 +16,11 @@
                         <label class="form-label">Token Name (e.g., Zapier Integration)</label>
                         <input type="text" name="name" class="form-control" required>
                     </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label">Scopes</label>
+                        <input type="text" name="scopes" class="form-control" placeholder="sales.read, inventory.read" required>
+                        <small class="text-muted">Comma-separated module permissions. Write scopes use write:module.</small>
+                    </div>
                     <button type="submit" class="btn btn-primary">Generate Token</button>
                 </form>
             </div>
@@ -33,6 +38,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Status</th>
+                                <th>Prefix</th>
                                 <th>Created</th>
                                 <th>Action</th>
                             </tr>
@@ -41,6 +47,7 @@
                             {% for key in keys %}
                             <tr>
                                 <td>{{ key.name }}</td>
+                                <td><code>{{ key.key_prefix }}…</code></td>
                                 <td>
                                     {% if key.status == 'active' %}
                                         <span class="badge bg-success">Active</span>

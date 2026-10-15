@@ -64,6 +64,9 @@
                                     </form>
                                 </td>
                             </tr>
+                            {% for delivery in hook.deliveries.all|slice:":5" %}
+                            <tr class="table-light"><td colspan="4">{{ delivery.event }} · attempt {{ delivery.attempt_number }} · {{ delivery.get_status_display }}{% if delivery.status_code %} ({{ delivery.status_code }}){% endif %}{% if delivery.error %} — {{ delivery.error }}{% endif %}</td></tr>
+                            {% endfor %}
                             {% endfor %}
                         </tbody>
                     </table>

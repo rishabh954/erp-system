@@ -45,9 +45,8 @@
                 <h5 class="card-title">{{ app.name }}</h5>
                 <p class="app-description">{{ app.description }}</p>
                 <div class="mt-3">
-                    <form method="POST">
+                    <form method="POST" action="{% url 'administration:app_toggle' app.id %}">
                         {% csrf_token %}
-                        <input type="hidden" name="app_label" value="{{ app.id }}">
                         {% if app.is_installed %}
                             <input type="hidden" name="action" value="uninstall">
                             <button type="submit" class="btn btn-outline-danger w-100">Uninstall</button>

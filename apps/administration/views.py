@@ -6,7 +6,9 @@ Centralized Administration Center: 27 modules in one place.
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.http import JsonResponse
+from django.core.files.storage import default_storage
+from django.db import transaction
+from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, View
 
@@ -189,31 +191,26 @@ class AppStoreView(AdminRequiredMixin, TemplateView):
 
         return ctx
 
-    def post(self, request):
-        company = get_active_company(request)
-        app_label = request.POST.get("app_label")
-        action = request.POST.get("action")
-
-        if action == "install":
-            InstalledApp.objects.update_or_create(
-                company=company, app_label=app_label, defaults={"is_active": True}
-            )
-            messages.success(request, f"Successfully installed {app_label.upper()}.")
-        elif action == "uninstall":
-            InstalledApp.objects.filter(company=company, app_label=app_label).update(
-                is_active=False
-            )
-            messages.warning(request, f"Uninstalled {app_label.upper()}.")
-
-        return redirect("administration:app_store")
-
-
 class AppToggleView(AdminRequiredMixin, View):
     required_permission = "administration.update"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            company = get_active_company(request)
+            if (
+                not request.user.is_superuser
+                and request.user.get_role_for_company(company)
+                not in ["super_admin", "company_admin"]
+            ):
+                return HttpResponseForbidden()
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, pk):
         company = get_active_company(request)
         app_label = pk
+        valid_labels = {value for value, _label in InstalledApp.AppChoices.choices}
+        if app_label not in valid_labels:
+            return JsonResponse({"error": "Unknown app label."}, status=400)
         app_record = InstalledApp.objects.filter(company=company, app_label=app_label).first()
         if app_record and app_record.is_active:
             app_record.is_active = False
@@ -620,7 +617,7 @@ class DocumentTemplateListView(AdminRequiredMixin, View):
 
 class DataImportView(AdminRequiredMixin, View):
     required_permission = "administration.read"
-    template_name = "administration/import_export.html"
+    template_name = "administration/integrations/data_import.html"
 
     def get(self, request):
         jobs = ImportJob.objects.filter(company=self.company).order_by("-created_at")[
@@ -642,26 +639,86 @@ class DataImportView(AdminRequiredMixin, View):
     def post(self, request):
         action = request.POST.get("action")
         if action == "import" and request.FILES.get("file"):
-            ImportJob.objects.create(
-                company=self.company,
-                module=request.POST.get("module"),
-                file=request.FILES["file"],
-                imported_by=request.user,
-            )
+            uploaded = request.FILES["file"]
+            module = request.POST.get("module")
+            if uploaded.size > 10 * 1024 * 1024:
+                messages.error(request, "CSV files must be 10 MB or smaller.")
+                return redirect("administration:data_import")
+            if not uploaded.name.lower().endswith(".csv"):
+                messages.error(request, "Only CSV files are supported.")
+                return redirect("administration:data_import")
+            if module not in {"customers", "vendors", "products"}:
+                messages.error(request, "Choose customers, vendors or products.")
+                return redirect("administration:data_import")
+            import json
+
+            try:
+                mapping = json.loads(request.POST.get("column_mapping", "{}") or "{}")
+                if not isinstance(mapping, dict):
+                    raise ValueError
+            except (ValueError, TypeError):
+                messages.error(request, "Column mapping must be valid JSON.")
+                return redirect("administration:data_import")
+            from .tasks import process_import_job
+
+            with transaction.atomic():
+                job = ImportJob.objects.create(
+                    company=self.company,
+                    module=module,
+                    file=uploaded,
+                    column_mapping=mapping,
+                    imported_by=request.user,
+                    status=ImportJob.Status.QUEUED,
+                )
+                transaction.on_commit(
+                    lambda: process_import_job.delay(str(job.pk), str(job.company_id))
+                )
             messages.success(
                 request, "Import job submitted. Processing will begin shortly."
             )
         elif action == "export":
-            ExportJob.objects.create(
-                company=self.company,
-                module=request.POST.get("module", ""),
-                format=request.POST.get("format", "csv"),
-                requested_by=request.user,
-            )
+            module = request.POST.get("module", "")
+            if module not in {"customers", "vendors", "products"} or request.POST.get("format", "csv") != "csv":
+                messages.error(request, "CSV export is available for customers, vendors and products.")
+                return redirect("administration:data_import")
+            from .tasks import process_export_job
+
+            with transaction.atomic():
+                job = ExportJob.objects.create(
+                    company=self.company,
+                    module=module,
+                    format="csv",
+                    requested_by=request.user,
+                    status=ExportJob.Status.QUEUED,
+                )
+                transaction.on_commit(
+                    lambda: process_export_job.delay(str(job.pk), str(job.company_id))
+                )
             messages.success(
                 request, "Export job queued. You will be notified when ready."
             )
         return redirect("administration:data_import")
+
+
+class ExportDownloadView(AdminRequiredMixin, View):
+    required_permission = "administration.export"
+
+    def get(self, request, pk):
+        job = ExportJob.objects.filter(
+            pk=pk, company=self.company, status=ExportJob.Status.DONE
+        ).first()
+        if not job or not job.output_file:
+            raise Http404
+        try:
+            handle = default_storage.open(job.output_file.name, "rb")
+        except (FileNotFoundError, OSError):
+            raise Http404 from None
+        return FileResponse(
+            handle,
+            as_attachment=True,
+            filename=f"{job.module}-{job.pk}.csv",
+            content_type="text/csv",
+        )
 
 
 # ── 11. Backup & Restore ──────────────────────────────────────────────────────

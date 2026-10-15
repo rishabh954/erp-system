@@ -10,6 +10,15 @@ def get_active_company(request):
     if not user or not user.is_authenticated:
         return None
 
+    # APIKeyAuthentication validates the key and sets this server-side marker.
+    # It binds token-authenticated requests to the key's tenant even when the
+    # user belongs to multiple companies and no browser tenant selector exists.
+    api_key_company = getattr(raw_request, "_authenticated_api_key_company", None)
+    if api_key_company is not None:
+        request.company = api_key_company
+        raw_request.company = api_key_company
+        return api_key_company
+
     from apps.authentication.models import UserCompany
     from apps.company.models import Company
 

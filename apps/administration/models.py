@@ -5,6 +5,7 @@ Covers: Designations, Number Series, Approval Matrix, Communication Config,
         API Keys, Integrations, Webhooks, Dashboard/Report Builder, System Settings
 """
 
+import hashlib
 import secrets
 
 from django.db import models
@@ -362,9 +363,9 @@ class ImportJob(CompanyScoped):
     """Tracks data import jobs (CSV/Excel)."""
 
     class Status(models.TextChoices):
-        PENDING = "pending", _("Pending")
-        PROCESSING = "processing", _("Processing")
-        COMPLETED = "completed", _("Completed")
+        QUEUED = "queued", _("Queued")
+        RUNNING = "running", _("Running")
+        DONE = "done", _("Done")
         FAILED = "failed", _("Failed")
 
     class Module(models.TextChoices):
@@ -378,8 +379,9 @@ class ImportJob(CompanyScoped):
     module = models.CharField(max_length=30, choices=Module.choices)
     file = models.FileField(upload_to="imports/")
     status = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.PENDING
+        max_length=15, choices=Status.choices, default=Status.QUEUED
     )
+    column_mapping = models.JSONField(default=dict, blank=True)
     total_rows = models.PositiveIntegerField(default=0)
     imported_rows = models.PositiveIntegerField(default=0)
     failed_rows = models.PositiveIntegerField(default=0)
@@ -405,9 +407,9 @@ class ExportJob(CompanyScoped):
     """Tracks data export requests."""
 
     class Status(models.TextChoices):
-        PENDING = "pending", _("Pending")
-        PROCESSING = "processing", _("Processing")
-        READY = "ready", _("Ready")
+        QUEUED = "queued", _("Queued")
+        RUNNING = "running", _("Running")
+        DONE = "done", _("Done")
         FAILED = "failed", _("Failed")
 
     module = models.CharField(max_length=50)
@@ -418,7 +420,7 @@ class ExportJob(CompanyScoped):
         default="csv",
     )
     status = models.CharField(
-        max_length=15, choices=Status.choices, default=Status.PENDING
+        max_length=15, choices=Status.choices, default=Status.QUEUED
     )
     output_file = models.FileField(upload_to="exports/", null=True, blank=True)
     requested_by = models.ForeignKey(
@@ -778,7 +780,9 @@ class APIKey(CompanyScoped):
 
     def save(self, *args, **kwargs):
         if not self.key:
-            self.key = secrets.token_urlsafe(48)
+            raw_key = "erp_" + secrets.token_urlsafe(36)
+            self.key_prefix = raw_key[:12]
+            self.key = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -854,6 +858,30 @@ class WebhookEndpoint(CompanyScoped):
 
     def __str__(self):
         return f"{self.name} → {self.url}"
+
+
+class WebhookDelivery(CompanyScoped):
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        SUCCEEDED = "succeeded", _("Succeeded")
+        FAILED = "failed", _("Failed")
+
+    endpoint = models.ForeignKey(
+        WebhookEndpoint, on_delete=models.CASCADE, related_name="deliveries"
+    )
+    event = models.CharField(max_length=100)
+    attempt_number = models.PositiveSmallIntegerField(default=1)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    attempted_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "admin_webhook_deliveries"
+        ordering = ["-attempted_at"]
 
 
 # ══════════════════════════ DASHBOARD BUILDER ═════════════════════════════════

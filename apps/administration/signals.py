@@ -12,6 +12,7 @@ context-local state instead so each execution context tracks its own snapshot.
 import contextvars
 
 from django.db.models.signals import post_delete, post_save, pre_save
+from django.db import transaction
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -131,3 +132,79 @@ def register_audit_signals():
 
 # Register on app ready
 register_audit_signals()
+
+
+def _queue_webhook(instance, event, payload):
+    company_id = getattr(instance, "company_id", None)
+    if not company_id:
+        return
+    from apps.administration.tasks import dispatch_webhook_event
+
+    transaction.on_commit(
+        lambda: dispatch_webhook_event(
+            str(company_id), event, {"id": str(instance.pk), **payload}
+        )
+    )
+
+
+def register_webhook_signals():
+    from apps.purchase.models import GoodsReceipt
+    from apps.sales.models import Invoice, SalesOrder
+
+    def invoice_pre_save(sender, instance, **kwargs):
+        instance._webhook_old_status = None
+        if instance.pk:
+            instance._webhook_old_status = (
+                sender.objects.filter(pk=instance.pk, company_id=instance.company_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+
+    def invoice_post_save(sender, instance, created, **kwargs):
+        payload = {"number": instance.number, "status": instance.status}
+        if created:
+            _queue_webhook(instance, "invoice.created", payload)
+        elif (
+            instance.status == Invoice.Status.PAID
+            and instance._webhook_old_status != Invoice.Status.PAID
+        ):
+            _queue_webhook(instance, "invoice.paid", payload)
+
+    def order_pre_save(sender, instance, **kwargs):
+        instance._webhook_old_status = None
+        if instance.pk:
+            instance._webhook_old_status = (
+                sender.objects.filter(pk=instance.pk, company_id=instance.company_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+
+    def order_post_save(sender, instance, created, **kwargs):
+        if not created and (
+            instance.status == SalesOrder.Status.CONFIRMED
+            and instance._webhook_old_status != SalesOrder.Status.CONFIRMED
+        ):
+            _queue_webhook(
+                instance, "order.confirmed", {"number": instance.number, "status": instance.status}
+            )
+
+    def receipt_post_save(sender, instance, created, **kwargs):
+        if created:
+            _queue_webhook(
+                instance, "goods_receipt.created",
+                {"number": instance.number, "status": instance.status},
+            )
+
+    for model, pre, post, uid in (
+        (Invoice, invoice_pre_save, invoice_post_save, "invoice-events"),
+        (SalesOrder, order_pre_save, order_post_save, "sales-order-events"),
+    ):
+        pre_save.connect(pre, sender=model, weak=False, dispatch_uid=f"webhook-{uid}-pre")
+        post_save.connect(post, sender=model, weak=False, dispatch_uid=f"webhook-{uid}-post")
+    post_save.connect(
+        receipt_post_save, sender=GoodsReceipt, weak=False,
+        dispatch_uid="webhook-goods-receipt-events",
+    )
+
+
+register_webhook_signals()

@@ -1,41 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Data Import{% endblock %}
-{% block page_title %}Import Data (Tally / Excel){% endblock %}
-
+{% block title %}Import and Export{% endblock %}
+{% block page_title %}Import and Export{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Upload Data File</h5>
-            </div>
-            <div class="card-body">
-                <p>Import your master data, transactions, or contacts using Excel/CSV or Tally XML format. Large files will be processed in the background.</p>
-                
-                <form method="POST" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="form-group mb-4">
-                        <label class="form-label">Data Format</label>
-                        <select name="import_type" class="form-select" required>
-                            <option value="">Select Format...</option>
-                            <option value="tally">Tally ERP 9 / Prime (XML)</option>
-                            <option value="excel_contacts">Contacts (Excel/CSV)</option>
-                            <option value="excel_inventory">Inventory Items (Excel/CSV)</option>
-                            <option value="excel_journal">Journal Entries (Excel/CSV)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group mb-4">
-                        <label class="form-label">Select File</label>
-                        <input type="file" name="import_file" class="form-control" accept=".xml,.csv,.xls,.xlsx" required>
-                        <div class="form-text">Maximum file size: 50MB</div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload & Process</button>
-                    <a href="{% url 'administration:integrations_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
-                </form>
-            </div>
-        </div>
-    </div>
+<div class="row g-4">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Import CSV</div><div class="card-body">
+    <p>Supported modules: customers, vendors and products. Invalid rows are skipped; valid rows are saved in batches of 200. Row errors are recorded on the job.</p>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <input type="hidden" name="action" value="import">
+      <label class="form-label">Module</label><select class="form-select mb-2" name="module" required>
+        <option value="customers">Customers</option><option value="vendors">Vendors</option><option value="products">Products</option>
+      </select>
+      <label class="form-label">CSV file (10 MB maximum)</label><input class="form-control mb-2" type="file" name="file" accept=".csv,text/csv" required>
+      <label class="form-label">Optional column mapping (JSON: destination field to CSV header)</label>
+      <textarea class="form-control mb-3" name="column_mapping" rows="3" placeholder='{"name":"Customer Name","email":"Email"}'></textarea>
+      <button class="btn btn-primary" type="submit">Queue import</button>
+    </form>
+  </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Export CSV</div><div class="card-body">
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="export">
+      <label class="form-label">Module</label><select class="form-select mb-3" name="module">
+        <option value="customers">Customers</option><option value="vendors">Vendors</option><option value="products">Products</option>
+      </select><button class="btn btn-outline-primary" type="submit">Queue export</button>
+    </form>
+  </div></div></div>
 </div>
+<div class="card mt-4"><div class="card-header">Import jobs</div><div class="table-responsive"><table class="table mb-0">
+<thead><tr><th>Created</th><th>Module</th><th>Status</th><th>Processed</th><th>Created</th><th>Failed</th><th>Errors</th></tr></thead><tbody>
+{% for job in import_jobs %}<tr><td>{{ job.created_at }}</td><td>{{ job.module }}</td><td>{{ job.get_status_display }}</td><td>{{ job.total_rows }}</td><td>{{ job.imported_rows }}</td><td>{{ job.failed_rows }}</td><td><pre class="mb-0">{{ job.error_log }}</pre></td></tr>{% empty %}<tr><td colspan="7">No import jobs.</td></tr>{% endfor %}
+</tbody></table></div></div>
+<div class="card mt-4"><div class="card-header">Export jobs</div><div class="table-responsive"><table class="table mb-0">
+<thead><tr><th>Created</th><th>Module</th><th>Status</th><th>File</th></tr></thead><tbody>
+{% for job in export_jobs %}<tr><td>{{ job.created_at }}</td><td>{{ job.module }}</td><td>{{ job.get_status_display }}</td><td>{% if job.status == 'done' %}<a href="{% url 'administration:export_download' job.pk %}">Download CSV</a>{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="4">No export jobs.</td></tr>{% endfor %}
+</tbody></table></div></div>
 {% endblock %}

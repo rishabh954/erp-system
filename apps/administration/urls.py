@@ -8,7 +8,7 @@ urlpatterns = [
     # Dashboard
     path("", views.AdminDashboardView.as_view(), name="dashboard"),
     path("app-store/", views.AppStoreView.as_view(), name="app_store"),
-    path("app-store/toggle/", views.AppStoreView.as_view(), name="app_toggle"),
+    path("app-store/toggle/<str:pk>/", views.AppToggleView.as_view(), name="app_toggle"),
     # Organization
     path("designations/", views.DesignationListView.as_view(), name="designations"),
     path(
@@ -90,9 +90,10 @@ urlpatterns = [
     path("integrations/<uuid:pk>/disconnect/", integration_views.IntegrationDisconnectView.as_view(), name="integration_disconnect"),
     path(
         "integrations/import/",
-        integration_views.DataImportView.as_view(),
+        views.DataImportView.as_view(),
         name="data_import",
     ),
+    path("integrations/exports/<uuid:pk>/download/", views.ExportDownloadView.as_view(), name="export_download"),
     path("backup-restore/", views.BackupRestoreView.as_view(), name="backup_restore"),
     # Integrations & API
     path("api-keys/", security_views.APIKeyManagementView.as_view(), name="api_keys"),
@@ -108,6 +109,7 @@ urlpatterns = [
         name="backup_schedule",
     ),
     path("backup-schedule/run-now/", security_views.BackupRunNowView.as_view(), name="backup_run_now"),
+    path("backups/<uuid:pk>/download/", security_views.BackupDownloadView.as_view(), name="backup_download"),
     # Logs
     path("audit-center/", views.AuditCenterView.as_view(), name="audit_center"),
     path("audit-logs/", views.AuditLogView.as_view(), name="audit_logs"),

@@ -1,4 +1,3 @@
-import logging
 import secrets
 from urllib.parse import urlparse
 
@@ -17,8 +16,7 @@ from apps.administration.models import (
     WhatsAppConfig,
 )
 from core.permissions import HttpMethodPermissionMixin
-
-logger = logging.getLogger(__name__)
+from core.tenancy import get_active_company
 
 
 class AdminRequiredMixin(HttpMethodPermissionMixin, UserPassesTestMixin):
@@ -29,7 +27,12 @@ class AdminRequiredMixin(HttpMethodPermissionMixin, UserPassesTestMixin):
             return getattr(self, "required_permission", "administration.update")
         return "administration.read"
     def test_func(self):
-        return self.request.user.role in ["super_admin", "company_admin"]
+        company = get_active_company(self.request)
+        return self.request.user.is_superuser or (
+            company is not None
+            and self.request.user.get_role_for_company(company)
+            in ["super_admin", "company_admin"]
+        )
 
 
 class IntegrationsDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
@@ -37,7 +40,7 @@ class IntegrationsDashboardView(LoginRequiredMixin, AdminRequiredMixin, Template
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
         ctx["integrations"] = Integration.objects.filter(company=company)
         ctx["email_config"] = EmailConfig.objects.filter(company=company).first()
         ctx["sms_config"] = SMSConfig.objects.filter(company=company).first()
@@ -50,7 +53,7 @@ class GenericIntegrationSetupView(LoginRequiredMixin, AdminRequiredMixin, View):
     template_name = "administration/integrations/generic_setup.html"
 
     def get(self, request, provider):
-        company = request.user.primary_company
+        company = get_active_company(request)
         integration = Integration.objects.filter(
             company=company, provider=provider
         ).first()
@@ -60,8 +63,9 @@ class GenericIntegrationSetupView(LoginRequiredMixin, AdminRequiredMixin, View):
             {"provider": provider, "integration": integration},
         )
 
+    @transaction.atomic
     def post(self, request, provider):
-        company = request.user.primary_company
+        company = get_active_company(request)
         api_key = request.POST.get("api_key")
         api_secret = request.POST.get("api_secret")
         integration_type = request.POST.get("integration_type", "custom")
@@ -125,13 +129,18 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
     template_name = "administration/integrations/webhooks.html"
 
     def get(self, request):
-        webhooks = WebhookEndpoint.objects.filter(company=request.user.primary_company)
+        company = get_active_company(request)
+        webhooks = WebhookEndpoint.objects.filter(company=company).prefetch_related("deliveries")
         return render(request, self.template_name, {"webhooks": webhooks})
 
     def post(self, request):
         url = request.POST.get("target_url") or request.POST.get("url")
-        events = request.POST.getlist("events") or [
-            value.strip() for value in request.POST.get("events", "*").split(",") if value.strip()
+        raw_events = request.POST.getlist("events")
+        events = [
+            event.strip()
+            for item in raw_events or ["*"]
+            for event in item.split(",")
+            if event.strip()
         ]
         name = request.POST.get("name", url or "Webhook")
         parsed = urlparse(url or "")
@@ -140,13 +149,13 @@ class WebhookManagementView(LoginRequiredMixin, AdminRequiredMixin, View):
             secret = "whsec_" + secrets.token_urlsafe(32)
             with transaction.atomic():
                 WebhookEndpoint.objects.create(
-                company=request.user.primary_company,
-                name=name,
-                url=url,
-                secret=secret,
-                events=events,
-                status=WebhookEndpoint.Status.ACTIVE,
-            )
+                    company=get_active_company(request),
+                    name=name,
+                    url=url,
+                    secret=secret,
+                    events=events,
+                    status=WebhookEndpoint.Status.ACTIVE,
+                )
             messages.success(request, f"Webhook endpoint added. Copy its signing secret now: {secret}")
         else:
             messages.error(request, "Enter a valid webhook URL (HTTPS is required in production).")
@@ -162,7 +171,7 @@ class WebhookToggleView(LoginRequiredMixin, AdminRequiredMixin, View):
 
     def post(self, request, pk):
         try:
-            hook = WebhookEndpoint.objects.get(pk=pk, company=request.user.primary_company)
+            hook = WebhookEndpoint.objects.get(pk=pk, company=get_active_company(request))
             if hook.status == WebhookEndpoint.Status.ACTIVE:
                 hook.status = WebhookEndpoint.Status.INACTIVE
             else:
@@ -179,7 +188,7 @@ class WebhookDeleteView(LoginRequiredMixin, AdminRequiredMixin, View):
 
     def post(self, request, pk):
         try:
-            hook = WebhookEndpoint.objects.get(pk=pk, company=request.user.primary_company)
+            hook = WebhookEndpoint.objects.get(pk=pk, company=get_active_company(request))
             hook.delete()
             messages.success(request, "Webhook deleted.")
         except WebhookEndpoint.DoesNotExist:
@@ -193,7 +202,7 @@ class IntegrationDisconnectView(LoginRequiredMixin, AdminRequiredMixin, View):
     def post(self, request, pk):
         try:
             integration = Integration.objects.get(
-                pk=pk, company=request.user.primary_company
+                pk=pk, company=get_active_company(request)
             )
             integration.status = Integration.Status.DISCONNECTED
             integration.credentials = {}
@@ -202,70 +211,3 @@ class IntegrationDisconnectView(LoginRequiredMixin, AdminRequiredMixin, View):
         except Integration.DoesNotExist:
             messages.error(request, "Integration not found.")
         return redirect("administration:integrations_dashboard")
-
-
-class DataImportView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
-    template_name = "administration/integrations/data_import.html"
-
-    def post(self, request):
-        file = request.FILES.get("import_file")
-        import_type = request.POST.get("import_type")
-
-        if not file:
-            messages.error(request, "No file uploaded.")
-            return redirect("administration:data_import")
-
-        if not file.name.endswith(".csv"):
-            messages.error(request, "Only CSV files are supported.")
-            return redirect("administration:data_import")
-
-        try:
-            import csv
-            from io import StringIO
-
-            from apps.crm.models import Customer
-            from apps.inventory.models import Product
-            from apps.purchase.models import Vendor
-
-            csv_file = file.read().decode("utf-8-sig")
-            reader = csv.DictReader(StringIO(csv_file))
-
-            success_count = 0
-            company = request.user.primary_company
-
-            for row in reader:
-                if import_type == "product":
-                    Product.objects.create(
-                        company=company,
-                        name=row.get("name", "Unknown Product"),
-                        sku=row.get("sku", ""),
-                        description=row.get("description", ""),
-                        cost_price=row.get("cost_price", 0) or 0,
-                        sale_price=row.get("sale_price", 0) or 0,
-                    )
-                elif import_type == "customer":
-                    Customer.objects.create(
-                        company=company,
-                        name=row.get("name", "Unknown Customer"),
-                        email=row.get("email", ""),
-                        phone=row.get("phone", ""),
-                        address_line1=row.get("address", ""),
-                    )
-                elif import_type == "vendor":
-                    Vendor.objects.create(
-                        company=company,
-                        name=row.get("name", "Unknown Vendor"),
-                        email=row.get("email", ""),
-                        phone=row.get("phone", ""),
-                        address_line1=row.get("address", ""),
-                    )
-                success_count += 1
-
-            messages.success(
-                request, f"Successfully imported {success_count} {import_type}(s)."
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            messages.error(request, f"Error processing file: {"An unexpected error occurred."}")
-
-        return redirect("administration:data_import")

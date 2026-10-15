@@ -86,7 +86,7 @@
 </div>
 <div class="card mt-4"><div class="card-header"><h5 class="mb-0">Recent backups</h5></div>
     <div class="card-body"><table class="table"><thead><tr><th>Created</th><th>Status</th><th>File</th></tr></thead><tbody>
-    {% for backup in backups %}<tr><td>{{ backup.created_at }}</td><td>{{ backup.get_status_display }}</td><td>{{ backup.file_path }}</td></tr>{% empty %}
+    {% for backup in backups %}<tr><td>{{ backup.created_at }}</td><td>{{ backup.get_status_display }}</td><td>{% if backup.status == 'completed' %}<a href="{% url 'administration:backup_download' backup.pk %}">Download</a>{% else %}—{% endif %}</td></tr>{% empty %}
     <tr><td colspan="3">No backups yet.</td></tr>{% endfor %}
     </tbody></table></div>
 </div>
