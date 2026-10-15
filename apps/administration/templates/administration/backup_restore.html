@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Backups{% endblock %}
+{% block page_title %}Backups{% endblock %}
+{% block content %}
+<div class="alert alert-info">
+    Backups exclude users, sessions, secrets, and global tables such as currencies, exchange rates,
+    permissions, and Celery beat data. Restoring requires the target company, referenced users,
+    and referenced global rows to exist first. Restore is available only through the
+    <code>restore_company_backup</code> management command; there is no web restore action.
+</div>
+<form method="post" class="card card-body mb-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <label for="backup-type">Backup type</label>
+    <select id="backup-type" name="backup_type" class="form-select mb-3">
+        {% for value, label in backup_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+    </select>
+    <label for="backup-notes">Notes</label>
+    <textarea id="backup-notes" name="notes" class="form-control mb-3" maxlength="2000"></textarea>
+    <button class="btn btn-primary" type="submit">Create backup</button>
+</form>
+<h2>Recent backups</h2>
+<table class="table">
+    <thead><tr><th>Created</th><th>Status</th><th>File</th><th>Manifest</th></tr></thead>
+    <tbody>
+    {% for backup in backups %}
+        <tr>
+            <td>{{ backup.created_at }}</td><td>{{ backup.get_status_display }}</td>
+            <td>{% if backup.status == "completed" %}<a href="{% url 'administration:backup_download' backup.pk %}">Download</a>{% else %}—{% endif %}</td>
+            <td>
+                {% if backup.manifest %}
+                    <details><summary>Included and excluded models</summary>
+                        <p>{{ backup.manifest.restore_prerequisites }}</p>
+                        <strong>Excluded</strong>
+                        <ul>{% for item in backup.manifest.excluded_models %}<li>{{ item.model }} — {{ item.reason }}</li>{% empty %}<li>None</li>{% endfor %}</ul>
+                        <strong>Unresolved</strong>
+                        <ul>{% for model in backup.manifest.unresolved_models %}<li>{{ model }}</li>{% empty %}<li>None</li>{% endfor %}</ul>
+                    </details>
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+    {% empty %}<tr><td colspan="4">No backups yet.</td></tr>{% endfor %}
+    </tbody>
+</table>
+{% endblock %}

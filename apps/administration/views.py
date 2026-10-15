@@ -728,10 +728,20 @@ class BackupRestoreView(AdminRequiredMixin, View):
     required_permission = "administration.read"
     template_name = "administration/backup_restore.html"
 
+    def get_required_permission(self, request=None):
+        if request and request.method.upper() == "POST":
+            return "administration.update"
+        return "administration.read"
+
     def get(self, request):
-        backups = BackupRecord.objects.filter(company=self.company).order_by(
+        company = get_active_company(request)
+        backups = BackupRecord.objects.filter(company=company).order_by(
             "-created_at"
         )[:20]
+        from apps.administration.backup_services import read_backup_manifest
+
+        for backup in backups:
+            backup.manifest = read_backup_manifest(backup)
         return render(
             request,
             self.template_name,
@@ -744,15 +754,18 @@ class BackupRestoreView(AdminRequiredMixin, View):
     def post(self, request):
         action = request.POST.get("action")
         if action == "create":
-            BackupRecord.objects.create(
-                company=self.company,
-                backup_type=request.POST.get("backup_type", "full"),
-                initiated_by=request.user,
+            company = get_active_company(request)
+            from apps.administration.backup_services import queue_company_backup
+
+            queue_company_backup(
+                company,
+                request.user,
+                backup_type=request.POST.get("backup_type", BackupRecord.BackupType.FULL),
                 notes=request.POST.get("notes", ""),
             )
-            messages.success(
-                request, "Backup job initiated. You will be notified when complete."
-            )
+            messages.success(request, "Backup queued. It will appear in the recent backups list when complete.")
+        else:
+            messages.error(request, "Unknown backup action.")
         return redirect("administration:backup_restore")
 
 

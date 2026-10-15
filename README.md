@@ -231,3 +231,6 @@ Password: (your DJANGO_SUPERUSER_PASSWORD)
 ## 📄 License
 
 MIT License — free for commercial and personal use.
+# Private backup storage
+
+Set `PRIVATE_BACKUP_ROOT` to storage that is private and not served by the web server in production. The default `private_backups/` directory is excluded from version control; production deployments should use a protected persistent volume or private object-storage backend and restrict access to the application service.

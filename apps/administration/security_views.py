@@ -3,8 +3,6 @@ import secrets
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.files.storage import default_storage
-from django.db import transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
 from django.views.generic import View
@@ -80,6 +78,10 @@ class BackupSchedulerView(LoginRequiredMixin, AdminRequiredMixin, View):
         company = get_active_company(request)
         schedules = BackupSchedule.objects.filter(company=company)
         backups = BackupRecord.objects.filter(company=company).order_by("-created_at")[:20]
+        from apps.administration.backup_services import read_backup_manifest
+
+        for backup in backups:
+            backup.manifest = read_backup_manifest(backup)
         return render(request, self.template_name, {"schedules": schedules, "backups": backups})
 
     def post(self, request):
@@ -104,18 +106,9 @@ class BackupRunNowView(LoginRequiredMixin, AdminRequiredMixin, View):
 
     def post(self, request):
         company = get_active_company(request)
-        from apps.administration.tasks import generate_backup
+        from apps.administration.backup_services import queue_company_backup
 
-        with transaction.atomic():
-            record = BackupRecord.objects.create(
-                company=company,
-                backup_type=BackupRecord.BackupType.FULL,
-                status=BackupRecord.Status.IN_PROGRESS,
-                initiated_by=request.user,
-            )
-            transaction.on_commit(
-                lambda: generate_backup.delay(str(record.pk), str(company.pk))
-            )
+        queue_company_backup(company, request.user)
         messages.success(request, "Backup queued.")
         return redirect("administration:backup_schedule")
 

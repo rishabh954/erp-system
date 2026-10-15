@@ -2,6 +2,8 @@
 import pytest
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.test import override_settings
 from django.urls import reverse
 
@@ -92,6 +94,46 @@ def test_import_existing_sku_is_a_row_error_and_large_batch_saves_all_good_rows(
     assert job.failed_rows == 1
     assert '"row": 2' in job.error_log
     assert "already exists for this company" in job.error_log
+
+
+def test_import_caps_stored_errors_without_capping_failed_row_count(company, user):
+    from apps.administration.tasks import MAX_IMPORT_ERRORS, process_import_job
+
+    rows = ["name,email"] + [f",bad-{index}@example.test" for index in range(500)]
+    job = ImportJob.objects.create(
+        company=company, module="customers",
+        file=ContentFile(("\n".join(rows) + "\n").encode(), name="bad-customers.csv"),
+        imported_by=user,
+    )
+    process_import_job.run(str(job.pk), str(company.pk))
+    job.refresh_from_db()
+    errors = __import__("json").loads(job.error_log)
+    assert job.failed_rows == 500
+    assert len(errors) == MAX_IMPORT_ERRORS + 1
+    assert errors[-1] == {"row": None, "message": "400 more errors not shown"}
+
+
+def test_duplicate_key_query_count_is_batch_bounded(company, user):
+    from apps.administration.tasks import process_import_job
+
+    query_counts = []
+    for size in (50, 200):
+        rows = ["name,sku"] + [f"Product {index},SKU-{size}-{index}" for index in range(size)]
+        job = ImportJob.objects.create(
+            company=company, module="products",
+            file=ContentFile(("\n".join(rows) + "\n").encode(), name=f"products-{size}.csv"),
+            imported_by=user,
+        )
+        with CaptureQueriesContext(connection) as captured:
+            process_import_job.run(str(job.pk), str(company.pk))
+        duplicate_queries = [
+            query for query in captured.captured_queries
+            if query["sql"].lower().startswith("select")
+            and "inventory_products" in query["sql"].lower()
+            and '"sku" as "sku"' in query["sql"].lower()
+        ]
+        query_counts.append(len(duplicate_queries))
+    assert query_counts == [1, 1]
 
 
 def test_export_is_tenant_scoped_escaped_and_download_scoped(

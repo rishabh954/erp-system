@@ -126,7 +126,11 @@ def serialize_company_backup(company_id):
         "django_version": __import__("django").get_version(),
         "erp_version": settings.SPECTACULAR_SETTINGS.get("VERSION", "unknown"),
         "apps": sorted({config.label for config in apps.get_app_configs()}),
-        "restore_prerequisites": "Create this company and any referenced user records first, then load the objects array.",
+        "restore_prerequisites": (
+            "Users, sessions, secrets, and global tables (currencies, exchange rates, "
+            "permissions, and Celery beat data) are excluded. Before restore, create the "
+            "target company, referenced users, and referenced global rows; then load the objects array."
+        ),
         "model_counts": model_counts,
         "excluded_models": excluded,
         "unresolved_models": sorted(unresolved),
@@ -177,10 +181,27 @@ EXPORT_CONFIG = {
     "products": ("apps.inventory.models", "Product", ("name", "sku", "description", "cost_price", "sale_price", "product_type")),
 }
 IMPORT_BATCH_SIZE = 200
+
+
 def _append_import_errors(existing, new_errors):
     current = json.loads(existing) if existing else []
-    current.extend(new_errors)
-    return json.dumps(current)
+    summary = next((item for item in current if item.get("row") is None), None)
+    prior_hidden = 0
+    if summary:
+        try:
+            prior_hidden = int(summary["message"].split(" ", 1)[0])
+        except (ValueError, IndexError):
+            prior_hidden = 0
+    visible = [item for item in current if item.get("row") is not None]
+    all_errors = visible + list(new_errors)
+    hidden = prior_hidden + max(0, len(all_errors) - MAX_IMPORT_ERRORS)
+    visible = all_errors[:MAX_IMPORT_ERRORS]
+    if hidden:
+        visible.append({"row": None, "message": f"{hidden} more errors not shown"})
+    return json.dumps(visible)
+
+
+MAX_IMPORT_ERRORS = 100
 
 
 def _import_unique_keys(model, module):
@@ -196,6 +217,31 @@ def _import_unique_keys(model, module):
         if "company" in fields:
             keys.append(tuple(field for field in fields if field != "company"))
     return [key for key in keys if key]
+
+
+def _existing_import_keys(model, company_id, objects, key_fields):
+    """Fetch each unique-key set with one company-scoped query per batch."""
+    from django.db.models import Q
+
+    candidates = {
+        tuple(getattr(obj, field) for field in key_fields)
+        for _row_number, obj in objects
+        if all(getattr(obj, field, None) not in (None, "") for field in key_fields)
+    }
+    if not candidates:
+        return set()
+    queryset = model.objects.filter(company_id=company_id)
+    if len(key_fields) == 1:
+        values = [key[0] for key in candidates]
+        queryset = queryset.filter(**{f"{key_fields[0]}__in": values})
+        return set((value,) for value in queryset.values_list(key_fields[0], flat=True))
+    condition = Q()
+    for key in candidates:
+        clause = Q()
+        for field, value in zip(key_fields, key):
+            clause &= Q(**{field: value})
+        condition |= clause
+    return set(queryset.filter(condition).values_list(*key_fields))
 
 
 @shared_task
@@ -239,10 +285,51 @@ def process_import_job(job_id, company_id):
         if not required.issubset(mapping):
             raise ValueError(f"Column mapping must include: {', '.join(sorted(required))}.")
 
-        batch = []
-        errors = []
-        seen = {key: {} for key in _import_unique_keys(model, job.module)}
-        row_number = 1
+        key_fields_list = _import_unique_keys(model, job.module)
+        seen = {key: {} for key in key_fields_list}
+        batch, errors = [], []
+
+        def flush_batch():
+            if not batch and not errors:
+                return
+            existing = {
+                key_fields: _existing_import_keys(model, company_id, batch, key_fields)
+                for key_fields in key_fields_list
+            }
+            accepted = []
+            for batch_row, obj in batch:
+                duplicate = None
+                for key_fields in key_fields_list:
+                    if any(getattr(obj, field, None) in (None, "") for field in key_fields):
+                        continue
+                    key = tuple(getattr(obj, field) for field in key_fields)
+                    label, value = key_fields[0], getattr(obj, key_fields[0])
+                    if key in existing[key_fields]:
+                        duplicate = f"duplicate {label} '{value}' already exists for this company"
+                        break
+                    if key in seen[key_fields]:
+                        duplicate = f"duplicate {label} '{value}' also on row {seen[key_fields][key]}"
+                        break
+                    seen[key_fields][key] = batch_row
+                if duplicate:
+                    job.failed_rows += 1
+                    errors.append({"row": batch_row, "message": duplicate})
+                else:
+                    accepted.append((batch_row, obj))
+            with transaction.atomic():
+                for batch_row, obj in accepted:
+                    try:
+                        with transaction.atomic():
+                            obj.save(force_insert=True)
+                        job.imported_rows += 1
+                    except Exception as exc:
+                        job.failed_rows += 1
+                        errors.append({"row": batch_row, "message": str(exc)[:500]})
+                job.error_log = _append_import_errors(job.error_log, errors)
+                job.save(update_fields=["total_rows", "imported_rows", "failed_rows", "error_log"])
+            batch.clear()
+            errors.clear()
+
         for row_number, row in enumerate(reader, start=2):
             job.total_rows += 1
             try:
@@ -256,54 +343,14 @@ def process_import_job(job_id, company_id):
                 if any(not values.get(field) for field in required):
                     raise ValueError(f"required value missing: {', '.join(sorted(required))}")
                 obj = model(company_id=company_id, **values)
-                duplicate = None
-                for key_fields in seen:
-                    if any(not getattr(obj, field, None) for field in key_fields):
-                        continue
-                    key = tuple(getattr(obj, field) for field in key_fields)
-                    label = key_fields[0]
-                    value = getattr(obj, label)
-                    existing = model.objects.filter(company_id=company_id)
-                    for field, item in zip(key_fields, key):
-                        existing = existing.filter(**{field: item})
-                    if existing.exists():
-                        duplicate = f"duplicate {label} '{value}' already exists for this company"
-                        break
-                    if key in seen[key_fields]:
-                        duplicate = f"duplicate {label} '{value}' also on row {seen[key_fields][key]}"
-                        break
-                    seen[key_fields][key] = row_number
-                if duplicate:
-                    raise ValueError(duplicate)
-                obj.full_clean()
+                obj.full_clean(validate_unique=False, validate_constraints=False)
                 batch.append((row_number, obj))
             except Exception as exc:
                 job.failed_rows += 1
                 errors.append({"row": row_number, "message": str(exc)[:500]})
             if len(batch) + len(errors) >= IMPORT_BATCH_SIZE:
-                with transaction.atomic():
-                    for batch_row, obj in batch:
-                        try:
-                            with transaction.atomic():
-                                obj.save(force_insert=True)
-                            job.imported_rows += 1
-                        except Exception as exc:
-                            job.failed_rows += 1
-                            errors.append({"row": batch_row, "message": str(exc)[:500]})
-                    job.error_log = _append_import_errors(job.error_log, errors)
-                    job.save(update_fields=["total_rows", "imported_rows", "failed_rows", "error_log"])
-                batch, errors = [], []
-        with transaction.atomic():
-            for batch_row, obj in batch:
-                try:
-                    with transaction.atomic():
-                        obj.save(force_insert=True)
-                    job.imported_rows += 1
-                except Exception as exc:
-                    job.failed_rows += 1
-                    errors.append({"row": batch_row, "message": str(exc)[:500]})
-            job.error_log = _append_import_errors(job.error_log, errors)
-            job.save(update_fields=["total_rows", "imported_rows", "failed_rows", "error_log"])
+                flush_batch()
+        flush_batch()
         job.status = ImportJob.Status.DONE
     except Exception as exc:
         job.status = ImportJob.Status.FAILED
@@ -311,8 +358,6 @@ def process_import_job(job_id, company_id):
             job.error_log, [{"row": 1, "message": str(exc)[:500]}]
         )
     finally:
-        recorded_errors = json.loads(job.error_log or "[]")
-        job.failed_rows = len(recorded_errors)
         job.completed_at = timezone.now()
         job.save(update_fields=["status", "error_log", "completed_at", "total_rows", "imported_rows", "failed_rows"])
 

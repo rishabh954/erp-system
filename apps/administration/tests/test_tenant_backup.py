@@ -202,13 +202,15 @@ def test_backup_includes_company_owned_child_lines_and_keeps_foreign_keys(compan
     }
     restore_objects = [row for row in rows if row["model"] in restore_labels]
     restore_file = tmp_path / "restore-payload.json"
-    restore_file.write_text(json.dumps(restore_objects), encoding="utf-8")
+    restore_file.write_text(json.dumps({
+        "manifest": {"company_id": str(company.pk), "schema_version": 1},
+        "objects": restore_objects,
+    }), encoding="utf-8")
     restore_db = tmp_path / "restore.sqlite3"
     restore_script = r'''
 import json, os, uuid, django
 django.setup()
 from django.core.management import call_command
-from django.core import serializers
 from apps.company.models import Company
 from apps.authentication.models import User
 from apps.sales.models import Invoice, InvoiceLine
@@ -218,7 +220,7 @@ payload = json.load(open(os.environ["BACKUP_PAYLOAD"], encoding="utf-8"))
 company_id = os.environ["BACKUP_COMPANY_ID"]
 Company.objects.create(pk=company_id, name="Restored prerequisite", slug="restored-prerequisite")
 user_ids = set()
-for row in payload:
+for row in payload["objects"]:
     model = django.apps.apps.get_model(row["model"])
     for field in model._meta.concrete_fields:
         if field.is_relation and field.related_model is User:
@@ -226,9 +228,8 @@ for row in payload:
             if value:
                 user_ids.add(str(value))
 for user_id in user_ids:
-    User.objects.create(pk=user_id, email=f"{user_id}@restore.test", username=f"restore-{user_id}", first_name="Restore", last_name="User", password="!")
-for item in serializers.deserialize("json", json.dumps(payload)):
-    item.save()
+    User.objects.create(pk=user_id, email=f"{user_id}@restore.test", username=f"restore-{user_id}", first_name="Restore", last_name="User", password="!", primary_company_id=company_id)
+call_command("restore_company_backup", os.environ["BACKUP_PAYLOAD"], company=company_id)
 invoice = Invoice.objects.get(company_id=company_id)
 line = InvoiceLine.objects.get(invoice=invoice)
 item = JournalItem.objects.select_related("journal_entry", "account").get(description="Ledger line")
@@ -268,3 +269,46 @@ def test_backup_request_queues_only_the_active_tenant(client, company, user):
     record = BackupRecord.objects.get(company=other)
     queue.assert_called_once_with(str(record.pk), str(other.pk))
     assert record.company_id != company.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_backup_restore_create_queues_once_and_runs_to_completion(client, company, user):
+    from apps.administration.tasks import generate_backup
+
+    client.force_login(user)
+
+    def run_task(record_id, company_id):
+        generate_backup.run(record_id, company_id)
+
+    with patch("apps.administration.tasks.generate_backup.delay", side_effect=run_task) as queue:
+        response = client.post(
+            reverse("administration:backup_restore"),
+            {"action": "create", "backup_type": "full", "notes": "requested"},
+        )
+    assert response.status_code == 302
+    record = BackupRecord.objects.get(company=company, notes="requested")
+    assert record.status == BackupRecord.Status.COMPLETED
+    queue.assert_called_once_with(str(record.pk), str(company.pk))
+
+
+@pytest.mark.django_db
+def test_stale_backup_command_fails_only_old_in_progress_records(company, user):
+    from datetime import timedelta
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    other = CompanyFactory(name="Other stale tenant")
+    stale = BackupRecord.objects.create(company=company, initiated_by=user)
+    recent = BackupRecord.objects.create(company=company, initiated_by=user)
+    foreign_stale = BackupRecord.objects.create(company=other, initiated_by=None)
+    BackupRecord.objects.filter(pk__in=[stale.pk, foreign_stale.pk]).update(
+        created_at=timezone.now() - timedelta(hours=2)
+    )
+    call_command("fail_stale_backups", stdout=__import__("io").StringIO())
+    stale.refresh_from_db()
+    recent.refresh_from_db()
+    foreign_stale.refresh_from_db()
+    assert stale.status == BackupRecord.Status.FAILED
+    assert "more than one hour" in stale.notes
+    assert foreign_stale.status == BackupRecord.Status.FAILED
+    assert recent.status == BackupRecord.Status.IN_PROGRESS
