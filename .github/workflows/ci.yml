@@ -9,6 +9,18 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "False"
+      SECRET_KEY: "ci-only-test-key-not-for-production-use-at-all-12345678"
+      ALLOWED_HOSTS: "localhost"
+      DB_HOST: localhost
+      DB_NAME: erp_test
+      DB_USER: postgres
+      DB_PASSWORD: ci_strong_password_not_default
+      REDIS_PASSWORD: ci_strong_redis_password
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/1
 
     services:
       postgres:
@@ -16,11 +28,20 @@ jobs:
         env:
           POSTGRES_DB: erp_test
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: ci_strong_password_not_default
         ports:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -48,30 +69,14 @@ jobs:
 
     - name: Check for missing migrations
       run: python manage.py makemigrations --check --dry-run
-      env:
-        DJANGO_SETTINGS_MODULE: config.settings
-        DB_HOST: localhost
-        DB_NAME: erp_test
-        DB_USER: postgres
-        DB_PASSWORD: postgres
 
     - name: Django deployment checks
       # Runs manage.py check --deploy to catch security misconfigurations.
       # We use a throw-away SECRET_KEY and set DEBUG=False to exercise the
       # production code paths, but skip HTTPS-related checks that require a
       # real TLS terminator.
-      run: |
-        python manage.py check --deploy --fail-level WARNING \
-          --settings config.settings 2>&1 | grep -v "WARNINGS" || true
+      run: python manage.py check --deploy --fail-level ERROR --settings config.settings
       env:
-        DJANGO_SETTINGS_MODULE: config.settings
-        DEBUG: "False"
-        SECRET_KEY: "ci-only-test-key-not-for-production-use-at-all-12345678"
-        ALLOWED_HOSTS: "localhost"
-        DB_HOST: localhost
-        DB_NAME: erp_test
-        DB_USER: postgres
-        DB_PASSWORD: ci_strong_password_not_default
         SECURE_SSL_REDIRECT: "False"
         USE_X_FORWARDED_PROTO: "False"
         CSRF_TRUSTED_ORIGINS: "https://localhost"
@@ -79,11 +84,7 @@ jobs:
     - name: Run Tests
       run: pytest --tb=short -q
       env:
-        DJANGO_SETTINGS_MODULE: config.settings
-        DB_HOST: localhost
-        DB_NAME: erp_test
-        DB_USER: postgres
-        DB_PASSWORD: postgres
+        DEBUG: "True"
 
   security:
     runs-on: ubuntu-latest
@@ -126,5 +127,5 @@ jobs:
         # Separate scan for test files allowing B101 and B311
         bandit -r apps core tests \
           --include "*/tests/*,*/test_*.py,*tests.py" \
-          -s B101,B311 || true
+          -s B101,B311
 

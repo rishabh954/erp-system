@@ -16,6 +16,90 @@ from core.services import BaseService
 logger = logging.getLogger(__name__)
 
 
+def _validated_sales_lines(data, company, *, supports_dict=False):
+    """Parse dynamic document rows and reject malformed or cross-company input."""
+    from decimal import Decimal, InvalidOperation
+    from apps.company.models import Tax
+    from apps.inventory.models import Product
+    from django.core.exceptions import ValidationError
+
+    def values(key):
+        if hasattr(data, "getlist"):
+            return data.getlist(key)
+        value = data.get(key, []) if supports_dict else []
+        return value if isinstance(value, list) else [value]
+
+    arrays = {key: values(key) for key in ("product[]", "description[]", "quantity[]", "unit_price[]", "discount_percent[]", "tax[]")}
+    # A legacy client flow posts Django-style ``lines-N-*`` fields rather
+    # than the repeated-name controls used by the current templates.
+    if not arrays["description[]"] and hasattr(data, "get"):
+        try:
+            total_forms = int(data.get("lines-TOTAL_FORMS", "0"))
+        except (TypeError, ValueError):
+            total_forms = 0
+        if total_forms:
+            for key, suffix in (("product[]", "product"), ("description[]", "description"), ("quantity[]", "quantity"), ("unit_price[]", "unit_price"), ("discount_percent[]", "discount_percent"), ("tax[]", "tax")):
+                arrays[key] = [data.get(f"lines-{index}-{suffix}", "") for index in range(total_forms)]
+            descriptions = arrays["description[]"]
+    descriptions = arrays["description[]"]
+    has_legacy_formset = bool(getattr(data, "get", lambda *_: "")("lines-TOTAL_FORMS", ""))
+    if (not descriptions and not has_legacy_formset) or (
+        descriptions and not any(str(description).strip() for description in descriptions) and not has_legacy_formset
+    ):
+        raise ValueError("At least one document line with a description is required.")
+    if any(len(items) not in (0, len(descriptions)) for key, items in arrays.items() if key != "description[]"):
+        raise ValueError("Document line fields must contain the same number of rows.")
+    result = []
+    for index, raw_description in enumerate(descriptions):
+        description = str(raw_description).strip()
+        def item(field):
+            rows = arrays[field]
+            return rows[index].strip() if index < len(rows) and rows[index] else ""
+        try:
+            quantity = Decimal(item("quantity[]"))
+            price = Decimal(item("unit_price[]"))
+            discount = Decimal(item("discount_percent[]") or "0")
+            if not quantity.is_finite() or quantity <= 0:
+                raise ValueError
+            if not price.is_finite() or price < 0:
+                raise ValueError
+            if not discount.is_finite() or not 0 <= discount <= 100:
+                raise ValueError
+        except (InvalidOperation, ValueError):
+            raise ValueError(f"Line {index + 1} requires a positive quantity, non-negative price, and discount from 0 to 100.")
+        product_id, tax_id = item("product[]"), item("tax[]")
+        try:
+            # Historical documents may continue to reference an inactive
+            # product; tenant ownership and soft-delete status are enforced.
+            product = Product.objects.filter(pk=product_id, company=company, is_deleted=False).first() if product_id else None
+            tax = Tax.objects.filter(pk=tax_id, company=company, is_active=True).first() if tax_id else None
+        except ValidationError:
+            product, tax = None, None
+        if product_id and not product:
+            raise ValueError(f"Product on line {index + 1} is not available to this company.")
+        if tax_id and not tax:
+            raise ValueError(f"Tax on line {index + 1} is not available to this company.")
+        if not description and product:
+            description = product.name
+        if not description:
+            raise ValueError(f"Description is required for line {index + 1}.")
+        result.append({"description": description, "quantity": quantity, "unit_price": price, "discount_percent": discount, "product": product, "tax": tax, "sort_order": index})
+    return result
+
+
+def _validated_customer(data, company):
+    from apps.crm.models import Customer
+    from django.core.exceptions import ValidationError
+    customer_id = data.get("customer")
+    try:
+        customer = Customer.objects.filter(pk=customer_id, company=company, is_deleted=False).first()
+    except ValidationError:
+        customer = None
+    if not customer:
+        raise ValueError("Select a valid customer for this company.")
+    return customer
+
+
 class SalesService(BaseService):
 
     @transaction.atomic
@@ -417,9 +501,11 @@ class QuotationService(BaseService):
 
         from apps.sales.models import Quotation, QuotationLine
 
+        customer = _validated_customer(data, self.company)
+        lines = _validated_sales_lines(data, self.company)
         quot = Quotation(
             company=self.company,
-            customer_id=data["customer"],
+            customer=customer,
             validity_date=data.get("validity_date") or None,
             delivery_date=data.get("delivery_date") or None,
             payment_terms=int(data.get("payment_terms", 30)),
@@ -433,27 +519,10 @@ class QuotationService(BaseService):
         )
         quot.save()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        prices = data.getlist("unit_price[]")
-        discounts = data.getlist("discount_percent[]")
-        taxes = data.getlist("tax[]")
-
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
+        for row in lines:
             line = QuotationLine(
                 quotation=quot,
-                product_id=products[i] if products[i] else None,
-                description=desc,
-                quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal("1"),
-                unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
-                discount_percent=(
-                    Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
-                ),
-                tax_id=taxes[i] if taxes[i] else None,
-                sort_order=i,
+                **row,
             )
             line.save()
 
@@ -505,9 +574,11 @@ class SalesOrderService(BaseService):
 
         from apps.sales.models import SalesOrder, SalesOrderLine
 
+        customer = _validated_customer(data, self.company)
+        lines = _validated_sales_lines(data, self.company)
         order = SalesOrder(
             company=self.company,
-            customer_id=data["customer"],
+            customer=customer,
             order_date=data.get("order_date") or timezone.now().date(),
             delivery_date=data.get("delivery_date") or None,
             payment_terms=int(data.get("payment_terms", 30)),
@@ -521,27 +592,10 @@ class SalesOrderService(BaseService):
         )
         order.save()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        prices = data.getlist("unit_price[]")
-        discounts = data.getlist("discount_percent[]")
-        taxes = data.getlist("tax[]")
-
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
+        for row in lines:
             line = SalesOrderLine(
                 sales_order=order,
-                product_id=products[i] if products[i] else None,
-                description=desc,
-                quantity=Decimal(str(quantities[i])) if quantities[i] else Decimal("1"),
-                unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
-                discount_percent=(
-                    Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
-                ),
-                tax_id=taxes[i] if taxes[i] else None,
-                sort_order=i,
+                **row,
             )
             line.save()
 
@@ -835,9 +889,11 @@ class InvoiceService(BaseService):
             val = data.get(key, [])
             return val if isinstance(val, list) else [val]
 
+        customer = _validated_customer(data, self.company)
+        lines = _validated_sales_lines(data, self.company, supports_dict=True)
         invoice = Invoice(
             company=self.company,
-            customer_id=data["customer"],
+            customer=customer,
             invoice_date=data.get("invoice_date") or timezone.now().date(),
             due_date=data.get("due_date") or None,
             payment_terms=int(data.get("payment_terms", 30)),
@@ -850,27 +906,10 @@ class InvoiceService(BaseService):
         )
         invoice.save()
 
-        products = _getlist("product[]")
-        descs = _getlist("description[]")
-        quantities = _getlist("quantity[]")
-        prices = _getlist("unit_price[]")
-        discounts = _getlist("discount_percent[]")
-        taxes = _getlist("tax[]")
-
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
+        for row in lines:
             line = InvoiceLine(
                 invoice=invoice,
-                product_id=products[i] if i < len(products) and products[i] else None,
-                description=desc,
-                quantity=Decimal(str(quantities[i])) if i < len(quantities) and quantities[i] else Decimal("1"),
-                unit_price=Decimal(str(prices[i])) if i < len(prices) and prices[i] else Decimal("0"),
-                discount_percent=(
-                    Decimal(str(discounts[i])) if i < len(discounts) and discounts[i] else Decimal("0")
-                ),
-                tax_id=taxes[i] if i < len(taxes) and taxes[i] else None,
-                sort_order=i,
+                **row,
             )
             line.save()
 

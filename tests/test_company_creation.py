@@ -98,3 +98,26 @@ def test_company_create_view_redirects_if_already_has_company():
     assert response.status_code == 302
     assert response.url == reverse("dashboard:index")
     assert not Company.objects.filter(name="Another Company").exists()
+
+
+def test_company_create_rejects_blank_name_without_partial_rows(client):
+    user = User.objects.create_user(email="blank-founder@example.com", password="password123")
+    client.force_login(user)
+    before = Company.objects.count()
+    response = client.post(reverse("company:create"), {"name": "   "})
+    assert response.status_code == 200
+    assert "Company name is required." in response.content.decode()
+    assert Company.objects.count() == before
+    assert not UserCompany.objects.filter(user=user).exists()
+
+
+def test_company_create_rejects_invalid_currency_before_writing(client):
+    user = User.objects.create_user(email="bad-currency@example.com", password="password123")
+    client.force_login(user)
+    before = Company.objects.count()
+    response = client.post(reverse("company:create"), {
+        "name": "Valid Name", "default_currency": "missing-currency",
+    })
+    assert response.status_code == 200
+    assert "Select an active currency." in response.content.decode()
+    assert Company.objects.count() == before

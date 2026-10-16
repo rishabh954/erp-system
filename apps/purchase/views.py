@@ -124,28 +124,64 @@ class VendorCreateView(CompanyMixin, View):
     def post(self, request):
         data = request.POST
         company = self.company()
+        from django.core.exceptions import ValidationError
+        from apps.company.models import Currency
+        errors = {}
+        name = data.get("name", "").strip()
+        vendor_type = data.get("vendor_type", Vendor.VendorType.SUPPLIER)
+        try:
+            payment_terms = int(data.get("payment_terms", 30))
+            if not 0 <= payment_terms <= 32767:
+                raise ValueError
+        except (TypeError, ValueError):
+            payment_terms = 30
+            errors["payment_terms"] = "Enter a whole number of days between 0 and 32767."
+        if not name:
+            errors["name"] = "Vendor name is required."
+        if vendor_type not in Vendor.VendorType.values:
+            errors["vendor_type"] = "Select a valid vendor type."
+        currency = None
+        currency_id = data.get("currency", "").strip()
+        if currency_id:
+            try:
+                currency = Currency.objects.filter(pk=currency_id, is_active=True).first()
+            except ValidationError:
+                currency = None
+            if not currency:
+                errors["currency"] = "Select an active currency."
+        if errors:
+            return render(request, self.template_name, {
+                "vendor_type_choices": Vendor.VendorType.choices,
+                "currencies": Currency.objects.filter(is_active=True),
+                "errors": errors, "form_data": data.dict(),
+            })
         try:
             vendor = Vendor(
                 company=company,
-                name=data["name"],
+                name=name,
                 vendor_code=data.get("vendor_code", ""),
-                vendor_type=data.get("vendor_type", "supplier"),
+                vendor_type=vendor_type,
                 email=data.get("email", ""),
                 phone=data.get("phone", ""),
                 address_line1=data.get("address_line1", ""),
                 city=data.get("city", ""),
                 country=data.get("country", ""),
                 tax_id=data.get("tax_id", ""),
-                payment_terms=int(data.get("payment_terms", 30)),
-                currency_id=data.get("currency") or None,
+                payment_terms=payment_terms,
+                currency=currency,
                 notes=data.get("notes", ""),
             )
             vendor.save()
             messages.success(request, f"Vendor {vendor.name} created.")
             return redirect("purchase:vendor_detail", pk=vendor.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return redirect("purchase:vendors")
+        except Exception:
+            logger.exception("Vendor creation failed")
+            messages.error(request, "Vendor could not be created. Check the entered values.")
+            return render(request, self.template_name, {
+                "vendor_type_choices": Vendor.VendorType.choices,
+                "currencies": Currency.objects.filter(is_active=True),
+                "form_data": data.dict(),
+            })
 
 
 class VendorUpdateView(CompanyMixin, View):
@@ -169,25 +205,61 @@ class VendorUpdateView(CompanyMixin, View):
     def post(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
         data = request.POST
+        from django.core.exceptions import ValidationError
+        from apps.company.models import Currency
+        errors = {}
+        name = data.get("name", "").strip()
+        vendor_type = data.get("vendor_type", Vendor.VendorType.SUPPLIER)
         try:
-            vendor.name = data["name"]
+            payment_terms = int(data.get("payment_terms", 30))
+            if not 0 <= payment_terms <= 32767:
+                raise ValueError
+        except (TypeError, ValueError):
+            payment_terms = 30
+            errors["payment_terms"] = "Enter a whole number of days between 0 and 32767."
+        if not name:
+            errors["name"] = "Vendor name is required."
+        if vendor_type not in Vendor.VendorType.values:
+            errors["vendor_type"] = "Select a valid vendor type."
+        currency = None
+        currency_id = data.get("currency", "").strip()
+        if currency_id:
+            try:
+                currency = Currency.objects.filter(pk=currency_id, is_active=True).first()
+            except ValidationError:
+                currency = None
+            if not currency:
+                errors["currency"] = "Select an active currency."
+        if errors:
+            return render(request, self.template_name, {
+                "vendor": vendor, "vendor_type_choices": Vendor.VendorType.choices,
+                "currencies": Currency.objects.filter(is_active=True),
+                "errors": errors, "form_data": data.dict(),
+            })
+        try:
+            vendor.name = name
             vendor.vendor_code = data.get("vendor_code", "")
-            vendor.vendor_type = data.get("vendor_type", "supplier")
+            vendor.vendor_type = vendor_type
             vendor.email = data.get("email", "")
             vendor.phone = data.get("phone", "")
             vendor.address_line1 = data.get("address_line1", "")
             vendor.city = data.get("city", "")
             vendor.country = data.get("country", "")
             vendor.tax_id = data.get("tax_id", "")
-            vendor.payment_terms = int(data.get("payment_terms", 30))
-            vendor.currency_id = data.get("currency") or None
+            vendor.payment_terms = payment_terms
+            vendor.currency = currency
             vendor.notes = data.get("notes", "")
             vendor.save()
             messages.success(request, f"Vendor {vendor.name} updated.")
             return redirect("purchase:vendor_detail", pk=vendor.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return redirect("purchase:vendor_update", pk=vendor.pk)
+        except Exception:
+            logger.exception("Vendor update failed")
+            messages.error(request, "Vendor could not be updated. Check the entered values.")
+            return render(request, self.template_name, {
+                "vendor": vendor, "vendor_type_choices": Vendor.VendorType.choices,
+                "currencies": Currency.objects.filter(is_active=True),
+                "form_data": data.dict(),
+            })
 
 
 class VendorDeleteView(CompanyMixin, View):

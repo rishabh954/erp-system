@@ -1,10 +1,13 @@
 import datetime
 
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.utils import timezone
 
 from apps.authentication.models import IPRestriction, UserSession
+from core.middleware import _get_client_ip
+from core.tenancy import get_active_company
 
 
 class SecurityMiddleware:
@@ -19,20 +22,25 @@ class SecurityMiddleware:
         if not request.user.is_authenticated:
             return self.get_response(request)
 
-        ip_address = self.get_client_ip(request)
+        ip_address = _get_client_ip(request)
 
         # 1. IP Restriction Check
         # Check global or user-specific IP rules (cached)
         from django.core.cache import cache
 
-        company_id = getattr(request.user, "primary_company_id", None)
+        company = get_active_company(request)
+        company_id = getattr(company, "pk", None)
         cache_key = f"ip_restrictions:{request.user.id}:{company_id}"
         allowed_ips = cache.get(cache_key)
 
         if allowed_ips is None:
-            restrictions = IPRestriction.objects.filter(user=request.user)
+            restrictions = IPRestriction.objects.filter(user=request.user).filter(
+                Q(company_id=company_id) | Q(company__isnull=True)
+            )
             if not restrictions.exists() and company_id:
-                restrictions = IPRestriction.objects.filter(company_id=company_id)
+                restrictions = IPRestriction.objects.filter(
+                    company_id=company_id, user__isnull=True
+                )
 
             if restrictions.exists():
                 allowed_ips = list(restrictions.filter(is_allowed=True).values_list("ip_address", flat=True))
@@ -70,9 +78,4 @@ class SecurityMiddleware:
         return self.get_response(request)
 
     def get_client_ip(self, request):
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(",")[0]
-        else:
-            ip = request.META.get("REMOTE_ADDR")
-        return ip
+        return _get_client_ip(request)

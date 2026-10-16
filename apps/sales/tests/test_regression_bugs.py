@@ -29,6 +29,44 @@ from apps.sales.models import (
 pytestmark = pytest.mark.django_db
 
 
+def test_invoice_service_rejects_missing_required_document_lines(company, customer):
+    from django.http import QueryDict
+    from apps.sales.services import InvoiceService
+
+    data = QueryDict("customer=%s" % customer.pk)
+    before = Invoice.objects.filter(company=company).count()
+    service = InvoiceService(user=None, company=company)
+    with pytest.raises(ValueError, match="At least one document line"):
+        service.create_invoice(data)
+    assert Invoice.objects.filter(company=company).count() == before
+
+
+def test_invoice_service_rejects_customer_from_another_company(company):
+    from django.http import QueryDict
+    from apps.company.models import Company
+    from apps.crm.models import Customer
+    from apps.sales.services import InvoiceService
+
+    other_company = Company.objects.create(name="Different Customer Tenant")
+    foreign_customer = Customer.objects.create(company=other_company, name="Foreign")
+    data = QueryDict("customer=%s" % foreign_customer.pk)
+    before = Invoice.objects.filter(company=company).count()
+    with pytest.raises(ValueError, match="valid customer for this company"):
+        InvoiceService(user=None, company=company).create_invoice(data)
+    assert Invoice.objects.filter(company=company).count() == before
+
+
+def test_invoice_service_rejects_malformed_line_and_saves_no_parent(company, customer):
+    from django.http import QueryDict
+    from apps.sales.services import InvoiceService
+
+    data = QueryDict("customer=%s&description%%5B%%5D=Line&quantity%%5B%%5D=0&unit_price%%5B%%5D=5" % customer.pk)
+    before = Invoice.objects.filter(company=company).count()
+    with pytest.raises(ValueError, match="positive quantity"):
+        InvoiceService(user=None, company=company).create_invoice(data)
+    assert Invoice.objects.filter(company=company).count() == before
+
+
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 @pytest.fixture

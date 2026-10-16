@@ -1,9 +1,9 @@
 import logging
 from django.db import connections
-from django.db.utils import OperationalError
 from django.http import JsonResponse
 from django.views import View
 from django.core.cache import cache
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +14,17 @@ class HealthCheckView(View):
 
         # Check DB
         try:
-            connections["default"].cursor()
+            connection = connections["default"]
+            with transaction.atomic(using="default"):
+                with connection.cursor() as cursor:
+                    if connection.vendor == "postgresql":
+                        cursor.execute("SET LOCAL statement_timeout = '3000ms'")
+                    cursor.execute("SELECT 1")
             components["database"] = "up"
-        except OperationalError:
-            components["database"] = "down"
-            status = "error"
-            logger.error("Health check failed: Database connection error")
         except Exception as e:
             components["database"] = "down"
             status = "error"
-            logger.error(f"Health check failed: DB error {str(e)}")
+            logger.error("Health check failed: database unavailable (%s)", type(e).__name__)
 
         # Check Cache/Redis
         try:
@@ -37,7 +38,7 @@ class HealthCheckView(View):
         except Exception as e:
             components["redis"] = "down"
             status = "error"
-            logger.error(f"Health check failed: Redis/Cache error {str(e)}")
+            logger.error("Health check failed: cache unavailable (%s)", type(e).__name__)
 
         status_code = 200 if status == "ok" else 503
         return JsonResponse({"status": status, "components": components}, status=status_code)

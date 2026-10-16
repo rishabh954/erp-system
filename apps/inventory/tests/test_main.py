@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.inventory.models import InventoryTransfer, StockMovement, StockRecord
+from apps.inventory.models import InventoryTransfer, ProductCategory, StockMovement, StockRecord
 from apps.inventory.services import StockService, TransferService
 from apps.purchase.models import PurchaseOrder, PurchaseOrderLine
 from core.factories import ProductFactory, VendorFactory, WarehouseFactory
@@ -98,6 +98,51 @@ def test_product_list_view_n_plus_one(client, user, company):
     # notification counts, etc.) that add a small fixed overhead per request.
     # If this threshold is exceeded again, profile the queries to find a true N+1.
     assert len(ctx.captured_queries) < 40, f"Too many queries ({len(ctx.captured_queries)}); possible N+1"
+
+
+def test_product_create_rejects_cross_company_category(client, user, company):
+    from apps.company.models import Company
+
+    foreign_company = Company.objects.create(name="Other Tenant")
+    foreign_category = ProductCategory.objects.create(company=foreign_company, name="Foreign")
+    client.force_login(user)
+    session = client.session
+    session["active_company_id"] = str(company.pk)
+    session.save()
+    before = ProductFactory._meta.model.objects.filter(company=company).count()
+    response = client.post(reverse("inventory:product_create"), {
+        "name": "Widget", "sku": "W-100", "category": str(foreign_category.pk),
+    })
+    assert response.status_code == 200
+    assert "Select a valid option for this company." in response.content.decode()
+    assert ProductFactory._meta.model.objects.filter(company=company).count() == before
+
+
+def test_product_create_rejects_whitespace_required_fields(client, user, company):
+    client.force_login(user)
+    response = client.post(reverse("inventory:product_create"), {"name": "  ", "sku": " "})
+    assert response.status_code == 200
+    assert "Product name is required." in response.content.decode()
+    assert "SKU is required." in response.content.decode()
+    assert not ProductFactory._meta.model.objects.filter(company=company).exists()
+
+
+def test_warehouse_create_rejects_foreign_branch(client, user, company):
+    from apps.company.models import Branch, Company
+
+    other = Company.objects.create(name="Warehouse Tenant")
+    branch = Branch.objects.create(company=other, name="Foreign Branch", code="FB")
+    client.force_login(user)
+    session = client.session
+    session["active_company_id"] = str(company.pk)
+    session.save()
+    before = WarehouseFactory._meta.model.objects.filter(company=company).count()
+    response = client.post(reverse("inventory:warehouse_create"), {
+        "name": "New warehouse", "code": "NEW", "branch": str(branch.pk),
+    }, follow=True)
+    assert response.status_code == 200
+    assert b"Select a branch for this company." in response.content
+    assert WarehouseFactory._meta.model.objects.filter(company=company).count() == before
 
 
 @pytest.fixture

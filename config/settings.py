@@ -12,6 +12,10 @@ from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _env_flag_enabled(value):
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
 # Load environment variables from .env file if it exists
 dotenv_path = BASE_DIR / '.env'
 if dotenv_path.exists():
@@ -40,7 +44,9 @@ if not TESTING:
 
 if not TESTING:
     # environment variables set by pytest/test runners
-    TESTING = bool(os.environ.get('PYTEST_CURRENT_TEST')) or bool(os.environ.get('DJANGO_TESTING'))
+    TESTING = bool(os.environ.get('PYTEST_CURRENT_TEST')) or _env_flag_enabled(
+        os.environ.get('DJANGO_TESTING')
+    )
 
 # Respect explicit DEBUG env var; otherwise enable DEBUG during tests to avoid
 # running production-only checks in the test environment.
@@ -56,16 +62,20 @@ if not DEBUG and not TESTING:
         raise ImproperlyConfigured("SECRET_KEY environment variable must be set securely when DEBUG is False")  # noqa: E501
 else:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production-use-50+-chars')
-# Parse ALLOWED_HOSTS from env; require explicit hosts in production
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+# Parse ALLOWED_HOSTS from env; localhost defaults are only for development.
+_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
+ALLOWED_HOSTS = [h.strip() for h in (_allowed_hosts_env or 'localhost,127.0.0.1').split(',') if h.strip()]
 
-if not DEBUG and not TESTING:
-    if not ALLOWED_HOSTS:
+def _validate_production_hosts(raw_hosts, parsed_hosts):
+    if not raw_hosts or not parsed_hosts:
         from django.core.exceptions import ImproperlyConfigured
 
         raise ImproperlyConfigured(
-            "ALLOWED_HOSTS must be set (comma-separated) when DEBUG is False"
+            "ALLOWED_HOSTS must be explicitly set (comma-separated) when DEBUG is False"
         )
+
+if not DEBUG and not TESTING:
+    _validate_production_hosts(_allowed_hosts_env, ALLOWED_HOSTS)
 
 # ─── Applications ─────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -197,6 +207,19 @@ if not DEBUG and not TESTING and DB_ENGINE != 'django.db.backends.sqlite3':
             "Do not use the default 'erp_password' or other well-known weak values."
         )
 
+def _validate_production_redis_password(password):
+    if not password or password.lower() in {
+        'redispass', 'redis', 'password', 'secret', 'changeme'
+    }:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured(
+            "REDIS_PASSWORD must be set to a strong, unique value in production."
+        )
+
+if not DEBUG and not TESTING:
+    _validate_production_redis_password(os.environ.get('REDIS_PASSWORD', ''))
+
 # ─── Cache (Redis) ────────────────────────────────────────────────────────────
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
@@ -218,6 +241,10 @@ if use_redis:
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
                 'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'CONNECTION_POOL_KWARGS': {
+                    'socket_connect_timeout': 2,
+                    'socket_timeout': 2,
+                },
             },
             'KEY_PREFIX': 'erp',
             'TIMEOUT': 300,
@@ -589,13 +616,12 @@ CORS_ALLOW_CREDENTIALS = True
 # Example .env entry:
 #   TRUSTED_PROXY_IPS=10.0.0.1,10.0.0.2
 #
-# Leave unset (empty string) to fall back to the legacy behaviour of trusting
-# any X-Forwarded-For header — only acceptable if the app is always behind
-# a proxy and REMOTE_ADDR is always the proxy IP.
+# Leave unset (empty string) to trust no forwarded address. Direct access will
+# use REMOTE_ADDR until proxy addresses are explicitly configured.
 _raw_trusted_proxies = os.environ.get('TRUSTED_PROXY_IPS', '')
 TRUSTED_PROXY_IPS = (
     {ip.strip() for ip in _raw_trusted_proxies.split(',') if ip.strip()}
-    or None  # None means "trust all" (legacy / single-proxy setups)
+    or None  # None means no proxy is trusted
 )
 
 # ─── Logging ─────────────────────────────────────────────────────────────────

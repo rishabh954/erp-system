@@ -22,17 +22,18 @@
             <div class="card-body p-4">
               <form method="post" action="{% if vendor %}{% url 'purchase:vendor_update' vendor.pk %}{% else %}{% url 'purchase:vendor_create' %}{% endif %}">
           {% csrf_token %}
+          {% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for field, message in errors.items %}<li>{{ field|title }}: {{ message }}</li>{% endfor %}</ul></div>{% endif %}
 
           <!-- Section 1: Basic Profile -->
           <h5 class="fw-bold text-primary mb-3"><i class="fas fa-id-card me-2"></i>General Information</h5>
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_name" class="form-label small fw-semibold">Vendor Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Acme Parts Supplies" value="{{ vendor.name|default:'' }}">
+              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Acme Parts Supplies" value="{% if vendor %}{{ vendor.name }}{% else %}{{ form_data.name|default:'' }}{% endif %}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_vendor_code" class="form-label small fw-semibold">Vendor Code / SKU Prefix</label>
-              <input type="text" name="vendor_code" id="id_vendor_code" class="form-control" placeholder="e.g. VEN-001" value="{{ vendor.vendor_code|default:'' }}">
+              <input type="text" name="vendor_code" id="id_vendor_code" class="form-control" placeholder="e.g. VEN-001" value="{% if vendor %}{{ vendor.vendor_code }}{% else %}{{ form_data.vendor_code|default:'' }}{% endif %}">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_vendor_type" class="form-label small fw-semibold">Vendor Type</label>

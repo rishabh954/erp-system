@@ -17,8 +17,8 @@ def _get_client_ip(request) -> str:
 
     Configure in settings.py:
         TRUSTED_PROXY_IPS = {'10.0.0.1', '10.0.0.2'}   # your load balancer IPs
-    Set to None (the default) to trust ALL proxies — suitable only when
-    the app is always behind a known proxy and REMOTE_ADDR is reliable.
+    An unset or empty setting trusts no proxies. Configure the direct peer
+    addresses of trusted reverse proxies explicitly.
     """
     from django.conf import settings
 
@@ -26,9 +26,9 @@ def _get_client_ip(request) -> str:
     if xff:
         trusted = getattr(settings, "TRUSTED_PROXY_IPS", None)
         remote = request.META.get("REMOTE_ADDR", "")
-        # Trust XFF only if TRUSTED_PROXY_IPS is unconfigured (legacy) OR
-        # the direct connection comes from a known proxy.
-        if trusted is None or remote in trusted:
+        # Never trust client supplied forwarding headers unless the direct peer
+        # is explicitly configured as a trusted proxy.
+        if trusted and remote in trusted:
             return xff.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
 

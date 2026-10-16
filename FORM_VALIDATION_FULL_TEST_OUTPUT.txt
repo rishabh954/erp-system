@@ -1,0 +1,223 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+...........................................................s............ [  8%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+.......................................................................  [100%]
+============================== warnings summary ===============================
+venv\Lib\site-packages\rest_framework\urlpatterns.py:108: 15 warnings
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\urlpatterns.py:108: RemovedInDjango60Warning: Converter 'drf_format_suffix' is already registered. Support for overriding registered converters is deprecated and will be removed in Django 6.0.
+    register_converter(suffix_converter, converter_name)
+
+venv\Lib\site-packages\django\db\models\fields\__init__.py:1148
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\django\db\models\fields\__init__.py:1148: RemovedInDjango60Warning: The default scheme will be changed from 'http' to 'https' in Django 6.0. Pass the forms.URLField.assume_scheme argument to silence this warning, or set the FORMS_URLFIELD_ASSUME_HTTPS transitional setting to True to opt into using 'https' as the new default scheme.
+    return form_class(**defaults)
+
+apps/accounting/test_financials.py: 3 warnings
+apps/accounting/test_fiscal_year_posting.py: 3 warnings
+apps/accounting/test_regression_bugs.py: 2 warnings
+apps/accounting/tests.py: 4 warnings
+apps/administration/tests/test_api_key_auth.py: 5 warnings
+apps/administration/tests/test_app_store.py: 3 warnings
+apps/administration/tests/test_import_export_jobs.py: 7 warnings
+apps/administration/tests/test_restore_signal_suppression.py: 2 warnings
+apps/administration/tests/test_tenant_backup.py: 8 warnings
+apps/assets/tests/test_views.py: 1 warning
+apps/authentication/tests/test_rbac.py: 1 warning
+apps/crm/tests/test_views.py: 2 warnings
+apps/documents/tests/test_views.py: 5 warnings
+apps/helpdesk/tests.py: 4 warnings
+apps/hrms/tests/test_payroll.py: 1 warning
+apps/hrms/tests/test_views.py: 9 warnings
+apps/inventory/tests/test_main.py: 13 warnings
+apps/inventory/tests/test_movements.py: 12 warnings
+apps/manufacturing/tests/test_bom.py: 2 warnings
+apps/manufacturing/tests/test_views.py: 2 warnings
+apps/portals/tests/test_multitenancy.py: 4 warnings
+apps/projects/tests/test_views.py: 1 warning
+apps/purchase/tests/test_flow.py: 4 warnings
+apps/purchase/tests/test_views.py: 4 warnings
+apps/sales/tests/test_flow.py: 1 warning
+apps/sales/tests/test_workflow_integrity.py: 8 warnings
+apps/workflow/tests/test_views.py: 1 warning
+tests/test_access_control.py: 1 warning
+tests/test_active_company.py: 7 warnings
+tests/test_api_endpoints.py: 5 warnings
+tests/test_api_tenant_relation_fields.py: 1 warning
+tests/test_audit_center.py: 3 warnings
+tests/test_business_logic.py: 3 warnings
+tests/test_company_uniqueness.py: 1 warning
+tests/test_gap_hardening.py: 7 warnings
+tests/test_hrms.py: 4 warnings
+tests/test_inventory_services.py: 1 warning
+tests/test_multitenant_boundary.py: 2 warnings
+tests/test_production_hardening.py: 17 warnings
+tests/test_route_regression_guards.py: 1 warning
+tests/test_scoped_lookups.py: 9 warnings
+tests/test_security.py: 3 warnings
+tests/test_sequence.py: 1 warning
+tests/test_signup_and_admin_security.py: 4 warnings
+tests/test_tenant_isolation.py: 3 warnings
+tests/test_view_coverage.py: 33 warnings
+apps/inventory/test_concurrency_and_cost.py: 2 warnings
+tests/test_celery_scheduling.py: 2 warnings
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\factory\django.py:181: DeprecationWarning: UserFactory._after_postgeneration will stop saving the instance after postgeneration hooks in the next major release.
+  If the save call is extraneous, set skip_postgeneration_save=True in the UserFactory.Meta.
+  To keep saving the instance, move the save call to your postgeneration hooks or override _after_postgeneration.
+    warnings.warn(
+
+apps/accounting/test_regression_bugs.py: 2 warnings
+apps/accounting/tests.py: 1 warning
+apps/administration/tests/test_api_key_auth.py: 5 warnings
+apps/administration/tests/test_app_store.py: 3 warnings
+apps/administration/tests/test_import_export_jobs.py: 1 warning
+apps/administration/tests/test_tenant_backup.py: 3 warnings
+apps/analytics/tests.py: 2 warnings
+apps/assets/tests/test_views.py: 1 warning
+apps/authentication/tests/test_rbac.py: 3 warnings
+apps/company/tests.py: 1 warning
+apps/crm/tests/test_views.py: 2 warnings
+apps/documents/tests/test_views.py: 4 warnings
+apps/hrms/tests/test_biometric_security.py: 6 warnings
+apps/hrms/tests/test_views.py: 9 warnings
+apps/inventory/tests/test_main.py: 5 warnings
+apps/manufacturing/tests/test_bom.py: 2 warnings
+apps/manufacturing/tests/test_views.py: 2 warnings
+apps/portals/tests/test_multitenancy.py: 2 warnings
+apps/pos/tests/test_views.py: 2 warnings
+apps/projects/tests/test_views.py: 1 warning
+apps/purchase/tests/test_flow.py: 1 warning
+apps/purchase/tests/test_views.py: 4 warnings
+apps/sales/tests/test_regression_bugs.py: 1 warning
+apps/workflow/tests/test_views.py: 1 warning
+tests/test_access_control.py: 4449 warnings
+tests/test_api_endpoints.py: 6 warnings
+tests/test_audit_center.py: 1 warning
+tests/test_business_logic.py: 3 warnings
+tests/test_company_creation.py: 5 warnings
+tests/test_company_uniqueness.py: 1 warning
+tests/test_health_checks.py: 3 warnings
+tests/test_multitenant_boundary.py: 1 warning
+tests/test_production_hardening.py: 10 warnings
+tests/test_route_regression_guards.py: 1 warning
+tests/test_security.py: 4 warnings
+tests/test_signup_and_admin_security.py: 4 warnings
+tests/test_tenant_isolation.py: 1 warning
+tests/test_view_coverage.py: 18 warnings
+tests/test_e2e_walkthrough.py: 1 warning
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\Users\OM\Documents\GitHub\erp-system\staticfiles\
+    mw_instance = middleware(adapted_handler)
+
+tests/test_api_endpoints.py::TestAPIEndpoints::test_get_products_filtered_by_company
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.inventory.models.Product'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_api_endpoints.py::TestAPIEndpoints::test_crm_customers_filtered_by_company
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+tests/test_tenant_isolation.py::test_foreign_tenant_records_cannot_be_read_updated_deleted_or_approved
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.crm.models.Customer'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_api_endpoints.py::TestAPIEndpoints::test_hrms_employees_filtered_by_company
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.hrms.models.Employee'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_production_hardening.py::TestCompanyMixinUsesRequestCompany::test_api_user_viewset_scoped_to_request_company
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.authentication.models.User'> QuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\fields.py:992: UserWarning: min_value should be a Decimal instance.
+    warnings.warn("min_value should be a Decimal instance.")
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.authentication.models.ModulePermission'> QuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.authentication.models.Role'> QuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.crm.models.Campaign'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.inventory.models.StockRecord'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.inventory.models.InventoryTransfer'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+tests/test_route_regression_guards.py::test_company_admin_can_get_all_parameterless_routes_without_server_errors
+  C:\Users\OM\Documents\GitHub\erp-system\venv\Lib\site-packages\rest_framework\pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.inventory.models.Warehouse'> SoftDeleteQuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+4894 passed, 1 skipped, 4826 warnings in 264.12s (0:04:24)

@@ -147,23 +147,71 @@ class ProductCreateView(CompanyMixin, View):
     def post(self, request):
         data = request.POST
         company = self.company()
+        errors = {}
+        values = data.dict()
+        name, sku = data.get("name", "").strip(), data.get("sku", "").strip()
+        if not name:
+            errors["name"] = "Product name is required."
+        if not sku:
+            errors["sku"] = "SKU is required."
+        if data.get("product_type", Product.ProductType.STOCKABLE) not in Product.ProductType.values:
+            errors["product_type"] = "Select a valid product type."
+        from apps.company.models import Tax
+        from .models import Brand, UnitOfMeasure
+        relations = (("category", ProductCategory), ("brand", Brand), ("uom", UnitOfMeasure), ("tax", Tax))
+        selected = {}
+        for field, model in relations:
+            raw_id = data.get(field, "").strip()
+            if raw_id:
+                filters = {"pk": raw_id, "company": company}
+                if field == "category":
+                    # Existing products may legitimately reference an archived
+                    # category; company ownership remains mandatory.
+                    filters["is_deleted"] = False
+                elif field != "tax":
+                    filters.update(is_active=True, is_deleted=False)
+                else:
+                    filters["is_active"] = True
+                try:
+                    obj = model.objects.filter(**filters).first()
+                except Exception as exc:
+                    from django.core.exceptions import ValidationError
+                    if not isinstance(exc, ValidationError):
+                        raise
+                    obj = None
+                if not obj:
+                    errors[field] = "Select a valid option for this company."
+                else:
+                    selected[field] = obj
+        numeric_values = {}
+        for field in ("cost_price", "sale_price", "min_stock_level", "reorder_point", "reorder_quantity"):
+            raw = data.get(field, "0").strip()
+            try:
+                number = Decimal(raw)
+                if not number.is_finite() or number < 0:
+                    raise ValueError
+                numeric_values[field] = number
+            except (ArithmeticError, ValueError):
+                errors[field] = "Enter a valid non-negative number."
+        if errors:
+            ctx = self._ctx()
+            ctx.update(errors=errors, form_data=values)
+            return render(request, self.template_name, ctx)
         try:
             product = Product(
                 company=company,
-                sku=data["sku"],
+                sku=sku,
                 barcode=data.get("barcode", ""),
-                name=data["name"],
+                name=name,
                 description=data.get("description", ""),
                 product_type=data.get("product_type", "stockable"),
-                category_id=data.get("category") or None,
-                brand_id=data.get("brand") or None,
-                uom_id=data.get("uom") or None,
-                cost_price=Decimal(data.get("cost_price") or "0"),
-                sale_price=Decimal(data.get("sale_price") or "0"),
-                min_stock_level=Decimal(data.get("min_stock_level") or "0"),
-                reorder_point=Decimal(data.get("reorder_point") or "0"),
-                reorder_quantity=Decimal(data.get("reorder_quantity") or "0"),
-                tax_id=data.get("tax") or None,
+                category=selected.get("category"), brand=selected.get("brand"),
+                uom=selected.get("uom"),
+                cost_price=numeric_values["cost_price"], sale_price=numeric_values["sale_price"],
+                min_stock_level=numeric_values["min_stock_level"],
+                reorder_point=numeric_values["reorder_point"],
+                reorder_quantity=numeric_values["reorder_quantity"],
+                tax=selected.get("tax"),
                 is_active=data.get("is_active") == "on",
                 is_purchasable=data.get("is_purchasable") == "on",
                 is_sellable=data.get("is_sellable") == "on",
@@ -175,9 +223,12 @@ class ProductCreateView(CompanyMixin, View):
                 request, f"Product {product.name} ({product.sku}) created."
             )
             return redirect("inventory:product_detail", pk=product.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return render(request, self.template_name, self._ctx())
+        except Exception:
+            logger.exception("Product creation failed")
+            messages.error(request, "Product could not be created. Check the entered values.")
+            ctx = self._ctx()
+            ctx["form_data"] = values
+            return render(request, self.template_name, ctx)
 
     def _ctx(self):
         from apps.company.models import Tax
@@ -250,25 +301,41 @@ class WarehouseCreateView(CompanyMixin, View):
     required_permission = "inventory.create"
     def post(self, request):
         try:
-            from django.contrib.auth import get_user_model
+            from apps.authentication.models import UserCompany
+            from apps.company.models import Branch
 
-            get_user_model()
-
+            company = self.company()
+            name, code = request.POST.get("name", "").strip(), request.POST.get("code", "").strip()
+            if not name or not code:
+                raise ValueError("Warehouse name and code are required.")
             branch_id = request.POST.get("branch")
             manager_id = request.POST.get("manager")
+            branch = Branch.objects.filter(pk=branch_id, company=company, is_active=True).first() if branch_id else None
+            if branch_id and not branch:
+                raise ValueError("Select a branch for this company.")
+            manager = None
+            if manager_id:
+                manager = UserCompany.objects.filter(
+                    user_id=manager_id, company=company, is_active=True, user__is_active=True
+                ).select_related("user").values_list("user", flat=True).first()
+                if not manager:
+                    raise ValueError("Select an active manager for this company.")
 
             Warehouse.objects.create(
-                company=self.company(),
-                name=request.POST["name"],
-                code=request.POST["code"],
+                company=company,
+                name=name,
+                code=code,
                 address=request.POST.get("address", ""),
-                branch_id=branch_id if branch_id else None,
-                manager_id=manager_id if manager_id else None,
+                branch=branch,
+                manager_id=manager,
                 is_active=request.POST.get("is_active") == "on",
             )
             messages.success(request, "Warehouse created successfully.")
-        except Exception as e:
-            messages.error(request, f"Error creating warehouse: {e}")
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception:
+            logger.exception("Warehouse creation failed")
+            messages.error(request, "Warehouse could not be created. Check the entered values.")
         return redirect("inventory:warehouses")
 
 
@@ -276,19 +343,37 @@ class WarehouseUpdateView(CompanyMixin, View):
     required_permission = "inventory.update"
     def post(self, request, pk):
         try:
+            from apps.authentication.models import UserCompany
+            from apps.company.models import Branch
             wh = get_object_or_404(Warehouse, pk=pk, company=self.company())
-            wh.name = request.POST["name"]
-            wh.code = request.POST["code"]
-            wh.address = request.POST.get("address", "")
+            name, code = request.POST.get("name", "").strip(), request.POST.get("code", "").strip()
+            if not name or not code:
+                raise ValueError("Warehouse name and code are required.")
             branch_id = request.POST.get("branch")
             manager_id = request.POST.get("manager")
-            wh.branch_id = branch_id if branch_id else None
-            wh.manager_id = manager_id if manager_id else None
+            branch = Branch.objects.filter(pk=branch_id, company=self.company(), is_active=True).first() if branch_id else None
+            if branch_id and not branch:
+                raise ValueError("Select a branch for this company.")
+            manager = None
+            if manager_id:
+                manager = UserCompany.objects.filter(
+                    user_id=manager_id, company=self.company(), is_active=True, user__is_active=True
+                ).values_list("user", flat=True).first()
+                if not manager:
+                    raise ValueError("Select an active manager for this company.")
+            wh.name = name
+            wh.code = code
+            wh.address = request.POST.get("address", "")
+            wh.branch = branch
+            wh.manager_id = manager
             wh.is_active = request.POST.get("is_active") == "on"
             wh.save()
             messages.success(request, "Warehouse updated successfully.")
-        except Exception as e:
-            messages.error(request, f"Error updating warehouse: {e}")
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception:
+            logger.exception("Warehouse update failed")
+            messages.error(request, "Warehouse could not be updated. Check the entered values.")
         return redirect("inventory:warehouses")
 
 

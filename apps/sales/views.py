@@ -7,6 +7,7 @@ import logging
 from decimal import Decimal
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -127,11 +128,15 @@ class QuotationUpdateView(CompanyMixin, View):
         ctx["quotation"] = quotation
         return render(request, self.template_name, ctx)
 
+    @transaction.atomic
     def post(self, request, pk):
         quotation = get_object_or_404(Quotation, pk=pk, company=self.company())
         data = request.POST
         try:
-            quotation.customer_id = data["customer"]
+            from .services import _validated_customer, _validated_sales_lines
+            customer = _validated_customer(data, self.company())
+            lines = _validated_sales_lines(data, self.company())
+            quotation.customer = customer
             quotation.validity_date = data.get("validity_date") or None
             quotation.delivery_date = data.get("delivery_date") or None
             quotation.payment_terms = int(data.get("payment_terms", 30))
@@ -141,29 +146,10 @@ class QuotationUpdateView(CompanyMixin, View):
             quotation.save()
 
             quotation.lines.all().delete()
-            products = data.getlist("product[]")
-            descs = data.getlist("description[]")
-            quantities = data.getlist("quantity[]")
-            prices = data.getlist("unit_price[]")
-            discounts = data.getlist("discount_percent[]")
-            taxes = data.getlist("tax[]")
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
+            for row in lines:
                 line = QuotationLine(
                     quotation=quotation,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=(
-                        Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-                    ),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
-                    discount_percent=(
-                        Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
-                    ),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
+                    **row,
                 )
                 line.save()
 
@@ -171,6 +157,7 @@ class QuotationUpdateView(CompanyMixin, View):
             messages.success(request, f"Quotation {quotation.number} updated.")
             return redirect("sales:quotation_detail", pk=quotation.pk)
         except Exception as e:
+            transaction.set_rollback(True)
             messages.error(request, f"Error: {e}")
             ctx = QuotationCreateView()._ctx.__get__(self)()
             ctx["quotation"] = quotation
@@ -419,11 +406,15 @@ class SalesOrderUpdateView(CompanyMixin, View):
         ctx["order"] = order
         return render(request, self.template_name, ctx)
 
+    @transaction.atomic
     def post(self, request, pk):
         order = get_object_or_404(SalesOrder, pk=pk, company=self.company())
         data = request.POST
         try:
-            order.customer_id = data["customer"]
+            from .services import _validated_customer, _validated_sales_lines
+            customer = _validated_customer(data, self.company())
+            lines = _validated_sales_lines(data, self.company())
+            order.customer = customer
             order.order_date = data.get("order_date") or timezone.now().date()
             order.delivery_date = data.get("delivery_date") or None
             order.payment_terms = int(data.get("payment_terms", 30))
@@ -433,29 +424,10 @@ class SalesOrderUpdateView(CompanyMixin, View):
             order.save()
 
             order.lines.all().delete()
-            products = data.getlist("product[]")
-            descs = data.getlist("description[]")
-            quantities = data.getlist("quantity[]")
-            prices = data.getlist("unit_price[]")
-            discounts = data.getlist("discount_percent[]")
-            taxes = data.getlist("tax[]")
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
+            for row in lines:
                 line = SalesOrderLine(
                     sales_order=order,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=(
-                        Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-                    ),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
-                    discount_percent=(
-                        Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
-                    ),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
+                    **row,
                 )
                 line.save()
 
@@ -463,6 +435,7 @@ class SalesOrderUpdateView(CompanyMixin, View):
             messages.success(request, f"Sales Order {order.number} updated.")
             return redirect("sales:order_detail", pk=order.pk)
         except Exception as e:
+            transaction.set_rollback(True)
             messages.error(request, f"Error: {e}")
             ctx = SalesOrderCreateView()._ctx.__get__(self)()
             ctx["order"] = order
@@ -689,6 +662,7 @@ class InvoiceUpdateView(CompanyMixin, View):
         ctx["invoice"] = invoice
         return render(request, self.template_name, ctx)
 
+    @transaction.atomic
     def post(self, request, pk):
         invoice = get_object_or_404(Invoice, pk=pk, company=self.company())
         if invoice.sales_order:
@@ -699,7 +673,10 @@ class InvoiceUpdateView(CompanyMixin, View):
             return redirect("sales:invoice_detail", pk=invoice.pk)
         data = request.POST
         try:
-            invoice.customer_id = data["customer"]
+            from .services import _validated_customer, _validated_sales_lines
+            customer = _validated_customer(data, self.company())
+            lines = _validated_sales_lines(data, self.company())
+            invoice.customer = customer
             invoice.invoice_date = data.get("invoice_date") or timezone.now().date()
             invoice.due_date = data.get("due_date") or timezone.now().date()
             invoice.payment_terms = int(data.get("payment_terms", 30))
@@ -709,29 +686,10 @@ class InvoiceUpdateView(CompanyMixin, View):
             invoice.save()
 
             invoice.lines.all().delete()
-            products = data.getlist("product[]")
-            descs = data.getlist("description[]")
-            quantities = data.getlist("quantity[]")
-            prices = data.getlist("unit_price[]")
-            discounts = data.getlist("discount_percent[]")
-            taxes = data.getlist("tax[]")
-
-            for i, desc in enumerate(descs):
-                if not desc.strip():
-                    continue
+            for row in lines:
                 line = InvoiceLine(
                     invoice=invoice,
-                    product_id=products[i] if products[i] else None,
-                    description=desc,
-                    quantity=(
-                        Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-                    ),
-                    unit_price=Decimal(str(prices[i])) if prices[i] else Decimal("0"),
-                    discount_percent=(
-                        Decimal(str(discounts[i])) if discounts[i] else Decimal("0")
-                    ),
-                    tax_id=taxes[i] if taxes[i] else None,
-                    sort_order=i,
+                    **row,
                 )
                 line.save()
 
@@ -739,6 +697,7 @@ class InvoiceUpdateView(CompanyMixin, View):
             messages.success(request, f"Invoice {invoice.number} updated.")
             return redirect("sales:invoice_detail", pk=invoice.pk)
         except Exception as e:
+            transaction.set_rollback(True)
             messages.error(request, f"Error: {e}")
             ctx = InvoiceCreateView()._ctx.__get__(self)()
             ctx["invoice"] = invoice

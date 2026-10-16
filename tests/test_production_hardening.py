@@ -535,8 +535,8 @@ class TestActiveUserMiddlewareRateLimit:
 # ─── SEC-6: X-Forwarded-For trusted proxy ─────────────────────────────────────
 
 class TestTrustedProxyIPExtraction:
-    def test_xff_trusted_when_trusted_proxy_ips_unset(self, rf):
-        """Without TRUSTED_PROXY_IPS configured, XFF is trusted (legacy behaviour)."""
+    def test_xff_ignored_when_trusted_proxy_ips_unset(self, rf):
+        """Without an explicit proxy allowlist, XFF is untrusted."""
         from core.middleware import _get_client_ip
 
         request = rf.get("/", HTTP_X_FORWARDED_FOR="1.2.3.4, 10.0.0.1")
@@ -546,7 +546,7 @@ class TestTrustedProxyIPExtraction:
             s.TRUSTED_PROXY_IPS = None
             ip = _get_client_ip(request)
 
-        assert ip == "1.2.3.4"
+        assert ip == "10.0.0.1"
 
     def test_xff_ignored_when_remote_addr_not_in_trusted_proxies(self, rf):
         """When TRUSTED_PROXY_IPS is set and the direct connection is not in it, XFF is ignored."""

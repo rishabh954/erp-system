@@ -88,14 +88,9 @@ class LoginAPIView(APIView):
 
     @staticmethod
     def _get_ip(request):
-        from django.conf import settings
-        trusted = getattr(settings, "TRUSTED_PROXY_IPS", None)
-        xff = request.META.get("HTTP_X_FORWARDED_FOR")
-        if xff:
-            remote = request.META.get("REMOTE_ADDR", "")
-            if trusted is None or remote in trusted:
-                return xff.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "")
+        from core.middleware import _get_client_ip
+
+        return _get_client_ip(request)
 
 
 class TwoFactorVerifyAPIView(APIView):

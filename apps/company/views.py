@@ -5,6 +5,8 @@ Settings, Branches, Departments, Users, Fiscal Years, Currencies
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import ListView, TemplateView, UpdateView, View
 
@@ -57,6 +59,7 @@ class CompanyCreateView(LoginRequiredMixin, View):
             {
                 "currencies": currencies,
                 "tz_groups": dict(sorted(tz_groups.items())),
+                "company_type_choices": Company.CompanyType.choices,
             },
         )
 
@@ -65,23 +68,61 @@ class CompanyCreateView(LoginRequiredMixin, View):
             return redirect("dashboard:index")
 
         data = request.POST
-        company = Company.objects.create(
-            name=data.get("name"),
-            legal_name=data.get("legal_name", ""),
-            company_type=data.get("company_type", ""),
-            industry=data.get("industry", ""),
-            fiscal_year_start=data.get("fiscal_year_start", "01-01"),
-            timezone=data.get("timezone", "UTC"),
-        )
-        if data.get("default_currency"):
-            company.default_currency_id = data.get("default_currency")
-            company.save(update_fields=["default_currency"])
+        values = data.dict()
+        errors = {}
+        name = data.get("name", "").strip()
+        if not name:
+            errors["name"] = "Company name is required."
+        company_type = data.get("company_type", "").strip().lower().replace(" ", "_")
+        if company_type and company_type not in Company.CompanyType.values:
+            errors["company_type"] = "Select a valid company type."
+        fiscal_year_start = data.get("fiscal_year_start", "01-01").strip()
+        try:
+            from datetime import datetime
+            datetime.strptime(fiscal_year_start, "%m-%d")
+        except ValueError:
+            errors["fiscal_year_start"] = "Enter a valid month and day (MM-DD)."
+        timezone_name = data.get("timezone", "UTC").strip()
+        try:
+            import zoneinfo
+            zoneinfo.ZoneInfo(timezone_name)
+        except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+            errors["timezone"] = "Select a valid timezone."
+        currency = None
+        currency_id = data.get("default_currency", "").strip()
+        if currency_id:
+            try:
+                currency = Currency.objects.filter(pk=currency_id, is_active=True).first()
+            except ValidationError:
+                currency = None
+            if not currency:
+                errors["default_currency"] = "Select an active currency."
+        if errors:
+            import zoneinfo
+            from collections import defaultdict
+            tz_groups = defaultdict(list)
+            for tz in sorted(zoneinfo.available_timezones()):
+                tz_groups[tz.split("/")[0]].append(tz)
+            return render(request, self.template_name, {
+                "currencies": Currency.objects.filter(is_active=True),
+                "tz_groups": dict(sorted(tz_groups.items())),
+                "errors": errors, "form_data": values,
+                "company_type_choices": Company.CompanyType.choices,
+            })
 
-        UserCompany.objects.create(
-            user=request.user, company=company, role="company_admin", is_active=True
-        )
-
-        if not request.user.primary_company:
+        with transaction.atomic():
+            company = Company.objects.create(
+                name=name,
+                legal_name=data.get("legal_name", "").strip(),
+                company_type=company_type or Company.CompanyType.LLC,
+                industry=data.get("industry", "").strip(),
+                fiscal_year_start=fiscal_year_start,
+                timezone=timezone_name,
+                default_currency=currency,
+            )
+            UserCompany.objects.create(
+                user=request.user, company=company, role="company_admin", is_active=True
+            )
             request.user.primary_company = company
             request.user.role = "company_admin"
             request.user.save(update_fields=["primary_company", "role"])

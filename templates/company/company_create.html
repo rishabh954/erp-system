@@ -14,27 +14,25 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label fw-medium">Company Name <span class="text-danger">*</span></label>
-            <input type="text" name="name" class="form-control" required placeholder="e.g. Acme Corp">
+            <input type="text" name="name" class="form-control" required value="{{ form_data.name|default:'' }}" placeholder="e.g. Acme Corp">
+            {% if errors.name %}<div class="text-danger" role="alert">{{ errors.name }}</div>{% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label fw-medium">Legal Name</label>
-            <input type="text" name="legal_name" class="form-control" placeholder="e.g. Acme Corporation LLC">
+            <input type="text" name="legal_name" class="form-control" value="{{ form_data.legal_name|default:'' }}" placeholder="e.g. Acme Corporation LLC">
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label fw-medium">Company Type</label>
               <select name="company_type" class="form-select">
                 <option value="">Select Type</option>
-                <option value="LLC">LLC</option>
-                <option value="Corporation">Corporation</option>
-                <option value="Partnership">Partnership</option>
-                <option value="Sole Proprietorship">Sole Proprietorship</option>
-                <option value="Other">Other</option>
+                {% for value, label in company_type_choices %}<option value="{{ value }}" {% if form_data.company_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
               </select>
+              {% if errors.company_type %}<div class="text-danger" role="alert">{{ errors.company_type }}</div>{% endif %}
             </div>
             <div class="col-md-6">
               <label class="form-label fw-medium">Industry</label>
-              <input type="text" name="industry" class="form-control" placeholder="e.g. Retail, IT">
+              <input type="text" name="industry" class="form-control" value="{{ form_data.industry|default:'' }}" placeholder="e.g. Retail, IT">
             </div>
           </div>
           <div class="row g-3 mb-4">
@@ -46,10 +44,12 @@
                 <option value="{{ curr.id }}">{{ curr.code }} - {{ curr.name }}</option>
                 {% endfor %}
               </select>
+                {% if errors.default_currency %}<div class="text-danger" role="alert">{{ errors.default_currency }}</div>{% endif %}
             </div>
             <div class="col-md-4">
               <label class="form-label fw-medium">Fiscal Year Start</label>
-              <input type="text" name="fiscal_year_start" class="form-control" value="01-01" placeholder="MM-DD">
+              <input type="text" name="fiscal_year_start" class="form-control" value="{{ form_data.fiscal_year_start|default:'01-01' }}" placeholder="MM-DD">
+              {% if errors.fiscal_year_start %}<div class="text-danger" role="alert">{{ errors.fiscal_year_start }}</div>{% endif %}
             </div>
             <div class="col-md-4">
               <label class="form-label fw-medium">Timezone</label>
@@ -57,11 +57,12 @@
                 {% for region, tzs in tz_groups.items %}
                 <optgroup label="{{ region }}">
                   {% for tz in tzs %}
-                  <option value="{{ tz }}" {% if tz == 'UTC' %}selected{% endif %}>{{ tz }}</option>
+                  <option value="{{ tz }}" {% if form_data.timezone %}{% if form_data.timezone == tz %}selected{% endif %}{% elif tz == 'UTC' %}selected{% endif %}>{{ tz }}</option>
                   {% endfor %}
                 </optgroup>
                 {% endfor %}
               </select>
+                {% if errors.timezone %}<div class="text-danger" role="alert">{{ errors.timezone }}</div>{% endif %}
             </div>
           </div>
           <button type="submit" class="btn btn-primary w-100 py-2"><i class="fas fa-building me-2"></i>Create Company</button>

@@ -1,6 +1,6 @@
 # 🏢 EnterpriseERP — Complete System
 
-> Production-ready Enterprise Resource Planning system built with Django 5+, PostgreSQL, Redis, Celery, Bootstrap 5, and glassmorphism UI.
+> Django Enterprise Resource Planning system. Production certification is pending; see the current audit and deployment/recovery guides before deploying.
 
 ---
 

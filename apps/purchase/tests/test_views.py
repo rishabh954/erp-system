@@ -42,6 +42,19 @@ def test_vendor_views(client, user, company):
 
 
 @pytest.mark.django_db
+def test_vendor_create_rejects_blank_name_and_invalid_terms(client, user, company):
+    client.force_login(user)
+    before = Vendor.objects.filter(company=company).count()
+    response = client.post(reverse("purchase:vendor_create"), {
+        "name": "  ", "vendor_type": "not-a-vendor", "payment_terms": "many",
+    })
+    assert response.status_code == 200
+    assert "Vendor name is required." in response.content.decode()
+    assert "Enter a whole number of days" in response.content.decode()
+    assert Vendor.objects.filter(company=company).count() == before
+
+
+@pytest.mark.django_db
 def test_purchase_request_views(client, user, company, product):
     client.force_login(user)
 

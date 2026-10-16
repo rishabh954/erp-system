@@ -22,17 +22,18 @@
       <div class="card-body p-4">
         <form method="post" action="{% url 'inventory:product_create' %}" enctype="multipart/form-data">
           {% csrf_token %}
+          {% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for field, message in errors.items %}<li>{{ field|title }}: {{ message }}</li>{% endfor %}</ul></div>{% endif %}
 
           <!-- Section 1: General Info -->
           <h5 class="fw-bold text-primary mb-3"><i class="fas fa-box me-2"></i>Product General Info</h5>
           <div class="row g-3 mb-4">
             <div class="col-12 col-md-6">
               <label for="id_name" class="form-label small fw-semibold">Product Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" id="id_name" class="form-control" required placeholder="e.g. Ergonomic Office Chair">
+              <input type="text" name="name" id="id_name" class="form-control" required value="{{ form_data.name|default:'' }}" placeholder="e.g. Ergonomic Office Chair">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_sku" class="form-label small fw-semibold">SKU / Catalog No. <span class="text-danger">*</span></label>
-              <input type="text" name="sku" id="id_sku" class="form-control" required placeholder="e.g. FURN-CHR-01">
+              <input type="text" name="sku" id="id_sku" class="form-control" required value="{{ form_data.sku|default:'' }}" placeholder="e.g. FURN-CHR-01">
             </div>
             <div class="col-12 col-md-6">
               <label for="id_barcode" class="form-label small fw-semibold">Barcode / UPC / EAN</label>
