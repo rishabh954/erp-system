@@ -1,12 +1,13 @@
 # Production Audit Status
 
-**Status: Not certified for production.** This document separates checks reported by the project audit from deployment checks that have not been demonstrated.
+**Status: Not certified for production.** The latest authoritative command evidence is recorded in [PHASE_0_TEST_REPORT.md](PHASE_0_TEST_REPORT.md).
 
 ## Verified in the reported test environment
 
-- The reported baseline is 4,797 passing tests.
-- The migration consistency check was reported clean.
-- The checks above used SQLite. They do not establish PostgreSQL behavior.
+- The latest full SQLite test run completed with **4,904 passed, 0 failed, and 1 skipped**.
+- `makemigrations --check --dry-run` reports no model changes without migrations. A fresh temporary SQLite database migrated successfully.
+- The existing workspace database still has `sales.0018_salescommission_uniq_sales_commission_invoice_rep` unapplied; it was not modified during this audit.
+- The suite used SQLite. It does not establish PostgreSQL behavior.
 
 ## Open or not verified
 

@@ -108,7 +108,13 @@ def send_bulk_notification(
     except Exception:
         return
 
-    users = User.objects.filter(pk__in=recipient_ids, is_active=True)
+    from apps.authentication.models import UserCompany
+
+    eligible_user_ids = UserCompany.objects.filter(
+        company=company, is_active=True, user__is_active=True,
+        user_id__in=recipient_ids,
+    ).values_list("user_id", flat=True)
+    users = User.objects.filter(pk__in=eligible_user_ids, is_active=True)
     sent = NotificationService.send_bulk(
         recipients=list(users),
         title=title,

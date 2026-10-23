@@ -3,6 +3,7 @@ Notifications Views and API
 """
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views import View
@@ -14,6 +15,7 @@ from rest_framework.response import Response
 from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
 from core.api.fields import TenantModelSerializer  # noqa: E402
 from core.permissions import HasModulePermission  # noqa: E402
+from core.tenancy import get_active_company
 
 from .models import EmailLog, Notification, NotificationPreference, SMSLog, WhatsAppLog
 
@@ -42,7 +44,7 @@ class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSe
     def get_required_permission(self, request=None):
         if request:
             if request.method == "POST":
-                return "notifications.create"
+                return "notifications.update"
             elif request.method in ["PUT", "PATCH"]:
                 return "notifications.update"
             elif request.method == "DELETE":
@@ -56,7 +58,7 @@ class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSe
         user = getattr(self.request, "user", None)
         if not user or not user.is_authenticated:
             return Notification.objects.none()
-        company = getattr(user, "primary_company", None)
+        company = get_active_company(self.request)
         if not company:
             return Notification.objects.none()
 
@@ -79,7 +81,7 @@ class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSe
     def mark_all_read(self, request):
         Notification.objects.filter(
             recipient=request.user,
-            company=request.user.primary_company,
+            company=get_active_company(request),
             is_read=False,
         ).update(is_read=True, read_at=timezone.now())
         return Response({"ok": True})
@@ -88,7 +90,7 @@ class NotificationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSe
     def unread_count(self, request):
         count = Notification.objects.filter(
             recipient=request.user,
-            company=request.user.primary_company,
+            company=get_active_company(request),
             is_read=False,
         ).count()
         return Response({"count": count})
@@ -112,9 +114,12 @@ class NotificationListView(LoginRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
+        company = get_active_company(self.request)
+        if not company:
+            return Notification.objects.none()
         return Notification.objects.filter(
             recipient=self.request.user,
-            company=self.request.user.primary_company,
+            company=company,
         ).order_by("-created_at")
 
     def get_context_data(self, **kwargs):
@@ -128,7 +133,13 @@ class MarkReadView(LoginRequiredMixin, View):
     def post(self, request, pk):
         from django.shortcuts import get_object_or_404
 
-        notif = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        company = get_active_company(request)
+        if not company:
+            from django.http import Http404
+            raise Http404
+        notif = get_object_or_404(
+            Notification, pk=pk, recipient=request.user, company=company
+        )
         notif.mark_read()
         return JsonResponse({"ok": True})
 
@@ -139,32 +150,40 @@ class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
     context_object_name = "preferences"
 
     def get_queryset(self):
-        # Create missing preferences if any
-        existing_types = NotificationPreference.objects.filter(
-            user=self.request.user
-        ).values_list("notification_type", flat=True)
-        for choice in Notification.NotificationType.choices:
-            if choice[0] not in existing_types:
-                NotificationPreference.objects.create(
-                    company=self.request.user.primary_company,
+        company = get_active_company(self.request)
+        if not company:
+            return NotificationPreference.objects.none()
+        # Create missing preferences only for the selected tenant.
+        with transaction.atomic():
+            for choice in Notification.NotificationType.choices:
+                NotificationPreference.objects.get_or_create(
+                    company=company,
                     user=self.request.user,
                     notification_type=choice[0],
+                    defaults={
+                        "in_app_enabled": True,
+                        "email_enabled": True,
+                        "sms_enabled": False,
+                        "whatsapp_enabled": False,
+                        "push_enabled": False,
+                    },
                 )
-        return NotificationPreference.objects.filter(user=self.request.user).order_by(
-            "notification_type"
-        )
+        return NotificationPreference.objects.filter(
+            user=self.request.user, company=company
+        ).order_by("notification_type")
 
     def post(self, request, *args, **kwargs):
         from django.contrib import messages
 
         preferences = self.get_queryset()
-        for pref in preferences:
-            pref.in_app_enabled = request.POST.get(f"in_app_{pref.pk}") == "on"
-            pref.email_enabled = request.POST.get(f"email_{pref.pk}") == "on"
-            pref.sms_enabled = request.POST.get(f"sms_{pref.pk}") == "on"
-            pref.whatsapp_enabled = request.POST.get(f"whatsapp_{pref.pk}") == "on"
-            pref.push_enabled = request.POST.get(f"push_{pref.pk}") == "on"
-            pref.save()
+        with transaction.atomic():
+            for pref in preferences:
+                pref.in_app_enabled = request.POST.get(f"in_app_{pref.pk}") == "on"
+                pref.email_enabled = request.POST.get(f"email_{pref.pk}") == "on"
+                pref.sms_enabled = request.POST.get(f"sms_{pref.pk}") == "on"
+                pref.whatsapp_enabled = request.POST.get(f"whatsapp_{pref.pk}") == "on"
+                pref.push_enabled = request.POST.get(f"push_{pref.pk}") == "on"
+                pref.save()
         messages.success(request, "Notification preferences updated successfully.")
         return self.get(request, *args, **kwargs)
 
@@ -186,8 +205,11 @@ class AdminEmailLogListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
+        company = get_active_company(self.request)
+        if not company:
+            return EmailLog.objects.none()
         return EmailLog.objects.filter(
-            company=self.request.user.primary_company
+            company=company
         ).order_by("-created_at")
 
 
@@ -208,8 +230,11 @@ class AdminSMSLogListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
+        company = get_active_company(self.request)
+        if not company:
+            return SMSLog.objects.none()
         return SMSLog.objects.filter(
-            company=self.request.user.primary_company
+            company=company
         ).order_by("-created_at")
 
 
@@ -230,8 +255,11 @@ class AdminWhatsAppLogListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
+        company = get_active_company(self.request)
+        if not company:
+            return WhatsAppLog.objects.none()
         return WhatsAppLog.objects.filter(
-            company=self.request.user.primary_company
+            company=company
         ).order_by("-created_at")
 
 

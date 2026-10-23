@@ -1,31 +1,48 @@
-# Phase 0 Test Report
+# Phase 0 Test and Command Report
 
-## Focused regression tests
+Reviewed 2026-10-23 against branch `main`, baseline commit `c133c539cc2eed5b86f6466e302093f411ba0ad0`.
 
-Executed with the repository virtualenv's site-packages through the available Python 3.12 runtime because the virtualenv's configured base interpreter path is missing. The full-suite process wrote stdout and stderr to separate files under `%TEMP%` and was polled until completion.
+## Environment
 
-Focused test command used the bundled Python executable with `PYTHONPATH=venv\Lib\site-packages`, `DEBUG=True`, `DB_ENGINE=django.db.backends.sqlite3`, `DB_NAME=db.sqlite3`, and `DJANGO_TESTING=1`, followed by the test paths listed in the invocation.
+- Python: 3.12.14, using the bundled runtime at `C:\Users\OM\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe` with `venv\Lib\site-packages` on `PYTHONPATH`.
+- Django: 5.2.16.
+- Database/test settings: `DEBUG=True`, `DB_ENGINE=django.db.backends.sqlite3`, `DJANGO_TESTING=1`.
+- A test-only placeholder `REDIS_PASSWORD` was provided because settings initialization requires it. No production credential was used.
+- `venv\Scripts\python.exe` could not run because its configured base Python executable is missing on this workstation.
 
-**Result: 27 passed, 0 failed.** The Python executable in `venv\Scripts\python.exe` could not start because its configured base interpreter (`C:\Users\OM\AppData\Local\Programs\Python\Python312\python.exe`) is unavailable; the bundled Python 3.12 runtime with the venv site-packages was used instead.
+## Tests
 
-## Full suite
+Focused notification regression suite:
 
-Command: `python -m pytest -q --no-cov -o addopts="--nomigrations"` with `DEBUG=True`, `DB_ENGINE=django.db.backends.sqlite3`, `DB_NAME=C:\Users\OM\Documents\GitHub\erp-system\db.sqlite3`, `DJANGO_TESTING=1`, and `PYTHONPATH=venv\Lib\site-packages`, executed via the available bundled Python 3.12. It was launched in a hidden background process with stdout/stderr files under `%TEMP%` and polled to completion.
+```text
+python -m pytest apps/notifications/tests/test_tenant_notifications.py -q --no-cov -o addopts="--nomigrations"
+10 passed, 0 failed, 0 skipped, 22 warnings in 6.26s
+```
 
-**Final result: 4,885 passed, 0 failed, 1 skipped, 4,816 warnings in 385.07 seconds (6:25).** The existing SQLite-only concurrency skip remains. Warnings include Django/DRF deprecations, missing local staticfiles directory, and an unordered Warehouse pagination warning from the route smoke test.
+Final full suite, run in the background with stdout/stderr redirected to files and polled to completion:
 
-## Migration checks
+```text
+python -m pytest -q --no-cov -o addopts="--nomigrations"
+4904 passed, 0 failed, 1 skipped, 4832 warnings in 289.87s (0:04:49)
+```
 
-- `manage.py makemigrations --check --dry-run`: **No changes detected**.
-- Fresh SQLite `manage.py migrate --noinput`: **succeeded (exit 0)**; all migrations applied, default module permissions/currencies seeded.
+The skip is `SequenceGeneratorConcurrencyTest.test_concurrent_sequence_generation_prevents_duplicates`; its decorator explicitly skips SQLite because SQLite does not support the required `select_for_update` concurrency behavior. The warnings include Django/DRF deprecations, local staticfiles warnings, and unordered-queryset pagination warnings from the route smoke test.
+
+## Django and migration checks
+
+- `manage.py check`: **exit 0**, no system-check issues.
+- `manage.py makemigrations --check --dry-run`: **exit 0**, `No changes detected`.
+- Fresh temporary SQLite database, `manage.py migrate --noinput`: **exit 0**, all migrations applied, including `notifications.0004_preference_company_scope` and `sales.0018`; default permissions/currencies seeded.
+- Existing workspace database, `manage.py migrate --check`: **exit 1**. Read-only `showmigrations sales` confirms `sales.0018_salescommission_uniq_sales_commission_invoice_rep` is unapplied. It was not applied to the existing database.
+- `manage.py check --deploy --fail-level ERROR --settings config.settings`: **exit 0 with 99 warnings** in the recorded production-like check. Warnings included API schema-generation warnings and HTTPS/security-cookie warnings under the non-TLS audit configuration.
 - `git diff --check`: clean.
-- `python -m compileall -q` on changed Python files: succeeded.
-- `docker compose -f docker-compose.prod.yml config --quiet` with temporary non-production placeholder values: completed; Docker emitted a local config access warning and warned that Compose's top-level `version` key is obsolete.
-- `manage.py check --deploy --fail-level ERROR --settings config.settings` with `DEBUG=False` and explicit test-only configuration: exit 0; Django reported 99 warnings, including API schema generation and HTTPS-related warnings because SSL redirect was disabled for this check. These warnings were not suppressed and need deployment-owner review.
 
-## Full suite and infrastructure tests
+## Not verified
 
-- PostgreSQL, live Redis, and Celery worker integration: not executed in this local pass; CI configuration was updated but has not been run by this task.
-- Restore timing, media recovery, and backup integrity drill: not verified.
+- PostgreSQL migrations, constraints, locking, and full-suite behavior.
+- Live Redis and Celery worker/scheduler, retry, and failure-recovery behavior.
+- Real email/SMS/WhatsApp/push-provider delivery.
+- Full production backup/media restore drill.
+- Exhaustive endpoint-by-endpoint tenant authorization, detail/edit/delete page coverage, or end-to-end readiness of HRMS payroll, POS, manufacturing, projects, helpdesk, and AI.
 
-SQLite-only test results do not certify PostgreSQL behavior.
+The SQLite suite is evidence for this test configuration only; it does not certify production readiness.

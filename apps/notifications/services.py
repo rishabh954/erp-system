@@ -108,11 +108,20 @@ class NotificationService:
             resolved_company = cls._resolve_company(company, user)
             if resolved_company is None:
                 continue
+            # Notifications are tenant data. A caller cannot target an
+            # arbitrary user just by supplying a company argument.
+            if hasattr(user, "pk") and hasattr(user, "usercompany_set"):
+                from apps.authentication.models import UserCompany
+
+                if not UserCompany.objects.filter(
+                    user=user, company=resolved_company, is_active=True
+                ).exists():
+                    continue
             for channel in cls._normalize_channels(channels):
                 channel_name = str(channel).lower()
                 if channel_name not in cls.CHANNELS:
                     continue
-                if channel_name != "push" and not cls._channel_enabled(
+                if not cls._channel_enabled(
                     user,
                     notification_type,
                     channel_name,
@@ -165,13 +174,6 @@ class NotificationService:
                         message=message,
                     )
                 elif channel_name == "push":
-                    if not cls._channel_enabled(
-                        user,
-                        notification_type,
-                        "push",
-                        resolved_company,
-                    ):
-                        continue
                     created.append(
                         Notification.objects.create(
                             company=resolved_company,
@@ -304,6 +306,8 @@ class NotificationService:
         company=None,
         notification_type="info",
     ):
+        if is_restoring():
+            return None
         if not recipient:
             return None
         if hasattr(recipient, "phone_number"):
@@ -355,6 +359,8 @@ class NotificationService:
         notification_type="info",
         message="",
     ):
+        if is_restoring():
+            return None
         if not recipient:
             return None
         if hasattr(recipient, "phone_number"):

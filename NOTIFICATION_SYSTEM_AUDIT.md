@@ -1,79 +1,30 @@
 # Notification System Audit
 
-## Scope
-This audit reviewed the current Django ERP notification architecture across the notifications app, workflow engine, inventory alerting, and related service code.
+**Reviewed:** 2026-10-23
+**Status:** Tenant-context and channel-preference fixes implemented; this is a focused review, not an exhaustive audit of every notification producer or live delivery integration.
 
-## Current architecture
-- `apps/notifications/models.py` contains the core notification models: `Notification`, `EmailLog`, `SMSLog`, `WhatsAppLog`, and `NotificationPreference`.
-- `apps/notifications/tasks.py` contains the Celery tasks for sending emails and bulk in-app notifications.
-- `apps/notifications/views.py` exposes the notification list, preference management, and admin log views.
-- `apps/notifications/urls.py` wires the notification pages and API endpoints.
-- `apps/workflow/engine.py` sends workflow notifications with in-app, email, and WhatsApp logic.
-- `core/services.py` exposes a generic `BaseService.send_notification` helper for app-level notifications.
-- Multi-company data is scoped through `CompanyScoped` models and requires explicit company assignment on business records.
+## Current implementation verified
 
-## Existing notification flows
-- In-app notifications are stored in `Notification` and surfaced through the notification bell and list views.
-- Bulk notifications are queued via Celery `send_bulk_notification`.
-- Workflow events call `_send_notifications` and may notify assignees via in-app, email, and WhatsApp paths.
-- Email sending is handled by `send_email_task` and stores `EmailLog` records.
-- SMS and WhatsApp integrations are represented by `SMSLog` and `WhatsAppLog` models and are expected to be channel-aware.
+- `apps/notifications/services.py` contains `NotificationService`. The service applies per-company notification preferences for in-app, email, SMS, WhatsApp, and push paths.
+- `NotificationPreference` already includes `push_enabled`; the prior statement that push preferences were missing is stale.
+- `NotificationService.send()` resolves the requested company and now skips recipients without an active `UserCompany` membership in that company.
+- Bulk notification tasks now restrict recipients to active users with active membership in the task's company.
+- Notification API lists, unread counts, mark-all-read, HTML lists, preference reads/writes, and delivery-log lists use the active company.
+- HTML mark-read and API object lookup scope records to the recipient and active company. API state changes require `notifications.update`.
+- Preference rows are keyed by user, company, and notification type, allowing a user's settings to differ across tenants.
+- SMS and WhatsApp helper calls return without side effects during backup restoration.
 
-## Duplicate and fragmented notification logic
-Several code paths create notifications independently instead of routing through a single service:
-- `core/services.py` directly calls `Notification.objects.create(...)`.
-- `apps/workflow/engine.py` directly creates notifications in `_send_notifications`.
-- `apps/notifications/tasks.py` bulk-creates notifications without a preference gate.
-This fragmentation makes it harder to enforce tenant isolation, preference checks, and consistent logging.
+## Regression coverage added
 
-## Missing functionality and hardening gaps
-- There was no central `NotificationService` abstraction.
-- Preference checks were not enforced centrally; `NotificationPreference` existed but was not used as an authoritative source of truth.
-- The `NotificationPreference` model lacked the `push_enabled` channel used by the ERP notification requirements.
-- Logs were created without consistent company assignment, which is a risk for multi-company tenant isolation.
-- Direct email and WhatsApp calls bypassed notification preference logic and central logging.
-- Template and channel routing relied on per-call conditions rather than a single service contract.
+`apps/notifications/tests/test_tenant_notifications.py` covers active-company API list/count and mark-all-read, cross-company HTML mark-read rejection, active-company preference separation, update permission enforcement, direct service and bulk task recipient membership, push preference enforcement, and restore suppression for SMS/WhatsApp helpers.
 
-## Security problems
-- Notification persistence and delivery logic was spread across modules, increasing the chance of unsafe or inconsistent behavior.
-- Some paths did not validate user/company relationships before creating records.
-- Email and external-channel logic would still fire even if a user had disabled the channel.
+## Remaining gaps
 
-## Tenant-isolation problems
-- Notification records are company-scoped, but not all creation paths guaranteed the correct `company` value.
-- Preference records were user-scoped but not always resolved with the active company context.
-- Notification lookups should always filter by both user and company; this was not guaranteed in every call site.
+- The existing service and some older producers coexist; this pass did not migrate every direct notification creation path to `NotificationService`.
+- The complete workflow engine, audit log views, retry/idempotency behavior, and provider delivery lifecycle were not exhaustively reviewed.
+- Live Redis, Celery worker, email, SMS, WhatsApp, and push-provider integrations were not tested. SQLite tests do not establish production infrastructure behavior.
+- Existing broader tenant tests provide coverage, but this is not proof that every module's recipient selection is company-safe.
 
-## Celery problems
-- Celery tasks were used for email and bulk notifications, but the service layer was not enforcing the same quality checks across every task.
-- Task payloads did not consistently enforce channel preferences or tenant data.
+## Historical claims reconciled
 
-## Redis problems
-- The ERP uses Redis/Celery infrastructure for async delivery, but notification dispatch was not centralized behind a single preference-aware service layer.
-- There was no single place to validate queueing policy or deduplicate notification sends.
-
-## Preference problems
-- `NotificationPreference` existed but was not used to control notification delivery centrally.
-- In-app and email preferences were not consistently checked before a message was created or queued.
-- SMS and WhatsApp preferences existed but were not consistently enforced.
-- Push preferences were missing completely.
-
-## API problems
-- Notification APIs were implemented, but they were not centrally enforcing the same channel and preference rules as the task/service code.
-- There was no single service contract for creating, updating, and querying notifications across modules.
-
-## UI problems
-- The notification preference template showed in-app, email, SMS, and WhatsApp toggles but did not support push.
-- The UI relied on the underlying preference model without a central coordinator to keep channels consistent.
-
-## Testing gaps
-- No explicit notification test suite was present to guard preference behavior, tenant correctness, or channel gating.
-- There were no tests validating a notification event respects disabled channels.
-
-## Performance risks
-- Direct independent notification loops across modules can cause repeated database writes and redundant task dispatch.
-- Bulk notification creation lacked central filtering on preferences and tenant scope.
-- Email tasks rendered context without consistent guardrails on missing company or invalid user data.
-
-## Conclusion
-The notification subsystem was functional but fragmented. The safest upgrade is to centralize all creation, filtering, and logging in a single `NotificationService` and make preferences the single source of truth for every channel.
+The older audit text claiming there was no `NotificationService`, no push preference, or no notification test suite no longer describes the repository. Those capabilities already existed before this review. This pass found the remaining gaps listed above and added focused regression coverage without introducing a new notification framework.

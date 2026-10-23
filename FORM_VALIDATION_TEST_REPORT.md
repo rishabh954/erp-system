@@ -19,7 +19,7 @@ The full repository suite was run with:
 pytest -q --no-cov -o addopts=--nomigrations
 ```
 
-The first full run reported 4,893 passed, 1 failed, 1 skipped. Its single failure was `tests/test_e2e_walkthrough.py::SmokeTest::test_end_to_end_walkthrough`, because the product category created by that established workflow is inactive. Product creation was adjusted to permit a non-deleted category owned by the active company, while continuing to reject cross-company categories. A final full run is in progress; its final counts will replace this section before delivery.
+The earlier validation run's first attempt reported 4,893 passed, 1 failed, 1 skipped. Its single failure was `tests/test_e2e_walkthrough.py::SmokeTest::test_end_to_end_walkthrough`, because the product category created by that established workflow is inactive. Product creation was adjusted to permit a non-deleted category owned by the active company, while continuing to reject cross-company categories. The later full suite completed with 4,904 passed, 0 failed, and 1 skipped; see the authoritative current evidence in [PHASE_0_TEST_REPORT.md](PHASE_0_TEST_REPORT.md).
 
 ## Regression coverage added
 

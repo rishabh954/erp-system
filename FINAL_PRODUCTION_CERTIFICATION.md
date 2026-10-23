@@ -6,10 +6,11 @@
 
 ## Verified
 
-- The project reports 4,797 passing tests in its configured SQLite test environment.
-- The project reports that migration consistency checks are clean.
+- The latest full SQLite test run completed with 4,904 passed, 0 failed, and 1 skipped.
+- `makemigrations --check --dry-run` reports no model changes without migrations, and a fresh temporary SQLite database migrated successfully.
+- The existing workspace database has an unapplied `sales.0018_salescommission_uniq_sales_commission_invoice_rep`; no migration was applied to it during this audit.
 
-These results are reported baseline evidence and do not certify the changes in the current audit until the relevant tests and migration checks are rerun.
+These results are evidence for the current local SQLite run only; they do not establish PostgreSQL, Redis, Celery, or production behavior.
 
 ## Not verified
 
@@ -23,4 +24,4 @@ These results are reported baseline evidence and do not certify the changes in t
 
 ## Remaining release work
 
-Run the full suite and migration checks against the release commit. Verify PostgreSQL, Redis, and Celery in a production-like environment. Complete route and module smoke tests, including tenant isolation, and exercise backup restoration before issuing a production certification.
+Run the full suite and migration checks against PostgreSQL on the release commit. Verify Redis and Celery in a production-like environment. Complete route and module smoke tests, including tenant isolation, and exercise backup restoration before issuing a production certification.

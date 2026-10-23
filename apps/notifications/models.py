@@ -146,7 +146,7 @@ class NotificationPreference(CompanyScoped):
 
     class Meta:
         db_table = "notifications_preferences"
-        unique_together = ["user", "notification_type"]
+        unique_together = ["user", "company", "notification_type"]
 
     def __str__(self):
         return f"{self.user} - {self.get_notification_type_display()} Preferences"
