@@ -39,7 +39,9 @@ class POSIndexView(CompanyMixin, View):
     def get(self, request, *args, **kwargs):
         # Ensure there is an open session for the user
         session = POSSession.objects.filter(
-            user=request.user, status=POSSession.Status.OPEN
+            company=self.company(),
+            user=request.user,
+            status=POSSession.Status.OPEN,
         ).first()
         if not session:
             # For simplicity, auto-create a session if there's a warehouse
@@ -105,7 +107,10 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 )
 
             session = POSSession.objects.get(
-                id=session_id, user=request.user, status=POSSession.Status.OPEN
+                id=session_id,
+                company=self.company(),
+                user=request.user,
+                status=POSSession.Status.OPEN,
             )
 
             with transaction.atomic():
@@ -134,8 +139,6 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 )
 
                 # 2. Create Lines & Deduct Stock
-                from django.utils import timezone
-
                 for item in cart:
                     product = Product.objects.get(id=item["id"], company=self.company())
                     qty = _to_decimal(item["qty"], "Quantity")
@@ -153,21 +156,19 @@ class POSCheckoutAPIView(CompanyMixin, View):
                         subtotal=qty * price,
                     )
 
-                    # Deduct Stock (wrap in try so a missing warehouse doesn't kill the sale)
-                    try:
-                        StockMovement.objects.create(
-                            company=self.company(),
-                            product=product,
-                            warehouse=session.warehouse,
-                            quantity=-qty,
-                            movement_type=StockMovement.MovementType.DELIVERY,
-                            movement_date=timezone.now().date(),
-                            reference_type="POSOrder",
-                            reference_id=str(order.id),
-                        )
-                    except Exception as e:
-                        import logging
-                        logging.getLogger(__name__).warning("Stock deduction failed: %s", e)
+                    # Stock movement is part of the sale's atomic write. If it
+                    # cannot be recorded, the order and payment must roll back.
+                    from apps.inventory.services import StockService
+
+                    StockService(company=self.company(), user=request.user).adjust_stock(
+                        product=product,
+                        warehouse=session.warehouse,
+                        qty_input=qty,
+                        adjustment_type="remove",
+                        movement_type=StockMovement.MovementType.DELIVERY,
+                        reference_type="POSOrder",
+                        reference_id=str(order.id),
+                    )
 
                 # 3. Record Payment
                 POSPayment.objects.create(

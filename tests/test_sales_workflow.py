@@ -385,6 +385,23 @@ class TestSalesReturn(SalesWorkflowTestCase):
         self.assertEqual(ret.status, "draft")
         self.assertEqual(ret.lines.count(), 1)
 
+    def test_return_cannot_exceed_sold_quantity(self):
+        so, _ = self._get_order_and_invoice()
+        with self.assertRaisesMessage(ValueError, "exceeds the quantity sold"):
+            self._return_service().create_return(
+                so, self._lines_data(so, qty="6"), "defective"
+            )
+
+    def test_approving_returns_cannot_exceed_sold_quantity_cumulatively(self):
+        so, _ = self._get_order_and_invoice()
+        service = self._return_service()
+        first = service.create_return(so, self._lines_data(so, qty="3"), "defective")
+        second = service.create_return(so, self._lines_data(so, qty="3"), "defective")
+        approver = _make_user("approver-cumulative@swtest.com", self.company)
+        service.approve_return(first, approver)
+        with self.assertRaisesMessage(ValueError, "exceeds the remaining quantity sold"):
+            service.approve_return(second, approver)
+
     def test_approve_return(self):
         so, _ = self._get_order_and_invoice()
         ret = self._return_service().create_return(so, self._lines_data(so), "defective")

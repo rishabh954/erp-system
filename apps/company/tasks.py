@@ -10,8 +10,8 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def update_exchange_rates():
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def update_exchange_rates(self):
     """Fetch and update exchange rates from an external API."""
     from apps.company.models import Currency, ExchangeRate
 
@@ -49,8 +49,9 @@ def update_exchange_rates():
 
         logger.info(f"Updated {updated} exchange rates for {today}")
 
-    except Exception as e:
-        logger.error(f"Exchange rate update failed: {e}")
+    except Exception as exc:
+        logger.exception("Exchange rate update failed")
+        raise self.retry(exc=exc)
 
 
 @shared_task
@@ -60,6 +61,7 @@ def send_trial_expiry_reminders():
 
     from django.utils import timezone
 
+    from apps.authentication.models import UserCompany
     from apps.company.models import Company
     from apps.notifications.tasks import send_email_task
 
@@ -72,8 +74,14 @@ def send_trial_expiry_reminders():
     )
 
     for company in expiring:
-        admins = company.users.filter(role="company_admin", is_active=True)
-        for admin in admins:
+        admins = UserCompany.objects.filter(
+            company=company,
+            is_active=True,
+            user__is_active=True,
+            user__role="company_admin",
+        ).select_related("user")
+        for membership in admins:
+            admin = membership.user
             days_left = (company.trial_ends_at.date() - timezone.now().date()).days
             send_email_task.delay(
                 to_email=admin.email,

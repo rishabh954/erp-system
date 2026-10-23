@@ -617,7 +617,7 @@ class MaterialPlanRunView(CompanyMixin, View):
     required_permission = "manufacturing.create"
     def post(self, request, pk):
         plan = get_object_or_404(MaterialPlan, pk=pk, company=self.company())
-        MRPService.run_mrp(plan.id)
+        MRPService.run_mrp(plan.id, company_id=plan.company_id)
         messages.success(request, f"MRP Run completed for {plan.name}")
         return redirect("manufacturing:mrp_detail", pk=plan.id)
 

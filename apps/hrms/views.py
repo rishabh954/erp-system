@@ -850,7 +850,9 @@ class PayrollProcessView(CompanyMixin, View):
             # Let's call the task, and we'll refactor the task to use the PayrollService
             from .tasks import process_payroll_task
 
-            process_payroll_task.delay(str(period.pk), request.user.pk)
+            process_payroll_task.delay(
+                str(period.pk), request.user.pk, str(period.company_id)
+            )
             messages.success(
                 request,
                 f"Payroll processing started for {period.name}. This may take a few minutes.",

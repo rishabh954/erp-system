@@ -234,7 +234,10 @@ class PayrollService(BaseService):
         for emp in employees:
             salary = (
                 EmployeeSalary.objects.filter(
-                    employee=emp, is_current=True, is_deleted=False
+                    company=period.company,
+                    employee=emp,
+                    is_current=True,
+                    is_deleted=False,
                 )
                 .select_related("salary_structure")
                 .first()
@@ -247,6 +250,7 @@ class PayrollService(BaseService):
                 period.period_start, period.period_end
             )
             present_days = Attendance.objects.filter(
+                company=period.company,
                 employee=emp,
                 date__range=(period.period_start, period.period_end),
                 status__in=["present", "late", "half_day"],
@@ -260,7 +264,9 @@ class PayrollService(BaseService):
             deductions = Decimal("0")
             tax = Decimal("0")
 
-            for comp in salary.salary_structure.components.filter(is_deleted=False):
+            for comp in salary.salary_structure.components.filter(
+                company=period.company, is_deleted=False
+            ):
                 if comp.calc_type == "fixed":
                     amount = comp.amount
                 elif comp.calc_type == "percentage":

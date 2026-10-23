@@ -52,28 +52,27 @@ def generate_monthly_reports(self, company_id):
     # Find users with 'finance_manager' role or similar to notify
     # Using superusers for simplicity if roles aren't easily filterable by name,
     # but we can just use the company owner or active users.
-    from apps.authentication.models import User
+    from apps.authentication.models import UserCompany
 
-    recipients = User.objects.filter(
-        companies=company, is_active=True, is_superuser=True
-    )  # Fallback to superusers
+    recipient_ids = list(
+        UserCompany.objects.filter(
+            company=company,
+            is_active=True,
+            user__is_active=True,
+            user__is_superuser=True,
+        ).values_list("user_id", flat=True)
+    )
 
-    notifications = []
-    for user in recipients:
-        notifications.append(
-            {
-                "recipient_id": user.pk,
-                "title": f"Monthly P&L Report ({first_of_last_month.strftime('%B %Y')})",
-                "message": f"Revenue: {total_revenue}, Expenses: {total_expense}. Net Profit: {net_profit}.",
-                "notification_type": "info",
-                "action_url": "/accounting/reports/profit-and-loss/",
-                "action_label": "View Report",
-            }
+    if recipient_ids:
+        send_bulk_notification.delay(
+            recipient_ids=recipient_ids,
+            title=f"Monthly P&L Report ({first_of_last_month.strftime('%B %Y')})",
+            message=f"Revenue: {total_revenue}, Expenses: {total_expense}. Net Profit: {net_profit}.",
+            notification_type="info",
+            action_url="/accounting/reports/profit-and-loss/",
+            company_id=str(company.pk),
         )
-
-    if notifications:
-        send_bulk_notification.delay(notifications)
-        return f"Monthly report notification sent to {len(notifications)} users."
+        return f"Monthly report notification sent to {len(recipient_ids)} users."
     return "No recipients found for monthly report."
 
 
@@ -84,45 +83,51 @@ def check_overdue_payments(self):
     """
     # Overdue Purchase Orders: balance_due > 0 and expected_delivery or order_date + payment_terms < today
     today = timezone.now().date()
-    overdue_pos = []
+    from apps.authentication.models import UserCompany
 
-    pos = PurchaseOrder.objects.filter(balance_due__gt=0).exclude(
-        status__in=[PurchaseOrder.Status.DRAFT, PurchaseOrder.Status.CANCELLED]
-    )
-
-    for po in pos:
-        due_date = po.expected_delivery or (
-            po.order_date + timedelta(days=po.payment_terms)
+    queued = 0
+    overdue_found = False
+    companies = Company.objects.filter(status="active", is_deleted=False)
+    for company in companies:
+        recipient_ids = list(
+            UserCompany.objects.filter(
+                company=company,
+                is_active=True,
+                user__is_active=True,
+                user__is_superuser=True,
+            ).values_list("user_id", flat=True)
         )
-        if due_date < today:
-            overdue_pos.append(po)
+        purchase_orders = PurchaseOrder.objects.filter(
+            company=company,
+            balance_due__gt=0,
+        ).exclude(
+            status__in=[PurchaseOrder.Status.DRAFT, PurchaseOrder.Status.CANCELLED]
+        ).select_related("vendor")
 
-    if not overdue_pos:
-        return "No overdue payments found."
-
-    from apps.authentication.models import User
-
-    # Find finance managers (fallback to superusers)
-    finance_users = User.objects.filter(is_active=True, is_superuser=True)
-
-    notifications = []
-    for po in overdue_pos:
-        for user in finance_users:
-            notifications.append(
-                {
-                    "recipient_id": user.pk,
-                    "title": "Overdue Vendor Payment",
-                    "message": f"Purchase Order {po.number} to {po.vendor.name} is overdue. Balance: {po.balance_due}.",
-                    "notification_type": "warning",
-                    "action_url": f"/purchase/orders/{po.pk}/",
-                    "action_label": "View PO",
-                }
+        for po in purchase_orders:
+            due_date = po.expected_delivery or (
+                po.order_date + timedelta(days=po.payment_terms)
             )
+            if due_date >= today:
+                continue
+            overdue_found = True
+            if not recipient_ids:
+                continue
+            send_bulk_notification.delay(
+                recipient_ids=recipient_ids,
+                title="Overdue Vendor Payment",
+                message=f"Purchase Order {po.number} to {po.vendor.name} is overdue. Balance: {po.balance_due}.",
+                notification_type="warning",
+                action_url=f"/purchase/orders/{po.pk}/",
+                company_id=str(company.pk),
+            )
+            queued += 1
 
-    if notifications:
-        send_bulk_notification.delay(notifications)
-        return f"Queued {len(notifications)} overdue payment notifications."
-    return "No finance users found to notify."
+    if queued:
+        return f"Queued {queued} overdue payment notifications."
+    if overdue_found:
+        return "No finance users found to notify."
+    return "No overdue payments found."
 
 
 @shared_task(name="apps.accounting.tasks.generate_monthly_reports_for_all_companies")

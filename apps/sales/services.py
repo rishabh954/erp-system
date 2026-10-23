@@ -966,8 +966,14 @@ class SalesReturnService(BaseService):
     @transaction.atomic
     def create_return(self, order, lines_data, reason, user=None):
         from decimal import Decimal
-        from apps.sales.models import SalesReturn, SalesReturnLine
+        from apps.sales.models import SalesOrder, SalesReturn, SalesReturnLine
         from apps.inventory.models import Warehouse
+
+        # Reload and lock the order through the active tenant. The caller may
+        # have supplied a stale or cross-company instance.
+        order = SalesOrder.objects.select_for_update().get(
+            pk=order.pk, company=self.company
+        )
 
         warehouse = Warehouse.objects.filter(company=self.company, is_active=True).first()
         if not warehouse:
@@ -987,6 +993,12 @@ class SalesReturnService(BaseService):
         for item in lines_data:
             order_line = order.lines.get(pk=item["order_line_id"])
             qty = Decimal(str(item["quantity"]))
+            if qty <= 0:
+                raise ValueError("Return quantity must be greater than zero.")
+            if qty > order_line.quantity:
+                raise ValueError(
+                    f"Return quantity for order line {order_line.pk} exceeds the quantity sold."
+                )
             unit_price = Decimal(str(item.get("unit_price", order_line.unit_price)))
             line_sub = qty * unit_price
             condition = item.get("condition", "resellable")
@@ -1016,12 +1028,45 @@ class SalesReturnService(BaseService):
 
     @transaction.atomic
     def approve_return(self, sales_return, user):
-        if sales_return.status != sales_return.Status.DRAFT:
+        from django.db.models import Sum
+        from apps.sales.models import SalesOrder, SalesReturn, SalesReturnLine
+
+        # Serializing approvals on the order prevents two concurrent returns
+        # from both consuming the same remaining sold quantity.
+        current = SalesReturn.objects.select_for_update().get(
+            pk=sales_return.pk, company=self.company
+        )
+        order = SalesOrder.objects.select_for_update().get(
+            pk=current.sales_order_id, company=self.company
+        )
+        if current.status != current.Status.DRAFT:
             raise ValueError("Only draft returns can be approved.")
-        sales_return.status = sales_return.Status.APPROVED
-        sales_return.approved_by = user
-        sales_return.approved_at = timezone.now()
-        sales_return.save(update_fields=["status", "approved_by", "approved_at"])
+        line_ids = list(current.lines.values_list("order_line_id", flat=True))
+        for order_line in order.lines.filter(pk__in=line_ids):
+            already_returned = SalesReturnLine.objects.filter(
+                sales_return__company=self.company,
+                sales_return__sales_order=order,
+                sales_return__status__in=[
+                    SalesReturn.Status.APPROVED,
+                    SalesReturn.Status.RECEIVED,
+                    SalesReturn.Status.INSPECTED,
+                    SalesReturn.Status.COMPLETED,
+                ],
+                order_line=order_line,
+            ).exclude(sales_return=current).aggregate(total=Sum("quantity"))["total"] or 0
+            requested = current.lines.filter(order_line=order_line).aggregate(
+                total=Sum("quantity")
+            )["total"] or 0
+            if already_returned + requested > order_line.quantity:
+                raise ValueError(
+                    f"Return quantity for order line {order_line.pk} exceeds the remaining quantity sold."
+                )
+
+        current.status = current.Status.APPROVED
+        current.approved_by = user
+        current.approved_at = timezone.now()
+        current.save(update_fields=["status", "approved_by", "approved_at"])
+        sales_return = current
 
         self.log_activity(
             action="return_approved",

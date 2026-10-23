@@ -13,6 +13,7 @@ from apps.manufacturing.models import (
     ScrapOrder,
     WorkCenter,
 )
+from apps.manufacturing.services import MRPService
 
 pytestmark = pytest.mark.django_db
 
@@ -143,6 +144,10 @@ def test_bom_creation_mo_and_mrp(client, company, user, warehouse):
     assert item2.available_quantity == Decimal("0")
     assert item2.shortage == Decimal("16.5")
 
+    # Re-running replaces the plan rows atomically instead of duplicating them.
+    MRPService.run_mrp(plan.id, company_id=company.id)
+    assert plan.items.count() == 2
+
     # 4. Test Component Consumption (MO Done)
     with pytest.raises(ValueError, match="Insufficient stock"):
         mo.mark_done()
@@ -183,6 +188,15 @@ def test_bom_creation_mo_and_mrp(client, company, user, warehouse):
 
     in_fg = movements_in.get(product=fg)
     assert in_fg.quantity == Decimal("5")
+
+    # Duplicate completion requests must not issue another stock transfer.
+    mo.mark_done()
+    assert StockMovement.objects.filter(
+        reference_id=f"MO-{mo.number}", movement_type="production_out"
+    ).count() == 2
+    assert StockMovement.objects.filter(
+        reference_id=f"MO-{mo.number}", movement_type="production_in"
+    ).count() == 1
 
 
 def test_mo_cancel_and_scrap(client, company, user, warehouse):

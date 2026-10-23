@@ -8,6 +8,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.template import Context, Template
 from django.utils import timezone
 
@@ -39,6 +40,7 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
+    @transaction.atomic
     def trigger(cls, document, trigger_event: str, user):
         """Starts a workflow for a document if a matching definition is found."""
         model_name = document.__class__.__name__
@@ -47,6 +49,17 @@ class WorkflowEngine:
         if not company:
             logger.warning(f"WorkflowEngine.trigger: No company for {document!r}")
             return None
+
+        # Serialize triggers for the same tenant-owned source document. This
+        # closes the race between checking for an active instance and creating it.
+        if hasattr(document, "company_id"):
+            document = (
+                document.__class__.objects.select_for_update()
+                .filter(pk=document.pk, company_id=company.pk)
+                .first()
+            )
+            if document is None:
+                return None
 
         definitions = WorkflowDefinition.objects.filter(
             company=company,
@@ -73,6 +86,7 @@ class WorkflowEngine:
             status__in=[
                 WorkflowInstance.Status.PENDING,
                 WorkflowInstance.Status.IN_PROGRESS,
+                WorkflowInstance.Status.ESCALATED,
             ],
         ).exists():
             return None
@@ -94,7 +108,9 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
+    @transaction.atomic
     def approve(cls, instance, user, comment: str = ""):
+        instance = cls._lock_instance(instance)
         if instance.status not in [
             WorkflowInstance.Status.PENDING,
             WorkflowInstance.Status.IN_PROGRESS,
@@ -139,7 +155,9 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
+    @transaction.atomic
     def reject(cls, instance, user, comment: str = ""):
+        instance = cls._lock_instance(instance)
         if instance.status not in [
             WorkflowInstance.Status.PENDING,
             WorkflowInstance.Status.IN_PROGRESS,
@@ -175,8 +193,17 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
+    @transaction.atomic
     def delegate(cls, instance, user, delegatee, comment: str = ""):
         """Delegate this step from `user` to `delegatee`."""
+        instance = cls._lock_instance(instance)
+        if instance.status not in [
+            WorkflowInstance.Status.PENDING,
+            WorkflowInstance.Status.IN_PROGRESS,
+            WorkflowInstance.Status.ESCALATED,
+        ]:
+            raise ValueError("Workflow is not in a delegatable state.")
+
         from apps.authentication.models import UserCompany
 
         if not UserCompany.objects.filter(
@@ -261,104 +288,133 @@ class WorkflowEngine:
         and has exceeded the escalation_hours SLA.
         Called periodically by a Celery Beat task.
         """
+        from apps.company.models import Company
+
         now = timezone.now()
-        instances = WorkflowInstance.objects.filter(
-            status__in=[
-                WorkflowInstance.Status.IN_PROGRESS,
-                WorkflowInstance.Status.ESCALATED,
-            ],
-            current_step__escalation_enabled=True,
-            current_step_started_at__isnull=False,
-        ).select_related("current_step", "definition", "initiated_by", "company")
+        active_statuses = [
+            WorkflowInstance.Status.IN_PROGRESS,
+            WorkflowInstance.Status.ESCALATED,
+        ]
+        for company in Company.objects.filter(status="active", is_deleted=False):
+            instance_ids = WorkflowInstance.objects.filter(
+                company=company,
+                status__in=active_statuses,
+                current_step__escalation_enabled=True,
+                current_step_started_at__isnull=False,
+            ).values_list("pk", flat=True)
 
-        for inst in instances:
-            step = inst.current_step
-            deadline = inst.current_step_started_at + timedelta(
-                hours=step.escalation_hours
-            )
+            for instance_id in instance_ids:
+                with transaction.atomic():
+                    inst = (
+                        WorkflowInstance.objects.select_for_update()
+                        .filter(
+                            company=company,
+                            pk=instance_id,
+                            status__in=active_statuses,
+                            current_step__escalation_enabled=True,
+                            current_step_started_at__isnull=False,
+                        )
+                        .select_related(
+                            "current_step", "definition", "initiated_by", "company"
+                        )
+                        .first()
+                    )
+                    if inst is None:
+                        continue
 
-            if now < deadline:
-                continue  # Not yet overdue
+                    step = inst.current_step
+                    deadline = inst.current_step_started_at + timedelta(
+                        hours=step.escalation_hours
+                    )
+                    if now < deadline:
+                        continue
 
-            already_escalated = WorkflowEscalationLog.objects.filter(
-                instance=inst, step=step
-            ).exists()
+                    # A step is escalated once, regardless of escalation action.
+                    # This prevents reassignment and notifications on every Beat run.
+                    if WorkflowEscalationLog.objects.filter(
+                        instance=inst, step=step
+                    ).exists():
+                        continue
 
-            action = step.escalation_action
-
-            if action == WorkflowStep.EscalationAction.NOTIFY:
-                if not already_escalated:
-                    approvers = cls.get_pending_approvers(inst)
                     document = inst.related_object
-                    cls._send_notifications(
-                        inst,
-                        document,
-                        event=WorkflowNotificationTemplate.Event.ESCALATED,
-                        recipients=approvers,
-                    )
-                    WorkflowEscalationLog.objects.create(
-                        instance=inst,
-                        step=step,
-                        action_taken="notify",
-                        notes="Escalation reminder sent.",
-                    )
+                    if document is None:
+                        logger.error(
+                            "Cannot escalate workflow %s: source document is missing",
+                            inst.pk,
+                        )
+                        continue
 
-            elif (
-                action == WorkflowStep.EscalationAction.REASSIGN and step.escalation_to
-            ):
-                WorkflowEscalationLog.objects.create(
-                    instance=inst,
-                    step=step,
-                    action_taken="reassign",
-                    escalated_to=step.escalation_to,
-                )
-                inst.status = WorkflowInstance.Status.ESCALATED
-                inst.save(update_fields=["status"])
-                document = inst.related_object
-                cls._send_notifications(
-                    inst,
-                    document,
-                    event=WorkflowNotificationTemplate.Event.ESCALATED,
-                    recipients=[step.escalation_to],
-                )
+                    action = step.escalation_action
+                    if action == WorkflowStep.EscalationAction.NOTIFY:
+                        cls._send_notifications(
+                            inst,
+                            document,
+                            event=WorkflowNotificationTemplate.Event.ESCALATED,
+                            recipients=cls.get_pending_approvers(inst),
+                        )
+                        WorkflowEscalationLog.objects.create(
+                            instance=inst,
+                            step=step,
+                            action_taken="notify",
+                            notes="Escalation reminder sent.",
+                        )
 
-            elif action == WorkflowStep.EscalationAction.AUTO_APPROVE:
-                WorkflowEscalationLog.objects.create(
-                    instance=inst,
-                    step=step,
-                    action_taken="auto_approve",
-                    notes="Auto-approved due to SLA breach.",
-                )
-                document = inst.related_object
-                WorkflowAction.objects.create(
-                    company=inst.company,
-                    instance=inst,
-                    step=step,
-                    actor=inst.initiated_by,  # system actor
-                    action=WorkflowAction.Action.APPROVED,
-                    comment="Auto-approved: SLA escalation threshold exceeded.",
-                )
-                cls._advance_to_next_step(
-                    inst, document, current_step_order=step.step_order
-                )
+                    elif (
+                        action == WorkflowStep.EscalationAction.REASSIGN
+                        and step.escalation_to
+                    ):
+                        WorkflowEscalationLog.objects.create(
+                            instance=inst,
+                            step=step,
+                            action_taken="reassign",
+                            escalated_to=step.escalation_to,
+                        )
+                        inst.status = WorkflowInstance.Status.ESCALATED
+                        inst.save(update_fields=["status"])
+                        cls._send_notifications(
+                            inst,
+                            document,
+                            event=WorkflowNotificationTemplate.Event.ESCALATED,
+                            recipients=[step.escalation_to],
+                        )
 
-            elif action == WorkflowStep.EscalationAction.AUTO_REJECT:
-                WorkflowEscalationLog.objects.create(
-                    instance=inst,
-                    step=step,
-                    action_taken="auto_reject",
-                    notes="Auto-rejected due to SLA breach.",
-                )
-                document = inst.related_object
-                WorkflowAction.objects.create(
-                    company=inst.company,
-                    instance=inst,
-                    step=step,
-                    actor=inst.initiated_by,
-                    action=WorkflowAction.Action.REJECTED,
-                    comment="Auto-rejected: SLA escalation threshold exceeded.",
-                )
-                cls._mark_completed(inst, document, WorkflowInstance.Status.REJECTED)
+                    elif action == WorkflowStep.EscalationAction.AUTO_APPROVE:
+                        WorkflowEscalationLog.objects.create(
+                            instance=inst,
+                            step=step,
+                            action_taken="auto_approve",
+                            notes="Auto-approved due to SLA breach.",
+                        )
+                        WorkflowAction.objects.create(
+                            company=company,
+                            instance=inst,
+                            step=step,
+                            actor=inst.initiated_by,
+                            action=WorkflowAction.Action.APPROVED,
+                            comment="Auto-approved: SLA escalation threshold exceeded.",
+                        )
+                        cls._advance_to_next_step(
+                            inst, document, current_step_order=step.step_order
+                        )
+
+                    elif action == WorkflowStep.EscalationAction.AUTO_REJECT:
+                        WorkflowEscalationLog.objects.create(
+                            instance=inst,
+                            step=step,
+                            action_taken="auto_reject",
+                            notes="Auto-rejected due to SLA breach.",
+                        )
+                        WorkflowAction.objects.create(
+                            company=company,
+                            instance=inst,
+                            step=step,
+                            actor=inst.initiated_by,
+                            action=WorkflowAction.Action.REJECTED,
+                            comment="Auto-rejected: SLA escalation threshold exceeded.",
+                        )
+                        cls._mark_completed(
+                            inst, document, WorkflowInstance.Status.REJECTED
+                        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # GET PENDING APPROVERS
@@ -436,6 +492,7 @@ class WorkflowEngine:
         for approver in approvers:
             delegation = (
                 ApprovalDelegation.objects.filter(
+                    company=instance.company,
                     delegator=approver,
                     is_active=True,
                     start_date__lte=today,
@@ -768,6 +825,15 @@ class WorkflowEngine:
     # ──────────────────────────────────────────────────────────────────────────
     # HELPERS
     # ──────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _lock_instance(instance):
+        """Reload a workflow under a row lock, retaining its tenant boundary."""
+        return (
+            WorkflowInstance.objects.select_for_update()
+            .select_related("company", "definition", "current_step", "initiated_by")
+            .get(pk=instance.pk, company_id=instance.company_id)
+        )
 
     @classmethod
     def _check_definition_conditions(cls, defn, document) -> bool:

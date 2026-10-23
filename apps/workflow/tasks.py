@@ -10,8 +10,13 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="workflow.check_escalations")
-def check_escalations():
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=300,
+    name="workflow.check_escalations",
+)
+def check_escalations(self):
     """
     Periodic task — run every 30 minutes via Celery Beat.
     Checks all in-progress workflow instances for SLA breaches and triggers escalation.
@@ -21,8 +26,9 @@ def check_escalations():
 
         WorkflowEngine.check_and_escalate()
         logger.info("WorkflowEngine escalation check completed.")
-    except Exception as e:
-        logger.error(f"Escalation check failed: {e}", exc_info=True)
+    except Exception as exc:
+        logger.exception("Workflow escalation check failed; scheduling a retry.")
+        raise self.retry(exc=exc)
 
 
 @shared_task(name="workflow.send_pending_reminders")

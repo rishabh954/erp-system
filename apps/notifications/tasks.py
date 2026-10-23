@@ -127,27 +127,47 @@ def send_bulk_notification(
     logger.info(f"Bulk notification sent to {len(sent)} users: {title}")
 
 
-@shared_task
-def process_workflow_step(instance_id, step_id):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_workflow_step(self, instance_id, step_id):
     """Advance a workflow instance to the next step."""
     from apps.workflow.models import WorkflowInstance, WorkflowStep
 
     try:
-        instance = WorkflowInstance.objects.get(pk=instance_id)
-        step = WorkflowStep.objects.get(pk=step_id)
+        instance = WorkflowInstance.objects.select_related("definition").get(
+            pk=instance_id
+        )
+    except WorkflowInstance.DoesNotExist:
+        logger.warning("Workflow instance %s not found", instance_id)
+        return
+
+    if instance.definition.company_id != instance.company_id:
+        logger.error(
+            "Workflow instance %s has a definition from another company", instance_id
+        )
+        return
+
+    try:
+        step = WorkflowStep.objects.get(
+            pk=step_id,
+            workflow_id=instance.definition_id,
+            workflow__company_id=instance.company_id,
+        )
 
         if step.step_type == "notification":
             # Determine recipient and send notification
             if step.approver_type == "role":
-                from apps.authentication.models import User
+                from apps.authentication.models import UserCompany
 
-                recipients = User.objects.filter(
-                    role=step.approver_role,
-                    companies=instance.company,
+                recipients = UserCompany.objects.filter(
+                    company=instance.company,
                     is_active=True,
+                    user__is_active=True,
+                    user__role=step.approver_role,
                 )
                 send_bulk_notification.delay(
-                    recipient_ids=list(recipients.values_list("pk", flat=True)),
+                    recipient_ids=list(
+                        recipients.values_list("user_id", flat=True)
+                    ),
                     title=step.action_config.get(
                         "notification_title", "Action Required"
                     ),
@@ -155,5 +175,13 @@ def process_workflow_step(instance_id, step_id):
                     notification_type="approval",
                     company_id=str(instance.company_id),
                 )
-    except Exception as e:
-        logger.error(f"Workflow step processing failed: {e}")
+    except WorkflowStep.DoesNotExist:
+        logger.warning(
+            "Workflow step %s does not belong to instance %s's company/workflow",
+            step_id,
+            instance_id,
+        )
+        return
+    except Exception as exc:
+        logger.exception("Workflow step processing failed for instance %s", instance_id)
+        raise self.retry(exc=exc)

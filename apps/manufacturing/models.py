@@ -190,11 +190,34 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
 
     @transaction.atomic
     def mark_done(self):
-        if self.status in [self.Status.CONFIRMED, self.Status.IN_PROGRESS]:
-            self.quantity_produced = self.quantity_to_produce
-            self._process_inventory_transfer()
-            self.status = self.Status.DONE
-            self.save(update_fields=["status", "quantity_produced"])
+        order = (
+            ManufacturingOrder.objects.select_for_update()
+            .filter(pk=self.pk, company_id=self.company_id, is_deleted=False)
+            .select_related("company", "bom", "product", "warehouse")
+            .first()
+        )
+        if order is None:
+            raise ValueError("Manufacturing order was not found for this company.")
+        if order.status not in [self.Status.CONFIRMED, self.Status.IN_PROGRESS]:
+            self.status = order.status
+            self.quantity_produced = order.quantity_produced
+            return order
+
+        if (
+            order.bom.company_id != order.company_id
+            or order.product.company_id != order.company_id
+            or not order.warehouse_id
+            or order.warehouse.company_id != order.company_id
+        ):
+            raise ValueError("Manufacturing order relations must belong to its company.")
+
+        order.quantity_produced = order.quantity_to_produce
+        order._process_inventory_transfer()
+        order.status = self.Status.DONE
+        order.save(update_fields=["status", "quantity_produced"])
+        self.status = order.status
+        self.quantity_produced = order.quantity_produced
+        return order
 
     def _process_inventory_transfer(self):
         """Automatically create inventory stock movements to consume raw materials and produce finished goods."""
@@ -208,7 +231,9 @@ class ManufacturingOrder(CompanyScoped, SequenceMixin, NotesMixin):
         stock_service = StockService(company=self.company)
 
         # Consume raw materials (Stock out)
-        for line in self.bom.lines.all():
+        for line in self.bom.lines.select_related("component"):
+            if line.component.company_id != self.company_id:
+                raise ValueError("BOM component must belong to the manufacturing company.")
             qty_to_consume = Decimal(line.quantity) * (
                 Decimal(self.quantity_produced) / Decimal(self.bom.quantity)
             )

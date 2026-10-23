@@ -6,29 +6,80 @@ Payroll processing, attendance automation, leave balance reset
 import logging
 
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def process_payroll_task(payroll_period_id, user_id=None):
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def process_payroll_task(self, payroll_period_id, user_id=None, company_id=None):
     """Process payroll for all employees in a period using the PayrollService."""
-    from apps.authentication.models import User
+    from apps.authentication.models import UserCompany
     from apps.hrms.models import PayrollPeriod
     from apps.hrms.services import PayrollService
 
+    if not company_id:
+        logger.error("Payroll processing requires an explicit company ID.")
+        return "Company ID is required."
+
     try:
-        period = PayrollPeriod.objects.get(pk=payroll_period_id)
-        user = User.objects.filter(pk=user_id).first() if user_id else None
+        with transaction.atomic():
+            period = (
+                PayrollPeriod.objects.select_for_update()
+                .filter(
+                    pk=payroll_period_id,
+                    company_id=company_id,
+                    is_deleted=False,
+                )
+                .first()
+            )
+            if period is None:
+                logger.warning(
+                    "Payroll period %s not found for company %s",
+                    payroll_period_id,
+                    company_id,
+                )
+                return "Payroll period not found."
 
-        service = PayrollService(user=user, company=period.company)
-        service.process_payroll(period)
+            if period.status in (
+                PayrollPeriod.Status.COMPLETED,
+                PayrollPeriod.Status.APPROVED,
+                PayrollPeriod.Status.PAID,
+            ):
+                return f"Payroll period {period.name} is already finalized."
 
-        logger.info(f"Payroll completed for period {period.name}")
-    except Exception as e:
-        logger.error(f"Payroll processing failed for {payroll_period_id}: {e}")
-        PayrollPeriod.objects.filter(pk=payroll_period_id).update(status="draft")
+            user_membership = None
+            if user_id:
+                user_membership = (
+                    UserCompany.objects.filter(
+                        company_id=company_id,
+                        user_id=user_id,
+                        is_active=True,
+                        user__is_active=True,
+                    )
+                    .select_related("user")
+                    .first()
+                )
+                if user_membership is None:
+                    logger.warning(
+                        "Payroll requester %s is not an active member of company %s",
+                        user_id,
+                        company_id,
+                    )
+                    return "Payroll requester is not an active company member."
+
+            service = PayrollService(
+                user=user_membership.user if user_membership else None,
+                company=period.company,
+            )
+            service.process_payroll(period)
+
+        logger.info("Payroll completed for period %s", period.name)
+        return f"Payroll completed for period {period.name}."
+    except Exception as exc:
+        logger.exception("Payroll processing failed for period %s", payroll_period_id)
+        raise self.retry(exc=exc)
 
 
 @shared_task
@@ -38,19 +89,20 @@ def auto_mark_attendance():
     from apps.hrms.models import Attendance, Employee
 
     today = timezone.localdate()
-    today.weekday()  # 0=Mon
-
     for company in Company.objects.filter(status="active", is_deleted=False):
-        employees = Employee.objects.filter(
-            company=company, status="active", is_deleted=False
-        )
-        for emp in employees:
-            if not Attendance.objects.filter(employee=emp, date=today).exists():
-                Attendance.objects.create(
+        with transaction.atomic():
+            employees = Employee.objects.filter(
+                company=company, status="active", is_deleted=False
+            )
+            for emp in employees:
+                # The employee/date unique constraint makes this safe when
+                # multiple scheduled workers run at the same time. Include
+                # company explicitly to keep the lookup tenant-scoped.
+                Attendance.objects.get_or_create(
                     company=company,
                     employee=emp,
                     date=today,
-                    status="absent",
+                    defaults={"status": "absent"},
                 )
 
 
@@ -100,11 +152,17 @@ def reset_annual_leave_balances(company_id=None):
 @shared_task
 def send_payslip_emails(payroll_period_id):
     """Email payslips to all employees after payroll approval."""
-    from apps.hrms.models import Payslip
+    from apps.hrms.models import PayrollPeriod, Payslip
     from apps.notifications.tasks import send_email_task
+
+    period = PayrollPeriod.objects.filter(pk=payroll_period_id, is_deleted=False).first()
+    if period is None:
+        logger.warning("Payroll period %s not found for payslip email", payroll_period_id)
+        return 0
 
     payslips = Payslip.objects.filter(
         payroll_period_id=payroll_period_id,
+        company=period.company,
         status="approved",
         employee__user__isnull=False,
     ).select_related("employee__user", "payroll_period")

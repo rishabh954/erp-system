@@ -46,3 +46,18 @@ The skip is `SequenceGeneratorConcurrencyTest.test_concurrent_sequence_generatio
 - Exhaustive endpoint-by-endpoint tenant authorization, detail/edit/delete page coverage, or end-to-end readiness of HRMS payroll, POS, manufacturing, projects, helpdesk, and AI.
 
 The SQLite suite is evidence for this test configuration only; it does not certify production readiness.
+
+## Follow-up automation reliability work (2026-10-23)
+
+The repository received additional narrowly scoped reliability fixes and regression tests after the baseline above. They cover selected accounting, asset depreciation, company, CRM, helpdesk, HRMS payroll/attendance, inventory low-stock, manufacturing MRP/completion, notification, POS checkout, project, sales overdue/return and workflow task paths. See the current source changes and named test modules referenced in `FINAL_PRODUCTION_AUDIT.md` for scope. The tests improve coverage of those paths but do not establish full end-to-end readiness for the modules.
+
+### Final verification for this follow-up
+
+- Full suite, run in the background with output captured and polled to completion, using `DEBUG=True`, SQLite, `DJANGO_TESTING=1`, and `--no-cov -o addopts=--nomigrations`: **4,935 passed, 0 failed, 1 skipped, 4,843 warnings in 338.32s (0:05:38)**.
+- The skipped test remains the SQLite concurrency test for sequence generation; SQLite cannot verify the required `select_for_update` concurrency behavior.
+- Focused sales return regression tests: **7 passed**. They cover over-return rejection and cumulative approval limits.
+- `manage.py makemigrations --check --dry-run`: **exit 0, `No changes detected`**.
+- Fresh Windows-temp SQLite database, `manage.py migrate --noinput`: **exit 0**; all migrations applied, including `sales.0018_salescommission_uniq_sales_commission_invoice_rep`, followed by default permission and currency seeding.
+- `git diff --check`: clean (Git emitted only line-ending normalization notices for changed files).
+
+This run remains SQLite-only. PostgreSQL locking/concurrency, live Redis/Celery workers and beat, external providers and production restore remain unverified as detailed in `FINAL_PRODUCTION_AUDIT.md`.

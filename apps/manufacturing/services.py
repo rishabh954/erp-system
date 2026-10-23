@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 
 from apps.inventory.models import Product, StockRecord
@@ -9,16 +10,25 @@ from .models import ManufacturingOrder, MaterialPlan, MaterialPlanItem
 
 class MRPService:
     @staticmethod
-    def run_mrp(plan_id):
-        plan = MaterialPlan.objects.get(id=plan_id)
+    @transaction.atomic
+    def run_mrp(plan_id, company_id):
+        plan = (
+            MaterialPlan.objects.select_for_update()
+            .filter(id=plan_id, company_id=company_id, is_deleted=False)
+            .first()
+        )
+        if plan is None:
+            raise ValueError("Material plan was not found for this company.")
         company = plan.company
 
         # Clear existing items
-        plan.items.all().delete()
+        plan.items.filter(plan__company=company).delete()
 
         # 1. Get all Confirmed or In Progress MOs up to target_date
         mos = ManufacturingOrder.objects.filter(
             company=company,
+            bom__company=company,
+            product__company=company,
             status__in=[
                 ManufacturingOrder.Status.CONFIRMED,
                 ManufacturingOrder.Status.IN_PROGRESS,
@@ -35,7 +45,9 @@ class MRPService:
             if remaining_mo_qty <= 0:
                 continue
 
-            for line in mo.bom.lines.all():
+            for line in mo.bom.lines.filter(
+                bom__company=company, component__company=company
+            ):
                 comp_id = line.component_id
                 qty_per_mo = Decimal(line.quantity) / Decimal(mo.bom.quantity)
                 req_qty = qty_per_mo * remaining_mo_qty
@@ -54,7 +66,10 @@ class MRPService:
 
             # Get available quantity across all warehouses for this company
             on_hand = StockRecord.objects.filter(
-                product=product, warehouse__company=company
+                company=company,
+                product=product,
+                warehouse__company=company,
+                is_deleted=False,
             ).aggregate(total=Sum("quantity_on_hand"))["total"]
             available = Decimal(on_hand) if on_hand else Decimal(0)
 
