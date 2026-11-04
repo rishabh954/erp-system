@@ -125,6 +125,7 @@ class VendorCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         from django.core.exceptions import ValidationError
+
         from apps.company.models import Currency
         errors = {}
         name = data.get("name", "").strip()
@@ -206,6 +207,7 @@ class VendorUpdateView(CompanyMixin, View):
         vendor = get_object_or_404(Vendor, pk=pk, company=self.company())
         data = request.POST
         from django.core.exceptions import ValidationError
+
         from apps.company.models import Currency
         errors = {}
         name = data.get("name", "").strip()

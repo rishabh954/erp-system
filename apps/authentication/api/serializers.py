@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -60,6 +62,21 @@ class UserCreateSerializer(TenantModelSerializer):
             raise serializers.ValidationError(
                 {"password_confirm": "Passwords do not match."}  # nosec B105
             )
+        for field in ("first_name", "last_name"):
+            attrs[field] = attrs[field].strip()
+            if not attrs[field]:
+                raise serializers.ValidationError(
+                    {field: "This field cannot be blank."}
+                )
+        candidate = User(
+            first_name=attrs["first_name"],
+            last_name=attrs["last_name"],
+            email=attrs["email"],
+        )
+        try:
+            validate_password(attrs["password"], user=candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
         return attrs
 
     def create(self, validated_data):
@@ -83,6 +100,28 @@ class UserUpdateSerializer(TenantModelSerializer):
             "avatar",
         ]
 
+    def validate_first_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("This field cannot be blank.")
+        return value
+
+    def validate_last_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("This field cannot be blank.")
+        return value
+
+    def validate_timezone(self, value):
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        value = value.strip()
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError):
+            raise serializers.ValidationError("Enter a valid IANA time zone.") from None
+        return value
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
@@ -94,6 +133,12 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"new_password_confirm": "Passwords do not match."}  # nosec B105
             )
+        try:
+            validate_password(attrs["new_password"], user=self.context["request"].user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"new_password": list(exc.messages)}
+            ) from exc
         return attrs
 
 

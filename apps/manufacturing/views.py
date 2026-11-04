@@ -1,4 +1,9 @@
+from decimal import Decimal, InvalidOperation
+
+from django import forms
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, View
 
@@ -12,6 +17,37 @@ from .models import (
     WorkCenter,
     WorkOrder,
 )
+
+
+def _positive_decimal(value, label, errors):
+    try:
+        result = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        errors[label] = "Enter a valid number."
+        return None
+    if not result.is_finite() or result <= 0:
+        errors[label] = "Enter a number greater than zero."
+        return None
+    return result
+
+
+def _manufacturing_dates(data, errors):
+    parsed = {}
+    date_field = forms.DateField(required=False)
+    for field in ("planned_start_date", "planned_end_date"):
+        raw_value = data.get(field, "").strip()
+        try:
+            parsed[field] = date_field.clean(raw_value)
+        except ValidationError:
+            errors[field] = "Enter a valid date."
+            parsed[field] = None
+
+    start = parsed["planned_start_date"]
+    end = parsed["planned_end_date"]
+    if start and end and end < start:
+        errors["planned_end_date"] = "End date cannot be before the start date."
+    return parsed
+
 
 # ════════════════════════ WORK CENTERS & ROUTINGS ════════════════════════════
 
@@ -117,45 +153,130 @@ class BOMCreateView(CompanyMixin, View):
     def post(self, request):
         from apps.inventory.models import Product
 
+        company = self.company()
+        data = request.POST
+        form_data = data.dict()
+        errors = {}
+        product_id = data.get("product", "").strip()
+        routing_id = data.get("routing", "").strip()
+        product = None
+        routing = None
         try:
-            product_id = request.POST.get("product")
-            routing_id = request.POST.get("routing")
-            quantity = float(request.POST.get("quantity", 1))
+            product = Product.objects.filter(
+                pk=product_id, company=company, is_active=True, is_deleted=False
+            ).first()
+        except (ValidationError, ValueError):
+            pass
+        if not product:
+            errors["product"] = "Select an active product from this company."
 
-            product = get_object_or_404(Product, pk=product_id, company=self.company())
-            routing = (
-                Routing.objects.filter(pk=routing_id, company=self.company()).first()
-                if routing_id
-                else None
+        quantity = _positive_decimal(data.get("quantity", ""), "quantity", errors)
+        if routing_id:
+            try:
+                routing = Routing.objects.filter(
+                    pk=routing_id, company=company, is_active=True, is_deleted=False
+                ).first()
+            except (ValidationError, ValueError):
+                pass
+            if not routing:
+                errors["routing"] = "Select an active routing from this company."
+
+        components = data.getlist("component_id[]")
+        quantities = data.getlist("line_quantity[]")
+        scrap_values = data.getlist("scrap_percentage[]")
+        component_rows = []
+        parsed_lines = []
+        if not components:
+            errors["components"] = "Add at least one component."
+        if len(components) != len(quantities) or (
+            scrap_values and len(scrap_values) != len(components)
+        ):
+            errors["components"] = "Each component must have matching quantity data."
+
+        for index, component_id in enumerate(components):
+            row = {
+                "component_id": component_id,
+                "quantity": quantities[index] if index < len(quantities) else "",
+                "scrap_percentage": (
+                    scrap_values[index] if index < len(scrap_values) else ""
+                ),
+            }
+            component_rows.append(row)
+            row_key = f"component_{index}"
+            row_product = None
+            try:
+                row_product = Product.objects.filter(
+                    pk=component_id.strip(),
+                    company=company,
+                    is_active=True,
+                    is_deleted=False,
+                ).first()
+            except (ValidationError, ValueError):
+                pass
+            if not row_product:
+                errors[row_key] = "Select an active component from this company."
+                row["component_error"] = errors[row_key]
+                row["quantity_error"] = ""
+                row["scrap_error"] = ""
+                continue
+            if product and row_product.pk == product.pk:
+                errors[row_key] = "A finished product cannot be its own component."
+            line_quantity = _positive_decimal(
+                row["quantity"], f"{row_key}_quantity", errors
+            )
+            try:
+                scrap = Decimal(row["scrap_percentage"].strip() or "0")
+            except (InvalidOperation, ValueError):
+                scrap = None
+            if scrap is None or not scrap.is_finite() or not 0 <= scrap <= 100:
+                errors[f"{row_key}_scrap"] = "Enter a scrap percentage from 0 to 100."
+            if line_quantity is not None and scrap is not None and 0 <= scrap <= 100:
+                parsed_lines.append(
+                    {
+                        "component": row_product,
+                        "quantity": line_quantity,
+                        "scrap_percentage": scrap,
+                    }
+                )
+            row["component_error"] = errors.get(row_key, "")
+            row["quantity_error"] = errors.get(f"{row_key}_quantity", "")
+            row["scrap_error"] = errors.get(f"{row_key}_scrap", "")
+
+        if errors:
+            return render(
+                request,
+                "manufacturing/boms/form.html",
+                {
+                    "products": Product.objects.filter(
+                        company=company, is_active=True, is_deleted=False
+                    ),
+                    "routings": Routing.objects.filter(
+                        company=company, is_active=True, is_deleted=False
+                    ),
+                    "errors": errors,
+                    "form_data": form_data,
+                    "component_rows": component_rows,
+                },
+                status=400,
             )
 
+        with transaction.atomic():
             bom = BillOfMaterial.objects.create(
-                company=self.company(),
+                company=company,
                 product=product,
                 routing=routing,
                 quantity=quantity,
                 is_active=True,
             )
+            BillOfMaterialLine.objects.bulk_create(
+                [
+                    BillOfMaterialLine(bom=bom, **line)
+                    for line in parsed_lines
+                ]
+            )
 
-            # Simple line parsing: expect component_id[], quantity[], scrap[]
-            components = request.POST.getlist("component_id[]")
-            qty_list = request.POST.getlist("line_quantity[]")
-            scrap_list = request.POST.getlist("scrap_percentage[]")
-
-            for i, comp_id in enumerate(components):
-                if comp_id and float(qty_list[i]) > 0:
-                    BillOfMaterialLine.objects.create(
-                        bom=bom,
-                        component_id=comp_id,
-                        quantity=float(qty_list[i]),
-                        scrap_percentage=float(scrap_list[i] if scrap_list[i] else 0),
-                    )
-
-            messages.success(request, f"BOM for {product.name} created.")
-            return redirect("manufacturing:bom_detail", pk=bom.pk)
-        except Exception as e:
-            messages.error(request, f"Error creating BOM: {e}")
-            return redirect("manufacturing:bom_create")
+        messages.success(request, f"BOM for {product.name} created.")
+        return redirect("manufacturing:bom_detail", pk=bom.pk)
 
 
 # ════════════════════════ MANUFACTURING ORDERS ═══════════════════════════════
@@ -225,27 +346,72 @@ class MOCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
+        from apps.inventory.models import Warehouse
+
+        company = self.company()
+        data = request.POST
+        form_data = data.dict()
+        errors = {}
+        bom = None
+        warehouse = None
         try:
-            bom_id = request.POST.get("bom")
-            warehouse_id = request.POST.get("warehouse")
-            qty = float(request.POST.get("quantity_to_produce", 1))
+            bom = BillOfMaterial.objects.select_related("product").filter(
+                pk=data.get("bom", "").strip(),
+                company=company,
+                is_active=True,
+                is_deleted=False,
+            ).first()
+        except (ValidationError, ValueError):
+            pass
+        if not bom or bom.product.company_id != company.pk or not bom.product.is_active:
+            errors["bom"] = "Select an active bill of materials from this company."
 
-            bom = get_object_or_404(BillOfMaterial, pk=bom_id, company=self.company())
+        quantity = _positive_decimal(
+            data.get("quantity_to_produce", ""), "quantity_to_produce", errors
+        )
+        warehouse_id = data.get("warehouse", "").strip()
+        if warehouse_id:
+            try:
+                warehouse = Warehouse.objects.filter(
+                    pk=warehouse_id,
+                    company=company,
+                    is_active=True,
+                    is_deleted=False,
+                ).first()
+            except (ValidationError, ValueError):
+                pass
+            if not warehouse:
+                errors["warehouse"] = "Select an active warehouse from this company."
 
-            mo = ManufacturingOrder.objects.create(
-                company=self.company(),
-                product=bom.product,
-                bom=bom,
-                quantity_to_produce=qty,
-                warehouse_id=warehouse_id if warehouse_id else None,
-                planned_start_date=request.POST.get("planned_start_date") or None,
-                planned_end_date=request.POST.get("planned_end_date") or None,
+        planned_dates = _manufacturing_dates(data, errors)
+        if errors:
+            return render(
+                request,
+                "manufacturing/orders/form.html",
+                {
+                    "boms": BillOfMaterial.objects.filter(
+                        company=company, is_active=True, is_deleted=False
+                    ).select_related("product"),
+                    "warehouses": Warehouse.objects.filter(
+                        company=company, is_active=True, is_deleted=False
+                    ),
+                    "errors": errors,
+                    "form_data": form_data,
+                },
+                status=400,
             )
-            messages.success(request, f"Manufacturing Order {mo.number} created.")
-            return redirect("manufacturing:mo_detail", pk=mo.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return redirect("manufacturing:mo_create")
+
+        mo = ManufacturingOrder.objects.create(
+            company=company,
+            product=bom.product,
+            bom=bom,
+            quantity_to_produce=quantity,
+            warehouse=warehouse,
+            planned_start_date=planned_dates["planned_start_date"],
+            planned_end_date=planned_dates["planned_end_date"],
+        )
+        messages.success(request, f"Manufacturing Order {mo.number} created.")
+        return redirect("manufacturing:mo_detail", pk=mo.pk)
 
 
 class MOActionView(CompanyMixin, View):

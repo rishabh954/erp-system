@@ -1,6 +1,17 @@
 from django import forms
 
-from apps.ai.models import AIConfiguration
+from apps.ai.models import AIConfiguration, OCRDocument
+from apps.ai.validators import validate_ocr_image
+
+
+class OCRUploadForm(forms.Form):
+    doc_type = forms.ChoiceField(choices=OCRDocument.DocType.choices)
+    file = forms.FileField()
+
+    def clean_file(self):
+        uploaded = self.cleaned_data["file"]
+        validate_ocr_image(uploaded)
+        return uploaded
 
 
 class AIConfigurationForm(forms.ModelForm):
@@ -79,7 +90,12 @@ class AIConfigurationForm(forms.ModelForm):
                 attrs={"class": "form-control", "step": "0.1", "min": "0", "max": "2"}
             ),
             "max_tokens": forms.NumberInput(
-                attrs={"class": "form-control", "step": "1", "min": "1"}
+                attrs={
+                    "class": "form-control",
+                    "step": "1",
+                    "min": "1",
+                    "max": "200000",
+                }
             ),
             "enable_chat": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "enable_nlp_reports": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -88,6 +104,20 @@ class AIConfigurationForm(forms.ModelForm):
             "enable_insights": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "enable_recommendations": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def clean_temperature(self):
+        temperature = self.cleaned_data["temperature"]
+        if not 0 <= temperature <= 2:
+            raise forms.ValidationError("Temperature must be between 0 and 2.")
+        return temperature
+
+    def clean_max_tokens(self):
+        max_tokens = self.cleaned_data["max_tokens"]
+        if not 1 <= max_tokens <= 200_000:
+            raise forms.ValidationError(
+                "Maximum tokens must be between 1 and 200000."
+            )
+        return max_tokens
 
     def clean_openai_api_key(self):
         """If user submitted blank, keep the stored value."""

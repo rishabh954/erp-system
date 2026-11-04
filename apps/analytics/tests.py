@@ -2,8 +2,11 @@
 Regression tests for analytics views — Phase 1 Security fix.
 Ensures the report builder never leaks data across tenants.
 """
+from datetime import date
+from decimal import Decimal
+
 import pytest
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 
 from apps.analytics.models import CustomReport
 from apps.authentication.models import User, UserCompany
@@ -86,7 +89,7 @@ class TestReportBuilderTenantIsolation:
         """
         from django.apps import apps as django_apps
 
-        from apps.analytics.views import REPORT_MODEL_MAP, get_reportable_fields
+        from apps.analytics.views import REPORT_MODEL_MAP
 
         model_info = REPORT_MODEL_MAP.get("sales")
         assert model_info is not None, "REPORT_MODEL_MAP must contain 'sales'"
@@ -116,8 +119,6 @@ class TestReportBuilderTenantIsolation:
         GenerateReportAPIView must return 400 when group_by_field is not in
         the reportable fields allowlist (e.g., a relational field or made-up name).
         """
-        from apps.analytics.models import CustomReport
-
         report = CustomReport.objects.create(
             created_by=user_a,
             name="Bad Field Report",
@@ -144,12 +145,6 @@ class TestReportBuilderTenantIsolation:
         """
         GenerateReportAPIView must only aggregate data for company_a and never leak company_b.
         """
-        from decimal import Decimal
-        from django.test import Client
-        from apps.sales.models import SalesOrder
-        from apps.analytics.models import CustomReport
-
-        from datetime import date
         # Company A order: total 100
         SalesOrder.objects.create(
             company=company_a,

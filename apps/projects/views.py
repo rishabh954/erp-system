@@ -4,6 +4,7 @@ Projects, Tasks, Milestones, Kanban Board, Time Logging
 """
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,6 +14,7 @@ from django.views.generic import DetailView, ListView, View
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
+from .forms import ProjectCreateForm, TaskCreateForm, TimeLogCreateForm
 from .models import Project, ProjectMember, Task, TaskComment, TimeLog
 
 
@@ -164,37 +166,45 @@ class ProjectCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        data = request.POST
         company = self.company()
-        try:
+        form = ProjectCreateForm(request.POST, company=company)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error
+                    for errors in form.errors.values()
+                    for error in errors
+                ),
+            )
+            return redirect("projects:list")
+
+        data = form.cleaned_data
+        with transaction.atomic():
             project = Project(
                 company=company,
                 name=data["name"],
-                description=data.get("description", ""),
-                customer_id=data.get("customer") or None,
-                status=data.get("status", "planning"),
-                priority=data.get("priority", "medium"),
-                start_date=data.get("start_date") or None,
-                end_date=data.get("end_date") or None,
-                budget=float(data.get("budget", 0)),
+                description=data["description"],
+                customer=data["customer"],
+                status=data["status"],
+                priority=data["priority"],
+                start_date=data["start_date"],
+                end_date=data["end_date"],
+                budget=data["budget"],
                 manager=request.user,
-                is_billable=data.get("is_billable") == "on",
+                is_billable=data["is_billable"],
             )
             project.number = BaseService.generate_sequence_number(
                 "PRJ", Project, company.pk
             )
             project.save()
 
-            # Add manager as member
             ProjectMember.objects.create(
                 project=project, user=request.user, role="Manager"
             )
 
-            messages.success(request, f"Project {project.number} created.")
-            return redirect("projects:detail", pk=project.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return redirect("projects:list")
+        messages.success(request, f"Project {project.number} created.")
+        return redirect("projects:detail", pk=project.pk)
 
 
 # ─── Tasks ────────────────────────────────────────────────────────────────────
@@ -263,52 +273,40 @@ class TaskMoveView(CompanyMixin, View):
 
 class TaskCreateView(CompanyMixin, View):
     required_permission = "projects.create"
+
     def get(self, request):
-        from django.forms import DateInput, modelform_factory
-
-        TaskForm = modelform_factory(
-            Task,
-            fields=[
-                "project",
-                "title",
-                "description",
-                "status",
-                "priority",
-                "assigned_to",
-                "due_date",
-                "estimated_hours",
-            ],
-            widgets={"due_date": DateInput(attrs={"type": "date"})},
-        )
-        form = TaskForm()
-        form.fields["project"].queryset = Project.objects.filter(
-            company=self.company(), is_deleted=False
-        )
-        from apps.authentication.models import User
-
-        form.fields["assigned_to"].queryset = User.objects.filter(
-            projectmember__project__company=self.company(), is_active=True
-        ).distinct()
+        form = TaskCreateForm(company=self.company())
         return render(request, "projects/tasks/form.html", {"form": form})
 
     def post(self, request):
-        data = request.POST
         company = self.company()
-        project = get_object_or_404(Project, pk=data["project"], company=company)
+        form = TaskCreateForm(request.POST, company=company)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error
+                    for errors in form.errors.values()
+                    for error in errors
+                ),
+            )
+            return redirect("projects:task_create")
+
+        data = form.cleaned_data
         task = Task(
             company=company,
-            project=project,
+            project=data["project"],
             title=data["title"],
-            description=data.get("description", ""),
-            status=data.get("status", "todo"),
-            priority=data.get("priority", "medium"),
-            assigned_to_id=data.get("assigned_to") or None,
-            due_date=data.get("due_date") or None,
-            estimated_hours=float(data.get("estimated_hours") or 0),
+            description=data["description"],
+            status=data["status"] or Task.Status.TODO,
+            priority=data["priority"] or Task.Priority.MEDIUM,
+            assigned_to=data["assigned_to"],
+            due_date=data["due_date"],
+            estimated_hours=data["estimated_hours"] or 0,
         )
         task.save()
         messages.success(request, "Task created.")
-        return redirect("projects:kanban", pk=project.pk)
+        return redirect("projects:kanban", pk=data["project"].pk)
 
 
 class MyTasksView(CompanyMixin, ListView):
@@ -407,21 +405,31 @@ class AddCommentView(CompanyMixin, View):
 
 class LogTimeView(CompanyMixin, View):
     required_permission = "projects.create"
+
     def post(self, request, pk):
         task = get_object_or_404(Task, pk=pk, company=self.company(), is_deleted=False)
-        hours = float(request.POST.get("hours", 0))
-        if hours > 0:
-            TimeLog.objects.create(
-                company=self.company(),
-                task=task,
-                user=request.user,
-                date=timezone.localdate(),
-                hours=hours,
-                description=request.POST.get("description", ""),
-                is_billable=request.POST.get("is_billable") == "on",
+        form = TimeLogCreateForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            with transaction.atomic():
+                TimeLog.objects.create(
+                    company=self.company(),
+                    task=task,
+                    user=request.user,
+                    date=timezone.localdate(),
+                    hours=data["hours"],
+                    description=data["description"],
+                    is_billable=data["is_billable"],
+                )
+                task.actual_hours = (task.actual_hours or 0) + data["hours"]
+                task.save(update_fields=["actual_hours"])
+        else:
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
             )
-            task.actual_hours = (task.actual_hours or 0) + hours
-            task.save(update_fields=["actual_hours"])
         return redirect("projects:task_detail", pk=pk)
 
 

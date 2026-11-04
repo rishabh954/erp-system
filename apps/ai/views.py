@@ -354,20 +354,24 @@ class OCRUploadView(CompanyMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        from apps.ai.forms import OCRUploadForm
+
         ctx["recent_docs"] = OCRDocument.objects.filter(
             company=self.company()
         ).order_by("-created_at")[:10]
+        ctx.setdefault("form", OCRUploadForm())
         return ctx
 
     def post(self, request):
+        from apps.ai.forms import OCRUploadForm
         from apps.ai.tasks import process_ocr_document
 
-        doc_type = request.POST.get("doc_type", "invoice")
-        file = request.FILES.get("file")
+        form = OCRUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
 
-        if not file:
-            messages.error(request, "No file uploaded.")
-            return redirect("ai:ocr")
+        doc_type = form.cleaned_data["doc_type"]
+        file = form.cleaned_data["file"]
 
         doc = OCRDocument.objects.create(
             company=self.company(),

@@ -4,26 +4,40 @@
 <h2>New Manufacturing Order</h2>
 <form method="post" class="card shadow p-4">
     {% csrf_token %}
+    {% if errors %}
+    <div class="alert alert-danger" role="alert">
+        <strong>Please correct the following:</strong>
+        <ul class="mb-0">
+            {% for field, error in errors.items %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     <div class="mb-3">
         <label>BOM</label>
-        <select name="bom" class="form-select" required>
+        <select name="bom" class="form-select{% if errors.bom %} is-invalid{% endif %}" required>
+            <option value="">-- Select BOM --</option>
             {% for bom in boms %}
-            <option value="{{ bom.pk }}">{{ bom }}</option>
+            <option value="{{ bom.pk }}" {% if form_data.bom == bom.pk|stringformat:"s" %}selected{% endif %}>{{ bom }}</option>
             {% endfor %}
         </select>
+        {% if errors.bom %}<div class="invalid-feedback">{{ errors.bom }}</div>{% endif %}
     </div>
     <div class="mb-3">
         <label>Warehouse</label>
-        <select name="warehouse" class="form-select">
+        <select name="warehouse" class="form-select{% if errors.warehouse %} is-invalid{% endif %}">
             <option value="">-- Optional --</option>
             {% for w in warehouses %}
-            <option value="{{ w.pk }}">{{ w.name }}</option>
+            <option value="{{ w.pk }}" {% if form_data.warehouse == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>
             {% endfor %}
         </select>
+        {% if errors.warehouse %}<div class="invalid-feedback">{{ errors.warehouse }}</div>{% endif %}
     </div>
     <div class="mb-3">
         <label>Quantity</label>
-        <input type="number" name="quantity_to_produce" step="0.01" class="form-control" value="1" required>
+        <input type="number" name="quantity_to_produce" step="0.0001" class="form-control{% if errors.quantity_to_produce %} is-invalid{% endif %}" value="{{ form_data.quantity_to_produce|default:'1' }}" required>
+        {% if errors.quantity_to_produce %}<div class="invalid-feedback">{{ errors.quantity_to_produce }}</div>{% endif %}
     </div>
     <button type="submit" class="btn btn-primary">Save</button>
 </form>

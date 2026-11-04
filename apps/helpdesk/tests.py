@@ -1,7 +1,10 @@
 import pytest
+from django.urls import reverse
 
-from apps.helpdesk.models import Ticket, TicketCategory
+from apps.authentication.models import User, UserCompany
+from apps.helpdesk.models import Ticket, TicketCategory, TicketReply
 from apps.helpdesk.services import TicketService
+from core.factories import CompanyFactory, UserFactory
 
 
 @pytest.fixture
@@ -67,6 +70,95 @@ def test_ticket_service_rejects_other_company_category(company, user):
             },
             user,
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"title": "   ", "description": "Description"},
+        {"title": "Valid title", "description": "  "},
+        {"title": "Bad choice", "description": "Description", "priority": "urgent?"},
+    ],
+)
+def test_ticket_service_rejects_invalid_data_without_writes(company, user, data):
+    service = TicketService(company=company)
+    before = Ticket.objects.filter(company=company).count()
+
+    with pytest.raises(ValueError):
+        service.create_ticket(data, user)
+
+    assert Ticket.objects.filter(company=company).count() == before
+
+
+@pytest.mark.django_db
+def test_helpdesk_create_rejects_invalid_choice_without_writes(client, user, company):
+    client.force_login(user)
+    before = Ticket.objects.filter(company=company).count()
+
+    response = client.post(
+        reverse("helpdesk:ticket_create"),
+        {"title": "Invalid priority", "description": "Issue", "priority": "urgent?"},
+    )
+
+    assert response.status_code == 302
+    assert Ticket.objects.filter(company=company).count() == before
+
+
+@pytest.mark.django_db
+def test_helpdesk_create_rejects_foreign_category_without_writes(
+    client, user, company
+):
+    client.force_login(user)
+    other_company = CompanyFactory()
+    foreign_category = TicketCategory.objects.create(
+        company=other_company, name="Foreign", sla_hours=8
+    )
+    before = Ticket.objects.filter(company=company).count()
+
+    response = client.post(
+        reverse("helpdesk:ticket_create"),
+        {
+            "title": "Cross-company",
+            "description": "Issue",
+            "category": str(foreign_category.pk),
+        },
+    )
+
+    assert response.status_code == 404
+    assert Ticket.objects.filter(company=company).count() == before
+
+
+@pytest.mark.django_db
+def test_helpdesk_reply_rejects_foreign_assignee_without_partial_write(
+    client, user, company, ticket_category
+):
+    client.force_login(user)
+    ticket = TicketService(company=company).create_ticket(
+        {"title": "Existing", "description": "Issue", "category": ticket_category.pk},
+        user,
+    )
+    other_company = CompanyFactory()
+    foreign_user = UserFactory(primary_company=other_company)
+    UserCompany.objects.create(
+        user=foreign_user,
+        company=other_company,
+        role=User.Role.COMPANY_ADMIN,
+        is_active=True,
+    )
+    before = TicketReply.objects.filter(ticket=ticket).count()
+    old_status = ticket.status
+
+    response = client.post(
+        reverse("helpdesk:ticket_reply", kwargs={"pk": ticket.pk}),
+        {"content": "Should not persist", "assigned_to": str(foreign_user.pk)},
+    )
+
+    ticket.refresh_from_db()
+    assert response.status_code == 302
+    assert TicketReply.objects.filter(ticket=ticket).count() == before
+    assert ticket.status == old_status
+    assert ticket.assigned_to is None
 
 
 @pytest.mark.django_db

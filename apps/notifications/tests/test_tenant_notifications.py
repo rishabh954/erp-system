@@ -169,6 +169,50 @@ def test_notification_preference_update_only_changes_active_company(client):
     assert active_preference.email_enabled is True
 
 
+def test_notification_preferences_reject_non_checkbox_values_without_writing(client):
+    user, _, company = make_multitenant_admin()
+    preference = NotificationPreference.objects.create(
+        company=company,
+        user=user,
+        notification_type=Notification.NotificationType.INFO,
+        email_enabled=False,
+    )
+    client.force_login(user)
+    activate_company(client, company)
+
+    response = client.post(
+        reverse("notifications:preferences"),
+        {f"email_{preference.pk}": "true"},
+    )
+
+    preference.refresh_from_db()
+    assert response.status_code == 302
+    assert preference.email_enabled is False
+    assert NotificationPreference.objects.filter(user=user, company=company).count() == 1
+
+
+def test_notification_preferences_reject_foreign_tenant_row_without_writing(client):
+    user, company_a, company_b = make_multitenant_admin()
+    foreign_preference = NotificationPreference.objects.create(
+        company=company_a,
+        user=user,
+        notification_type=Notification.NotificationType.INFO,
+        email_enabled=False,
+    )
+    client.force_login(user)
+    activate_company(client, company_b)
+
+    response = client.post(
+        reverse("notifications:preferences"),
+        {f"email_{foreign_preference.pk}": "on"},
+    )
+
+    foreign_preference.refresh_from_db()
+    assert response.status_code == 302
+    assert foreign_preference.email_enabled is False
+    assert not NotificationPreference.objects.filter(user=user, company=company_b).exists()
+
+
 def test_bulk_task_drops_recipients_without_active_company_membership(monkeypatch):
     user, company_a, company_b = make_multitenant_admin()
     outsider = User.objects.create_user(

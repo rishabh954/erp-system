@@ -30,7 +30,7 @@ def test_document_crud(client, user, company):
     # 2. Upload Document
     upload_url = reverse("documents:upload")
     dummy_file = SimpleUploadedFile(
-        "test_doc.txt", b"file_content", content_type="application/pdf"
+        "test_doc.txt", b"file_content", content_type="text/plain"
     )
     res = client.post(
         upload_url,

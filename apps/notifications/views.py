@@ -5,15 +5,16 @@ Notifications Views and API
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
-from rest_framework import permissions, serializers, viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
 from core.api.fields import TenantModelSerializer  # noqa: E402
+from core.api.mixins import TenantScopedViewSetMixin  # noqa: E402
 from core.permissions import HasModulePermission  # noqa: E402
 from core.tenancy import get_active_company
 
@@ -175,14 +176,40 @@ class NotificationPreferenceUpdateView(LoginRequiredMixin, ListView):
     def post(self, request, *args, **kwargs):
         from django.contrib import messages
 
+        company = get_active_company(request)
+        if not company:
+            messages.error(request, "Select an active company before updating preferences.")
+            return redirect("notifications:preferences")
+
+        existing = NotificationPreference.objects.filter(
+            user=request.user, company=company
+        )
+        valid_ids = {str(pk) for pk in existing.values_list("pk", flat=True)}
+        channels = {"in_app", "email", "sms", "whatsapp", "push"}
+        submitted = {}
+        for key in request.POST:
+            if key == "csrfmiddlewaretoken":
+                continue
+            channel = next(
+                (item for item in channels if key.startswith(f"{item}_")), None
+            )
+            if channel is None:
+                messages.error(request, "Invalid notification preference field.")
+                return redirect("notifications:preferences")
+            preference_id = key[len(channel) + 1 :]
+            if preference_id not in valid_ids or request.POST.get(key) != "on":
+                messages.error(request, "Invalid notification preference value.")
+                return redirect("notifications:preferences")
+            submitted[key] = True
+
         preferences = self.get_queryset()
         with transaction.atomic():
             for pref in preferences:
-                pref.in_app_enabled = request.POST.get(f"in_app_{pref.pk}") == "on"
-                pref.email_enabled = request.POST.get(f"email_{pref.pk}") == "on"
-                pref.sms_enabled = request.POST.get(f"sms_{pref.pk}") == "on"
-                pref.whatsapp_enabled = request.POST.get(f"whatsapp_{pref.pk}") == "on"
-                pref.push_enabled = request.POST.get(f"push_{pref.pk}") == "on"
+                pref.in_app_enabled = f"in_app_{pref.pk}" in submitted
+                pref.email_enabled = f"email_{pref.pk}" in submitted
+                pref.sms_enabled = f"sms_{pref.pk}" in submitted
+                pref.whatsapp_enabled = f"whatsapp_{pref.pk}" in submitted
+                pref.push_enabled = f"push_{pref.pk}" in submitted
                 pref.save()
         messages.success(request, "Notification preferences updated successfully.")
         return self.get(request, *args, **kwargs)

@@ -6,6 +6,8 @@ Employees, Attendance, Leave Management, Payroll
 """
 
 from django.contrib import messages  # noqa: E402
+from django.core.exceptions import ValidationError  # noqa: E402
+from django.db import transaction  # noqa: E402
 from django.db.models import Q  # noqa: E402
 from django.http import JsonResponse  # noqa: E402
 from django.shortcuts import get_object_or_404, redirect, render  # noqa: E402
@@ -29,8 +31,19 @@ from .models import (  # noqa: E402
     SalaryComponent,
     SalaryStructure,
 )
+from .validation import validate_company_relation, validate_instance  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+def _save_validated(request, instance):
+    try:
+        validate_instance(instance)
+        instance.save()
+    except (ValueError, ValidationError) as exc:
+        messages.error(request, str(exc))
+        return False
+    return True
 
 
 # ════════════════════════ EMPLOYEES ══════════════════════════════════════════
@@ -180,38 +193,42 @@ class EmployeeUpdateView(CompanyMixin, View):
             return render(request, self.template_name, ctx)
 
         try:
-            emp.employee_id = data.get("employee_id", emp.employee_id)
-            emp.first_name = data.get("first_name", emp.first_name)
-            emp.last_name = data.get("last_name", emp.last_name)
-            emp.email = data.get("email", emp.email)
-            emp.phone = data.get("phone", emp.phone)
-            emp.joining_date = data.get("joining_date", emp.joining_date)
-            emp.department_id = data.get("department") or None
-            emp.branch_id = data.get("branch") or None
-            emp.job_title_id = data.get("job_title") or None
-            emp.status = data.get("status", emp.status)
-            emp.gender = data.get("gender", emp.gender)
-            emp.date_of_birth = data.get("date_of_birth") or None
-            emp.address_line1 = data.get("address_line1", emp.address_line1)
-            emp.city = data.get("city", emp.city)
-            emp.country = data.get("country", emp.country)
-            emp.national_id = data.get("national_id", emp.national_id)
-            emp.emergency_contact_name = data.get(
-                "emergency_contact_name", emp.emergency_contact_name
-            )
-            emp.emergency_contact_phone = data.get(
-                "emergency_contact_phone", emp.emergency_contact_phone
-            )
-            emp.marital_status = data.get("marital_status", emp.marital_status)
-            emp.nationality = data.get("nationality", emp.nationality)
-            emp.emergency_contact_relation = data.get(
-                "emergency_contact_relation", emp.emergency_contact_relation
-            )
+            with transaction.atomic():
+                emp.employee_id = data.get("employee_id", emp.employee_id)
+                emp.first_name = data.get("first_name", emp.first_name)
+                emp.last_name = data.get("last_name", emp.last_name)
+                emp.email = data.get("email", emp.email)
+                emp.phone = data.get("phone", emp.phone)
+                emp.joining_date = data.get("joining_date", emp.joining_date)
+                emp.department_id = data.get("department") or None
+                emp.branch_id = data.get("branch") or None
+                emp.job_title_id = data.get("job_title") or None
+                emp.status = data.get("status", emp.status)
+                emp.gender = data.get("gender", emp.gender)
+                emp.date_of_birth = data.get("date_of_birth") or None
+                emp.address_line1 = data.get("address_line1", emp.address_line1)
+                emp.city = data.get("city", emp.city)
+                emp.country = data.get("country", emp.country)
+                emp.national_id = data.get("national_id", emp.national_id)
+                emp.emergency_contact_name = data.get(
+                    "emergency_contact_name", emp.emergency_contact_name
+                )
+                emp.emergency_contact_phone = data.get(
+                    "emergency_contact_phone", emp.emergency_contact_phone
+                )
+                emp.marital_status = data.get("marital_status", emp.marital_status)
+                emp.nationality = data.get("nationality", emp.nationality)
+                emp.emergency_contact_relation = data.get(
+                    "emergency_contact_relation", emp.emergency_contact_relation
+                )
 
-            if request.FILES.get("profile_photo"):
-                emp.profile_photo = request.FILES["profile_photo"]
-            emp.save()
-            self._ensure_user_account(emp, self.company())
+                if request.FILES.get("profile_photo"):
+                    emp.profile_photo = request.FILES["profile_photo"]
+                for field_name in ("department", "branch", "job_title"):
+                    validate_company_relation(emp, field_name, self.company())
+                validate_instance(emp)
+                emp.save()
+                self._ensure_user_account(emp, self.company())
 
             messages.success(request, f"Employee {emp.full_name} updated successfully.")
             return redirect("hrms:employee_detail", pk=emp.pk)
@@ -371,17 +388,19 @@ class EmployeeDocumentCreateView(CompanyMixin, View):
     def post(self, request, pk):
         emp = get_object_or_404(Employee, pk=pk, company=self.company())
         data = request.POST
-        if request.FILES.get("file"):
-            doc = EmployeeDocument(
-                company=self.company(),
-                employee=emp,
-                document_type=data.get("document_type"),
-                title=data.get("title"),
-                file=request.FILES["file"],
-                expiry_date=data.get("expiry_date") or None,
-                notes=data.get("notes", ""),
-            )
-            doc.save()
+        if not request.FILES.get("file"):
+            messages.error(request, "Choose a file to upload.")
+            return redirect("hrms:employee_detail", pk=pk)
+        doc = EmployeeDocument(
+            company=self.company(),
+            employee=emp,
+            document_type=data.get("document_type"),
+            title=data.get("title"),
+            file=request.FILES["file"],
+            expiry_date=data.get("expiry_date") or None,
+            notes=data.get("notes", ""),
+        )
+        if _save_validated(request, doc):
             messages.success(request, "Document uploaded successfully.")
         return redirect("hrms:employee_detail", pk=pk)
 
@@ -409,7 +428,8 @@ class EmployeeSkillCreateView(CompanyMixin, View):
             proficiency=data.get("proficiency"),
             years_experience=data.get("years_experience") or 0,
         )
-        skill.save()
+        if not _save_validated(request, skill):
+            return redirect("hrms:employee_detail", pk=pk)
         messages.success(request, "Skill added successfully.")
         return redirect("hrms:employee_detail", pk=pk)
 
@@ -438,7 +458,14 @@ class ExperienceRecordCreateView(CompanyMixin, View):
             is_current=data.get("is_current") == "on",
             description=data.get("description", ""),
         )
-        exp.save()
+        if exp.end_date and exp.end_date < exp.start_date:
+            messages.error(request, "End date cannot be before start date.")
+            return redirect("hrms:employee_detail", pk=pk)
+        if exp.is_current and exp.end_date:
+            messages.error(request, "Current experience cannot have an end date.")
+            return redirect("hrms:employee_detail", pk=pk)
+        if not _save_validated(request, exp):
+            return redirect("hrms:employee_detail", pk=pk)
         messages.success(request, "Experience record added.")
         return redirect("hrms:employee_detail", pk=pk)
 

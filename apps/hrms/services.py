@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
@@ -11,6 +12,7 @@ from apps.hrms.models import (
     LeaveRequest,
     Payslip,
 )
+from apps.hrms.validation import validate_company_relation, validate_instance
 from core.services import BaseService
 
 
@@ -54,6 +56,9 @@ class EmployeeService(BaseService):
         )
         if files and files.get("profile_photo"):
             emp.profile_photo = files["profile_photo"]
+        for field_name in ("department", "branch", "job_title"):
+            validate_company_relation(emp, field_name, self.company)
+        validate_instance(emp)
         emp.save()
 
         # Try to link user account
@@ -114,21 +119,43 @@ class AttendanceService(BaseService):
 class LeaveService(BaseService):
     @transaction.atomic
     def request_leave(self, employee, data, files=None):
-        from datetime import datetime
+        from django.utils.dateparse import parse_date
 
-        start = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
-        end = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
+        if employee.company_id != self.company.pk:
+            raise ValueError("Employee must belong to this company.")
+        start = parse_date(data.get("start_date", ""))
+        end = parse_date(data.get("end_date", ""))
+        if start is None or end is None:
+            raise ValueError("Enter valid start and end dates.")
+        if end < start:
+            raise ValueError("End date cannot be before start date.")
+        leave_type_id = data.get("leave_type")
+        try:
+            leave_type = LeaveRequest._meta.get_field(
+                "leave_type"
+            ).remote_field.model.objects.get(
+                pk=leave_type_id, company=self.company, is_active=True
+            )
+        except (
+            LeaveRequest._meta.get_field("leave_type").remote_field.model.DoesNotExist,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ):
+            raise ValueError(
+                "Select an active leave type belonging to this company."
+            ) from None
         days = (end - start).days + 1
 
         leave = LeaveRequest(
             company=self.company,
             employee=employee,
-            leave_type_id=data["leave_type"],
+            leave_type=leave_type,
             start_date=start,
             end_date=end,
             day_type=data.get("day_type", "full"),
             total_days=days,
-            reason=data["reason"],
+            reason=data.get("reason", ""),
             status="pending",
         )
         leave.number = BaseService.generate_sequence_number(
@@ -137,6 +164,7 @@ class LeaveService(BaseService):
 
         if files and files.get("attachment"):
             leave.attachment = files["attachment"]
+        validate_instance(leave)
         leave.save()
 
         # Trigger approval workflow notification

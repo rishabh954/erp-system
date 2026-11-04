@@ -3,11 +3,16 @@ Company Management Views
 Settings, Branches, Departments, Users, Fiscal Years, Currencies
 """
 
+import re
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator, validate_email
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.views.generic import ListView, TemplateView, UpdateView, View
 
 from apps.authentication.models import UserCompany
@@ -23,6 +28,93 @@ from .models import (
     Tax,
     TaxGroup,
 )
+
+COMPANY_MANAGEABLE_ROLES = {
+    "employee",
+    "manager",
+    "hr_manager",
+    "accountant",
+    "company_admin",
+}
+
+
+def _required_text(data, key, label, max_length):
+    value = data.get(key, "").strip()
+    if not value:
+        raise ValueError(f"{label} is required.")
+    if len(value) > max_length:
+        raise ValueError(f"{label} must be {max_length} characters or fewer.")
+    return value
+
+
+def _optional_text(data, key, label, max_length):
+    value = data.get(key, "").strip()
+    if len(value) > max_length:
+        raise ValueError(f"{label} must be {max_length} characters or fewer.")
+    return value
+
+
+def _choice(value, choices, label):
+    allowed = {choice[0] for choice in choices}
+    if value not in allowed:
+        raise ValueError(f"Select a valid {label}.")
+    return value
+
+
+def _company_role(value):
+    if value not in COMPANY_MANAGEABLE_ROLES:
+        raise ValueError("Select a valid company role.")
+    return value
+
+
+def _checkbox(data, key):
+    value = data.get(key)
+    if value is None:
+        return False
+    if value != "on":
+        raise ValueError(f"Invalid value for {key.replace('_', ' ')}.")
+    return True
+
+
+def _related_object(model, value, label, **filters):
+    if not value:
+        return None
+    try:
+        obj = model.objects.filter(**filters).filter(pk=value).first()
+    except (ValidationError, ValueError, TypeError):
+        obj = None
+    if obj is None:
+        raise ValueError(f"Select a valid {label}.")
+    return obj
+
+
+def _valid_date(value, label):
+    parsed = parse_date(value or "")
+    if parsed is None:
+        raise ValueError(f"Enter a valid {label} date (YYYY-MM-DD).")
+    return parsed
+
+
+def _valid_decimal(value, label, *, max_digits, decimal_places, minimum=None):
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        parsed = Decimal(value)
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"Enter a valid {label}.") from None
+    if not parsed.is_finite():
+        raise ValueError(f"Enter a finite {label}.")
+    if minimum is not None and parsed < minimum:
+        raise ValueError(f"{label} must be at least {minimum}.")
+    sign, digits, exponent = parsed.as_tuple()
+    integer_digits = max(len(digits) + exponent, 0)
+    fraction_digits = max(-exponent, 0)
+    if integer_digits + fraction_digits > max_digits or fraction_digits > decimal_places:
+        raise ValueError(
+            f"{label} supports at most {max_digits} digits and {decimal_places} decimal places."
+        )
+    return parsed
+
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
@@ -73,13 +165,21 @@ class CompanyCreateView(LoginRequiredMixin, View):
         name = data.get("name", "").strip()
         if not name:
             errors["name"] = "Company name is required."
+        elif len(name) > 255:
+            errors["name"] = "Company name must be 255 characters or fewer."
         company_type = data.get("company_type", "").strip().lower().replace(" ", "_")
         if company_type and company_type not in Company.CompanyType.values:
             errors["company_type"] = "Select a valid company type."
+        legal_name = data.get("legal_name", "").strip()
+        industry = data.get("industry", "").strip()
+        if len(legal_name) > 255:
+            errors["legal_name"] = "Legal name must be 255 characters or fewer."
+        if len(industry) > 100:
+            errors["industry"] = "Industry must be 100 characters or fewer."
         fiscal_year_start = data.get("fiscal_year_start", "01-01").strip()
         try:
             from datetime import datetime
-            datetime.strptime(fiscal_year_start, "%m-%d")
+            datetime.strptime(f"{fiscal_year_start}-2000", "%m-%d-%Y")
         except ValueError:
             errors["fiscal_year_start"] = "Enter a valid month and day (MM-DD)."
         timezone_name = data.get("timezone", "UTC").strip()
@@ -162,35 +262,80 @@ class CompanySettingsView(CompanyMixin, View):
     def post(self, request):
         company = self.company()
         data = request.POST
-        company.name = data.get("name", company.name)
-        company.legal_name = data.get("legal_name", "")
-        company.tax_id = data.get("tax_id", "")
-        company.vat_number = data.get("vat_number", "")
-        company.phone = data.get("phone", "")
-        company.email = data.get("email", "")
-        company.website = data.get("website", "")
-        company.address_line1 = data.get("address_line1", "")
-        company.city = data.get("city", "")
-        company.country = data.get("country", "")
-        company.language = data.get("language", "en")
-
         import zoneinfo
+        from datetime import datetime
 
-        tz_input = data.get("timezone", "UTC")
         try:
-            zoneinfo.ZoneInfo(tz_input)
-            company.timezone = tz_input
-        except (zoneinfo.ZoneInfoNotFoundError, KeyError):
-            messages.error(
-                request, f"Invalid timezone: {tz_input}. Keeping previous value."
+            name = _required_text(
+                {"name": data.get("name", company.name)},
+                "name",
+                "Company name",
+                255,
             )
+            legal_name = _optional_text(data, "legal_name", "Legal name", 255)
+            tax_id = _optional_text(data, "tax_id", "Tax ID", 100)
+            vat_number = _optional_text(data, "vat_number", "VAT number", 100)
+            phone = _optional_text(data, "phone", "Phone", 30)
+            email = _optional_text(data, "email", "Email", 254)
+            website = _optional_text(data, "website", "Website", 200)
+            address_line1 = _optional_text(data, "address_line1", "Address", 255)
+            city = _optional_text(data, "city", "City", 100)
+            country = _optional_text(data, "country", "Country", 100)
+            language = _choice(
+                data.get("language", "en").strip(),
+                (("en", "English"), ("fr", "French"), ("es", "Spanish")),
+                "language",
+            )
+            if email:
+                validate_email(email)
+            if website:
+                URLValidator()(website)
 
-        company.fiscal_year_start = data.get("fiscal_year_start", "01-01")
-        company.primary_color = data.get("primary_color", "#4361ee")
-        if "inventory_valuation_method" in data:
-            company.inventory_valuation_method = data["inventory_valuation_method"]
-        if data.get("default_currency"):
-            company.default_currency_id = data["default_currency"]
+            tz_input = data.get("timezone", "UTC").strip()
+            try:
+                zoneinfo.ZoneInfo(tz_input)
+            except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+                raise ValueError(f"Invalid timezone: {tz_input}.") from None
+            fiscal_year_start = data.get("fiscal_year_start", "01-01").strip()
+            datetime.strptime(f"{fiscal_year_start}-2000", "%m-%d-%Y")
+            primary_color = data.get("primary_color", "#4361ee").strip()
+            if not re.fullmatch(r"#[0-9a-fA-F]{6}", primary_color):
+                raise ValueError("Primary color must be a six-digit hex color.")
+            currency = None
+            currency_id = data.get("default_currency", "").strip()
+            if currency_id:
+                currency = _related_object(
+                    Currency, currency_id, "active currency", is_active=True
+                )
+
+            valuation_method = company.inventory_valuation_method
+            if "inventory_valuation_method" in data:
+                valuation_method = _choice(
+                    data["inventory_valuation_method"],
+                    Company._meta.get_field("inventory_valuation_method").choices,
+                    "inventory valuation method",
+                )
+        except (ValueError, ValidationError) as exc:
+            messages.error(request, str(exc) or "Invalid company settings.")
+            return redirect("company:settings")
+
+        company.name = name
+        company.legal_name = legal_name
+        company.tax_id = tax_id
+        company.vat_number = vat_number
+        company.phone = phone
+        company.email = email
+        company.website = website
+        company.address_line1 = address_line1
+        company.city = city
+        company.country = country
+        company.language = language
+        company.timezone = tz_input
+        company.fiscal_year_start = fiscal_year_start
+        company.primary_color = primary_color
+        company.inventory_valuation_method = valuation_method
+        if currency is not None:
+            company.default_currency = currency
         if request.FILES.get("logo"):
             company.logo = request.FILES["logo"]
         company.save()
@@ -252,19 +397,41 @@ class BranchCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         try:
+            name = _required_text(data, "name", "Branch name", 255)
+            code = _required_text(data, "code", "Branch code", 20)
+            email = _optional_text(data, "email", "Email", 254)
+            if email:
+                validate_email(email)
+            manager_id = data.get("manager", "").strip()
+            manager = None
+            if manager_id:
+                membership = UserCompany.objects.filter(
+                    company=company, user_id=manager_id, is_active=True,
+                    user__is_active=True,
+                ).select_related("user").first()
+                if not membership:
+                    raise ValueError("Select an active company branch manager.")
+                manager = membership.user
+            is_headquarters = _checkbox(data, "is_headquarters")
+            phone = _optional_text(data, "phone", "Phone", 30)
+            address_line1 = _optional_text(data, "address_line1", "Address", 255)
+            city = _optional_text(data, "city", "City", 100)
+            country = _optional_text(data, "country", "Country", 100)
             Branch.objects.create(
                 company=company,
-                name=data["name"],
-                code=data["code"],
-                is_headquarters=data.get("is_headquarters") == "on",
-                phone=data.get("phone", ""),
-                email=data.get("email", ""),
-                address_line1=data.get("address_line1", ""),
-                city=data.get("city", ""),
-                country=data.get("country", ""),
-                manager_id=data.get("manager") or None,
+                name=name,
+                code=code,
+                is_headquarters=is_headquarters,
+                phone=phone,
+                email=email,
+                address_line1=address_line1,
+                city=city,
+                country=country,
+                manager=manager,
             )
             messages.success(request, "Branch created.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error: {e}")
         return redirect("company:branches")
@@ -324,17 +491,45 @@ class DepartmentCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         try:
+            from apps.authentication.models import UserCompany
+
+            name = _required_text(data, "name", "Department name", 255)
+            code = _required_text(data, "code", "Department code", 20)
+            description = _optional_text(data, "description", "Description", 10000)
+            cost_center = _optional_text(data, "cost_center", "Cost center", 50)
+            parent_id = data.get("parent", "").strip()
+            branch_id = data.get("branch", "").strip()
+            head_id = data.get("head", "").strip()
+            parent = _related_object(
+                Department, parent_id, "parent department",
+                company=company, is_deleted=False,
+            )
+            branch = _related_object(
+                Branch, branch_id, "active branch",
+                company=company, is_active=True, is_deleted=False,
+            )
+            head = None
+            if head_id:
+                membership = UserCompany.objects.filter(
+                    company=company, user_id=head_id, is_active=True,
+                    user__is_active=True,
+                ).select_related("user").first()
+                if not membership:
+                    raise ValueError("Select an active company department head.")
+                head = membership.user
             Department.objects.create(
                 company=company,
-                name=data["name"],
-                code=data["code"],
-                description=data.get("description", ""),
-                parent_id=data.get("parent") or None,
-                branch_id=data.get("branch") or None,
-                head_id=data.get("head") or None,
-                cost_center=data.get("cost_center", ""),
+                name=name,
+                code=code,
+                description=description,
+                parent=parent,
+                branch=branch,
+                head=head,
+                cost_center=cost_center,
             )
             messages.success(request, "Department created.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error: {e}")
         return redirect("company:departments")
@@ -359,39 +554,39 @@ class UserManagementView(CompanyMixin, ListView):
 class InviteUserView(CompanyMixin, View):
     required_permission = "company.manage_users"
     def post(self, request):
-        email = request.POST.get("email")
-        role = request.POST.get("role", "employee")
         company = self.company()
-
-        if not company:
-            messages.error(
-                request, "You must have a primary company set to invite users."
-            )
-            return redirect("company:users")
 
         from apps.authentication.models import User, UserCompany
 
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                "first_name": email.split("@")[0],
-                "role": role,
-                "is_active": True,
-            },
-        )
+        try:
+            email = _required_text(request.POST, "email", "Email", 254).lower()
+            validate_email(email)
+            role = _company_role(request.POST.get("role", User.Role.EMPLOYEE))
+            with transaction.atomic():
+                user, created = User.objects.get_or_create(
+                    email=email,
+                    defaults={
+                        "first_name": email.split("@")[0][:100],
+                        "role": role,
+                        "is_active": True,
+                    },
+                )
 
-        if created:
-            temp_pass = User.objects.make_random_password()
-            user.set_password(temp_pass)
-            user.save()
+                if created:
+                    temp_pass = User.objects.make_random_password()
+                    user.set_password(temp_pass)
+                    user.save()
 
-        UserCompany.objects.get_or_create(
-            user=user, company=company, defaults={"role_override": role}
-        )
+                UserCompany.objects.get_or_create(
+                    user=user, company=company, defaults={"role": role}
+                )
 
-        if not user.primary_company:
-            user.primary_company = company
-            user.save(update_fields=["primary_company"])
+                if not user.primary_company:
+                    user.primary_company = company
+                    user.save(update_fields=["primary_company"])
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
+            return redirect("company:users")
 
         messages.success(request, f"User {email} added to {company.name}.")
         return redirect("company:users")
@@ -419,20 +614,23 @@ class UserUpdateView(CompanyMixin, View):
         user_company = get_object_or_404(UserCompany, user=user, company=self.company())
 
         role = request.POST.get("role")
-        is_active = request.POST.get("is_active") == "on"
+        try:
+            role = _company_role(role)
+            is_active = _checkbox(request.POST, "is_active")
+            with transaction.atomic():
+                user_company.role = role
+                user_company.is_active = is_active
+                user_company.save(update_fields=["role", "is_active"])
 
-        if role:
-            user_company.role_override = role
-            user_company.is_active = is_active
-            user_company.save()
-
-            # Optionally update user's global role if they only have one company or it makes sense
-            if user.primary_company == self.company():
-                user.role = role
-                user.is_active = is_active
-                user.save(update_fields=["role", "is_active"])
-
-            messages.success(request, f"Updated {user.email} successfully.")
+                # Keep the legacy global role in sync only for the primary company.
+                if user.primary_company == self.company():
+                    user.role = role
+                    user.is_active = is_active
+                    user.save(update_fields=["role", "is_active"])
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
+            return redirect("company:users")
+        messages.success(request, f"Updated {user.email} successfully.")
         return redirect("company:users")
 
 
@@ -477,14 +675,22 @@ class FiscalYearCreateView(CompanyMixin, View):
         data = request.POST
         company = self.company()
         try:
+            name = _required_text(data, "name", "Fiscal year name", 100)
+            start_date = _valid_date(data.get("start_date"), "start")
+            end_date = _valid_date(data.get("end_date"), "end")
+            if end_date < start_date:
+                raise ValueError("Fiscal year end date must be on or after its start date.")
+            is_current = _checkbox(data, "is_current")
             FiscalYear.objects.create(
                 company=company,
-                name=data["name"],
-                start_date=data["start_date"],
-                end_date=data["end_date"],
-                is_current=data.get("is_current") == "on",
+                name=name,
+                start_date=start_date,
+                end_date=end_date,
+                is_current=is_current,
             )
             messages.success(request, "Fiscal year created.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error: {e}")
         return redirect("company:fiscal_years")
@@ -510,15 +716,31 @@ class CurrencyCreateView(CompanyMixin, View):
     required_permission = "company.create"
     def post(self, request):
         try:
+            import re
+
+            code = _required_text(request.POST, "code", "Currency code", 3).upper()
+            name = _required_text(request.POST, "name", "Currency name", 100)
+            symbol = _optional_text(request.POST, "symbol", "Currency symbol", 5)
+            raw_places = request.POST.get("decimal_places", "2")
+            if not raw_places.isdigit():
+                raise ValueError("Currency decimal places must be a whole number.")
+            decimal_places = int(raw_places)
+            if not 0 <= decimal_places <= 4:
+                raise ValueError("Currency decimal places must be between 0 and 4.")
+            if not re.fullmatch(r"[A-Z]{3}", code):
+                raise ValueError("Currency code must contain exactly three letters.")
+            is_base = _checkbox(request.POST, "is_base")
             Currency.objects.create(
-                code=request.POST["code"].upper(),
-                name=request.POST["name"],
-                symbol=request.POST.get("symbol", ""),
-                decimal_places=int(request.POST.get("decimal_places", 2)),
-                is_base=request.POST.get("is_base") == "on",
+                code=code,
+                name=name,
+                symbol=symbol,
+                decimal_places=decimal_places,
+                is_base=is_base,
                 is_active=True,
             )
             messages.success(request, "Currency added successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error: {e}")
         return redirect("company:currencies")
@@ -536,6 +758,19 @@ class CurrencyUpdateView(CompanyMixin, UpdateView):
         return reverse_lazy("company:currencies")
 
     def form_valid(self, form):
+        import re
+
+        code = form.cleaned_data["code"].strip().upper()
+        decimal_places = form.cleaned_data["decimal_places"]
+        if not re.fullmatch(r"[A-Z]{3}", code):
+            form.add_error("code", "Currency code must contain exactly three letters.")
+            return self.form_invalid(form)
+        if not 0 <= decimal_places <= 4:
+            form.add_error(
+                "decimal_places", "Currency decimal places must be between 0 and 4."
+            )
+            return self.form_invalid(form)
+        form.instance.code = code
         messages.success(self.request, "Currency updated successfully.")
         return super().form_valid(form)
 
@@ -563,21 +798,41 @@ class ExchangeRateCreateView(CompanyMixin, View):
     required_permission = "company.create"
     def post(self, request):
         try:
-            from decimal import Decimal
-
-            from_currency_id = request.POST["from_currency"]
-            to_currency_id = request.POST["to_currency"]
-            rate = Decimal(request.POST["rate"])
-            effective_date = request.POST["effective_date"]
+            from_currency = _related_object(
+                Currency,
+                request.POST.get("from_currency", "").strip(),
+                "active source currency",
+                is_active=True,
+            )
+            to_currency = _related_object(
+                Currency,
+                request.POST.get("to_currency", "").strip(),
+                "active destination currency",
+                is_active=True,
+            )
+            if from_currency == to_currency:
+                raise ValueError("Source and destination currencies must be different.")
+            rate = _valid_decimal(
+                request.POST.get("rate"),
+                "exchange rate",
+                max_digits=20,
+                decimal_places=6,
+                minimum=Decimal("0.000001"),
+            )
+            effective_date = _valid_date(
+                request.POST.get("effective_date"), "effective"
+            )
 
             ExchangeRate.objects.create(
-                from_currency_id=from_currency_id,
-                to_currency_id=to_currency_id,
+                from_currency=from_currency,
+                to_currency=to_currency,
                 rate=rate,
                 effective_date=effective_date,
                 source="manual",
             )
             messages.success(request, "Exchange rate added successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error: {e}")
         return redirect("company:currencies")
@@ -605,14 +860,26 @@ class UomCreateView(CompanyMixin, View):
     required_permission = "company.create"
     def post(self, request):
         try:
+            name = _required_text(request.POST, "name", "Unit name", 100)
+            abbreviation = _required_text(
+                request.POST, "abbreviation", "Abbreviation", 20
+            )
+            uom_type = _choice(
+                request.POST.get("uom_type", "unit"),
+                UnitOfMeasure._meta.get_field("uom_type").choices,
+                "unit type",
+            )
+            is_active = _checkbox(request.POST, "is_active")
             UnitOfMeasure.objects.create(
                 company=self.company(),
-                name=request.POST["name"],
-                abbreviation=request.POST["abbreviation"],
-                uom_type=request.POST.get("uom_type", "unit"),
-                is_active=request.POST.get("is_active") == "on",
+                name=name,
+                abbreviation=abbreviation,
+                uom_type=uom_type,
+                is_active=is_active,
             )
             messages.success(request, "Unit of Measure created successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error creating UOM: {e}")
         return redirect("company:uoms")
@@ -623,12 +890,24 @@ class UomUpdateView(CompanyMixin, View):
     def post(self, request, pk):
         try:
             uom = get_object_or_404(UnitOfMeasure, pk=pk, company=self.company())
-            uom.name = request.POST["name"]
-            uom.abbreviation = request.POST["abbreviation"]
-            uom.uom_type = request.POST.get("uom_type", "unit")
-            uom.is_active = request.POST.get("is_active") == "on"
+            name = _required_text(request.POST, "name", "Unit name", 100)
+            abbreviation = _required_text(
+                request.POST, "abbreviation", "Abbreviation", 20
+            )
+            uom_type = _choice(
+                request.POST.get("uom_type", "unit"),
+                UnitOfMeasure._meta.get_field("uom_type").choices,
+                "unit type",
+            )
+            is_active = _checkbox(request.POST, "is_active")
+            uom.name = name
+            uom.abbreviation = abbreviation
+            uom.uom_type = uom_type
+            uom.is_active = is_active
             uom.save()
             messages.success(request, "Unit of Measure updated successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error updating UOM: {e}")
         return redirect("company:uoms")
@@ -684,22 +963,54 @@ class TaxCreateView(CompanyMixin, View):
     required_permission = "company.create"
     def post(self, request):
         try:
-            from decimal import Decimal
+            from apps.accounting.models import Account
 
-            tax_group_id = request.POST.get("tax_group")
-            tax_account_id = request.POST.get("tax_account")
+            company = self.company()
+            name = _required_text(request.POST, "name", "Tax name", 100)
+            rate = _valid_decimal(
+                request.POST.get("rate"),
+                "tax rate",
+                max_digits=7,
+                decimal_places=4,
+                minimum=Decimal("0"),
+            )
+            tax_type = _choice(
+                request.POST.get("tax_type", Tax.TaxType.PERCENTAGE),
+                Tax.TaxType.choices,
+                "tax type",
+            )
+            if tax_type == Tax.TaxType.PERCENTAGE and rate > Decimal("100"):
+                raise ValueError("Percentage tax rate cannot exceed 100.")
+            tax_group = _related_object(
+                TaxGroup,
+                request.POST.get("tax_group", "").strip(),
+                "active tax group",
+                company=company,
+                is_active=True,
+            )
+            tax_account = _related_object(
+                Account,
+                request.POST.get("tax_account", "").strip(),
+                "active tax account",
+                company=company,
+                is_active=True,
+            )
+            is_compound = _checkbox(request.POST, "is_compound")
+            is_active = _checkbox(request.POST, "is_active")
 
             Tax.objects.create(
-                company=self.company(),
-                name=request.POST["name"],
-                rate=Decimal(request.POST["rate"]),
-                tax_type=request.POST.get("tax_type", "percentage"),
-                tax_group_id=tax_group_id if tax_group_id else None,
-                tax_account_id=tax_account_id if tax_account_id else None,
-                is_compound=request.POST.get("is_compound") == "on",
-                is_active=request.POST.get("is_active") == "on",
+                company=company,
+                name=name,
+                rate=rate,
+                tax_type=tax_type,
+                tax_group=tax_group,
+                tax_account=tax_account,
+                is_compound=is_compound,
+                is_active=is_active,
             )
             messages.success(request, "Tax created successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error creating tax: {e}")
         return redirect("company:taxes")
@@ -709,22 +1020,52 @@ class TaxUpdateView(CompanyMixin, View):
     required_permission = "company.update"
     def post(self, request, pk):
         try:
-            from decimal import Decimal
+            from apps.accounting.models import Account
 
             tax = get_object_or_404(Tax, pk=pk, company=self.company())
-            tax.name = request.POST["name"]
-            tax.rate = Decimal(request.POST["rate"])
-            tax.tax_type = request.POST.get("tax_type", "percentage")
-
-            tax_group_id = request.POST.get("tax_group")
-            tax_account_id = request.POST.get("tax_account")
-            tax.tax_group_id = tax_group_id if tax_group_id else None
-            tax.tax_account_id = tax_account_id if tax_account_id else None
-
-            tax.is_compound = request.POST.get("is_compound") == "on"
-            tax.is_active = request.POST.get("is_active") == "on"
+            company = self.company()
+            name = _required_text(request.POST, "name", "Tax name", 100)
+            rate = _valid_decimal(
+                request.POST.get("rate"),
+                "tax rate",
+                max_digits=7,
+                decimal_places=4,
+                minimum=Decimal("0"),
+            )
+            tax_type = _choice(
+                request.POST.get("tax_type", Tax.TaxType.PERCENTAGE),
+                Tax.TaxType.choices,
+                "tax type",
+            )
+            if tax_type == Tax.TaxType.PERCENTAGE and rate > Decimal("100"):
+                raise ValueError("Percentage tax rate cannot exceed 100.")
+            tax_group = _related_object(
+                TaxGroup,
+                request.POST.get("tax_group", "").strip(),
+                "active tax group",
+                company=company,
+                is_active=True,
+            )
+            tax_account = _related_object(
+                Account,
+                request.POST.get("tax_account", "").strip(),
+                "active tax account",
+                company=company,
+                is_active=True,
+            )
+            is_compound = _checkbox(request.POST, "is_compound")
+            is_active = _checkbox(request.POST, "is_active")
+            tax.name = name
+            tax.rate = rate
+            tax.tax_type = tax_type
+            tax.tax_group = tax_group
+            tax.tax_account = tax_account
+            tax.is_compound = is_compound
+            tax.is_active = is_active
             tax.save()
             messages.success(request, "Tax updated successfully.")
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f"Error updating tax: {e}")
         return redirect("company:taxes")

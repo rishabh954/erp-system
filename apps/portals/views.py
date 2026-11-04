@@ -1,16 +1,20 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, View
 
 from apps.crm.models import Contract
 from apps.documents.models import Document
+from apps.helpdesk.forms import TicketCreateForm
 from apps.helpdesk.models import Ticket, TicketCategory, TicketReply
 from apps.hrms.models import Employee, ExpenseClaim, LeaveRequest
 from apps.purchase.models import Bill, PurchaseOrder
 from apps.purchase.models import Payment as PurchasePayment
 from apps.sales.models import Invoice, SalesOrder, Shipment
 from apps.sales.models import Payment as SalesPayment
+
+from .forms import CustomerProfileForm, VendorProfileForm
 
 # ------------------------------------------------------------------------
 # CUSTOMER PORTAL VIEWS
@@ -194,16 +198,17 @@ class CustomerTicketDetailView(CustomerPortalMixin, View):
         ticket = get_object_or_404(Ticket, pk=pk, customer=cust)
         content = request.POST.get("content", "").strip()
         if content:
-            TicketReply.objects.create(
-                company=ticket.company,
-                ticket=ticket,
-                author=request.user,
-                content=content,
-                is_internal=False,
-            )
-            if ticket.status in ["resolved", "closed"]:
-                ticket.status = Ticket.Status.REOPENED
-                ticket.save(update_fields=["status"])
+            with transaction.atomic():
+                TicketReply.objects.create(
+                    company=ticket.company,
+                    ticket=ticket,
+                    author=request.user,
+                    content=content,
+                    is_internal=False,
+                )
+                if ticket.status in ["resolved", "closed"]:
+                    ticket.status = Ticket.Status.REOPENED
+                    ticket.save(update_fields=["status"])
             messages.success(request, "Your reply has been sent.")
         return redirect("portals:customer_ticket_detail", pk=pk)
 
@@ -213,37 +218,40 @@ class CustomerTicketCreateView(CustomerPortalMixin, View):
     template_name = "portals/customer_ticket_create.html"
 
     def get(self, request):
-        categories = TicketCategory.objects.filter(is_active=True)
+        customer = self.get_customer()
+        categories = TicketCategory.objects.filter(
+            company=customer.company, is_active=True, is_deleted=False
+        )
         return render(
             request,
             self.template_name,
-            {"categories": categories, "customer": self.get_customer()},
+            {"categories": categories, "customer": customer},
         )
 
     def post(self, request):
         cust = self.get_customer()
-        title = request.POST.get("title", "").strip()
-        description = request.POST.get("description", "").strip()
-        priority = request.POST.get("priority", "medium")
-        category_id = request.POST.get("category")
-        if not title or not description:
-            messages.error(request, "Subject and description are required.")
+        form = TicketCreateForm(request.POST, company=cust.company)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
+            )
             return redirect("portals:customer_ticket_create")
-        category = (
-            TicketCategory.objects.filter(pk=category_id).first()
-            if category_id
-            else None
-        )
-        ticket = Ticket.objects.create(
-            company=cust.company,
-            customer=cust,
-            title=title,
-            description=description,
-            priority=priority,
-            category=category,
-            source=Ticket.Source.PORTAL,
-            status=Ticket.Status.OPEN,
-        )
+        data = form.cleaned_data
+        with transaction.atomic():
+            ticket = Ticket.objects.create(
+                company=cust.company,
+                customer=cust,
+                title=data["title"],
+                description=data["description"],
+                priority=data["priority"],
+                category=data["category"],
+                requester=request.user,
+                source=Ticket.Source.PORTAL,
+                status=Ticket.Status.OPEN,
+            )
         messages.success(request, f"Ticket {ticket.number} submitted successfully.")
         return redirect("portals:customer_ticket_detail", pk=ticket.pk)
 
@@ -357,9 +365,21 @@ class CustomerProfileView(CustomerPortalMixin, View):
 
     def post(self, request):
         cust = self.get_customer()
-        cust.phone = request.POST.get("phone", cust.phone)
-        cust.billing_address = request.POST.get("billing_address", cust.billing_address)
-        cust.save()
+        form = CustomerProfileForm(request.POST)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
+            )
+            return redirect("portals:customer_profile")
+        with transaction.atomic():
+            if "phone" in request.POST:
+                cust.phone = form.cleaned_data["phone"]
+            if "billing_address" in request.POST:
+                cust.address_line1 = form.cleaned_data["billing_address"]
+            cust.save(update_fields=["phone", "address_line1"])
         messages.success(request, "Profile updated successfully.")
         return redirect("portals:customer_profile")
 
@@ -511,8 +531,18 @@ class VendorProfileView(VendorPortalMixin, View):
 
     def post(self, request):
         vendor = self.get_vendor()
-        vendor.phone = request.POST.get("phone", vendor.phone)
-        vendor.save()
+        form = VendorProfileForm(request.POST)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
+            )
+            return redirect("portals:vendor_profile")
+        if "phone" in request.POST:
+            vendor.phone = form.cleaned_data["phone"]
+            vendor.save(update_fields=["phone"])
         messages.success(request, "Profile updated successfully.")
         return redirect("portals:vendor_profile")
 

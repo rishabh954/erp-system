@@ -99,20 +99,17 @@ class ProductViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         notes = request.data.get("notes", "")
         stock_service = StockService(company=product.company, user=request.user)
         try:
-            if adjustment_type == "add":
-                record = stock_service.receive_stock(
-                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
-                )
-            elif adjustment_type == "remove":
-                record = stock_service.issue_stock(
-                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
-                )
-            else:  # set
-                record = stock_service.set_stock(
-                    product=product, warehouse=warehouse, qty=quantity, reference="MANUAL_ADJUST", notes=notes
-                )
+            stock_service.adjust_stock(
+                product=product,
+                warehouse=warehouse,
+                qty_input=quantity,
+                adjustment_type=adjustment_type,
+                notes=notes,
+                reference_type="MANUAL_ADJUST",
+            )
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        record = StockRecord.objects.get(product=product, warehouse=warehouse)
 
         return Response(
             {
@@ -330,12 +327,15 @@ class BarcodeScanViewSet(viewsets.ViewSet):
                 product=product,
                 warehouse=warehouse,
                 qty=qty,
-                reference="BARCODE_SCAN",
+                unit_cost=product.cost_price,
+                reference_type="BARCODE_SCAN",
+                reference_id="",
                 notes=f"Barcode scan receipt by {request.user.email}",
             )
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        record = StockRecord.objects.get(product=product, warehouse=warehouse)
         return Response(
             {
                 "status": "success",

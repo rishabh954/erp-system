@@ -4,6 +4,7 @@ Leads, Pipeline, Customers, Activities
 """
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -20,7 +21,13 @@ from django.views.generic import (
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
-from .forms import LeadForm
+from .forms import (
+    CampaignForm,
+    ContractForm,
+    CustomerForm,
+    LeadActivityForm,
+    LeadForm,
+)
 from .models import Campaign, Contract, Customer, Lead, LeadActivity
 
 
@@ -145,6 +152,11 @@ class LeadCreateView(CompanyMixin, CreateView):
     form_class = LeadForm
     template_name = "crm/leads/form.html"
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["company"] = self.company()
+        return kwargs
+
     def get_context_data(self, **kwargs):
         from apps.authentication.models import User
 
@@ -189,6 +201,16 @@ class LeadUpdateView(CompanyMixin, UpdateView):
     form_class = LeadForm
     template_name = "crm/leads/form.html"
     context_object_name = "lead"
+
+    def get_queryset(self):
+        return Lead.objects.filter(
+            company=self.company(), is_deleted=False
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["company"] = self.company()
+        return kwargs
 
     def get_context_data(self, **kwargs):
         from apps.authentication.models import User
@@ -254,25 +276,28 @@ class LeadUpdateStatusView(CompanyMixin, View):
                 logging.getLogger(__name__).warning("Failed to parse status: %s", e)
 
         if new_status in dict(Lead.Status.choices):
-            lead.status = new_status
-            if new_status == "won":
-                lead.converted_to_customer = True
-                if not lead.customer:
-                    # Create Customer
-                    from core.services import BaseService
-
-                    cust = Customer(
-                        company=lead.company,
-                        name=lead.company_name if lead.company_name else lead.name,
-                        email=lead.email,
-                        phone=lead.phone,
-                    )
-                    cust.customer_code = BaseService.generate_sequence_number(
-                        "CUST", Customer, lead.company.pk, field_name="customer_code"
-                    )
-                    cust.save()
-                    lead.customer = cust
-            lead.save(update_fields=["status", "converted_to_customer", "customer"])
+            with transaction.atomic():
+                lead.status = new_status
+                if new_status == "won":
+                    lead.converted_to_customer = True
+                    if not lead.customer:
+                        cust = Customer(
+                            company=lead.company,
+                            name=lead.company_name if lead.company_name else lead.name,
+                            email=lead.email,
+                            phone=lead.phone,
+                        )
+                        cust.customer_code = BaseService.generate_sequence_number(
+                            "CUST",
+                            Customer,
+                            lead.company.pk,
+                            field_name="customer_code",
+                        )
+                        cust.save()
+                        lead.customer = cust
+                lead.save(
+                    update_fields=["status", "converted_to_customer", "customer"]
+                )
             return JsonResponse(
                 {"ok": True, "status": new_status, "label": lead.get_status_display()}
             )
@@ -338,19 +363,25 @@ class CampaignDetailView(CompanyMixin, DetailView):
 
 class CampaignCreateView(CompanyMixin, View):
     required_permission = "crm.create"
+
     def get(self, request):
         return render(
             request, "crm/campaigns/create.html", {"statuses": Campaign.Status.choices}
         )
 
     def post(self, request):
-        Campaign.objects.create(
-            company=self.company(),
-            name=request.POST.get("name"),
-            status=request.POST.get("status", "planning"),
-            budget=request.POST.get("budget") or 0,
-            expected_revenue=request.POST.get("expected_revenue") or 0,
-        )
+        form = CampaignForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid campaign details.")
+            return render(
+                request,
+                "crm/campaigns/create.html",
+                {"statuses": Campaign.Status.choices},
+                status=400,
+            )
+        campaign = form.save(commit=False)
+        campaign.company = self.company()
+        campaign.save()
         messages.success(request, "Campaign created.")
         return redirect("crm:campaigns")
 
@@ -390,21 +421,22 @@ class LeadConvertView(CompanyMixin, View):
             messages.info(request, "Lead already converted to customer.")
             return redirect("crm:customer_detail", pk=lead.customer.pk)
 
-        customer = Customer(
-            company=lead.company,
-            name=lead.company_name or lead.name,
-            email=lead.email,
-            phone=lead.phone,
-        )
-        customer.customer_code = BaseService.generate_sequence_number(
-            "CUST", Customer, lead.company_id, field_name="customer_code"
-        )
-        customer.save()
+        with transaction.atomic():
+            customer = Customer(
+                company=lead.company,
+                name=lead.company_name or lead.name,
+                email=lead.email,
+                phone=lead.phone,
+            )
+            customer.customer_code = BaseService.generate_sequence_number(
+                "CUST", Customer, lead.company_id, field_name="customer_code"
+            )
+            customer.save()
 
-        lead.customer = customer
-        lead.status = Lead.Status.WON
-        lead.converted_to_customer = True
-        lead.save(update_fields=["customer", "status", "converted_to_customer"])
+            lead.customer = customer
+            lead.status = Lead.Status.WON
+            lead.converted_to_customer = True
+            lead.save(update_fields=["customer", "status", "converted_to_customer"])
 
         messages.success(request, f"Lead converted to customer: {customer.name}")
         return redirect("crm:customer_detail", pk=customer.pk)
@@ -427,33 +459,18 @@ class LeadToggleOpportunityView(CompanyMixin, View):
 
 class AddActivityView(CompanyMixin, View):
     required_permission = "crm.create"
+
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
-        duration = request.POST.get("duration_minutes")
-        scheduled_at_str = request.POST.get("scheduled_at")
-
-        scheduled_at = None
-        if scheduled_at_str:
-            from django.utils import timezone
-            from django.utils.dateparse import parse_datetime
-
-            dt = parse_datetime(scheduled_at_str)
-            if dt is not None:
-                if timezone.is_naive(dt):
-                    scheduled_at = timezone.make_aware(dt)
-                else:
-                    scheduled_at = dt
-
-        LeadActivity.objects.create(
-            company=self.company(),
-            lead=lead,
-            activity_type=request.POST.get("activity_type", "note"),
-            subject=request.POST.get("subject", ""),
-            description=request.POST.get("description", ""),
-            duration_minutes=int(duration) if duration else None,
-            scheduled_at=scheduled_at,
-            assigned_to=request.user,
-        )
+        form = LeadActivityForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid activity details.")
+            return redirect("crm:lead_detail", pk=pk)
+        activity = form.save(commit=False)
+        activity.company = self.company()
+        activity.lead = lead
+        activity.assigned_to = request.user
+        activity.save()
         messages.success(request, "Activity logged.")
         return redirect("crm:lead_detail", pk=pk)
 
@@ -603,66 +620,16 @@ class CustomerCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        data = request.POST
         company = self.company()
-
-        email = data.get("email", "").strip()
-        phone = data.get("phone", "").strip()
-
-        if (
-            email
-            and Customer.objects.filter(
-                company=company, email=email, is_deleted=False
-            ).exists()
-        ):
-            messages.error(request, f"A customer with email '{email}' already exists.")
+        form = CustomerForm(request.POST, company=company)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid customer details.")
             return redirect("crm:customer_create")
-
-        if (
-            phone
-            and Customer.objects.filter(
-                company=company, phone=phone, is_deleted=False
-            ).exists()
-        ):
-            messages.error(
-                request, f"A customer with phone number '{phone}' already exists."
-            )
-            return redirect("crm:customer_create")
-
-        try:
-            customer = Customer(
-                company=company,
-                name=data["name"],
-                customer_type=data.get("customer_type", "business"),
-                customer_code=data.get("customer_code", "")
-                or BaseService.generate_sequence_number(
-                    "CUST", Customer, company.pk, field_name="customer_code"
-                ),
-                email=data.get("email", ""),
-                phone=data.get("phone", ""),
-                address_line1=data.get("address_line1", ""),
-                city=data.get("city", ""),
-                country=data.get("country", ""),
-                shipping_address=data.get("shipping_address", ""),
-                shipping_same_as_billing=data.get("shipping_same_as_billing") == "on",
-                tax_id=data.get("tax_id", ""),
-                credit_limit=float(data.get("credit_limit", 0)),
-                payment_terms=int(data.get("payment_terms", 30)),
-                currency_id=data.get("currency") or None,
-                notes=data.get("notes", ""),
-            )
-            customer.save()
-            messages.success(request, f"Customer {customer.name} created.")
-            return redirect("crm:customer_detail", pk=customer.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return render(
-                request,
-                self.template_name,
-                {
-                    "customer_type_choices": Customer.CustomerType.choices,
-                },
-            )
+        customer = form.save(commit=False)
+        customer.company = company
+        customer.save()
+        messages.success(request, f"Customer {customer.name} created.")
+        return redirect("crm:customer_detail", pk=customer.pk)
 
 
 class CustomerUpdateView(CompanyMixin, View):
@@ -689,60 +656,14 @@ class CustomerUpdateView(CompanyMixin, View):
         customer = get_object_or_404(
             Customer, pk=pk, company=self.company(), is_deleted=False
         )
-        data = request.POST
         company = self.company()
-
-        email = data.get("email", "").strip()
-        phone = data.get("phone", "").strip()
-
-        if (
-            email
-            and Customer.objects.filter(company=company, email=email, is_deleted=False)
-            .exclude(pk=customer.pk)
-            .exists()
-        ):
-            messages.error(
-                request, f"Another customer with email '{email}' already exists."
-            )
+        form = CustomerForm(request.POST, instance=customer, company=company)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid customer details.")
             return redirect("crm:customer_update", pk=customer.pk)
-
-        if (
-            phone
-            and Customer.objects.filter(company=company, phone=phone, is_deleted=False)
-            .exclude(pk=customer.pk)
-            .exists()
-        ):
-            messages.error(
-                request, f"Another customer with phone number '{phone}' already exists."
-            )
-            return redirect("crm:customer_update", pk=customer.pk)
-
-        try:
-            customer.name = data["name"]
-            customer.customer_type = data.get("customer_type", "business")
-            if data.get("customer_code"):
-                customer.customer_code = data.get("customer_code")
-            customer.email = data.get("email", "")
-            customer.phone = data.get("phone", "")
-            customer.address_line1 = data.get("address_line1", "")
-            customer.city = data.get("city", "")
-            customer.country = data.get("country", "")
-            customer.shipping_address = data.get("shipping_address", "")
-            customer.shipping_same_as_billing = (
-                data.get("shipping_same_as_billing") == "on"
-            )
-            customer.tax_id = data.get("tax_id", "")
-            customer.credit_limit = float(data.get("credit_limit", 0))
-            customer.payment_terms = int(data.get("payment_terms", 30))
-            customer.currency_id = data.get("currency") or None
-            customer.notes = data.get("notes", "")
-            customer.is_active = data.get("is_active") == "on"
-            customer.save()
-            messages.success(request, f"Customer {customer.name} updated successfully.")
-            return redirect("crm:customer_detail", pk=customer.pk)
-        except Exception as e:
-            messages.error(request, f"Error updating customer: {e}")
-            return redirect("crm:customer_update", pk=customer.pk)
+        customer = form.save()
+        messages.success(request, f"Customer {customer.name} updated successfully.")
+        return redirect("crm:customer_detail", pk=customer.pk)
 
 
 class CustomerDeleteView(CompanyMixin, View):
@@ -885,6 +806,7 @@ class ContractDetailView(CompanyMixin, DetailView):
 
 class ContractCreateView(CompanyMixin, View):
     required_permission = "crm.create"
+
     def get(self, request):
         return render(
             request,
@@ -898,29 +820,15 @@ class ContractCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        try:
-            customer = get_object_or_404(
-                Customer, pk=request.POST.get("customer"), company=self.company()
-            )
-            contract = Contract.objects.create(
-                company=self.company(),
-                customer=customer,
-                title=request.POST.get("title"),
-                contract_number=request.POST.get("contract_number", ""),
-                status=request.POST.get("status", "draft"),
-                start_date=request.POST.get("start_date"),
-                end_date=request.POST.get("end_date") or None,
-                value=request.POST.get("value") or 0,
-                notes=request.POST.get("notes", ""),
-            )
-            if request.FILES.get("document"):
-                contract.document = request.FILES["document"]
-                contract.save()
-            messages.success(request, "Contract created successfully.")
-            return redirect("crm:contract_detail", pk=contract.pk)
-        except Exception as e:
-            messages.error(request, f"Error creating contract: {e}")
+        form = ContractForm(request.POST, request.FILES, company=self.company())
+        if not form.is_valid():
+            messages.error(request, "Please provide valid contract details.")
             return redirect("crm:contracts")
+        contract = form.save(commit=False)
+        contract.company = self.company()
+        contract.save()
+        messages.success(request, "Contract created successfully.")
+        return redirect("crm:contract_detail", pk=contract.pk)
 
 
 class ContractUpdateView(CompanyMixin, View):
@@ -941,29 +849,15 @@ class ContractUpdateView(CompanyMixin, View):
 
     def post(self, request, pk):
         contract = get_object_or_404(Contract, pk=pk, company=self.company())
-        try:
-            customer = get_object_or_404(
-                Customer, pk=request.POST.get("customer"), company=self.company()
-            )
-            contract.customer = customer
-            contract.title = request.POST.get("title")
-            contract.contract_number = request.POST.get("contract_number", "")
-            contract.status = request.POST.get("status", "draft")
-            contract.start_date = request.POST.get("start_date")
-            contract.end_date = request.POST.get("end_date") or None
-            contract.value = request.POST.get("value") or 0
-            if request.POST.get("notes") is not None:
-                contract.notes = request.POST.get("notes")
-
-            if request.FILES.get("document"):
-                contract.document = request.FILES["document"]
-
-            contract.save()
-            messages.success(request, "Contract updated successfully.")
+        form = ContractForm(
+            request.POST, request.FILES, instance=contract, company=self.company()
+        )
+        if not form.is_valid():
+            messages.error(request, "Please provide valid contract details.")
             return redirect("crm:contract_detail", pk=contract.pk)
-        except Exception as e:
-            messages.error(request, f"Error updating contract: {e}")
-            return redirect("crm:contract_detail", pk=contract.pk)
+        contract = form.save()
+        messages.success(request, "Contract updated successfully.")
+        return redirect("crm:contract_detail", pk=contract.pk)
 
 
 class ContractDeleteView(CompanyMixin, View):

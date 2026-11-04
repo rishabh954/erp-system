@@ -4,42 +4,80 @@
 <h2>New Bill of Material</h2>
 <form method="post" class="card shadow p-4">
     {% csrf_token %}
+    {% if errors %}
+    <div class="alert alert-danger" role="alert">
+        <strong>Please correct the following:</strong>
+        <ul class="mb-0">
+            {% for field, error in errors.items %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     <div class="mb-3">
         <label>Finished Product</label>
-        <select name="product" class="form-select" required>
+        <select name="product" class="form-select{% if errors.product %} is-invalid{% endif %}" required>
+            <option value="">-- Select Product --</option>
             {% for p in products %}
-            <option value="{{ p.pk }}">{{ p.name }}</option>
+            <option value="{{ p.pk }}" {% if form_data.product == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
             {% endfor %}
         </select>
+        {% if errors.product %}<div class="invalid-feedback">{{ errors.product }}</div>{% endif %}
     </div>
     <div class="mb-3">
         <label>Quantity</label>
-        <input type="number" name="quantity" class="form-control" value="1" step="0.01" required>
+        <input type="number" name="quantity" class="form-control{% if errors.quantity %} is-invalid{% endif %}" value="{{ form_data.quantity|default:'1' }}" step="0.0001" required>
+        {% if errors.quantity %}<div class="invalid-feedback">{{ errors.quantity }}</div>{% endif %}
     </div>
     <div class="mb-3">
         <label>Routing</label>
-        <select name="routing" class="form-select">
+        <select name="routing" class="form-select{% if errors.routing %} is-invalid{% endif %}">
             <option value="">-- None --</option>
             {% for r in routings %}
-            <option value="{{ r.pk }}">{{ r.name }}</option>
+            <option value="{{ r.pk }}" {% if form_data.routing == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
             {% endfor %}
         </select>
+        {% if errors.routing %}<div class="invalid-feedback">{{ errors.routing }}</div>{% endif %}
     </div>
     <hr>
     <h4>Components</h4>
     <div id="components">
+        {% if component_rows %}
+        {% for row in component_rows %}
         <div class="row mb-2">
             <div class="col">
-                <select name="component_id[]" class="form-select">
+                <select name="component_id[]" class="form-select{% if row.component_error %} is-invalid{% endif %}" required>
+                    <option value="">-- Select --</option>
+                    {% for p in products %}
+                    <option value="{{ p.pk }}" {% if row.component_id == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                {% if row.component_error %}<div class="invalid-feedback">{{ row.component_error }}</div>{% endif %}
+            </div>
+            <div class="col">
+                <input type="number" name="line_quantity[]" class="form-control{% if row.quantity_error %} is-invalid{% endif %}" placeholder="Qty" step="0.0001" value="{{ row.quantity }}" required>
+                {% if row.quantity_error %}<div class="invalid-feedback">{{ row.quantity_error }}</div>{% endif %}
+            </div>
+            <div class="col">
+                <input type="number" name="scrap_percentage[]" class="form-control{% if row.scrap_error %} is-invalid{% endif %}" placeholder="Scrap %" step="0.01" value="{{ row.scrap_percentage }}">
+                {% if row.scrap_error %}<div class="invalid-feedback">{{ row.scrap_error }}</div>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="row mb-2">
+            <div class="col">
+                <select name="component_id[]" class="form-select" required>
                     <option value="">-- Select --</option>
                     {% for p in products %}
                     <option value="{{ p.pk }}">{{ p.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col"><input type="number" name="line_quantity[]" class="form-control" placeholder="Qty" step="0.01" value="1"></div>
+            <div class="col"><input type="number" name="line_quantity[]" class="form-control" placeholder="Qty" step="0.0001" value="1" required></div>
             <div class="col"><input type="number" name="scrap_percentage[]" class="form-control" placeholder="Scrap %" step="0.01" value="0"></div>
         </div>
+        {% endif %}
     </div>
     <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="document.getElementById('components').insertAdjacentHTML('beforeend', document.querySelector('#components .row').outerHTML);">Add Component</button>
     <br>

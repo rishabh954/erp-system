@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from apps.authentication.models import User, UserCompany
 from apps.crm.models import Customer
+from apps.helpdesk.models import Ticket, TicketCategory, TicketReply
 from apps.purchase.models import PurchaseOrder, Vendor
 from apps.sales.models import SalesOrder
 from core.factories import CompanyFactory, UserFactory
@@ -157,3 +158,112 @@ def test_vendor_portal_isolation(client, company, company_b, vendor_a, vendor_b)
     url_detail_b = reverse("portals:vendor_order_detail", kwargs={"pk": po_b.pk})
     response_b = client.get(url_detail_b)
     assert response_b.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"title": "   ", "description": "Problem"},
+        {"title": "Problem", "description": "  "},
+        {"title": "Problem", "description": "Details", "priority": "urgent?"},
+    ],
+)
+def test_customer_ticket_rejects_invalid_input_without_writes(
+    client, customer_a, company, payload
+):
+    client.force_login(customer_a.portal_user)
+    before = Ticket.objects.filter(company=company).count()
+
+    response = client.post(reverse("portals:customer_ticket_create"), payload)
+
+    assert response.status_code == 302
+    assert Ticket.objects.filter(company=company).count() == before
+
+
+def test_customer_ticket_rejects_foreign_category_without_writes(
+    client, customer_a, company, company_b
+):
+    client.force_login(customer_a.portal_user)
+    foreign_category = TicketCategory.objects.create(
+        company=company_b, name="Other company category", sla_hours=8
+    )
+    before = Ticket.objects.filter(company=company).count()
+
+    response = client.post(
+        reverse("portals:customer_ticket_create"),
+        {
+            "title": "Support request",
+            "description": "Details",
+            "category": str(foreign_category.pk),
+        },
+    )
+
+    assert response.status_code == 302
+    assert Ticket.objects.filter(company=company).count() == before
+
+
+def test_customer_ticket_uses_portal_default_and_company_category(
+    client, customer_a, company
+):
+    client.force_login(customer_a.portal_user)
+    category = TicketCategory.objects.create(
+        company=company, name="Customer support", sla_hours=12
+    )
+
+    response = client.post(
+        reverse("portals:customer_ticket_create"),
+        {
+            "title": "Support request",
+            "description": "Details",
+            "category": str(category.pk),
+        },
+    )
+
+    ticket = Ticket.objects.get(company=company, customer=customer_a)
+    assert response.status_code == 302
+    assert ticket.category == category
+    assert ticket.priority == Ticket.Priority.MEDIUM
+    assert ticket.source == Ticket.Source.PORTAL
+
+
+def test_customer_ticket_reply_is_atomic_and_ignores_whitespace(
+    client, customer_a, company
+):
+    client.force_login(customer_a.portal_user)
+    ticket = Ticket.objects.create(
+        company=company,
+        customer=customer_a,
+        requester=customer_a.portal_user,
+        title="Existing",
+        description="Details",
+        status=Ticket.Status.RESOLVED,
+    )
+
+    response = client.post(
+        reverse("portals:customer_ticket_detail", kwargs={"pk": ticket.pk}),
+        {"content": "   "},
+    )
+
+    ticket.refresh_from_db()
+    assert response.status_code == 302
+    assert not TicketReply.objects.filter(ticket=ticket).exists()
+    assert ticket.status == Ticket.Status.RESOLVED
+
+
+def test_customer_profile_rejects_oversized_values_without_partial_write(
+    client, customer_a
+):
+    customer_a.phone = "555-0100"
+    customer_a.address_line1 = "Existing address"
+    customer_a.save(update_fields=["phone", "address_line1"])
+    client.force_login(customer_a.portal_user)
+
+    response = client.post(
+        reverse("portals:customer_profile"),
+        {"phone": "1" * 31, "billing_address": "New address"},
+    )
+
+    customer_a.refresh_from_db()
+    assert response.status_code == 302
+    assert customer_a.phone == "555-0100"
+    assert customer_a.address_line1 == "Existing address"

@@ -3,7 +3,11 @@ Authentication Forms
 Login, Register, Password Reset, Profile, 2FA
 """
 
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from django import forms
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from apps.company.models import Company
@@ -52,10 +56,22 @@ class RegisterForm(forms.ModelForm):
         }
 
     def clean_email(self):
-        email = self.cleaned_data["email"]
+        email = self.cleaned_data["email"].strip().lower()
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError(_("An account with this email already exists."))
         return email
+
+    def clean_first_name(self):
+        value = self.cleaned_data["first_name"].strip()
+        if not value:
+            raise forms.ValidationError(_("First name cannot be blank."))
+        return value
+
+    def clean_last_name(self):
+        value = self.cleaned_data["last_name"].strip()
+        if not value:
+            raise forms.ValidationError(_("Last name cannot be blank."))
+        return value
 
     def clean(self):
         cleaned_data = super().clean()
@@ -73,6 +89,16 @@ class RegisterForm(forms.ModelForm):
                 )
         if cleaned_data.get("password1") != cleaned_data.get("password2"):
             self.add_error("password2", _("Passwords do not match."))
+        password = cleaned_data.get("password1")
+        if password:
+            candidate = self.instance
+            candidate.first_name = cleaned_data.get("first_name", "")
+            candidate.last_name = cleaned_data.get("last_name", "")
+            candidate.email = cleaned_data.get("email", "")
+            try:
+                validate_password(password, user=candidate)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
         return cleaned_data
 
 
@@ -94,10 +120,20 @@ class PasswordResetConfirmForm(forms.Form):
         label=_("Confirm New Password"),
     )
 
+    def __init__(self, user=None, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
     def clean(self):
         cd = super().clean()
         if cd.get("password1") != cd.get("password2"):
             self.add_error("password2", _("Passwords do not match."))
+        password = cd.get("password1")
+        if password:
+            try:
+                validate_password(password, user=self.user)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
         return cd
 
 
@@ -123,6 +159,26 @@ class ProfileUpdateForm(forms.ModelForm):
             "theme": forms.Select(attrs={"class": "form-select"}),
             "date_format": forms.TextInput(attrs={"class": "form-control"}),
         }
+
+    def clean_first_name(self):
+        value = self.cleaned_data["first_name"].strip()
+        if not value:
+            raise forms.ValidationError(_("First name cannot be blank."))
+        return value
+
+    def clean_last_name(self):
+        value = self.cleaned_data["last_name"].strip()
+        if not value:
+            raise forms.ValidationError(_("Last name cannot be blank."))
+        return value
+
+    def clean_timezone(self):
+        value = self.cleaned_data["timezone"].strip()
+        try:
+            ZoneInfo(value)
+        except (ValueError, ZoneInfoNotFoundError):
+            raise forms.ValidationError(_("Enter a valid IANA time zone.")) from None
+        return value
 
 
 class ChangePasswordForm(forms.Form):
@@ -154,6 +210,12 @@ class ChangePasswordForm(forms.Form):
         cd = super().clean()
         if cd.get("password1") != cd.get("password2"):
             self.add_error("password2", _("Passwords do not match."))
+        password = cd.get("password1")
+        if password:
+            try:
+                validate_password(password, user=self.user)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
         return cd
 
     def save(self):

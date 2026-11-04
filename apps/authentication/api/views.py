@@ -4,6 +4,7 @@ JWT login, user management, RBAC endpoints
 """
 
 import logging
+import re
 
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -108,6 +109,11 @@ class TwoFactorVerifyAPIView(APIView):
         if not partial_token or not totp_code:
             return Response(
                 {"error": "partial_token and code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not isinstance(totp_code, str) or re.fullmatch(r"[0-9]{6}", totp_code) is None:
+            return Response(
+                {"error": "The verification code must contain exactly 6 digits."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

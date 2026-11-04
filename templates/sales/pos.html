@@ -285,8 +285,12 @@ function posApp() {
         },
         body: JSON.stringify({
           customer_id: this.selectedCustomer,
-          items: this.cart,
-          amount_paid: paid,
+          items: this.cart.map(item => ({
+            ...item,
+            price: item.price.toFixed(4),
+            quantity: item.quantity.toFixed(4),
+          })),
+          amount_paid: paid.toFixed(2),
           payment_method: this.paymentMethod,
         })
       })

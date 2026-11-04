@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -232,20 +233,21 @@ class RegisterView(View):
         if not form.is_valid():
             return render(request, self.template_name, {"form": form})
 
-        user = form.save(commit=False)
-        user.is_active = False  # Require admin approval before login
-        user.set_password(form.cleaned_data["password1"])
-        company = form.company
-        if company:
-            user.primary_company = company
-        user.save()
-        if company:
-            UserCompany.objects.create(
-                user=user,
-                company=company,
-                role=User.Role.EMPLOYEE,
-                is_active=False,
-            )
+        with transaction.atomic():
+            user = form.save(commit=False)
+            user.is_active = False  # Require admin approval before login
+            user.set_password(form.cleaned_data["password1"])
+            company = form.company
+            if company:
+                user.primary_company = company
+            user.save()
+            if company:
+                UserCompany.objects.create(
+                    user=user,
+                    company=company,
+                    role=User.Role.EMPLOYEE,
+                    is_active=False,
+                )
 
         service = AuthService()
         service.send_email_verification(user, request)
@@ -321,7 +323,7 @@ class PasswordResetConfirmView(View):
         return render(
             request,
             self.template_name,
-            {"form": PasswordResetConfirmForm(), "token": token},
+            {"form": PasswordResetConfirmForm(user=record.user), "token": token},
         )
 
     def post(self, request, token):
@@ -332,7 +334,7 @@ class PasswordResetConfirmView(View):
             )
             return redirect("auth:password_reset")
 
-        form = PasswordResetConfirmForm(request.POST)
+        form = PasswordResetConfirmForm(user=record.user, data=request.POST)
         if not form.is_valid():
             return render(request, self.template_name, {"form": form, "token": token})
 

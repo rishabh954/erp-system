@@ -3,37 +3,69 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
+from apps.authentication.models import User
+from apps.crm.models import Customer
+from apps.helpdesk.forms import TicketCreateForm
 from apps.helpdesk.models import Ticket, TicketReply
 from core.services import BaseService
 
 
 class TicketService(BaseService):
+    def _ensure_ticket_company(self, ticket):
+        if ticket.company_id != self.company.pk:
+            raise ValueError("Ticket does not belong to this company.")
+
+    def _ensure_user_company(self, user):
+        if not User.objects.filter(
+            pk=user.pk, companies=self.company, is_active=True
+        ).exists():
+            raise ValueError("User does not belong to this company.")
+
     @transaction.atomic
     def create_ticket(self, data, user):
         """Creates a new helpdesk ticket."""
-        category_id = data.get("category")
+        self._ensure_user_company(user)
+        form_data = {
+            "title": data.get("title", ""),
+            "description": data.get("description", ""),
+            "category": data.get("category") or "",
+            "priority": data.get("priority", Ticket.Priority.MEDIUM),
+            "source": data.get("source", Ticket.Source.PORTAL),
+        }
+        form = TicketCreateForm(form_data, company=self.company)
+        if not form.is_valid():
+            raise ValueError(
+                "; ".join(
+                    f"{field}: {error}"
+                    for field, errors in form.errors.items()
+                    for error in errors
+                )
+            )
+        cleaned = form.cleaned_data
+
+        customer = None
+        customer_id = data.get("customer")
+        if customer_id:
+            customer = Customer.objects.filter(
+                pk=customer_id, company=self.company, is_deleted=False
+            ).first()
+            if customer is None:
+                raise ValueError("Customer not found for this company.")
 
         ticket = Ticket(
             company=self.company,
-            title=data["title"],
-            description=data["description"],
-            category_id=category_id,
-            customer_id=data.get("customer"),
+            title=cleaned["title"],
+            description=cleaned["description"],
+            category=cleaned["category"],
+            customer=customer,
             requester=user,
-            priority=data.get("priority", Ticket.Priority.MEDIUM),
-            source=data.get("source", Ticket.Source.PORTAL),
+            priority=cleaned["priority"],
+            source=cleaned["source"],
             status=Ticket.Status.OPEN,
         )
 
-        if category_id:
-            from apps.helpdesk.models import TicketCategory
-
-            try:
-                category = TicketCategory.objects.get(
-                    pk=category_id, company=self.company
-                )
-            except TicketCategory.DoesNotExist:
-                raise ValueError("Ticket category not found for this company.") from None
+        if cleaned["category"]:
+            category = cleaned["category"]
             if category.auto_assign_to:
                 ticket.assigned_to = category.auto_assign_to
             ticket.sla_due_at = timezone.now() + timedelta(hours=category.sla_hours)
@@ -55,6 +87,9 @@ class TicketService(BaseService):
     @transaction.atomic
     def assign_ticket(self, ticket, user, assigned_to):
         """Assigns a ticket to a user."""
+        self._ensure_ticket_company(ticket)
+        self._ensure_user_company(user)
+        self._ensure_user_company(assigned_to)
         ticket.assigned_to = assigned_to
         if ticket.status == Ticket.Status.OPEN:
             ticket.status = Ticket.Status.IN_PROGRESS
@@ -83,6 +118,11 @@ class TicketService(BaseService):
     @transaction.atomic
     def add_comment(self, ticket, user, content, is_internal=False):
         """Adds a reply/comment to a ticket."""
+        self._ensure_ticket_company(ticket)
+        self._ensure_user_company(user)
+        content = (content or "").strip()
+        if not content:
+            raise ValueError("Reply content is required.")
         reply = TicketReply.objects.create(
             company=self.company,
             ticket=ticket,
@@ -108,6 +148,11 @@ class TicketService(BaseService):
     @transaction.atomic
     def resolve_ticket(self, ticket, user, resolution):
         """Resolves a ticket."""
+        self._ensure_ticket_company(ticket)
+        self._ensure_user_company(user)
+        resolution = (resolution or "").strip()
+        if not resolution:
+            raise ValueError("Resolution is required.")
         ticket.status = Ticket.Status.RESOLVED
         ticket.resolution = resolution
         ticket.resolved_at = timezone.now()

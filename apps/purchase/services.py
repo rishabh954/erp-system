@@ -1,8 +1,11 @@
 import logging
-from decimal import Decimal
+from datetime import date
+from decimal import Decimal, InvalidOperation
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from apps.purchase.models import (
     Bill,
@@ -16,6 +19,7 @@ from apps.purchase.models import (
     PurchaseRequestLine,
     RequestForQuotation,
     RFQLine,
+    Vendor,
     VendorBid,
     VendorBidLine,
 )
@@ -24,16 +28,283 @@ from core.services import BaseService
 logger = logging.getLogger(__name__)
 
 
+def _input_list(data, key):
+    if hasattr(data, "getlist"):
+        return data.getlist(key)
+    value = data.get(key, [])
+    if value is None:
+        return []
+    return list(value) if isinstance(value, (list, tuple)) else [value]
+
+
+def _required_text(data, key, label, max_length):
+    value = str(data.get(key, "") or "").strip()
+    if not value:
+        raise ValueError(f"{label} is required.")
+    if len(value) > max_length:
+        raise ValueError(f"{label} must be {max_length} characters or fewer.")
+    return value
+
+
+def _optional_date(value, label, required=False):
+    if value is None or not str(value).strip():
+        if required:
+            raise ValueError(f"{label} is required.")
+        return None
+    result = value if isinstance(value, date) else parse_date(str(value).strip())
+    if result is None:
+        raise ValueError(f"Enter a valid {label.lower()}.")
+    return result
+
+
+def _decimal_value(
+    value, label, *, required=True, default=None, minimum=None, maximum=None,
+    max_digits=15, decimal_places=4
+):
+    raw = "" if value is None else str(value).strip()
+    if not raw:
+        if required:
+            raise ValueError(f"{label} is required.")
+        return default
+    try:
+        result = Decimal(raw)
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"Enter a valid number for {label.lower()}.") from None
+    if not result.is_finite():
+        raise ValueError(f"Enter a valid number for {label.lower()}.")
+    if result.as_tuple().exponent < -decimal_places:
+        raise ValueError(
+            f"{label} supports at most {decimal_places} decimal places."
+        )
+    if abs(result) >= Decimal(10) ** (max_digits - decimal_places):
+        raise ValueError(f"{label} is too large.")
+    if minimum is not None and result < minimum:
+        raise ValueError(f"{label} must be at least {minimum}.")
+    if maximum is not None and result > maximum:
+        raise ValueError(f"{label} must be no more than {maximum}.")
+    return result
+
+
+def _optional_company_relation(model, value, company, label, **filters):
+    if value is None or not str(value).strip():
+        return None
+    try:
+        relation = model.objects.filter(
+            pk=value, company=company, **filters
+        ).first()
+    except (ValidationError, TypeError, ValueError):
+        relation = None
+    if relation is None:
+        raise ValueError(f"Select a valid {label} for this company.")
+    return relation
+
+
+def _aligned_list(data, key, expected, label, *, optional=False, default=""):
+    values = _input_list(data, key)
+    if not values and optional:
+        return [default] * expected
+    if len(values) != expected:
+        raise ValueError(f"Provide one {label.lower()} for each line.")
+    return values
+
+
+def _validated_request_lines(data, company):
+    from apps.company.models import Department
+    from apps.inventory.models import Product
+
+    descriptions = _input_list(data, "description[]")
+    if not descriptions:
+        raise ValueError("At least one purchase request line is required.")
+    products = _aligned_list(
+        data, "product[]", len(descriptions), "Product", optional=True
+    )
+    quantities = _aligned_list(data, "quantity[]", len(descriptions), "Quantity")
+    prices = _aligned_list(
+        data, "estimated_unit_price[]", len(descriptions), "Estimated unit price"
+    )
+
+    department_id = data.get("department")
+    department = _optional_company_relation(
+        Department,
+        department_id,
+        company,
+        "department",
+        is_active=True,
+        is_deleted=False,
+    )
+    priority = str(data.get("priority", PurchaseRequest.Priority.MEDIUM)).strip()
+    if priority not in PurchaseRequest.Priority.values:
+        raise ValueError("Select a valid purchase request priority.")
+    required_by = _optional_date(data.get("required_by"), "required-by date")
+
+    lines = []
+    for index, raw_description in enumerate(descriptions):
+        description = str(raw_description or "").strip()
+        if not description:
+            raise ValueError("Each purchase request line needs a description.")
+        if len(description) > 500:
+            raise ValueError("Line descriptions must be 500 characters or fewer.")
+        product = _optional_company_relation(
+            Product,
+            products[index],
+            company,
+            "product",
+            is_active=True,
+            is_deleted=False,
+        )
+        quantity = _decimal_value(
+            quantities[index], "Quantity", minimum=Decimal("0.0001")
+        )
+        price = _decimal_value(
+            prices[index],
+            "Estimated unit price",
+            minimum=Decimal("0"),
+        )
+        lines.append((description, product, quantity, price))
+
+    title = _required_text(data, "title", "Purchase request title", 255)
+    return title, department, required_by, priority, lines
+
+
+def _validated_order_input(data, company):
+    from apps.company.models import Currency, Tax
+    from apps.inventory.models import Product, Warehouse
+    from apps.purchase.models import PurchaseContract
+
+    vendor_id = str(data.get("vendor", "") or "").strip()
+    vendor = _optional_company_relation(
+        Vendor,
+        vendor_id,
+        company,
+        "active vendor",
+        status=Vendor.Status.ACTIVE,
+        is_deleted=False,
+    )
+    if vendor is None:
+        raise ValueError("An active vendor is required.")
+    purchase_request = _optional_company_relation(
+        PurchaseRequest,
+        data.get("purchase_request"),
+        company,
+        "approved purchase request",
+        status=PurchaseRequest.Status.APPROVED,
+        is_deleted=False,
+    )
+    contract = _optional_company_relation(
+        PurchaseContract,
+        data.get("purchase_contract"),
+        company,
+        "purchase contract",
+        is_deleted=False,
+    )
+    warehouse = _optional_company_relation(
+        Warehouse,
+        data.get("warehouse"),
+        company,
+        "warehouse",
+        is_active=True,
+        is_deleted=False,
+    )
+    currency_id = str(data.get("currency", "") or "").strip()
+    currency = None
+    if currency_id:
+        try:
+            currency = Currency.objects.filter(pk=currency_id, is_active=True).first()
+        except (ValidationError, TypeError, ValueError):
+            currency = None
+        if currency is None:
+            raise ValueError("Select an active currency.")
+
+    try:
+        payment_terms = int(data.get("payment_terms", 30))
+        if str(data.get("payment_terms", 30)).strip() != str(payment_terms):
+            raise ValueError
+        if not 0 <= payment_terms <= 32767:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise ValueError("Payment terms must be a whole number from 0 to 32767.") from None
+
+    raw_order_date = data.get("order_date")
+    order_date = (
+        _optional_date(raw_order_date, "order date", required=True)
+        if raw_order_date is not None and str(raw_order_date).strip()
+        else timezone.now().date()
+    )
+    expected_delivery = _optional_date(
+        data.get("expected_delivery"), "expected delivery date"
+    )
+    descriptions = _input_list(data, "description[]")
+    if not descriptions:
+        raise ValueError("At least one purchase order line is required.")
+    products = _aligned_list(data, "product[]", len(descriptions), "Product", optional=True)
+    quantities = _aligned_list(data, "quantity[]", len(descriptions), "Quantity")
+    prices = _aligned_list(data, "unit_price[]", len(descriptions), "Unit price")
+    discounts = _aligned_list(
+        data, "discount_percent[]", len(descriptions), "Discount", optional=True,
+        default="0",
+    )
+    taxes = _aligned_list(data, "tax[]", len(descriptions), "Tax", optional=True)
+
+    lines = []
+    for index, raw_description in enumerate(descriptions):
+        description = str(raw_description or "").strip()
+        if not description:
+            continue
+        if len(description) > 500:
+            raise ValueError("Line descriptions must be 500 characters or fewer.")
+        product = _optional_company_relation(
+            Product,
+            products[index],
+            company,
+            "product",
+            is_active=True,
+            is_deleted=False,
+        )
+        quantity = _decimal_value(
+            quantities[index], "Quantity", minimum=Decimal("0.0001")
+        )
+        price = _decimal_value(prices[index], "Unit price", minimum=Decimal("0"))
+        discount = _decimal_value(
+            discounts[index],
+            "Discount percent",
+            minimum=Decimal("0"),
+            maximum=Decimal("100"),
+            max_digits=5,
+            decimal_places=2,
+        )
+        tax_id = str(taxes[index] or "").strip()
+        tax = None
+        if tax_id:
+            tax = _optional_company_relation(
+                Tax, tax_id, company, "tax", is_active=True
+            )
+        lines.append((description, product, quantity, price, discount, tax))
+    return {
+        "vendor": vendor,
+        "purchase_request": purchase_request,
+        "purchase_contract": contract,
+        "warehouse": warehouse,
+        "currency": currency,
+        "payment_terms": payment_terms,
+        "order_date": order_date,
+        "expected_delivery": expected_delivery,
+        "lines": lines,
+    }
+
+
 class PurchaseRequestService(BaseService):
     @transaction.atomic
     def create_request(self, data, user):
+        title, department, required_by, priority, lines = _validated_request_lines(
+            data, self.company
+        )
         pr = PurchaseRequest(
             company=self.company,
-            title=data["title"],
-            department_id=data.get("department") or None,
+            title=title,
+            department=department,
             requested_by=user,
-            required_by=data.get("required_by") or None,
-            priority=data.get("priority", "medium"),
+            required_by=required_by,
+            priority=priority,
             notes=data.get("notes", ""),
             status="draft",
         )
@@ -42,25 +313,12 @@ class PurchaseRequestService(BaseService):
         )
         pr.save()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        est_prices = data.getlist("estimated_unit_price[]")
-
         total = Decimal("0")
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
-            qty = Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-            price = (
-                Decimal(str(est_prices[i]))
-                if (i < len(est_prices) and est_prices[i])
-                else Decimal("0")
-            )
+        for desc, product, qty, price in lines:
             line_total = qty * price
             PurchaseRequestLine.objects.create(
                 request=pr,
-                product_id=products[i] if products[i] else None,
+                product=product,
                 description=desc,
                 quantity=qty,
                 estimated_unit_price=price,
@@ -85,33 +343,23 @@ class PurchaseRequestService(BaseService):
         if pr.status != "draft":
             raise ValueError("Only draft purchase requests can be edited.")
 
-        pr.title = data["title"]
-        pr.department_id = data.get("department") or None
-        pr.required_by = data.get("required_by") or None
-        pr.priority = data.get("priority", "medium")
+        title, department, required_by, priority, lines = _validated_request_lines(
+            data, self.company
+        )
+        pr.title = title
+        pr.department = department
+        pr.required_by = required_by
+        pr.priority = priority
         pr.notes = data.get("notes", "")
         pr.save()
 
         pr.lines.all().delete()
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        est_prices = data.getlist("estimated_unit_price[]")
-
         total = Decimal("0")
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
-            qty = Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-            price = (
-                Decimal(str(est_prices[i]))
-                if (i < len(est_prices) and est_prices[i])
-                else Decimal("0")
-            )
+        for desc, product, qty, price in lines:
             line_total = qty * price
             PurchaseRequestLine.objects.create(
                 request=pr,
-                product_id=products[i] if products[i] else None,
+                product=product,
                 description=desc,
                 quantity=qty,
                 estimated_unit_price=price,
@@ -135,16 +383,17 @@ class PurchaseRequestService(BaseService):
 class PurchaseOrderService(BaseService):
     @transaction.atomic
     def create_order(self, data, user):
+        validated = _validated_order_input(data, self.company)
         po = PurchaseOrder(
             company=self.company,
-            vendor_id=data["vendor"],
-            purchase_request_id=data.get("purchase_request") or None,
-            purchase_contract_id=data.get("purchase_contract") or None,
-            warehouse_id=data.get("warehouse") or None,
-            order_date=data.get("order_date") or timezone.now().date(),
-            expected_delivery=data.get("expected_delivery") or None,
-            payment_terms=int(data.get("payment_terms", 30)),
-            currency_id=data.get("currency") or None,
+            vendor=validated["vendor"],
+            purchase_request=validated["purchase_request"],
+            purchase_contract=validated["purchase_contract"],
+            warehouse=validated["warehouse"],
+            order_date=validated["order_date"],
+            expected_delivery=validated["expected_delivery"],
+            payment_terms=validated["payment_terms"],
+            currency=validated["currency"],
             notes=data.get("notes", ""),
             terms_conditions=data.get("terms_conditions", ""),
             status="draft",
@@ -154,61 +403,35 @@ class PurchaseOrderService(BaseService):
         )
         po.save()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        prices = data.getlist("unit_price[]")
-        discounts = data.getlist("discount_percent[]")
-        taxes = data.getlist("tax[]")
-
         subtotal = Decimal("0")
         tax_total = Decimal("0")
 
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
-            qty = Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-            price = Decimal(str(prices[i])) if prices[i] else Decimal("0")
-            disc = (
-                Decimal(str(discounts[i]))
-                if (i < len(discounts) and discounts[i])
-                else Decimal("0")
-            )
+        for desc, product, qty, price, disc, tax in validated["lines"]:
             sub = qty * price
             disc_amt = sub * disc / 100
             taxable = sub - disc_amt
             tax_amt = Decimal("0")
-
-            tax_id = taxes[i] if (i < len(taxes) and taxes[i]) else None
-            if tax_id:
-                from apps.company.models import Tax
-
-                try:
-                    t = Tax.objects.get(pk=tax_id, company=self.company)
-                    tax_amt = t.compute(taxable)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
-                    tax_id = None
+            if tax:
+                tax_amt = tax.compute(taxable)
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
-                product_id=products[i] if products[i] else None,
+                product=product,
                 description=desc,
                 quantity=qty,
                 unit_price=price,
                 discount_percent=disc,
-                tax_id=tax_id,
+                tax=tax,
                 subtotal=sub,
                 tax_amount=tax_amt,
                 total=total,
             )
 
             # Drawdown from contract if applicable
-            if po.purchase_contract_id and products[i]:
+            if po.purchase_contract_id and product:
                 try:
                     contract_line = po.purchase_contract.lines.get(
-                        product_id=products[i]
+                        product=product
                     )
                     contract_line.quantity_ordered += qty
                     contract_line.save(update_fields=["quantity_ordered"])
@@ -239,65 +462,40 @@ class PurchaseOrderService(BaseService):
         if po.status != "draft":
             raise ValueError("Only draft purchase orders can be edited.")
 
-        po.vendor_id = data["vendor"]
-        po.purchase_request_id = data.get("purchase_request") or None
-        po.purchase_contract_id = data.get("purchase_contract") or None
-        po.warehouse_id = data.get("warehouse") or None
-        po.order_date = data["order_date"]
-        po.expected_delivery = data.get("expected_delivery") or None
-        po.payment_terms = int(data.get("payment_terms", 30))
-        po.currency_id = data.get("currency") or None
+        validated = _validated_order_input(data, self.company)
+        po.vendor = validated["vendor"]
+        po.purchase_request = validated["purchase_request"]
+        po.purchase_contract = validated["purchase_contract"]
+        po.warehouse = validated["warehouse"]
+        po.order_date = validated["order_date"]
+        po.expected_delivery = validated["expected_delivery"]
+        po.payment_terms = validated["payment_terms"]
+        po.currency = validated["currency"]
         po.notes = data.get("notes", "")
         po.terms_conditions = data.get("terms_conditions", "")
         po.save()
 
         po.lines.all().delete()
 
-        products = data.getlist("product[]")
-        descs = data.getlist("description[]")
-        quantities = data.getlist("quantity[]")
-        prices = data.getlist("unit_price[]")
-        discounts = data.getlist("discount_percent[]")
-        taxes = data.getlist("tax[]")
-
         subtotal = Decimal("0")
         tax_total = Decimal("0")
 
-        for i, desc in enumerate(descs):
-            if not desc.strip():
-                continue
-            qty = Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-            price = Decimal(str(prices[i])) if prices[i] else Decimal("0")
-            disc = (
-                Decimal(str(discounts[i]))
-                if (i < len(discounts) and discounts[i])
-                else Decimal("0")
-            )
+        for desc, product, qty, price, disc, tax in validated["lines"]:
             sub = qty * price
             disc_amt = sub * disc / 100
             taxable = sub - disc_amt
             tax_amt = Decimal("0")
-
-            tax_id = taxes[i] if (i < len(taxes) and taxes[i]) else None
-            if tax_id:
-                from apps.company.models import Tax
-
-                try:
-                    t = Tax.objects.get(pk=tax_id, company=self.company)
-                    tax_amt = t.compute(taxable)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning("Failed to compute tax: %s", e)
-                    tax_id = None
+            if tax:
+                tax_amt = tax.compute(taxable)
             total = taxable + tax_amt
             PurchaseOrderLine.objects.create(
                 purchase_order=po,
-                product_id=products[i] if products[i] else None,
+                product=product,
                 description=desc,
                 quantity=qty,
                 unit_price=price,
                 discount_percent=disc,
-                tax_id=tax_id,
+                tax=tax,
                 subtotal=sub,
                 tax_amount=tax_amt,
                 total=total,
@@ -399,16 +597,48 @@ class PurchaseOrderService(BaseService):
     def create_goods_receipt(self, order, data, user):
         from apps.inventory.models import Warehouse
 
-        warehouse_id = data.get("warehouse")
+        if order.company_id != self.company.pk:
+            raise ValueError("Purchase order not found for this company.")
+        warehouse_id = str(data.get("warehouse", "") or "").strip()
         if not warehouse_id:
             raise ValueError("Active warehouse required for receiving goods.")
 
         try:
-            warehouse = Warehouse.objects.get(pk=warehouse_id, company=self.company)
-        except Warehouse.DoesNotExist:
+            warehouse = Warehouse.objects.get(
+                pk=warehouse_id,
+                company=self.company,
+                is_active=True,
+                is_deleted=False,
+            )
+        except (Warehouse.DoesNotExist, ValidationError, TypeError, ValueError):
             raise ValueError("Warehouse not found for this company.") from None
 
         overage_percent = self._goods_receipt_overage_percent()
+
+        receipt_lines = []
+        all_received = True
+        for line in order.lines.select_related("product"):
+            raw_quantity = data.get(f"qty_{line.pk}")
+            if raw_quantity is None or raw_quantity == "":
+                if line.qty_received < line.quantity:
+                    all_received = False
+                continue
+            qty = _decimal_value(
+                raw_quantity, "Received quantity", minimum=Decimal("0.0001")
+            )
+            remaining = max(line.quantity - line.qty_received, Decimal("0"))
+            max_qty = remaining + line.quantity * overage_percent / Decimal("100")
+            if qty > max_qty:
+                raise ValueError(
+                    f"Cannot receive {qty} for '{line.description}'; "
+                    f"remaining ordered quantity is {remaining}."
+                )
+            receipt_lines.append((line, qty))
+            if line.qty_received + qty < line.quantity:
+                all_received = False
+
+        if not receipt_lines:
+            raise ValueError("No quantities provided to receive.")
 
         receipt = GoodsReceipt.objects.create(
             company=self.company,
@@ -424,65 +654,31 @@ class PurchaseOrderService(BaseService):
         )
         receipt.save(update_fields=["number"])
 
-        all_received = True
-        lines_created = 0
-
-        for line in order.lines.all():
-            qty_input = data.get(f"qty_{line.pk}")
-            if not qty_input:
-                if line.qty_received < line.quantity:
-                    all_received = False
-                continue
-
-            qty = Decimal(str(qty_input))
-            remaining = line.quantity - line.qty_received
-            if remaining < 0:
-                remaining = Decimal("0")
-            max_qty = remaining + (
-                line.quantity * overage_percent / Decimal("100")
+        for line, qty in receipt_lines:
+            GoodsReceiptLine.objects.create(
+                goods_receipt=receipt,
+                po_line=line,
+                quantity_received=qty,
+                quantity_accepted=qty,
+                batch_number=data.get(f"batch_{line.pk}", ""),
             )
-            if qty > max_qty:
-                raise ValueError(
-                    f"Cannot receive {qty} for '{line.description}'; "
-                    f"remaining ordered quantity is {remaining}."
+            line.qty_received += qty
+            line.save(update_fields=["qty_received"])
+
+            if line.product:
+                from apps.inventory.services import StockService
+
+                StockService(company=self.company).receive_stock(
+                    product=line.product,
+                    warehouse=receipt.warehouse,
+                    qty=qty,
+                    unit_cost=line.unit_price
+                    * (Decimal("1") - line.discount_percent / Decimal("100")),
+                    reference_type="GoodsReceipt",
+                    reference_id=str(receipt.pk),
+                    notes=f"Received against PO {order.number}",
+                    user=user,
                 )
-            if qty > 0:
-                GoodsReceiptLine.objects.create(
-                    goods_receipt=receipt,
-                    po_line=line,
-                    quantity_received=qty,
-                    quantity_accepted=qty,
-                    batch_number=data.get(f"batch_{line.pk}", ""),
-                )
-                line.qty_received += qty
-                line.save(update_fields=["qty_received"])
-                lines_created += 1
-
-                # Update stock level
-                if line.product and receipt.warehouse:
-                    from apps.inventory.services import StockService
-
-                    StockService(company=self.company).receive_stock(
-                        product=line.product,
-                        warehouse=receipt.warehouse,
-                        qty=qty,
-                        unit_cost=line.unit_price
-                        * (
-                            Decimal("1")
-                            - line.discount_percent / Decimal("100")
-                        ),
-                        reference_type="GoodsReceipt",
-                        reference_id=str(receipt.pk),
-                        notes=f"Received against PO {order.number}",
-                        user=user,
-                    )
-
-            if line.qty_received < line.quantity:
-                all_received = False
-
-        if lines_created == 0:
-            receipt.delete()
-            raise ValueError("No quantities provided to receive.")
 
         from apps.accounting.services import AutoJournalService
 
@@ -509,18 +705,48 @@ class PurchaseOrderService(BaseService):
 class PaymentService(BaseService):
     @transaction.atomic
     def record_vendor_payment(self, bill, data):
-        amount = Decimal(data.get("amount", "0"))
+        bill = (
+            Bill.objects.select_for_update()
+            .filter(pk=bill.pk, company=self.company)
+            .select_related("vendor")
+            .first()
+        )
+        if bill is None:
+            raise ValueError("Bill not found for this company.")
+        if bill.status not in (
+            Bill.Status.OPEN,
+            Bill.Status.PARTIAL,
+            Bill.Status.OVERDUE,
+        ):
+            raise ValueError("Payments can only be recorded for an open bill.")
+        amount = _decimal_value(
+            data.get("amount"),
+            "Payment amount",
+            max_digits=18,
+            decimal_places=2,
+        )
         if amount <= 0:
             raise ValueError("Payment amount must be greater than zero.")
-
+        if amount > bill.balance_due:
+            raise ValueError("Payment amount cannot exceed the bill balance due.")
+        method = str(data.get("method", Payment.Method.BANK_TRANSFER) or "").strip()
+        if method not in Payment.Method.values:
+            raise ValueError("Select a valid payment method.")
+        payment_date = _optional_date(
+            data.get("payment_date"), "payment date", required=True
+        )
+        if len(str(data.get("reference", "") or "")) > 100:
+            raise ValueError("Payment reference must be 100 characters or fewer.")
+        if len(str(data.get("notes", "") or "")) > 2000:
+            raise ValueError("Payment notes must be 2000 characters or fewer.")
         payment = Payment(
             company=self.company,
             bill=bill,
             vendor=bill.vendor,
             amount=amount,
             currency=bill.currency,
-            payment_date=data.get("payment_date") or timezone.now().date(),
-            method=data.get("method", "bank_transfer"),
+            payment_date=payment_date,
+            method=method,
             reference=data.get("reference", ""),
             notes=data.get("notes", ""),
             status="completed",

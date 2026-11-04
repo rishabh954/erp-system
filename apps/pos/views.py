@@ -2,6 +2,8 @@ import json
 import logging
 from decimal import Decimal, InvalidOperation
 
+from django import forms
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -14,13 +16,13 @@ from apps.pos.models import POSOrder, POSOrderLine, POSPayment, POSSession
 logger = logging.getLogger(__name__)
 
 
-def _to_decimal(value, field_name):
+def _to_decimal(value, field_name, *, max_digits=15, decimal_places=4):
     try:
-        amount = Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError) as exc:
+        amount = forms.DecimalField(
+            max_digits=max_digits, decimal_places=decimal_places
+        ).clean(value)
+    except (ValidationError, InvalidOperation, TypeError, ValueError) as exc:
         raise ValueError(f"{field_name} must be a valid decimal amount.") from exc
-    if not amount.is_finite():
-        raise ValueError(f"{field_name} must be a finite decimal amount.")
     return amount
 
 
@@ -94,17 +96,25 @@ class POSCheckoutAPIView(CompanyMixin, View):
     def post(self, request, *args, **kwargs):
         try:
             data = json.loads(request.body)
+            if not isinstance(data, dict):
+                raise ValueError("Request body must be a JSON object.")
             session_id = data.get("session_id")
             cart = data.get("cart", [])
-            payment_method = data.get("payment_method", "cash")
-            tendered = _to_decimal(data.get("tendered", 0), "Tendered amount")
-            if tendered < 0:
-                raise ValueError("Tendered amount cannot be negative.")
-
+            payment_method = data.get(
+                "payment_method", POSPayment.PaymentMethod.CASH
+            )
+            tendered = _to_decimal(
+                data.get("tendered", 0),
+                "Tendered amount",
+                max_digits=15,
+                decimal_places=2,
+            )
+            if payment_method not in POSPayment.PaymentMethod.values:
+                raise ValueError("Select a valid payment method.")
+            if not isinstance(cart, list):
+                raise ValueError("Cart must be a list of items.")
             if not cart:
-                return JsonResponse(
-                    {"status": "error", "message": "Cart is empty."}, status=400
-                )
+                raise ValueError("Cart is empty.")
 
             session = POSSession.objects.get(
                 id=session_id,
@@ -113,51 +123,81 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 status=POSSession.Status.OPEN,
             )
 
-            with transaction.atomic():
-                # 1. Create Order
-                subtotal = sum(
-                    (
-                        _to_decimal(item["price"], "Unit price")
-                        * _to_decimal(item["qty"], "Quantity")
-                        for item in cart
-                    ),
-                    Decimal("0"),
+            prepared_items = []
+            subtotal = Decimal("0")
+            tax_total = Decimal("0")
+            for index, item in enumerate(cart):
+                if not isinstance(item, dict):
+                    raise ValueError(f"Cart item {index + 1} is invalid.")
+                product = Product.objects.select_related("tax").get(
+                    id=item.get("id"),
+                    company=self.company(),
+                    is_active=True,
+                    is_sellable=True,
+                    is_deleted=False,
                 )
-                total = subtotal
-                change = (
-                    max(Decimal("0"), tendered - total)
-                    if payment_method == "cash"
-                    else Decimal("0")
+                qty = _to_decimal(item.get("qty"), "Quantity")
+                submitted_price = _to_decimal(
+                    item.get("price"),
+                    "Unit price",
+                    max_digits=15,
+                    decimal_places=2,
                 )
+                price = product.sale_price.quantize(Decimal("0.01"))
+                if qty <= 0:
+                    raise ValueError("Quantity must be greater than zero.")
+                if submitted_price != price:
+                    raise ValueError(
+                        f"Price for {product.name} does not match the current product price."
+                    )
+                tax = product.tax if product.tax and product.tax.is_active else None
+                if product.tax_id and tax is None:
+                    raise ValueError(
+                        f"Product {product.name} has an inactive tax configured."
+                    )
+                if tax and tax.company_id != self.company().pk:
+                    raise ValueError(
+                        f"Product {product.name} has a tax configured for another company."
+                    )
+                line_subtotal = (qty * price).quantize(Decimal("0.01"))
+                line_tax = tax.compute(line_subtotal) if tax else Decimal("0")
+                subtotal += line_subtotal
+                tax_total += line_tax
+                prepared_items.append((product, qty, price, line_subtotal, line_tax))
 
+            total = subtotal + tax_total
+            if payment_method == POSPayment.PaymentMethod.CASH:
+                if tendered < total:
+                    raise ValueError("Tendered amount cannot be less than the total.")
+                change = tendered - total
+            else:
+                if tendered < total:
+                    raise ValueError("Tendered amount cannot be less than the total.")
+                if tendered > total:
+                    raise ValueError("Non-cash payment cannot exceed the total.")
+                change = Decimal("0")
+
+            with transaction.atomic():
                 order = POSOrder.objects.create(
                     company=self.company(),
                     session=session,
                     status=POSOrder.Status.PAID,
                     subtotal=subtotal,
+                    tax_amount=tax_total,
                     total=total,
                 )
 
-                # 2. Create Lines & Deduct Stock
-                for item in cart:
-                    product = Product.objects.get(id=item["id"], company=self.company())
-                    qty = _to_decimal(item["qty"], "Quantity")
-                    price = _to_decimal(item["price"], "Unit price")
-                    if qty <= 0 or price < 0:
-                        raise ValueError(
-                            "Quantity must be positive and unit price cannot be negative."
-                        )
-
+                for product, qty, price, line_subtotal, line_tax in prepared_items:
                     POSOrderLine.objects.create(
                         order=order,
                         product=product,
                         quantity=qty,
                         unit_price=price,
-                        subtotal=qty * price,
+                        subtotal=line_subtotal,
+                        tax_amount=line_tax,
+                        discount_amount=Decimal("0"),
                     )
 
-                    # Stock movement is part of the sale's atomic write. If it
-                    # cannot be recorded, the order and payment must roll back.
                     from apps.inventory.services import StockService
 
                     StockService(company=self.company(), user=request.user).adjust_stock(
@@ -170,7 +210,6 @@ class POSCheckoutAPIView(CompanyMixin, View):
                         reference_id=str(order.id),
                     )
 
-                # 3. Record Payment
                 POSPayment.objects.create(
                     order=order,
                     method=payment_method,
@@ -191,14 +230,14 @@ class POSCheckoutAPIView(CompanyMixin, View):
                 },
                 status=400,
             )
+        except (ValidationError, ValueError) as exc:
+            return JsonResponse(
+                {"status": "error", "message": str(exc)}, status=400
+            )
         except Product.DoesNotExist:
             return JsonResponse(
                 {"status": "error", "message": "A product in the cart was not found."},
                 status=400,
-            )
-        except ValueError as exc:
-            return JsonResponse(
-                {"status": "error", "message": str(exc)}, status=400
             )
         except Exception:
             logger.error("POS checkout failed", exc_info=True)

@@ -4,9 +4,11 @@ Quotations, Sales Orders, Invoices, Payments — list/create/detail/update
 """
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
+from django import forms
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
@@ -33,6 +35,21 @@ from .models import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _validated_pos_decimal(
+    value, label, *, allow_zero=False, max_digits=15, decimal_places=4
+):
+    try:
+        amount = forms.DecimalField(
+            max_digits=max_digits, decimal_places=decimal_places
+        ).clean(value)
+    except (ValidationError, InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a valid decimal number.") from exc
+    if amount < 0 or (amount == 0 and not allow_zero):
+        requirement = "non-negative" if allow_zero else "greater than zero"
+        raise ValueError(f"{label} must be {requirement}.")
+    return amount
 
 
 
@@ -745,7 +762,7 @@ class InvoiceDetailView(CompanyMixin, DetailView):
             return Invoice.objects.get(pk=self.kwargs["pk"], company=self.company(), is_deleted=False)
         except Invoice.DoesNotExist:
             from django.http import Http404
-            raise Http404(f"Invoice not found or you do not have access to it.")
+            raise Http404("Invoice not found or you do not have access to it.")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -859,7 +876,7 @@ class InvoicePDFView(CompanyMixin, View):
 
 class RecordPaymentView(CompanyMixin, View):
     required_permission = "sales.approve"
-    
+
     def post(self, request, pk):
         # Explicitly verify invoice exists and belongs to the current company
         # get_object_or_404 will raise Http404 for cross-company access
@@ -867,7 +884,7 @@ class RecordPaymentView(CompanyMixin, View):
             invoice = Invoice.objects.get(pk=pk, company=self.company(), is_deleted=False)
         except Invoice.DoesNotExist:
             return HttpResponse(status=404)
-        
+
         try:
             from .services import PaymentService
 
@@ -1444,113 +1461,182 @@ class POSAPIView(CompanyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            customer_id = data.get("customer_id") or ""
-            items = data.get("items", [])
-            amount_paid = Decimal(str(data.get("amount_paid", 0)))
-            if not amount_paid.is_finite() or amount_paid < 0:
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JsonResponse(
+                {"success": False, "error": "Request body must contain valid JSON."},
+                status=400,
+            )
+        if not isinstance(data, dict):
+            return JsonResponse(
+                {"success": False, "error": "Request body must be a JSON object."},
+                status=400,
+            )
+
+        items = data.get("items")
+        if not isinstance(items, list) or not items:
+            return JsonResponse(
+                {"success": False, "error": "Cart must contain at least one item."},
+                status=400,
+            )
+        try:
+            amount_paid = _validated_pos_decimal(
+                data.get("amount_paid", 0),
+                "Amount paid",
+                allow_zero=True,
+                max_digits=18,
+                decimal_places=2,
+            )
+        except ValueError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
+
+        payment_method = data.get("payment_method", Payment.Method.CASH)
+        if payment_method not in Payment.Method.values:
+            return JsonResponse(
+                {"success": False, "error": "Select a valid payment method."},
+                status=400,
+            )
+
+        company = self.company()
+        prepared_items = []
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
                 return JsonResponse(
-                    {"success": False, "error": "Amount paid must be non-negative."},
+                    {"success": False, "error": f"Item {index + 1} is invalid."},
                     status=400,
                 )
-            payment_method = data.get("payment_method", "cash")
-
-            if not items:
-                return JsonResponse(
-                    {"success": False, "error": "Cart is empty."}, status=400
-                )
-
-            company = self.company()
-
-            prepared_items = []
-            for item in items:
-                product = Product.objects.get(pk=item["product_id"], company=company)
-                quantity = Decimal(str(item["quantity"]))
-                price = Decimal(str(item["price"]))
-                if not quantity.is_finite() or quantity <= 0:
-                    return JsonResponse(
-                        {"success": False, "error": "Quantity must be positive."},
-                        status=400,
-                    )
-                if not price.is_finite() or price < 0:
-                    return JsonResponse(
-                        {
-                            "success": False,
-                            "error": "Unit price must be non-negative.",
-                        },
-                        status=400,
-                    )
-                prepared_items.append((product, quantity, price))
-
-            # ── Customer ─────────────────────────────────────────────────────
-            if customer_id:
-                customer = Customer.objects.get(pk=customer_id, company=company)
-            else:
-                customer, _ = Customer.objects.get_or_create(
+            try:
+                product = Product.objects.select_related("tax").get(
+                    pk=item.get("product_id"),
                     company=company,
-                    name="Walk-in Customer",
-                    defaults={"phone": "0000000000"},
+                    is_active=True,
+                    is_sellable=True,
+                    is_deleted=False,
                 )
-
-            # ── Currency (required FK on Payment) ────────────────────────────
-            currency = Currency.objects.filter(is_active=True).first()
-            if not currency:
-                currency = Currency.objects.first()
-            if not currency:
+            except (Product.DoesNotExist, ValidationError, ValueError):
                 return JsonResponse(
                     {
                         "success": False,
-                        "error": "No currency configured. Please add a currency in company settings.",
+                        "error": f"Item {index + 1} must reference an active, sellable product in this company.",
+                    },
+                    status=400,
+                )
+            try:
+                quantity = _validated_pos_decimal(
+                    item.get("quantity"), f"Item {index + 1} quantity"
+                )
+                submitted_price = _validated_pos_decimal(
+                    item.get("price"), f"Item {index + 1} price", allow_zero=True
+                )
+            except ValueError as exc:
+                return JsonResponse({"success": False, "error": str(exc)}, status=400)
+            if submitted_price != product.sale_price:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": f"Item {index + 1} price does not match the current product price.",
+                    },
+                    status=400,
+                )
+            if product.tax_id and product.tax.company_id != company.pk:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": f"Item {index + 1} has a tax configured for another company.",
+                    },
+                    status=400,
+                )
+            prepared_items.append((product, quantity, product.sale_price))
+
+        customer_id = data.get("customer_id") or ""
+        customer = None
+        if customer_id:
+            try:
+                customer = Customer.objects.filter(
+                    pk=customer_id, company=company, is_deleted=False
+                ).first()
+            except (ValidationError, ValueError):
+                pass
+            if customer is None:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Select a valid customer from this company.",
                     },
                     status=400,
                 )
 
-            # ── Create Invoice ────────────────────────────────────────────────
-            invoice = Invoice.objects.create(
-                company=company,
-                customer=customer,
-                invoice_date=timezone.localdate(),
-                due_date=timezone.localdate(),
-                status=Invoice.Status.DRAFT,
+        currency = company.default_currency
+        if not currency or not currency.is_active:
+            currency = Currency.objects.filter(is_active=True).first()
+        if not currency:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "No active currency is configured for payment.",
+                },
+                status=400,
             )
 
-            # ── Create Invoice Lines ──────────────────────────────────────────
-            for prod, qty, price in prepared_items:
-                subtotal = qty * price
-                InvoiceLine.objects.create(
-                    invoice=invoice,
-                    product=prod,
-                    description=prod.name,
-                    quantity=qty,
-                    unit_price=price,
-                    subtotal=subtotal,
-                    tax_amount=Decimal("0"),
-                    discount_amount=Decimal("0"),
-                    total=subtotal,
-                )
+        try:
+            with transaction.atomic():
+                if customer is None:
+                    customer, _ = Customer.objects.get_or_create(
+                        company=company,
+                        name="Walk-in Customer",
+                        defaults={"phone": "0000000000"},
+                    )
 
-            # Recalculate totals from lines
-            invoice.recalculate_totals()
-            # Refresh from DB after recalculate
-            invoice.refresh_from_db()
-
-            # ── Record Payment ────────────────────────────────────────────────
-            if amount_paid > 0:
-                Payment.objects.create(
+                invoice = Invoice.objects.create(
                     company=company,
-                    invoice=invoice,
                     customer=customer,
-                    amount=amount_paid,
-                    currency=currency,
-                    payment_date=timezone.localdate(),
-                    method=payment_method,
-                    status=Payment.Status.COMPLETED,
+                    invoice_date=timezone.localdate(),
+                    due_date=timezone.localdate(),
+                    status=Invoice.Status.DRAFT,
                 )
-                # This triggers update_balance → marks invoice paid/partial
+                for product, quantity, price in prepared_items:
+                    tax = product.tax if product.tax and product.tax.is_active else None
+                    if product.tax_id and tax is None:
+                        raise ValueError(
+                            f"Product {product.name} has an inactive tax; update its tax before selling."
+                        )
+                    InvoiceLine.objects.create(
+                        invoice=invoice,
+                        product=product,
+                        description=product.name,
+                        quantity=quantity,
+                        unit_price=price,
+                        tax=tax,
+                        discount_percent=0,
+                    )
+                invoice.recalculate_totals()
                 invoice.refresh_from_db()
-                invoice.update_balance()
+                if (
+                    payment_method != Payment.Method.CASH
+                    and amount_paid > invoice.total
+                ):
+                    raise ValueError(
+                        "Non-cash payment cannot exceed the invoice total."
+                    )
 
-            change_due = max(Decimal("0"), amount_paid - invoice.total)
+                if amount_paid > 0:
+                    payment_amount = min(amount_paid, invoice.total)
+                    Payment.objects.create(
+                        company=company,
+                        invoice=invoice,
+                        customer=customer,
+                        amount=payment_amount,
+                        currency=currency,
+                        payment_date=timezone.localdate(),
+                        method=payment_method,
+                        status=Payment.Status.COMPLETED,
+                    )
+                    invoice.refresh_from_db()
 
+            change_due = (
+                max(Decimal("0"), amount_paid - invoice.total)
+                if payment_method == Payment.Method.CASH
+                else Decimal("0")
+            )
             return JsonResponse(
                 {
                     "success": True,
@@ -1561,19 +1647,11 @@ class POSAPIView(CompanyMixin, View):
                     "change_due": round(change_due, 2),
                 }
             )
-
-        except Product.DoesNotExist:
-            return JsonResponse(
-                {"success": False, "error": "One or more products not found."},
-                status=400,
-            )
-        except Customer.DoesNotExist:
-            return JsonResponse(
-                {"success": False, "error": "Customer not found."}, status=400
-            )
+        except ValueError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
         except Exception:
-            logger.error("Unexpected error", exc_info=True)
+            logger.exception("Unexpected error during POS checkout")
             return JsonResponse(
-                {"success": False, "error": "An unexpected error occurred."},
-                status=400,
+                {"success": False, "error": "POS checkout failed. No sale was saved."},
+                status=500,
             )

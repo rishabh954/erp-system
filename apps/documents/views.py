@@ -7,7 +7,7 @@ from pathlib import PurePosixPath
 from urllib.parse import quote
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,6 +17,7 @@ from django.views.generic import DetailView, ListView, View
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
+from .forms import DocumentCategoryForm, DocumentUploadForm, DocumentVersionForm
 from .models import Document, DocumentCategory, DocumentVersion
 from .validators import get_document_file_type
 
@@ -112,67 +113,54 @@ class DocumentUploadView(CompanyMixin, View):
         )
 
     def post(self, request):
-        data = request.POST
         company = self.company()
-        file = request.FILES.get("file")
-
-        if not file:
-            messages.error(request, "Please select a file to upload.")
+        form = DocumentUploadForm(request.POST, request.FILES, company=company)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid document details and file.")
             return redirect("documents:upload")
 
+        cleaned = form.cleaned_data
+        file = cleaned["file"]
+        file_type = get_document_file_type(file)
         try:
-            file_type = get_document_file_type(file)
-        except ValidationError as exc:
-            messages.error(request, " ".join(exc.messages))
-            return redirect("documents:upload")
+            with transaction.atomic():
+                doc = Document(
+                    company=company,
+                    title=cleaned["title"] or file.name,
+                    category=cleaned["category"],
+                    description=cleaned["description"],
+                    file=file,
+                    file_size=file.size,
+                    file_type=file_type,
+                    version=cleaned["version"],
+                    status=cleaned["status"] or Document.Status.DRAFT,
+                    is_public=cleaned["is_public"],
+                    expiry_date=cleaned["expiry_date"],
+                    notes=cleaned["notes"],
+                    tags=cleaned["tags"],
+                    created_by=request.user,
+                )
+                doc.number = BaseService.generate_sequence_number(
+                    "DOC", Document, company.pk
+                )
+                doc.save()
 
-        category_id = data.get("category")
-        category = None
-        if category_id:
-            category = DocumentCategory.objects.filter(
-                pk=category_id, company=company, is_deleted=False
-            ).first()
-            if not category:
-                messages.error(request, "Select a valid document category.")
-                return redirect("documents:upload")
+                DocumentVersion.objects.create(
+                    company=company,
+                    document=doc,
+                    version=doc.version,
+                    file=file,
+                    file_size=file.size,
+                    change_notes="Initial upload",
+                    uploaded_by=request.user,
+                )
 
-        try:
-            doc = Document(
-                company=company,
-                title=data.get("title") or file.name,
-                category=category,
-                description=data.get("description", ""),
-                file=file,
-                file_size=file.size,
-                file_type=file_type,
-                version=data.get("version", "1.0"),
-                status=data.get("status", "draft"),
-                is_public=data.get("is_public") == "on",
-                expiry_date=data.get("expiry_date") or None,
-                notes=data.get("notes", ""),
-                tags=[t.strip() for t in data.get("tags", "").split(",") if t.strip()],
-                created_by=request.user,
-            )
-            doc.number = BaseService.generate_sequence_number(
-                "DOC", Document, company.pk
-            )
-            doc.save()
-
-            # Create first version record
-            DocumentVersion.objects.create(
-                company=company,
-                document=doc,
-                version=doc.version,
-                file=file,
-                file_size=file.size,
-                change_notes="Initial upload",
-                uploaded_by=request.user,
-            )
-
-            messages.success(request, f'Document "{doc.title}" uploaded successfully.')
-            return redirect("documents:detail", pk=doc.pk)
-        except Exception as e:
-            messages.error(request, f"Upload failed: {e}")
+                messages.success(
+                    request, f'Document "{doc.title}" uploaded successfully.'
+                )
+                return redirect("documents:detail", pk=doc.pk)
+        except Exception:
+            messages.error(request, "Document upload failed.")
             return redirect("documents:upload")
 
 
@@ -182,43 +170,40 @@ class DocumentNewVersionView(CompanyMixin, View):
         doc = get_object_or_404(
             Document, pk=pk, company=self.company(), is_deleted=False
         )
-        file = request.FILES.get("file")
-
-        if not file:
-            messages.error(request, "Please select a file.")
+        form = DocumentVersionForm(request.POST, request.FILES)
+        if not form.is_valid():
+            messages.error(request, "Please provide a valid file.")
             return redirect("documents:detail", pk=pk)
 
+        file = form.cleaned_data["file"]
+        file_type = get_document_file_type(file)
         try:
-            file_type = get_document_file_type(file)
-        except ValidationError as exc:
-            messages.error(request, " ".join(exc.messages))
-            return redirect("documents:detail", pk=pk)
-
-        try:
-            # Bump version
             parts = doc.version.split(".")
+            if not parts or any(not part.isdigit() for part in parts):
+                raise ValueError("Invalid stored version")
             parts[-1] = str(int(parts[-1]) + 1)
             new_version = ".".join(parts)
 
-            DocumentVersion.objects.create(
-                company=self.company(),
-                document=doc,
-                version=new_version,
-                file=file,
-                file_size=file.size,
-                change_notes=request.POST.get("change_notes", ""),
-                uploaded_by=request.user,
-            )
+            with transaction.atomic():
+                doc.file = file
+                doc.version = new_version
+                doc.file_size = file.size
+                doc.file_type = file_type
+                doc.save(update_fields=["file", "version", "file_size", "file_type"])
 
-            doc.file = file
-            doc.version = new_version
-            doc.file_size = file.size
-            doc.file_type = file_type
-            doc.save(update_fields=["file", "version", "file_size", "file_type"])
+                DocumentVersion.objects.create(
+                    company=self.company(),
+                    document=doc,
+                    version=new_version,
+                    file=file,
+                    file_size=file.size,
+                    change_notes=form.cleaned_data["change_notes"],
+                    uploaded_by=request.user,
+                )
 
             messages.success(request, f"Version {new_version} uploaded.")
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
+        except Exception:
+            messages.error(request, "Document version upload failed.")
         return redirect("documents:detail", pk=pk)
 
 
@@ -241,6 +226,8 @@ class DocumentApproveView(CompanyMixin, View):
             doc.status = "archived"
             doc.save(update_fields=["status"])
             messages.success(request, f'Document "{doc.title}" archived.')
+        else:
+            messages.error(request, "Select a valid document action.")
         return redirect("documents:detail", pk=pk)
 
 
@@ -293,18 +280,22 @@ class DocumentDownloadView(CompanyMixin, View):
 class DocumentCategoryCreateView(CompanyMixin, View):
     required_permission = "documents.create"
     def post(self, request):
-        data = request.POST
         company = self.company()
+        form = DocumentCategoryForm(request.POST, company=company)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid category details.")
+            return redirect("documents:list")
         try:
+            cleaned = form.cleaned_data
             DocumentCategory.objects.create(
                 company=company,
-                name=data["name"],
-                parent_id=data.get("parent") or None,
-                description=data.get("description", ""),
+                name=cleaned["name"],
+                parent=cleaned["parent"],
+                description=cleaned["description"],
             )
             messages.success(request, "Category created.")
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
+        except Exception:
+            messages.error(request, "Category creation failed.")
         return redirect("documents:list")
 
 

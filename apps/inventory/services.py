@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.utils import timezone
@@ -8,6 +8,20 @@ from django.utils import timezone
 from .models import Product, StockMovement
 
 logger = logging.getLogger(__name__)
+
+
+def _validated_quantity(value, label="Quantity", allow_zero=False):
+    try:
+        quantity = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"{label} must be a valid number.") from None
+    if not quantity.is_finite() or quantity < 0 or (quantity == 0 and not allow_zero):
+        qualifier = "zero or greater" if allow_zero else "greater than zero"
+        raise ValueError(f"{label} must be {qualifier}.")
+    if quantity >= Decimal("100000000000") or quantity.quantize(Decimal("0.0001")) != quantity:
+        raise ValueError(f"{label} supports at most 11 digits and 4 decimal places.")
+    return quantity
+
 
 class InventoryAnalyticsService:
 
@@ -193,7 +207,16 @@ class StockService(BaseService):
         reference_type="",
         reference_id="",
     ):
-        qty = Decimal(str(qty_input))
+        if adjustment_type not in {"add", "remove", "set"}:
+            raise ValueError("Select a valid stock adjustment type.")
+        if (
+            product.company_id != self.company.pk
+            or warehouse.company_id != self.company.pk
+        ):
+            raise ValueError("Product and warehouse must belong to this company.")
+        qty = _validated_quantity(
+            qty_input, allow_zero=adjustment_type == "set"
+        )
 
         # Get or create stock record with lock
         stock, _ = StockRecord.objects.select_for_update().get_or_create(
@@ -268,6 +291,13 @@ class StockService(BaseService):
         notes="",
         user=None,
     ):
+        if (
+            product.company_id != self.company.pk
+            or warehouse.company_id != self.company.pk
+        ):
+            raise ValueError("Product and warehouse must belong to this company.")
+        qty = _validated_quantity(qty)
+        unit_cost = _validated_quantity(unit_cost, "Unit cost", allow_zero=True)
         stock, _ = StockRecord.objects.select_for_update().get_or_create(
             product=product,
             warehouse=warehouse,
@@ -311,25 +341,34 @@ class StockService(BaseService):
 class TransferService(BaseService):
     @transaction.atomic
     def create_transfer(self, data, user):
+        from django.utils.dateparse import parse_date
+
+        from apps.inventory.models import Product, Warehouse
+
         from_wh_id = data.get("from_warehouse")
         to_wh_id = data.get("to_warehouse")
 
-        if from_wh_id == to_wh_id:
+        if not from_wh_id or not to_wh_id:
+            raise ValueError("Select both source and destination warehouses.")
+        if str(from_wh_id) == str(to_wh_id):
             raise ValueError("Source and destination warehouses cannot be the same.")
 
-        transfer = InventoryTransfer(
-            company=self.company,
-            from_warehouse_id=from_wh_id,
-            to_warehouse_id=to_wh_id,
-            transfer_date=data.get("transfer_date"),
-            expected_arrival=data.get("expected_arrival") or None,
-            notes=data.get("notes", ""),
-            status=InventoryTransfer.Status.DRAFT,
+        warehouses = Warehouse.objects.filter(
+            company=self.company, is_active=True, is_deleted=False
         )
-        transfer.number = BaseService.generate_sequence_number(
-            "TR", InventoryTransfer, self.company.pk
-        )
-        transfer.save()
+        from_wh = warehouses.filter(pk=from_wh_id).first()
+        to_wh = warehouses.filter(pk=to_wh_id).first()
+        if not from_wh or not to_wh:
+            raise ValueError("Select active warehouses for this company.")
+
+        transfer_date = parse_date(str(data.get("transfer_date") or ""))
+        expected_arrival = parse_date(str(data.get("expected_arrival") or ""))
+        if not transfer_date:
+            raise ValueError("Enter a valid transfer date.")
+        if data.get("expected_arrival") and not expected_arrival:
+            raise ValueError("Enter a valid expected arrival date.")
+        if expected_arrival and expected_arrival < transfer_date:
+            raise ValueError("Expected arrival cannot be before the transfer date.")
 
         # Process lines
         if hasattr(data, "getlist"):
@@ -343,24 +382,56 @@ class TransferService(BaseService):
             if not isinstance(quantities, list):
                 quantities = [quantities] if quantities else []
 
-        lines_created = 0
-        for i, prod_id in enumerate(products):
-            if not prod_id:
+        if len(products) != len(quantities):
+            raise ValueError("Each transfer product must have a quantity.")
+
+        validated_lines = []
+        for prod_id, raw_quantity in zip(products, quantities):
+            if not prod_id and not raw_quantity:
                 continue
-            qty = Decimal(str(quantities[i])) if quantities[i] else Decimal("1")
-            if qty > 0:
-                InventoryTransferLine.objects.create(
+            if not prod_id:
+                raise ValueError("Select a product for each transfer quantity.")
+            if not raw_quantity:
+                raise ValueError("Enter a quantity for each transfer product.")
+            product = Product.objects.filter(
+                pk=prod_id,
+                company=self.company,
+                is_active=True,
+                is_deleted=False,
+            ).first()
+            if not product:
+                raise ValueError("Select an active product for this company.")
+            qty = _validated_quantity(raw_quantity)
+            validated_lines.append((product, qty))
+
+        if not validated_lines:
+            raise ValueError("Transfer must have at least one valid product line.")
+
+        transfer = InventoryTransfer(
+            company=self.company,
+            from_warehouse=from_wh,
+            to_warehouse=to_wh,
+            transfer_date=transfer_date,
+            expected_arrival=expected_arrival,
+            notes=data.get("notes", ""),
+            status=InventoryTransfer.Status.DRAFT,
+        )
+        transfer.number = BaseService.generate_sequence_number(
+            "TR", InventoryTransfer, self.company.pk
+        )
+        transfer.save()
+        InventoryTransferLine.objects.bulk_create(
+            [
+                InventoryTransferLine(
                     transfer=transfer,
-                    product_id=prod_id,
+                    product=product,
                     quantity_requested=qty,
                     quantity_sent=0,
                     quantity_received=0,
                 )
-                lines_created += 1
-
-        if lines_created == 0:
-            transfer.delete()
-            raise ValueError("Transfer must have at least one valid product line.")
+                for product, qty in validated_lines
+            ]
+        )
 
         self.log_activity(
             action="created",
@@ -373,6 +444,13 @@ class TransferService(BaseService):
 
     @transaction.atomic
     def process_transfer(self, transfer, action, data, user):
+        if (
+            transfer.company_id != self.company.pk
+            or transfer.from_warehouse.company_id != self.company.pk
+            or transfer.to_warehouse.company_id != self.company.pk
+        ):
+            raise ValueError("Transfer and warehouses must belong to this company.")
+
         if action == "submit" and transfer.status == InventoryTransfer.Status.DRAFT:
             from apps.workflow.engine import WorkflowEngine
 
@@ -389,9 +467,14 @@ class TransferService(BaseService):
             stock_service = StockService(company=self.company, user=self.user)
 
             for line in lines:
-                qty_sent = Decimal(
-                    str(data.get(f"qty_sent_{line.id}", line.quantity_requested))
+                if line.product.company_id != self.company.pk:
+                    raise ValueError("Transfer products must belong to this company.")
+                qty_sent = _validated_quantity(
+                    data.get(f"qty_sent_{line.id}", line.quantity_requested),
+                    "Quantity sent",
                 )
+                if qty_sent > line.quantity_requested:
+                    raise ValueError("Quantity sent cannot exceed the requested quantity.")
                 batch = data.get(f"batch_number_{line.id}", "")
 
                 # Try getting it as a list first (from API), otherwise try single string and split (from form)
@@ -490,9 +573,14 @@ class TransferService(BaseService):
         ):
             lines = transfer.lines.all()
             for line in lines:
-                qty_recv = Decimal(
-                    str(data.get(f"qty_recv_{line.id}", line.quantity_sent))
+                if line.product.company_id != self.company.pk:
+                    raise ValueError("Transfer products must belong to this company.")
+                qty_recv = _validated_quantity(
+                    data.get(f"qty_recv_{line.id}", line.quantity_sent),
+                    "Quantity received",
                 )
+                if qty_recv > line.quantity_sent:
+                    raise ValueError("Quantity received cannot exceed the quantity sent.")
                 line.quantity_received = qty_recv
                 line.save(update_fields=["quantity_received"])
 

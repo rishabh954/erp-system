@@ -3,7 +3,10 @@ HelpDesk Views - Tickets, SLA, Knowledge Base
 """
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, View
@@ -11,6 +14,7 @@ from django.views.generic import DetailView, ListView, View
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
+from .forms import TicketCreateForm, TicketUpdateForm
 from .models import Ticket, TicketCategory, TicketReply
 
 
@@ -140,94 +144,111 @@ class TicketCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        data = request.POST
         company = self.company()
-        category_id = data.get("category") or None
-        category = None
+        category_id = request.POST.get("category")
         if category_id:
-            category = get_object_or_404(
-                TicketCategory,
-                pk=category_id,
-                company=company,
-                is_active=True,
-                is_deleted=False,
+            try:
+                category_pk = TicketCategory._meta.pk.to_python(category_id)
+            except (TypeError, ValueError, ValidationError):
+                category_pk = None
+            if (
+                category_pk is not None
+                and TicketCategory.objects.filter(pk=category_pk)
+                .exclude(company=company)
+                .exists()
+            ):
+                raise Http404("Ticket category not found for this company.")
+
+        form = TicketCreateForm(request.POST, company=company)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
             )
-        try:
+            return redirect("helpdesk:tickets")
+
+        data = form.cleaned_data
+        with transaction.atomic():
             ticket = Ticket(
                 company=company,
                 title=data["title"],
                 description=data["description"],
-                category=category,
+                category=data["category"],
                 requester=request.user,
-                priority=data.get("priority", "medium"),
-                source=data.get("source", "portal"),
+                priority=data["priority"],
+                source=data["source"],
                 status="open",
             )
             ticket.number = BaseService.generate_sequence_number(
                 "TKT", Ticket, company.pk
             )
 
-            # Set SLA due time
-            if category:
+            if data["category"]:
                 from datetime import timedelta
 
                 ticket.sla_due_at = timezone.now() + timedelta(
-                    hours=category.sla_hours
+                    hours=data["category"].sla_hours
                 )
-                if category.auto_assign_to:
-                    ticket.assigned_to = category.auto_assign_to
+                if data["category"].auto_assign_to:
+                    ticket.assigned_to = data["category"].auto_assign_to
 
             ticket.save()
-            messages.success(request, f"Ticket {ticket.number} created.")
-            return redirect("helpdesk:ticket_detail", pk=ticket.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
-            return redirect("helpdesk:tickets")
+        messages.success(request, f"Ticket {ticket.number} created.")
+        return redirect("helpdesk:ticket_detail", pk=ticket.pk)
 
 
 class AddReplyView(CompanyMixin, View):
     required_permission = "helpdesk.create"
+
     def post(self, request, pk):
         ticket = get_object_or_404(
             Ticket, pk=pk, company=self.company(), is_deleted=False
         )
-        content = request.POST.get("content", "").strip()
-        is_internal = request.POST.get("is_internal") == "on"
-
-        if content:
-            reply = TicketReply(
-                company=self.company(),
-                ticket=ticket,
-                author=request.user,
-                content=content,
-                is_internal=is_internal,
+        form = TicketUpdateForm(request.POST, company=self.company())
+        if not form.is_valid():
+            messages.error(
+                request,
+                "; ".join(
+                    error for errors in form.errors.values() for error in errors
+                ),
             )
-            if request.FILES.get("attachment"):
-                reply.attachment = request.FILES["attachment"]
-            reply.save()
+            return redirect("helpdesk:ticket_detail", pk=pk)
 
-            # Update status if agent replies
-            if ticket.status == "open" and not is_internal:
-                ticket.status = "in_progress"
-                if not ticket.first_response_at:
-                    ticket.first_response_at = timezone.now()
-                ticket.save(update_fields=["status", "first_response_at"])
+        data = form.cleaned_data
+        content = data["content"]
+        with transaction.atomic():
+            if content:
+                reply = TicketReply(
+                    company=self.company(),
+                    ticket=ticket,
+                    author=request.user,
+                    content=content,
+                    is_internal=data["is_internal"],
+                )
+                if request.FILES.get("attachment"):
+                    reply.attachment = request.FILES["attachment"]
+                reply.save()
 
-        # Handle status change
-        new_status = request.POST.get("new_status", "")
-        if new_status and new_status in dict(Ticket.Status.choices):
-            ticket.status = new_status
-            if new_status == "resolved":
-                ticket.resolved_at = timezone.now()
-            elif new_status == "closed":
-                ticket.closed_at = timezone.now()
-            ticket.save(update_fields=["status", "resolved_at", "closed_at"])
+                if ticket.status == Ticket.Status.OPEN and not data["is_internal"]:
+                    ticket.status = Ticket.Status.IN_PROGRESS
+                    if not ticket.first_response_at:
+                        ticket.first_response_at = timezone.now()
+                    ticket.save(update_fields=["status", "first_response_at"])
 
-        # Handle assignment
-        new_assignee = request.POST.get("assigned_to", "")
-        if new_assignee:
-            ticket.assigned_to_id = new_assignee
-            ticket.save(update_fields=["assigned_to"])
+            new_status = data["new_status"]
+            if new_status:
+                ticket.status = new_status
+                if new_status == "resolved":
+                    ticket.resolved_at = timezone.now()
+                elif new_status == "closed":
+                    ticket.closed_at = timezone.now()
+                ticket.save(update_fields=["status", "resolved_at", "closed_at"])
+
+            if data["assigned_to"]:
+                ticket.assigned_to = data["assigned_to"]
+                ticket.save(update_fields=["assigned_to"])
 
         messages.success(request, "Reply added.")
         return redirect("helpdesk:ticket_detail", pk=pk)

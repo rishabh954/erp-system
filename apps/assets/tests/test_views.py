@@ -23,6 +23,9 @@ def test_asset_crud(client, user, company):
             "category": category.pk,
             "purchase_date": str(date.today()),
             "purchase_cost": "1000.00",
+            "salvage_value": "0",
+            "useful_life_years": "5",
+            "depreciation_method": "straight_line",
             "status": Asset.Status.ACTIVE,
         },
     )

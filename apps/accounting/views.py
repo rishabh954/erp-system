@@ -6,7 +6,7 @@ Chart of Accounts, Journal Entries, Bank Accounts, Financial Reports
 """
 
 from datetime import date  # noqa: E402
-from decimal import Decimal  # noqa: E402
+from decimal import Decimal, InvalidOperation  # noqa: E402
 
 from django.contrib import messages  # noqa: E402
 from django.db.models import Q, Sum  # noqa: E402
@@ -127,8 +127,12 @@ class AccountCreateView(CompanyMixin, View):
             acc = service.create_account(data)
             messages.success(request, f"Account {acc.code} — {acc.name} created.")
             return redirect("accounting:chart_of_accounts")
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
+        except (ValueError, TypeError) as e:
+            messages.error(request, f"Account was not created: {e}")
+            return redirect("accounting:account_create")
+        except Exception:
+            logger.exception("Failed to create accounting account")
+            messages.error(request, "Account was not created due to an unexpected error.")
             return redirect("accounting:chart_of_accounts")
 
 
@@ -211,8 +215,12 @@ class JournalEntryCreateView(CompanyMixin, View):
                 messages.success(request, f"Journal entry {entry.number} created.")
 
             return redirect("accounting:journal_detail", pk=entry.pk)
-        except Exception as e:
-            messages.error(request, f"Error creating journal entry: {e}")
+        except (ValueError, TypeError) as e:
+            messages.error(request, f"Journal entry was not created: {e}")
+            return redirect("accounting:journal_create")
+        except Exception:
+            logger.exception("Failed to create journal entry")
+            messages.error(request, "Journal entry was not created due to an unexpected error.")
             return redirect("accounting:journals")
 
 
@@ -593,9 +601,11 @@ class BankReconciliationView(CompanyMixin, View):
                 service = BankingService(user=request.user, company=company)
                 service.reconcile_transaction(line_id, journal_item_id)
                 messages.success(request, "Successfully reconciled transaction.")
-            except Exception as e:
-                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-                messages.error(request, f"Reconciliation failed: {"An unexpected error occurred."}")
+            except (ValueError, TypeError, JournalItem.DoesNotExist) as e:
+                messages.error(request, f"Reconciliation failed: {e}")
+            except Exception:
+                logger.exception("Failed to reconcile bank transaction")
+                messages.error(request, "Reconciliation failed due to an unexpected error.")
 
         elif action == "create_transaction":
             # Manual creation of a bank transaction for demo purposes
@@ -607,18 +617,33 @@ class BankReconciliationView(CompanyMixin, View):
 
             try:
                 bank = BankAccount.objects.get(pk=bank_id, company=company)
+                if tx_type not in BankTransaction.TransactionType.values:
+                    raise ValueError("Choose a valid transaction type.")
+                if not desc or not desc.strip():
+                    raise ValueError("Description is required.")
+                try:
+                    transaction_date = date.fromisoformat(date_str or "")
+                    amount_value = Decimal(amount or "")
+                except (ValueError, InvalidOperation):
+                    raise ValueError("Enter a valid transaction date and amount.") from None
+                if not amount_value.is_finite() or amount_value <= 0:
+                    raise ValueError("Transaction amount must be greater than zero.")
+                if amount_value.as_tuple().exponent < -2 or amount_value.adjusted() > 17:
+                    raise ValueError("Transaction amount supports up to 18 digits and 2 decimals.")
                 BankTransaction.objects.create(
                     company=company,
                     bank_account=bank,
-                    transaction_date=date_str,
+                    transaction_date=transaction_date,
                     transaction_type=tx_type,
-                    amount=amount,
-                    description=desc,
+                    amount=amount_value,
+                    description=desc.strip(),
                 )
                 messages.success(request, "Bank transaction created manually.")
-            except Exception as e:
-                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-                messages.error(request, f"Failed to create transaction: {"An unexpected error occurred."}")
+            except (BankAccount.DoesNotExist, ValueError, TypeError) as e:
+                messages.error(request, f"Failed to create transaction: {e}")
+            except Exception:
+                logger.exception("Failed to create bank transaction")
+                messages.error(request, "Failed to create transaction due to an unexpected error.")
 
         return redirect(
             f"{request.path}?bank_account={request.POST.get('bank_account', '')}"
@@ -680,50 +705,71 @@ class IssueCreditNoteView(CompanyMixin, View):
     def post(self, request):
         company = self.company()
         customer_id = request.POST.get("customer")
-        request.POST.get("invoice")
+        invoice_id = request.POST.get("invoice")
         amount = request.POST.get("amount")
-        reason = request.POST.get("reason")
-
-        customer = get_object_or_404(Customer, pk=customer_id, company=company)
+        reason = (request.POST.get("reason") or "").strip()
 
         try:
-            amount_val = float(amount)
-            if amount_val <= 0:
-                raise ValueError("Amount must be positive.")
+            customer = Customer.objects.get(pk=customer_id, company=company, is_deleted=False)
+            invoice = Invoice.objects.get(
+                pk=invoice_id,
+                company=company,
+                customer=customer,
+                is_deleted=False,
+                document_type="standard",
+            )
+            try:
+                amount_val = Decimal(amount or "")
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError("Enter a valid credit note amount.") from None
+            if not amount_val.is_finite() or amount_val <= 0:
+                raise ValueError("Credit note amount must be greater than zero.")
+            if amount_val.as_tuple().exponent < -2 or amount_val.adjusted() > 17:
+                raise ValueError("Credit note amount supports up to 18 digits and 2 decimals.")
+            available_credit = invoice.balance_due
+            if available_credit <= 0 or amount_val > available_credit:
+                raise ValueError("Credit note amount cannot exceed the invoice balance due.")
+            if len(reason) > 500:
+                raise ValueError("Reason must be 500 characters or fewer.")
 
             number = BaseService.generate_sequence_number("CN", Invoice, company.pk)
 
-            cn = Invoice.objects.create(
-                company=company,
-                number=number,
-                customer=customer,
-                document_type=Invoice.DocumentType.CREDIT_NOTE,
-                status=Invoice.Status.DRAFT,
-                invoice_date=timezone.localdate(),
-                due_date=timezone.localdate(),
-                subtotal=-amount_val,
-                total=-amount_val,
-                notes=reason,
-            )
+            from django.db import transaction
 
-            # Create a single line item for the credit note
-            InvoiceLine.objects.create(
-                invoice=cn,
-                description=reason or "Credit Note applied",
-                quantity=1,
-                unit_price=-amount_val,
-                subtotal=-amount_val,
-                total=-amount_val,
-            )
+            with transaction.atomic():
+                cn = Invoice.objects.create(
+                    company=company,
+                    number=number,
+                    customer=customer,
+                    document_type=Invoice.DocumentType.CREDIT_NOTE,
+                    status=Invoice.Status.DRAFT,
+                    invoice_date=timezone.localdate(),
+                    due_date=timezone.localdate(),
+                    subtotal=-amount_val,
+                    total=-amount_val,
+                    notes=reason,
+                )
+                InvoiceLine.objects.create(
+                    invoice=cn,
+                    description=reason or "Credit Note applied",
+                    quantity=1,
+                    unit_price=-amount_val,
+                    subtotal=-amount_val,
+                    total=-amount_val,
+                )
 
             messages.success(request, f"Credit Note {number} created successfully.")
             # Redirecting to sales invoice detail since CN is just an invoice with negative amount
             return redirect("sales:invoice_detail", pk=cn.pk)
 
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            messages.error(request, f"Error creating Credit Note: {"An unexpected error occurred."}")
-            return redirect("accounting:issue_credit_note")
+        except (Customer.DoesNotExist, Invoice.DoesNotExist):
+            messages.error(request, "Select a customer and standard invoice belonging to this company.")
+        except (ValueError, TypeError) as e:
+            messages.error(request, f"Credit note was not created: {e}")
+        except Exception:
+            logger.exception("Failed to create credit note")
+            messages.error(request, "Credit note was not created due to an unexpected error.")
+        return redirect("accounting:issue_credit_note")
 
 
 # ════════════════════════ COST CENTERS & BUDGETS ═════════════════════════════

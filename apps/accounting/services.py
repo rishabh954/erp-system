@@ -1,4 +1,5 @@
-from decimal import Decimal
+from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.utils import timezone
@@ -819,21 +820,65 @@ class FinancialReportingService:
 
 
 class AccountService(BaseService):
+    @staticmethod
+    def _decimal(value, field, *, allow_negative=False):
+        try:
+            result = Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError(f"{field} must be a valid amount.") from None
+        if not result.is_finite() or (not allow_negative and result < 0):
+            raise ValueError(f"{field} must be a finite non-negative amount.")
+        if result.as_tuple().exponent < -2 or result.adjusted() > 17:
+            raise ValueError(f"{field} supports at most 18 digits and 2 decimals.")
+        return result
+
     @transaction.atomic
     def create_account(self, data):
-        """Creates a new Account based on POST data"""
+        """Validate and create an account scoped to the current company."""
+        code = str(data.get("code", "")).strip()
+        name = str(data.get("name", "")).strip()
+        account_type = data.get("account_type")
+        subtype = data.get("account_subtype", "")
+        if not code or len(code) > 20:
+            raise ValueError("Account code is required and must be 20 characters or fewer.")
+        if not name or len(name) > 255:
+            raise ValueError("Account name is required and must be 255 characters or fewer.")
+        if account_type not in Account.AccountType.values:
+            raise ValueError("Choose a valid account type.")
+        if subtype and subtype not in Account.AccountSubtype.values:
+            raise ValueError("Choose a valid account subtype.")
+
+        parent_id = data.get("parent") or None
+        if parent_id and not Account.objects.filter(
+            pk=parent_id, company=self.company, is_deleted=False
+        ).exists():
+            raise ValueError("Parent account must belong to the active company.")
+        currency_id = data.get("currency") or None
+        if currency_id:
+            from apps.company.models import Currency
+
+            if not Currency.objects.filter(pk=currency_id, is_active=True).exists():
+                raise ValueError("Choose a valid active currency.")
+        opening_balance = self._decimal(data.get("opening_balance", "0"), "Opening balance")
+        opening_date = data.get("opening_balance_date") or None
+        if opening_date:
+            try:
+                date.fromisoformat(str(opening_date))
+            except ValueError:
+                raise ValueError("Opening balance date must be a valid date.") from None
+
         acc = Account(
             company=self.company,
-            code=data["code"],
-            name=data["name"],
-            account_type=data["account_type"],
-            account_subtype=data.get("account_subtype", ""),
+            code=code,
+            name=name,
+            account_type=account_type,
+            account_subtype=subtype,
             description=data.get("description", ""),
-            parent_id=data.get("parent") or None,
-            currency_id=data.get("currency") or None,
+            parent_id=parent_id,
+            currency_id=currency_id,
             is_reconcilable=data.get("is_reconcilable") == "on",
-            opening_balance=data.get("opening_balance", "0"),
-            opening_balance_date=data.get("opening_balance_date") or None,
+            opening_balance=opening_balance,
+            opening_balance_date=opening_date,
         )
         acc.current_balance = acc.opening_balance
         acc.save()
@@ -843,11 +888,62 @@ class AccountService(BaseService):
 class JournalEntryService(BaseService):
     @transaction.atomic
     def create_entry(self, data):
-        """Creates a Journal Entry and its associated Journal Items"""
+        """Validate all header/line input before atomically creating the entry."""
+        from datetime import date
+
+        journal_id = data.get("journal")
+        journal = Journal.objects.filter(
+            pk=journal_id, company=self.company, is_active=True
+        ).first()
+        if not journal:
+            raise ValueError("Choose an active journal in the active company.")
+        try:
+            posting_date = date.fromisoformat(str(data.get("date", "")))
+        except ValueError:
+            raise ValueError("Journal date must be a valid date.") from None
+
+        accounts = data.getlist("account[]")
+        descs = data.getlist("item_description[]")
+        debits = data.getlist("debit[]")
+        credits = data.getlist("credit[]")
+        if not accounts or not (len(accounts) == len(debits) == len(credits)):
+            raise ValueError("Provide at least one complete journal line.")
+        account_ids = [value for value in accounts if value]
+        if len(account_ids) < 2:
+            raise ValueError("A journal entry must contain at least two account lines.")
+        valid_accounts = {
+            str(account.pk): account
+            for account in Account.objects.filter(
+                pk__in=account_ids,
+                company=self.company,
+                is_active=True,
+                is_deleted=False,
+                allow_journal_entries=True,
+            )
+        }
+        if len(valid_accounts) != len(set(account_ids)):
+            raise ValueError("Every journal account must be active and belong to the active company.")
+
+        parsed_lines = []
+        total_debit = Decimal("0")
+        total_credit = Decimal("0")
+        for index, account_id in enumerate(accounts):
+            if not account_id:
+                raise ValueError("Every journal line must have an account.")
+            debit = AccountService._decimal(debits[index] or "0", f"Line {index + 1} debit")
+            credit = AccountService._decimal(credits[index] or "0", f"Line {index + 1} credit")
+            if (debit == 0) == (credit == 0):
+                raise ValueError(f"Line {index + 1} must have exactly one positive debit or credit.")
+            parsed_lines.append((valid_accounts[str(account_id)], debit, credit))
+            total_debit += debit
+            total_credit += credit
+        if total_debit == 0 or total_debit != total_credit:
+            raise ValueError("Journal entry debits and credits must be equal and greater than zero.")
+
         entry = JournalEntry(
             company=self.company,
-            journal_id=data["journal"],
-            date=data["date"],
+            journal=journal,
+            date=posting_date,
             reference=data.get("reference", ""),
             notes=data.get("notes", ""),
             currency_id=data.get("currency") or None,
@@ -858,31 +954,14 @@ class JournalEntryService(BaseService):
             "JE", JournalEntry, self.company.pk
         )
         entry.save()
-
-        accounts = data.getlist("account[]")
-        descs = data.getlist("item_description[]")
-        debits = data.getlist("debit[]")
-        credits = data.getlist("credit[]")
-
-        from decimal import Decimal
-
-        total_debit = Decimal("0")
-        total_credit = Decimal("0")
-
-        for i, acc_id in enumerate(accounts):
-            if not acc_id:
-                continue
-            dr = Decimal(debits[i] or "0")
-            cr = Decimal(credits[i] or "0")
+        for i, (account, dr, cr) in enumerate(parsed_lines):
             JournalItem.objects.create(
                 journal_entry=entry,
-                account_id=acc_id,
+                account=account,
                 description=descs[i] if i < len(descs) else "",
                 debit=dr,
                 credit=cr,
             )
-            total_debit += dr
-            total_credit += cr
 
         entry.total_debit = total_debit
         entry.total_credit = total_credit
@@ -905,10 +984,12 @@ class BankingService(BaseService):
         item = JournalItem.objects.get(
             pk=journal_item_id, account__company=self.company
         )
-
-        # Simple check, we could check signs later
-        if line.amount == 0 and item.debit == 0 and item.credit == 0:
-            pass  # allow zero
+        if line.is_reconciled or item.reconciled:
+            raise ValueError("The statement line or journal item is already reconciled.")
+        if item.account_id != line.statement.bank_account.gl_account_id:
+            raise ValueError("Journal item must use the statement bank account's GL account.")
+        if line.amount != item.debit - item.credit:
+            raise ValueError("Statement amount does not match the journal item.")
 
         line.is_reconciled = True
         line.journal_item = item

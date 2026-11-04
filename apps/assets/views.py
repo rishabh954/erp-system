@@ -4,6 +4,7 @@ Asset Registration, Categories, Allocation, Depreciation, Maintenance
 """
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, View
@@ -11,6 +12,7 @@ from django.views.generic import DetailView, ListView, View
 from core.mixins import CompanyMixin
 from core.services import BaseService
 
+from .forms import AssetForm, MaintenanceForm
 from .models import Asset, AssetCategory, AssetMaintenance
 
 
@@ -135,45 +137,27 @@ class AssetCreateView(CompanyMixin, View):
         )
 
     def post(self, request):
-        data = request.POST
         company = self.company()
+        form = AssetForm(request.POST, request.FILES, company=company)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid asset details.")
+            return redirect("assets:list")
         try:
-            from decimal import Decimal
-
-            purchase_cost = Decimal(data["purchase_cost"])
-            asset = Asset(
-                company=company,
-                name=data["name"],
-                asset_code=data.get("asset_code", ""),
-                category_id=data["category"],
-                branch_id=data.get("branch") or None,
-                purchase_date=data["purchase_date"],
-                purchase_cost=purchase_cost,
-                salvage_value=Decimal(data.get("salvage_value", "0")),
-                useful_life_years=int(data.get("useful_life_years", 5)),
-                depreciation_method=data.get("depreciation_method", "straight_line"),
-                current_value=purchase_cost,
-                serial_number=data.get("serial_number", ""),
-                model_number=data.get("model_number", ""),
-                location=data.get("location", ""),
-                assigned_to_id=data.get("assigned_to") or None,
-                vendor_id=data.get("vendor") or None,
-                warranty_expiry=data.get("warranty_expiry") or None,
-                status="active",
-                notes=data.get("notes", ""),
-            )
-            asset.number = BaseService.generate_sequence_number(
-                "AST", Asset, company.pk
-            )
-            if request.FILES.get("image"):
-                asset.image = request.FILES["image"]
-            asset.save()
+            with transaction.atomic():
+                asset = form.save(commit=False)
+                asset.company = company
+                asset.current_value = asset.purchase_cost
+                asset.status = Asset.Status.ACTIVE
+                asset.number = BaseService.generate_sequence_number(
+                    "AST", Asset, company.pk
+                )
+                asset.save()
             messages.success(
                 request, f"Asset {asset.number} — {asset.name} registered."
             )
             return redirect("assets:detail", pk=asset.pk)
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
+        except Exception:
+            messages.error(request, "Asset registration failed.")
             return redirect("assets:list")
 
 
@@ -183,31 +167,26 @@ class ScheduleMaintenanceView(CompanyMixin, View):
         asset = get_object_or_404(
             Asset, pk=pk, company=self.company(), is_deleted=False
         )
-        from decimal import Decimal
-
+        form = MaintenanceForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please provide valid maintenance details.")
+            return redirect("assets:detail", pk=pk)
         try:
-            maint = AssetMaintenance(
-                company=self.company(),
-                asset=asset,
-                title=request.POST["title"],
-                description=request.POST.get("description", ""),
-                maintenance_type=request.POST.get("maintenance_type", "preventive"),
-                scheduled_date=request.POST["scheduled_date"],
-                cost=Decimal(request.POST.get("cost", "0")),
-                performed_by=request.POST.get("performed_by", ""),
-                next_maintenance_date=request.POST.get("next_maintenance_date") or None,
-            )
-            maint.number = BaseService.generate_sequence_number(
-                "MNT", AssetMaintenance, self.company().pk
-            )
-            maint.save()
+            with transaction.atomic():
+                maint = form.save(commit=False)
+                maint.company = self.company()
+                maint.asset = asset
+                maint.number = BaseService.generate_sequence_number(
+                    "MNT", AssetMaintenance, self.company().pk
+                )
+                maint.save()
 
-            asset.status = Asset.Status.UNDER_MAINTENANCE
-            asset.save(update_fields=["status"])
+                asset.status = Asset.Status.UNDER_MAINTENANCE
+                asset.save(update_fields=["status"])
 
             messages.success(request, "Maintenance scheduled.")
-        except Exception as e:
-            messages.error(request, f"Error: {e}")
+        except Exception:
+            messages.error(request, "Maintenance could not be scheduled.")
         return redirect("assets:detail", pk=pk)
 
 
@@ -217,13 +196,13 @@ class CompleteMaintenanceView(CompanyMixin, View):
         maint = get_object_or_404(
             AssetMaintenance, pk=maint_pk, company=self.company(), is_deleted=False
         )
-        maint.status = "completed"
-        maint.completed_date = timezone.localdate()
-        maint.save(update_fields=["status", "completed_date"])
+        with transaction.atomic():
+            maint.status = AssetMaintenance.Status.COMPLETED
+            maint.completed_date = timezone.localdate()
+            maint.save(update_fields=["status", "completed_date"])
 
-        # Restore asset status
-        maint.asset.status = Asset.Status.ACTIVE
-        maint.asset.save(update_fields=["status"])
+            maint.asset.status = Asset.Status.ACTIVE
+            maint.asset.save(update_fields=["status"])
 
         messages.success(request, "Maintenance marked as completed.")
         return redirect("assets:detail", pk=maint.asset.pk)

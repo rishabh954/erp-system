@@ -5,10 +5,13 @@ All report CRUD, export (Excel/CSV/PDF), pivot, chart, and scheduling.
 
 import json
 import logging
+import math
+from uuid import UUID
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import validate_email
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -27,6 +30,137 @@ REPORT_MODEL_MAP = {
     "purchases": ("purchase", "PurchaseOrder", "company"),
     "accounting": ("accounting", "JournalItem", "journal_entry__company"),
 }
+
+
+def _report_model(module, company_id):
+    from .services import get_queryset_for_module
+
+    if module == SavedReport.Module.ACCOUNTS:
+        from apps.accounting.models import Account
+
+        return Account
+    queryset = get_queryset_for_module(module, company_id)
+    if queryset is None:
+        raise ValueError("Select a supported report module.")
+    return queryset.model
+
+
+def _valid_report_field(model, value, label="field"):
+    if not isinstance(value, str) or not value or len(value) > 200:
+        raise ValueError(f"Select a valid report {label}.")
+    current_model = model
+    for part in value.split("__"):
+        if not part or part.startswith("_"):
+            raise ValueError(f"Select a valid report {label}.")
+        try:
+            field = current_model._meta.get_field(part)
+        except Exception:
+            raise ValueError(f"Select a valid report {label}.") from None
+        if field.is_relation:
+            current_model = field.related_model
+            if current_model is None:
+                raise ValueError(f"Select a valid report {label}.")
+    return value
+
+
+def _report_columns(raw, model):
+    if isinstance(raw, str):
+        columns = [column.strip() for column in raw.split(",") if column.strip()]
+    elif isinstance(raw, list) and all(isinstance(item, str) for item in raw):
+        columns = [item.strip() for item in raw if item.strip()]
+    else:
+        raise ValueError("Report columns must be a comma-separated list.")
+    if not columns or len(columns) > 50:
+        raise ValueError("Select between 1 and 50 report columns.")
+    if len(set(columns)) != len(columns):
+        raise ValueError("Report columns cannot contain duplicates.")
+    for column in columns:
+        _valid_report_field(model, column, "column")
+    return columns
+
+
+def _report_filters(raw, model):
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            raise ValueError("Report filters must be valid JSON.") from None
+    if not isinstance(raw, dict) or len(raw) > 50:
+        raise ValueError("Report filters must be an object with at most 50 fields.")
+    for field, value in raw.items():
+        _valid_report_field(model, field, "filter")
+        if isinstance(value, (list, dict)) or (
+            isinstance(value, float) and not math.isfinite(value)
+        ):
+            raise ValueError("Report filter values must be finite scalar values.")
+    return raw
+
+
+def _parse_report_boolean(value, label):
+    if value is None:
+        return False
+    if value == "on":
+        return True
+    raise ValueError(f"Invalid value for {label}.")
+
+
+def _validate_report_payload(data, company_id):
+    name = data.get("name", "Untitled Report").strip()
+    if not name or len(name) > 200:
+        raise ValueError("Report name is required and must be 200 characters or fewer.")
+    description = data.get("description", "").strip()
+    module = data.get("module", data.get("module_source", "invoices")).strip()
+    if module not in SavedReport.Module.values:
+        raise ValueError("Select a valid report module.")
+    aggregate_function = data.get("aggregate_function")
+    if aggregate_function and aggregate_function not in {
+        choice[0] for choice in CustomReport.AGGREGATE_CHOICES
+    }:
+        raise ValueError("Select a valid aggregate function.")
+    model = _report_model(module, company_id)
+
+    raw_columns = data.get("columns")
+    if raw_columns is None:
+        # Older Report Builder clients submit grouping and aggregate fields
+        # instead of the column list used by the current report model.
+        legacy_columns = [
+            data.get("group_by_field", "").strip(),
+            data.get("aggregate_field", "").strip(),
+        ]
+        raw_columns = [column for column in legacy_columns if column]
+    columns = _report_columns(raw_columns, model)
+    filters = _report_filters(data.get("filters_json", "{}"), model)
+
+    sort_by = data.get("sort_by", "-created_at").strip() or "-created_at"
+    sort_field = sort_by[1:] if sort_by.startswith("-") else sort_by
+    _valid_report_field(model, sort_field, "sort field")
+
+    chart_type = data.get("chart_type", SavedReport.ChartType.NONE)
+    if chart_type not in SavedReport.ChartType.values:
+        raise ValueError("Select a valid chart type.")
+
+    optional_fields = {}
+    for key in ("chart_group_by", "chart_value_field", "pivot_row", "pivot_col", "pivot_value"):
+        value = data.get(key, "").strip()
+        if value:
+            optional_fields[key] = _valid_report_field(model, value, key.replace("_", " "))
+        else:
+            optional_fields[key] = ""
+
+    return {
+        "name": name,
+        "description": description,
+        "module": module,
+        "columns": columns,
+        "filters": filters,
+        "sort_by": sort_by,
+        "chart_type": chart_type,
+        **optional_fields,
+        "enable_pivot": _parse_report_boolean(
+            data.get("enable_pivot"), "pivot option"
+        ),
+        "is_public": _parse_report_boolean(data.get("is_public"), "public option"),
+    }
 
 
 def get_reportable_fields(model_class):
@@ -91,31 +225,16 @@ class ReportBuilderView(ReportsMixin, TemplateView):
 
     def post(self, request, *args, **kwargs):
         data = request.POST
-        columns_raw = data.get("columns", "")
-        columns = [c.strip() for c in columns_raw.split(",") if c.strip()]
-
         try:
-            filters = json.loads(data.get("filters_json", "{}"))
-        except json.JSONDecodeError:
-            filters = {}
+            report_data = _validate_report_payload(data, self.company_id)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("analytics:builder")
 
         report = SavedReport.objects.create(
-            name=data.get("name", "Untitled Report"),
-            description=data.get("description", ""),
-            module=data.get("module", "invoices"),
-            columns=columns,
-            filters=filters,
-            sort_by=data.get("sort_by", "-created_at"),
-            chart_type=data.get("chart_type", "none"),
-            chart_group_by=data.get("chart_group_by", ""),
-            chart_value_field=data.get("chart_value_field", ""),
-            enable_pivot=data.get("enable_pivot") == "on",
-            pivot_row=data.get("pivot_row", ""),
-            pivot_col=data.get("pivot_col", ""),
-            pivot_value=data.get("pivot_value", ""),
+            **report_data,
             created_by=request.user,
             company=self.company,
-            is_public=data.get("is_public") == "on",
         )
         messages.success(request, f"Report '{report.name}' saved successfully!")
         return redirect("analytics:report_detail", pk=report.pk)
@@ -265,6 +384,8 @@ class ReportExportView(ReportsMixin, View):
     """Handle CSV, Excel, PDF export for a saved report."""
 
     def get(self, request, pk, fmt):
+        if fmt not in {"csv", "xlsx", "pdf"}:
+            return HttpResponse("Invalid format", status=400)
         report = get_object_or_404(self.get_saved_reports(), pk=pk)
         data = get_data(
             module=report.module,
@@ -294,8 +415,6 @@ class ReportExportView(ReportsMixin, View):
             return export_excel(data, f"{filename}.xlsx", sheet_name=report.name[:30])
         elif fmt == "pdf":
             return export_pdf(data, report_name=report.name, filename=f"{filename}.pdf")
-        else:
-            return HttpResponse("Invalid format", status=400)
 
 
 class QuickExportView(ReportsMixin, View):
@@ -313,11 +432,30 @@ class QuickExportView(ReportsMixin, View):
     """Quick export from a module+columns+filters URL params — no saved report needed."""
 
     def get(self, request, fmt):
+        if fmt not in {"csv", "xlsx", "pdf"}:
+            return HttpResponse("Invalid format", status=400)
         module = request.GET.get("module", "invoices")
-        columns_raw = request.GET.get("columns", "number,status,total,created_at")
-        columns = [c.strip() for c in columns_raw.split(",") if c.strip()]
-        sort_by = request.GET.get("sort_by", "-created_at")
-        limit = int(request.GET.get("limit", 5000))
+        try:
+            if module not in SavedReport.Module.values:
+                raise ValueError("Select a valid report module.")
+            model = _report_model(module, self.company_id)
+            columns = _report_columns(
+                request.GET.get("columns", "number,status,total,created_at"), model
+            )
+            sort_by = request.GET.get("sort_by", "-created_at").strip() or "-created_at"
+            _valid_report_field(
+                model,
+                sort_by[1:] if sort_by.startswith("-") else sort_by,
+                "sort field",
+            )
+            raw_limit = request.GET.get("limit", "5000")
+            if not raw_limit.isdecimal():
+                raise ValueError("Export limit must be a whole number.")
+            limit = int(raw_limit)
+            if not 1 <= limit <= 10000:
+                raise ValueError("Export limit must be between 1 and 10000.")
+        except ValueError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
 
         data = get_data(
             module=module,
@@ -410,16 +548,34 @@ class PreviewAPIView(ReportsMixin, View):
     def post(self, request):
         try:
             payload = json.loads(request.body)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
+        if not isinstance(payload, dict):
+            return JsonResponse({"error": "The preview request must be an object."}, status=400)
 
         module = payload.get("module", "")
         columns = payload.get("columns", [])
-        limit = payload.get("preview_limit", 25)
 
         # Build sort_by string
         sort_field = payload.get("sort_field", "")
         sort_order = payload.get("sort_order", "asc")
+        try:
+            if not isinstance(sort_field, str):
+                raise ValueError("Sort field must be text.")
+            if module not in SavedReport.Module.values:
+                raise ValueError("Select a valid report module.")
+            model = _report_model(module, self.company_id)
+            columns = _report_columns(columns, model)
+            if not isinstance(sort_order, str) or sort_order not in {"asc", "desc"}:
+                raise ValueError("Select a valid sort order.")
+            if sort_field:
+                _valid_report_field(model, sort_field, "sort field")
+            limit = payload.get("preview_limit", 25)
+            if type(limit) is not int or not 1 <= limit <= 100:
+                raise ValueError("Preview limit must be a whole number between 1 and 100.")
+        except ValueError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+
         sort_by = (
             f"-{sort_field}" if sort_order == "desc" and sort_field else sort_field
         )
@@ -652,13 +808,36 @@ class ScheduleReportView(ReportsMixin, View):
     def post(self, request, pk):
         report = get_object_or_404(self.get_saved_reports(), pk=pk)
         data = request.POST
+        try:
+            frequency = data.get("frequency", ScheduledReport.Frequency.MONTHLY)
+            export_format = data.get(
+                "export_format", ScheduledReport.ExportFormat.PDF
+            )
+            if frequency not in ScheduledReport.Frequency.values:
+                raise ValueError("Select a valid schedule frequency.")
+            if export_format not in ScheduledReport.ExportFormat.values:
+                raise ValueError("Select a valid export format.")
+            recipients = data.get("recipients", "").strip()
+            recipient_list = [email.strip() for email in recipients.split(",")]
+            if not recipients or any(not email for email in recipient_list):
+                raise ValueError("Enter one or more comma-separated email addresses.")
+            for email in recipient_list:
+                validate_email(email)
+            subject = data.get("subject", "").strip()
+            if len(subject) > 255:
+                raise ValueError("Subject must be 255 characters or fewer.")
+            body = data.get("body", "")
+        except (ValueError, ValidationError) as exc:
+            messages.error(request, str(exc))
+            return redirect("analytics:report_detail", pk=pk)
+
         schedule = ScheduledReport.objects.create(
             report=report,
-            frequency=data.get("frequency", "monthly"),
-            export_format=data.get("export_format", "pdf"),
-            recipients=data.get("recipients", ""),
-            subject=data.get("subject", ""),
-            body=data.get("body", ""),
+            frequency=frequency,
+            export_format=export_format,
+            recipients=", ".join(recipient_list),
+            subject=subject,
+            body=body,
             is_active=True,
             created_by=request.user,
         )
@@ -731,6 +910,11 @@ class ReportBulkDeleteView(ReportsMixin, View):
     def post(self, request):
         pks = request.POST.get("pks", "")
         pk_list = [pk.strip() for pk in pks.split(",") if pk.strip()]
+        try:
+            pk_list = list(dict.fromkeys(str(UUID(pk)) for pk in pk_list))
+        except (ValueError, TypeError, AttributeError):
+            messages.error(request, "Select valid report IDs.")
+            return redirect("analytics:saved_reports")
         if pk_list:
             deleted, _ = self.get_saved_reports().filter(pk__in=pk_list).delete()
             messages.success(request, f"Successfully deleted {deleted} reports.")
