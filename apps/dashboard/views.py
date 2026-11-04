@@ -9,14 +9,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, F, Q, Sum
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.views.generic import TemplateView
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.permissions import HasModulePermission
+from core.tenancy import get_active_company
 
 
 def get_period_dates(period="month"):
@@ -53,11 +52,10 @@ class CEODashboardAPIView(APIView):
         return self.required_permission
     permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
-        company = request.user.primary_company
+        company = get_active_company(request)
         if not company:
-            return Response({"error": "No company assigned"}, status=400)
+            return Response({"error": "No active company membership"}, status=403)
 
         period = request.query_params.get("period", "month")
         start_date, end_date = get_period_dates(period)
@@ -310,9 +308,10 @@ class HRDashboardAPIView(APIView):
         return self.required_permission
     permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
-        company = request.user.primary_company
+        company = get_active_company(request)
+        if not company:
+            return Response({"error": "No active company membership"}, status=403)
         period = request.query_params.get("period", "month")
         start_date, end_date = get_period_dates(period)
 
@@ -390,9 +389,10 @@ class SalesDashboardAPIView(APIView):
         return self.required_permission
     permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
-        company = request.user.primary_company
+        company = get_active_company(request)
+        if not company:
+            return Response({"error": "No active company membership"}, status=403)
         period = request.query_params.get("period", "month")
         start_date, end_date = get_period_dates(period)
 
@@ -451,9 +451,10 @@ class FinanceDashboardAPIView(APIView):
         return self.required_permission
     permission_classes = [permissions.IsAuthenticated, HasModulePermission]
 
-    @method_decorator(cache_page(60 * 15))
     def get(self, request):
-        company = request.user.primary_company
+        company = get_active_company(request)
+        if not company:
+            return Response({"error": "No active company membership"}, status=403)
         period = request.query_params.get("period", "month")
         start_date, end_date = get_period_dates(period)
 
@@ -526,7 +527,9 @@ class GlobalSearchAPIView(APIView):
         if len(q) < 2:
             return Response({"results": []})
 
-        company = request.user.primary_company
+        company = get_active_company(request)
+        if not company:
+            return Response({"error": "No active company membership"}, status=403)
         results = []
 
         # Search customers
@@ -622,7 +625,7 @@ class DashboardIndexView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        company = self.request.user.primary_company
+        company = get_active_company(self.request)
 
         # Recent invoices for template render
         if company:
@@ -898,9 +901,11 @@ class CalendarEventsAPIView(LoginRequiredMixin, View):
         end_str = request.GET.get("end")
 
         events = []
-        company = getattr(request.user, "primary_company", None)
+        company = get_active_company(request)
         if not company:
-            return JsonResponse(events, safe=False)
+            return JsonResponse(
+                {"error": "No active company membership"}, status=403
+            )
 
         if start_str and end_str:
             start_date = datetime.fromisoformat(start_str.replace("Z", "+00:00")).date()

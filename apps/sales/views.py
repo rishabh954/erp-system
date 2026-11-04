@@ -1140,7 +1140,8 @@ class SalesCommissionListView(CompanyMixin, ListView):
         )
         if (
             not self.request.user.is_superuser
-            and self.request.user.role != "company_admin"
+            and self.request.user.get_role_for_company(self.company())
+            not in ("company_admin", "super_admin")
         ):
             qs = qs.filter(sales_rep=self.request.user)
 
@@ -1171,7 +1172,8 @@ class SalesCommissionPayView(CompanyMixin, View):
     def post(self, request, pk):
         if not (
             request.user.is_superuser
-            or request.user.role in ["company_admin", "super_admin"]
+            or request.user.get_role_for_company(self.company())
+            in ["company_admin", "super_admin"]
         ):
             messages.error(request, "Only administrators can mark commissions as paid.")
             return redirect("sales:commissions")

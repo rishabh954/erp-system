@@ -78,7 +78,7 @@ class LeadListView(CompanyMixin, ListView):
             qs = qs.filter(source=source)
 
         # Non-sales managers see only their own leads
-        if self.request.user.role not in (
+        if self.request.user.get_role_for_company(self.company()) not in (
             "sales_manager",
             "company_admin",
             "super_admin",
@@ -149,7 +149,7 @@ class LeadCreateView(CompanyMixin, CreateView):
         from apps.authentication.models import User
 
         ctx = super().get_context_data(**kwargs)
-        c = self.request.user.primary_company
+        c = self.company()
         ctx["status_choices"] = Lead.Status.choices
         ctx["source_choices"] = Lead.Source.choices
         ctx["sales_users"] = User.objects.filter(
@@ -194,7 +194,7 @@ class LeadUpdateView(CompanyMixin, UpdateView):
         from apps.authentication.models import User
 
         ctx = super().get_context_data(**kwargs)
-        c = self.request.user.primary_company
+        c = self.company()
         ctx["status_choices"] = Lead.Status.choices
         ctx["source_choices"] = Lead.Source.choices
         ctx["sales_users"] = User.objects.filter(
@@ -799,7 +799,7 @@ class OpportunityListView(CompanyMixin, ListView):
                 | Q(phone__icontains=q)
             )
 
-        if self.request.user.role not in (
+        if self.request.user.get_role_for_company(self.company()) not in (
             "sales_manager",
             "company_admin",
             "super_admin",
@@ -1001,7 +1001,7 @@ class InteractionListView(CompanyMixin, ListView):
             .select_related("lead", "assigned_to")
             .order_by("-created_at")
         )
-        if self.request.user.role not in (
+        if self.request.user.get_role_for_company(self.company()) not in (
             "sales_manager",
             "company_admin",
             "super_admin",

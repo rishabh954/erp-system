@@ -561,9 +561,15 @@ class LeaveListView(CompanyMixin, ListView):
         )
 
         # Non-HR users only see their own
-        if self.request.user.role not in ("hr_manager", "company_admin", "super_admin"):
+        if self.request.user.get_role_for_company(
+            self.company()
+        ) not in ("hr_manager", "company_admin", "super_admin"):
             try:
-                emp = Employee.objects.get(user=self.request.user, is_deleted=False)
+                emp = Employee.objects.get(
+                    user=self.request.user,
+                    company=self.company(),
+                    is_deleted=False,
+                )
                 qs = qs.filter(employee=emp)
             except Employee.DoesNotExist:
                 qs = qs.none()

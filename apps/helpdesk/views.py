@@ -48,7 +48,10 @@ class TicketListView(CompanyMixin, ListView):
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(number__icontains=q))
 
-        if self.request.user.role not in ("company_admin", "super_admin"):
+        if self.request.user.get_role_for_company(self.company()) not in (
+            "company_admin",
+            "super_admin",
+        ):
             qs = qs.filter(
                 Q(assigned_to=self.request.user) | Q(requester=self.request.user)
             )

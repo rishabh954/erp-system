@@ -309,7 +309,7 @@ class PurchaseRequestListView(CompanyMixin, ListView):
             qs = qs.filter(status=status)
 
         # Non-managers see only their own requests
-        if self.request.user.role not in (
+        if self.request.user.get_role_for_company(self.company()) not in (
             "purchase_manager",
             "company_admin",
             "super_admin",

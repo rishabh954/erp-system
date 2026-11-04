@@ -251,7 +251,7 @@ class ReportDetailView(ReportsMixin, DetailView):
 
 
 class ReportExportView(ReportsMixin, View):
-    required_permission = "analytics.read"
+    required_permission = "analytics.export"
 
     def get_required_permission(self, request=None):
         if request:
@@ -299,7 +299,7 @@ class ReportExportView(ReportsMixin, View):
 
 
 class QuickExportView(ReportsMixin, View):
-    required_permission = "analytics.read"
+    required_permission = "analytics.export"
 
     def get_required_permission(self, request=None):
         if request:
