@@ -853,6 +853,74 @@ class TestSalesQuotationWorkflow:
         assert resp.status_code in (200, 302)
         q.refresh_from_db()
         assert q.status == "approved", f"Expected approved, got {q.status}"
+        assert q.approved_by == admin_user
+
+    def test_api_approval_uses_same_rules_and_records_approver(
+        self, admin_user, company, customer
+    ):
+        from rest_framework.test import APIClient
+
+        q = self._make_quotation(company, customer, status="draft")
+        api = APIClient()
+        api.force_authenticate(user=admin_user)
+        response = api.post(
+            reverse("api_sales:quotation-approve", kwargs={"pk": q.pk}),
+            {},
+            format="json",
+            HTTP_X_ACTIVE_COMPANY=str(company.pk),
+        )
+
+        assert response.status_code == 200
+        q.refresh_from_db()
+        assert q.status == "approved"
+        assert q.approved_by == admin_user
+
+    def test_api_cannot_approve_rejected_quotation(
+        self, admin_user, company, customer
+    ):
+        from rest_framework.test import APIClient
+
+        q = self._make_quotation(company, customer, status="rejected")
+        api = APIClient()
+        api.force_authenticate(user=admin_user)
+        response = api.post(
+            reverse("api_sales:quotation-approve", kwargs={"pk": q.pk}),
+            {},
+            format="json",
+            HTTP_X_ACTIVE_COMPANY=str(company.pk),
+        )
+
+        assert response.status_code == 400
+        q.refresh_from_db()
+        assert q.status == "rejected"
+        assert q.approved_by is None
+
+    def test_api_approval_requires_approve_permission(self, db, company, customer):
+        from rest_framework.test import APIClient
+
+        from apps.authentication.models import ModulePermission
+
+        user = UserFactory(primary_company=company, role=User.Role.EMPLOYEE)
+        UserCompany.objects.create(user=user, company=company, role=User.Role.EMPLOYEE)
+        ModulePermission.objects.update_or_create(
+            role=User.Role.EMPLOYEE,
+            module="sales",
+            defaults={"can_create": True, "can_approve": False},
+        )
+        q = self._make_quotation(company, customer, status="draft")
+        api = APIClient()
+        api.force_authenticate(user=user)
+
+        response = api.post(
+            reverse("api_sales:quotation-approve", kwargs={"pk": q.pk}),
+            {},
+            format="json",
+            HTTP_X_ACTIVE_COMPANY=str(company.pk),
+        )
+
+        assert response.status_code == 403
+        q.refresh_from_db()
+        assert q.status == "draft"
 
     def test_reject_quotation(self, client, admin_user, company, customer):
         q = self._make_quotation(company, customer, status="sent")

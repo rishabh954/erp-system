@@ -257,14 +257,18 @@ class QuotationApproveView(CompanyMixin, View):
         quot = get_object_or_404(
             Quotation, pk=pk, company=self.company(), is_deleted=False
         )
-        if quot.status in (Quotation.Status.CONVERTED, Quotation.Status.REJECTED):
+        try:
+            from apps.sales.services import QuotationService
+
+            QuotationService(user=request.user, company=self.company()).approve_quotation(
+                quot, request.user
+            )
+        except ValueError as exc:
             messages.error(
-                request, "Converted or rejected quotations cannot be approved."
+                request, str(exc)
             )
             return redirect("sales:quotation_detail", pk=pk)
 
-        quot.status = Quotation.Status.APPROVED
-        quot.save(update_fields=["status"])
         messages.success(request, f"Quotation {quot.number} approved successfully.")
         return redirect("sales:quotation_detail", pk=pk)
 

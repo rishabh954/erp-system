@@ -496,6 +496,21 @@ class CreditControlService(BaseService):
 
 class QuotationService(BaseService):
     @transaction.atomic
+    def approve_quotation(self, quotation, user=None):
+        from apps.sales.models import Quotation
+
+        quotation = Quotation.objects.select_for_update().get(
+            pk=quotation.pk, company=self.company, is_deleted=False
+        )
+        if quotation.status in (Quotation.Status.CONVERTED, Quotation.Status.REJECTED):
+            raise ValueError("Converted or rejected quotations cannot be approved.")
+
+        quotation.status = Quotation.Status.APPROVED
+        quotation.approved_by = user or self.user
+        quotation.save(update_fields=["status", "approved_by"])
+        return quotation
+
+    @transaction.atomic
     def create_quotation(self, data, user):
         from decimal import Decimal
 

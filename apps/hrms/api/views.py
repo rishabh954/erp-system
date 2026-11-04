@@ -145,10 +145,14 @@ class LeaveRequestViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewset
                 {"error": "Can only approve pending requests"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        from apps.hrms.services import LeaveService
 
-        leave_req.status = LeaveRequest.Status.APPROVED
-        leave_req.approved_by = request.user
-        leave_req.save(update_fields=["status", "approved_by"])
+        try:
+            LeaveService(user=request.user, company=request.company).process_leave(
+                leave_req, "approve", request.user
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"status": "approved"})
 
     @action(detail=True, methods=["post"])
@@ -160,10 +164,17 @@ class LeaveRequestViewSet(HRMSPermissionMixin, TenantScopedViewSetMixin, viewset
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        leave_req.status = LeaveRequest.Status.REJECTED
-        leave_req.approved_by = request.user
-        leave_req.rejection_reason = request.data.get("reason", "")
-        leave_req.save(update_fields=["status", "approved_by", "rejection_reason"])
+        from apps.hrms.services import LeaveService
+
+        try:
+            LeaveService(user=request.user, company=request.company).process_leave(
+                leave_req,
+                "reject",
+                request.user,
+                {"rejection_reason": request.data.get("reason", "")},
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"status": "rejected"})
 
 

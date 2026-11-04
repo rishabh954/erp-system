@@ -2,10 +2,13 @@ from datetime import date
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.hrms.models import (
     JobApplication,
     JobPosting,
+    LeaveBalance,
     LeaveRequest,
     LeaveType,
     PayrollPeriod,
@@ -121,13 +124,110 @@ def test_leave_views(client, user, employee, company, rf):
     }
     response = client.post(reverse("hrms:leave_request_create"), data)
     assert response.status_code == 302
-
     leave = LeaveRequest.objects.filter(employee=employee).first()
     assert leave is not None
 
     url = reverse("hrms:leave_approve", args=[leave.pk])
     response = client.post(url, {"action": "approve"})
     assert response.status_code == 302
+
+
+def test_leave_api_approval_uses_shared_service(client, user, employee, company):
+    from apps.authentication.models import ActivityLog
+
+    leave_type = LeaveType.objects.create(
+        company=company, name="Annual API", code="AN-API", days_allowed=10
+    )
+    leave = LeaveRequest.objects.create(
+        company=company,
+        employee=employee,
+        leave_type=leave_type,
+        start_date=date.today(),
+        end_date=date.today(),
+        total_days=1,
+        reason="Annual leave",
+        status=LeaveRequest.Status.PENDING,
+    )
+    balance = LeaveBalance.objects.create(
+        employee=employee,
+        leave_type=leave_type,
+        year=timezone.localdate().year,
+        allocated=10,
+        pending=1,
+    )
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.post(
+        reverse("api_hrms:leave-request-approve", args=[leave.pk]),
+        {},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+
+    assert response.status_code == 200
+    leave.refresh_from_db()
+    balance.refresh_from_db()
+    assert leave.status == LeaveRequest.Status.APPROVED
+    assert leave.approved_by == user
+    assert leave.approved_at is not None
+    assert balance.used == 1
+    assert balance.pending == 0
+    assert ActivityLog.objects.filter(
+        company=company,
+        resource_type="LeaveRequest",
+        resource_id=str(leave.pk),
+        description__startswith="Approved leave request",
+    ).exists()
+
+    duplicate_response = api.post(
+        reverse("api_hrms:leave-request-approve", args=[leave.pk]),
+        {},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+    assert duplicate_response.status_code == 400
+    balance.refresh_from_db()
+    assert balance.used == 1
+
+
+def test_leave_api_rejection_uses_shared_service(client, user, employee, company):
+    from apps.authentication.models import ActivityLog
+
+    leave_type = LeaveType.objects.create(
+        company=company, name="Annual Reject", code="AN-REJ", days_allowed=10
+    )
+    leave = LeaveRequest.objects.create(
+        company=company,
+        employee=employee,
+        leave_type=leave_type,
+        start_date=date.today(),
+        end_date=date.today(),
+        total_days=1,
+        reason="Annual leave",
+        status=LeaveRequest.Status.PENDING,
+    )
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.post(
+        reverse("api_hrms:leave-request-reject", args=[leave.pk]),
+        {"reason": "Insufficient coverage"},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+
+    assert response.status_code == 200
+    leave.refresh_from_db()
+    assert leave.status == LeaveRequest.Status.REJECTED
+    assert leave.rejection_reason == "Insufficient coverage"
+    assert leave.approved_by is None
+    assert ActivityLog.objects.filter(
+        company=company,
+        resource_type="LeaveRequest",
+        resource_id=str(leave.pk),
+        description__startswith="Rejected leave request",
+    ).exists()
 
 
 def test_salary_structure_views(client, user, company):

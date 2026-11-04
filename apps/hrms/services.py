@@ -167,6 +167,13 @@ class LeaveService(BaseService):
 
     @transaction.atomic
     def process_leave(self, leave, action, user, data=None):
+        original_leave = leave
+        leave = LeaveRequest.objects.select_for_update().get(
+            pk=leave.pk, company=self.company
+        )
+        if leave.status != LeaveRequest.Status.PENDING:
+            raise ValueError("Can only process pending leave requests.")
+
         if action == "approve":
             leave.status = "approved"
             leave.approved_by = user
@@ -176,7 +183,9 @@ class LeaveService(BaseService):
             # Update leave balance
             bal = LeaveBalance.objects.filter(
                 employee=leave.employee,
+                employee__company=self.company,
                 leave_type=leave.leave_type,
+                leave_type__company=self.company,
                 year=timezone.localdate().year,
             ).first()
             if bal:
@@ -204,7 +213,14 @@ class LeaveService(BaseService):
                 resource_id=leave.pk,
                 description=f"Rejected leave request for {leave.employee.full_name}",
             )
-        return leave
+        else:
+            raise ValueError("Action must be approve or reject.")
+
+        # Preserve the service's existing in-memory update contract for callers
+        # that retain the object passed into this method.
+        for field in ("status", "approved_by_id", "approved_at", "rejection_reason"):
+            setattr(original_leave, field, getattr(leave, field))
+        return original_leave
 
 
 class PayrollService(BaseService):

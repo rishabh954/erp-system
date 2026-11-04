@@ -241,6 +241,8 @@ class QuotationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "sales.read"
 
     def get_required_permission(self, request=None):
+        if getattr(self, "action", None) in {"send", "approve", "convert_to_order"}:
+            return "sales.approve"
         if request:
             if request.method == "POST":
                 return "sales.create"
@@ -285,9 +287,17 @@ class QuotationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         quot = self.get_object()
-        quot.status = Quotation.Status.APPROVED
-        quot.approved_by = request.user
-        quot.save(update_fields=["status", "approved_by"])
+        from apps.sales.services import QuotationService
+
+        company = get_active_company(request)
+        if not company:
+            raise PermissionDenied("No active company membership.")
+        try:
+            quot = QuotationService(user=request.user, company=company).approve_quotation(
+                quot, request.user
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
         return Response(QuotationSerializer(quot).data)
 
     @extend_schema(

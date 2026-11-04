@@ -61,3 +61,24 @@ The repository received additional narrowly scoped reliability fixes and regress
 - `git diff --check`: clean (Git emitted only line-ending normalization notices for changed files).
 
 This run remains SQLite-only. PostgreSQL locking/concurrency, live Redis/Celery workers and beat, external providers and production restore remain unverified as detailed in `FINAL_PRODUCTION_AUDIT.md`.
+
+## Duplicate-functionality audit follow-up (2026-10-23)
+
+- Focused HRMS leave API/service tests: **15 passed** (`tests/test_hrms.py apps/hrms/tests/test_views.py`).
+- Full suite after the HRMS leave approval consolidation: **4,937 passed, 0 failed, 1 skipped, 4,847 warnings in 291.66s (0:04:51)**.
+- `manage.py check`: **exit 0**, no issues.
+- `manage.py makemigrations --check --dry-run`: **exit 0**, `No changes detected`.
+- No schema change was made; fresh migration was not rerun for this follow-up. The prior fresh SQLite migration succeeded as recorded above.
+
+See `DUPLICATE_FUNCTIONALITY_AUDIT.md` for the findings, retained candidates, and evidence limitations. No PostgreSQL, live Redis/Celery, provider or external consumer behavior is certified by these tests.
+
+### API/web state-transition consolidation (2026-10-23)
+
+- Focused sales quotation tests: **6 passed**. They cover shared approval behavior, API/web approver parity, rejected-state handling, company scoping, and denial when the caller lacks approval permission.
+- Full suite after the HRMS and Sales API/web consolidations: **4,940 passed, 0 failed, 1 skipped, 4,853 warnings in 355.48s (0:05:55)**. The run used `DEBUG=True`, SQLite, `DJANGO_TESTING=1`, and `--no-cov -o addopts=--nomigrations`.
+- `manage.py check`: **exit 0**, no issues.
+- `manage.py makemigrations --check --dry-run`: **exit 0**, `No changes detected`.
+- `git diff --check`: clean, with line-ending normalization notices only.
+- The skip remains the SQLite concurrency test described above. No schema changed, so a fresh migration was not rerun for this code-only follow-up.
+
+PostgreSQL locking/concurrency, live Redis/Celery behavior, provider integrations and external API clients remain unverified.
