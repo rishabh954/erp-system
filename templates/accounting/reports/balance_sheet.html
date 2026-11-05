@@ -66,7 +66,8 @@
     </div>
     <div class="text-end">
       <div class="text-muted small">Difference</div>
-      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}"> ${% widthratio total_assets total_liabilities_equity 1 %}
+      <div class="fw-bold fs-5 {% if is_balanced %}text-success{% else %}text-danger{% endif %}">
+        {{ current_company.default_currency.symbol|default:'$' }}{{ difference|floatformat:2|intcomma }}
       </div>
     </div>
   </div>
@@ -188,6 +189,15 @@
             </tr>
             {% endif %}
             {% endfor %}
+            {% if retained_earnings != 0 %}
+            <tr>
+              <td class="ps-4">
+                <span class="report-code" style="color:#8b5cf6; background:rgba(139,92,246,0.08);">RE</span>
+                <span class="fw-semibold text-dark">Retained Earnings</span>
+              </td>
+              <td class="text-end pe-4 fw-medium text-dark">{{ current_company.default_currency.symbol|default:'$' }}{{ retained_earnings|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endif %}
           </tbody>
           <tfoot class="border-top border-2 mt-auto">
             <tr>

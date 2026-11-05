@@ -160,7 +160,6 @@ def test_account_get_balance(company):
         date=timezone.now().date(),
         total_debit=Decimal("50.00"),
         total_credit=Decimal("50.00"),
-        status=JournalEntry.Status.POSTED,
     )
 
     # Asset gets a debit of 50
@@ -177,6 +176,7 @@ def test_account_get_balance(company):
         debit=Decimal("0"),
         credit=Decimal("50.00"),
     )
+    je.post()
 
     # asset_account is normal debit: debit - credit -> 50 - 0 = 50
     assert asset_account.get_balance() == Decimal("50.00")

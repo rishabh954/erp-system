@@ -143,10 +143,11 @@ def test_financial_reporting_trial_balance(company, user):
 
     je = JournalEntry.objects.create(
         company=company, journal=journal, date=timezone.now().date(),
-        total_debit=Decimal("100.00"), total_credit=Decimal("100.00"), status=JournalEntry.Status.POSTED
+        total_debit=Decimal("100.00"), total_credit=Decimal("100.00")
     )
     JournalItem.objects.create(journal_entry=je, account=asset_account, debit=Decimal("100.00"), credit=Decimal("0"))
     JournalItem.objects.create(journal_entry=je, account=liability_account, debit=Decimal("0"), credit=Decimal("100.00"))
+    je.post(user=user)
 
     tb = FinancialReportingService.get_trial_balance(company)
     assert tb["total_debit"] == Decimal("100.00")

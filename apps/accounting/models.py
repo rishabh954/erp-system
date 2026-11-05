@@ -5,11 +5,167 @@ Chart of Accounts, Journal Entries, Bank Reconciliation
 
 import uuid
 
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
-from core.models import CompanyScoped, CurrencyMixin, NotesMixin, SequenceMixin
+from core.models import (
+    CompanyScoped,
+    CurrencyMixin,
+    NotesMixin,
+    SequenceMixin,
+    SoftDeleteManager,
+    SoftDeleteQuerySet,
+)
+from core.restore_context import is_restoring
 from core.services import BaseService
+
+
+class JournalEntryQuerySet(SoftDeleteQuerySet):
+    def update(self, **kwargs):
+        if is_restoring():
+            return super().update(**kwargs)
+        with transaction.atomic(using=self.db):
+            statuses = list(
+                self.select_for_update().values_list("status", flat=True)
+            )
+            if JournalEntry.Status.POSTED in statuses:
+                raise ValueError("Posted journal entries are immutable.")
+            if kwargs.get("status") == JournalEntry.Status.POSTED:
+                raise ValueError("Use AccountingPostingService to post journal entries.")
+            return super().update(**kwargs)
+
+    def delete(self):
+        if is_restoring():
+            return models.QuerySet.delete(self)
+        with transaction.atomic(using=self.db):
+            statuses = list(
+                self.select_for_update().values_list("status", flat=True)
+            )
+            if JournalEntry.Status.POSTED in statuses:
+                raise ValueError("Posted journal entries cannot be deleted.")
+            return super().delete()
+
+    def hard_delete(self):
+        if is_restoring():
+            return super().hard_delete()
+        with transaction.atomic(using=self.db):
+            statuses = list(
+                self.select_for_update().values_list("status", flat=True)
+            )
+            if JournalEntry.Status.POSTED in statuses:
+                raise ValueError("Posted journal entries cannot be deleted.")
+            return super().hard_delete()
+
+    def bulk_create(self, objs, **kwargs):
+        objs = list(objs)
+        if not is_restoring() and any(
+            obj.status == JournalEntry.Status.POSTED for obj in objs
+        ):
+            raise ValueError("Create draft journal entries and post them through the service.")
+        return super().bulk_create(objs, **kwargs)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        objs = list(objs)
+        if is_restoring():
+            return super().bulk_update(objs, fields, **kwargs)
+        if any(obj.status == JournalEntry.Status.POSTED for obj in objs):
+            raise ValueError("Posted journal entries are immutable.")
+        if "status" in fields:
+            raise ValueError("Use AccountingPostingService to post journal entries.")
+        with transaction.atomic(using=self.db):
+            existing_statuses = list(
+                self.select_for_update()
+                .filter(pk__in=[obj.pk for obj in objs])
+                .values_list("status", flat=True)
+            )
+            if JournalEntry.Status.POSTED in existing_statuses:
+                raise ValueError("Posted journal entries are immutable.")
+            return super().bulk_update(objs, fields, **kwargs)
+
+
+class JournalEntryManager(SoftDeleteManager):
+    def get_queryset(self):
+        return JournalEntryQuerySet(self.model, using=self._db).filter(
+            is_deleted=False
+        )
+
+    def all_with_deleted(self):
+        return JournalEntryQuerySet(self.model, using=self._db)
+
+    def only_deleted(self):
+        return JournalEntryQuerySet(self.model, using=self._db).filter(
+            is_deleted=True
+        )
+
+
+class UnfilteredJournalEntryManager(models.Manager.from_queryset(JournalEntryQuerySet)):
+    """Unfiltered manager that retains journal immutability protections."""
+
+
+class JournalItemQuerySet(models.QuerySet):
+    def _lock_entry_statuses(self, entry_ids):
+        return dict(
+            JournalEntry.all_objects.using(self.db)
+            .select_for_update()
+            .filter(pk__in=set(entry_ids))
+            .values_list("pk", "status")
+        )
+
+    def update(self, **kwargs):
+        if is_restoring():
+            return super().update(**kwargs)
+        with transaction.atomic(using=self.db):
+            entry_ids = set(self.values_list("journal_entry_id", flat=True))
+            target_entry = kwargs.get("journal_entry_id", kwargs.get("journal_entry"))
+            target_entry_id = getattr(target_entry, "pk", target_entry)
+            if target_entry_id:
+                entry_ids.add(target_entry_id)
+            statuses = self._lock_entry_statuses(entry_ids)
+            if JournalEntry.Status.POSTED in statuses.values():
+                raise ValueError("Posted journal lines are immutable.")
+            return super().update(**kwargs)
+
+    def delete(self):
+        if is_restoring():
+            return super().delete()
+        with transaction.atomic(using=self.db):
+            entry_ids = self.values_list("journal_entry_id", flat=True)
+            statuses = self._lock_entry_statuses(entry_ids)
+            if JournalEntry.Status.POSTED in statuses.values():
+                raise ValueError("Posted journal lines cannot be deleted.")
+            return super().delete()
+
+    def bulk_create(self, objs, **kwargs):
+        objs = list(objs)
+        if is_restoring():
+            return super().bulk_create(objs, **kwargs)
+        entry_ids = {obj.journal_entry_id for obj in objs}
+        with transaction.atomic(using=self.db):
+            statuses = self._lock_entry_statuses(entry_ids)
+            if JournalEntry.Status.POSTED in statuses.values():
+                raise ValueError("Posted journal lines are immutable.")
+            return super().bulk_create(objs, **kwargs)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        objs = list(objs)
+        if is_restoring():
+            return super().bulk_update(objs, fields, **kwargs)
+        with transaction.atomic(using=self.db):
+            item_rows = list(
+                self.model._base_manager.using(self.db)
+                .filter(pk__in=[obj.pk for obj in objs])
+                .values_list("pk", "journal_entry_id")
+            )
+            entry_ids = {entry_id for _, entry_id in item_rows}
+            entry_ids.update(obj.journal_entry_id for obj in objs)
+            statuses = self._lock_entry_statuses(entry_ids)
+            if JournalEntry.Status.POSTED in statuses.values():
+                raise ValueError("Posted journal lines are immutable.")
+            return super().bulk_update(objs, fields, **kwargs)
+
+
+class JournalItemManager(models.Manager.from_queryset(JournalItemQuerySet)):
+    """Manager for journal lines that enforces posted-entry immutability."""
 
 
 class Account(CompanyScoped):
@@ -170,83 +326,112 @@ class JournalEntry(CompanyScoped, SequenceMixin, NotesMixin, CurrencyMixin):
             models.Index(fields=["company", "date", "status"]),
             models.Index(fields=["journal", "date"]),
         ]
+        default_manager_name = "objects"
+        base_manager_name = "all_objects"
+
+    objects = JournalEntryManager()
+    all_objects = UnfilteredJournalEntryManager()
 
     def save(self, *args, **kwargs):
-        if not self.number:
-            prefix = self.journal.sequence_prefix if self.journal else "JE"
-            self.number = BaseService.generate_sequence_number(prefix, self.__class__, self.company_id)
-        super().save(*args, **kwargs)
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            if not is_restoring():
+                if self.pk and not self._state.adding:
+                    existing_status = (
+                        type(self)
+                        ._base_manager.using(using)
+                        .select_for_update()
+                        .filter(pk=self.pk)
+                        .values_list("status", flat=True)
+                        .first()
+                    )
+                    if existing_status == self.Status.POSTED:
+                        raise ValueError("Posted journal entries are immutable.")
+                    if (
+                        self.status == self.Status.POSTED
+                        and not getattr(self, "_posting_authorized", False)
+                    ):
+                        raise ValueError(
+                            "Use AccountingPostingService to post journal entries."
+                        )
+                elif self.status == self.Status.POSTED:
+                    raise ValueError(
+                        "Create draft journal entries and post them through the service."
+                    )
+
+            if not self.number:
+                prefix = self.journal.sequence_prefix if self.journal else "JE"
+                self.number = BaseService.generate_sequence_number(
+                    prefix, self.__class__, self.company_id
+                )
+            super().save(*args, **kwargs)
+
+    def delete(self, using=None, keep_parents=False, deleted_by=None):
+        if is_restoring():
+            return super().delete(
+                using=using,
+                keep_parents=keep_parents,
+                deleted_by=deleted_by,
+            )
+        using = using or self._state.db or "default"
+        with transaction.atomic(using=using):
+            status = (
+                type(self)
+                ._base_manager.using(using)
+                .select_for_update()
+                .filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status == self.Status.POSTED:
+                raise ValueError("Posted journal entries cannot be deleted.")
+            return super().delete(
+                using=using,
+                keep_parents=keep_parents,
+                deleted_by=deleted_by,
+            )
+
+    def hard_delete(self):
+        if is_restoring():
+            return super().hard_delete()
+        using = self._state.db or "default"
+        with transaction.atomic(using=using):
+            status = (
+                type(self)
+                ._base_manager.using(using)
+                .select_for_update()
+                .filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status == self.Status.POSTED:
+                raise ValueError("Posted journal entries cannot be deleted.")
+            return super().hard_delete()
 
     def __str__(self):
         return f"{self.number} | {self.date} | {self.total_debit}"
 
     def is_balanced(self):
-        items = list(self.items.all())
-        if not items:
-            return self.total_debit == self.total_credit
-        total_debit = sum(item.debit for item in items)
-        total_credit = sum(item.credit for item in items)
-        return total_debit == total_credit
+        from decimal import Decimal
+
+        totals = self.items.aggregate(
+            debit=models.Sum("debit"),
+            credit=models.Sum("credit"),
+        )
+        debit = totals["debit"] or Decimal("0")
+        credit = totals["credit"] or Decimal("0")
+        return (
+            self.items.exists()
+            and debit > 0
+            and debit == credit
+            and self.total_debit == debit
+            and self.total_credit == credit
+        )
 
     def post(self, user=None):
-        from django.db import transaction
-        from django.utils import timezone
+        from .services import AccountingPostingService
 
-        with transaction.atomic():
-            # Lock the journal entry row to prevent race conditions and check status
-            locked_entry = JournalEntry.objects.select_for_update().get(pk=self.pk)
-
-            if locked_entry.status == self.Status.POSTED:
-                return
-
-            # Check financial close lock date
-            if (
-                locked_entry.company.accounting_lock_date
-                and locked_entry.date <= locked_entry.company.accounting_lock_date
-            ):
-                raise ValueError(
-                    f"Cannot post entry before lock date: {locked_entry.company.accounting_lock_date}"
-                )
-
-            from .services import get_open_fiscal_year
-
-            locked_entry.fiscal_year = get_open_fiscal_year(
-                locked_entry.company,
-                locked_entry.date,
-                locked_entry.fiscal_year_id,
-            )
-
-            if not locked_entry.is_balanced():
-                raise ValueError(f"Journal entry {locked_entry.number} is not balanced")
-
-            # Lock all accounts involved in the journal entry in a fixed, sorted order to avoid deadlock
-            account_ids = sorted(list(set(item.account_id for item in locked_entry.items.all())))
-            accounts_map = {
-                acc.id: acc
-                for acc in Account.objects.select_for_update().filter(id__in=account_ids)
-            }
-
-            locked_entry.status = self.Status.POSTED
-            locked_entry.posted_at = timezone.now()
-            if user:
-                locked_entry.posted_by = user
-            locked_entry.save(
-                update_fields=["status", "posted_at", "posted_by", "fiscal_year"]
-            )
-
-            # Update account balances atomically
-            for item in locked_entry.items.all():
-                account = accounts_map[item.account_id]
-                if account.account_type in ("asset", "expense", "cogs", "bank"):
-                    account.current_balance += item.debit - item.credit
-                else:
-                    account.current_balance += item.credit - item.debit
-                account.save(update_fields=["current_balance"])
-
-            # Propagate values to the current instance (self)
-            self.status = locked_entry.status
-            self.posted_at = locked_entry.posted_at
-            self.posted_by = locked_entry.posted_by
+        return AccountingPostingService.post(self, user=user)
 
 
 class JournalItem(models.Model):
@@ -282,6 +467,41 @@ class JournalItem(models.Model):
 
     class Meta:
         db_table = "accounting_journal_items"
+        default_manager_name = "objects"
+        base_manager_name = "all_objects"
+
+    objects = JournalItemManager()
+    all_objects = JournalItemManager()
+
+    def save(self, *args, **kwargs):
+        using = kwargs.get("using") or self._state.db or "default"
+        with transaction.atomic(using=using):
+            if is_restoring():
+                return super().save(*args, **kwargs)
+            entry_ids = {self.journal_entry_id}
+            if self.pk:
+                previous_entry_id = (
+                    type(self)
+                    ._base_manager.using(using)
+                    .filter(pk=self.pk)
+                    .values_list("journal_entry_id", flat=True)
+                    .first()
+                )
+                if previous_entry_id:
+                    entry_ids.add(previous_entry_id)
+            statuses = dict(
+                JournalEntry.all_objects.using(using)
+                .select_for_update()
+                .filter(pk__in=entry_ids)
+                .values_list("pk", "status")
+            )
+            if JournalEntry.Status.POSTED in statuses.values():
+                raise ValueError("Posted journal lines are immutable.")
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        using = kwargs.get("using") or self._state.db or "default"
+        return type(self).objects.using(using).filter(pk=self.pk).delete()
 
     def __str__(self):
         return f"{self.account.code} | Dr:{self.debit} Cr:{self.credit}"

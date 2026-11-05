@@ -7,7 +7,7 @@
 <thead class="table-light"><tr><th>Vendor</th><th class="text-end">Current</th><th class="text-end">1 - 30 Days</th><th class="text-end">31 - 60 Days</th><th class="text-end">61 - 90 Days</th><th class="text-end">> 90 Days</th><th class="text-end">Total</th></tr></thead>
 <tbody>
 {% for vendor, data in aging_data.items %}
-<tr><td>{{ vendor.name }}</td><td class="text-end">{{ data.current|floatformat:2|intcomma }}</td><td class="text-end">{{ data.30|floatformat:2|intcomma }}</td><td class="text-end">{{ data.60|floatformat:2|intcomma }}</td><td class="text-end">0.00</td><td class="text-end">{{ data.90|floatformat:2|intcomma }}</td><td class="text-end fw-bold">{{ data.total|floatformat:2|intcomma }}</td></tr>
+<tr><td>{{ vendor.name }}</td><td class="text-end">{{ data.current|floatformat:2|intcomma }}</td><td class="text-end">{{ data.30|floatformat:2|intcomma }}</td><td class="text-end">{{ data.60|floatformat:2|intcomma }}</td><td class="text-end">{{ data.61_90|floatformat:2|intcomma }}</td><td class="text-end">{{ data.90|floatformat:2|intcomma }}</td><td class="text-end fw-bold">{{ data.total|floatformat:2|intcomma }}</td></tr>
 {% endfor %}
 </tbody></table></div>
 {% endblock %}

@@ -10,7 +10,9 @@ from decimal import Decimal, InvalidOperation  # noqa: E402
 
 from django.contrib import messages  # noqa: E402
 from django.db.models import Q, Sum  # noqa: E402
+from django.http import HttpResponseBadRequest  # noqa: E402
 from django.shortcuts import get_object_or_404, redirect, render  # noqa: E402
+from django.utils import timezone  # noqa: E402
 from django.views.generic import DetailView, ListView, TemplateView, View  # noqa: E402
 
 from core.mixins import CompanyMixin  # noqa: E402
@@ -26,6 +28,44 @@ from .models import (  # noqa: E402
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ReportDateValidationMixin:
+    report_date_parameters = ("as_of", "from_date", "to_date")
+    report_start_default = "month"
+
+    def dispatch(self, request, *args, **kwargs):
+        parsed_dates = {}
+        for parameter in self.report_date_parameters:
+            value = request.GET.get(parameter)
+            if value is None:
+                continue
+            try:
+                parsed_date = date.fromisoformat(value)
+            except (TypeError, ValueError):
+                return HttpResponseBadRequest(
+                    f"{parameter} must be a valid YYYY-MM-DD date."
+                )
+            if parsed_date.isoformat() != value:
+                return HttpResponseBadRequest(
+                    f"{parameter} must be a valid YYYY-MM-DD date."
+                )
+            parsed_dates[parameter] = parsed_date
+
+        start = parsed_dates.get("from_date")
+        end = parsed_dates.get("to_date")
+        if start or end:
+            today = timezone.localdate()
+            default_start = today.replace(day=1)
+            if self.report_start_default == "year":
+                default_start = today.replace(month=1, day=1)
+            start = start or default_start
+            end = end or today
+        if start and end and start > end:
+            return HttpResponseBadRequest(
+                "from_date must be on or before to_date."
+            )
+        return super().dispatch(request, *args, **kwargs)
 
 
 # ═══════════════════════ CHART OF ACCOUNTS ════════════════════════════════════
@@ -45,15 +85,27 @@ class ChartOfAccountsView(CompanyMixin, ListView):
 
         account_type = self.request.GET.get("type", "")
         q = self.request.GET.get("q", "")
+        active = self.request.GET.get("active", "")
         if account_type:
             qs = qs.filter(account_type=account_type)
         if q:
             qs = qs.filter(Q(code__icontains=q) | Q(name__icontains=q))
+        if active == "1":
+            qs = qs.filter(is_active=True)
+        elif active == "0":
+            qs = qs.filter(is_active=False)
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["account_type_choices"] = Account.AccountType.choices
+        ctx["opening_offset_accounts"] = Account.objects.filter(
+            company=self.company(),
+            account_type=Account.AccountType.EQUITY,
+            is_active=True,
+            allow_journal_entries=True,
+            is_deleted=False,
+        ).order_by("code")
         ctx["totals"] = {
             at[0]: Account.objects.filter(
                 company=self.company(), account_type=at[0], is_deleted=False
@@ -64,7 +116,7 @@ class ChartOfAccountsView(CompanyMixin, ListView):
         return ctx
 
 
-class AccountDetailView(CompanyMixin, DetailView):
+class AccountDetailView(CompanyMixin, ReportDateValidationMixin, DetailView):
     required_permission = "accounting.read"
     template_name = "accounting/account_detail.html"
     context_object_name = "account"
@@ -114,6 +166,13 @@ class AccountCreateView(CompanyMixin, View):
                 "currencies": __import__(
                     "apps.company.models", fromlist=["Currency"]
                 ).Currency.objects.filter(is_active=True),
+                "opening_offset_accounts": Account.objects.filter(
+                    company=company,
+                    account_type=Account.AccountType.EQUITY,
+                    is_active=True,
+                    allow_journal_entries=True,
+                    is_deleted=False,
+                ).order_by("code"),
             },
         )
 
@@ -286,19 +345,21 @@ class FinancialReportsView(CompanyMixin, TemplateView):
     template_name = "accounting/reports/index.html"
 
 
-class BalanceSheetView(CompanyMixin, View):
+class BalanceSheetView(CompanyMixin, ReportDateValidationMixin, View):
     required_permission = "accounting.read"
     template_name = "accounting/reports/balance_sheet.html"
 
     def get(self, request):
         company = self.company()
         as_of = request.GET.get("as_of", timezone.localdate().isoformat())
+        as_of_date = date.fromisoformat(as_of)
+
+        from .services import FinancialReportingService
 
         def get_accounts(account_type):
             return Account.objects.filter(
                 company=company,
                 account_type=account_type,
-                is_active=True,
                 is_deleted=False,
             ).order_by("code")
 
@@ -309,16 +370,9 @@ class BalanceSheetView(CompanyMixin, View):
 
         # Compute balances as of date
         def balance(acc):
-            items = JournalItem.objects.filter(
-                account=acc,
-                journal_entry__status="posted",
-                journal_entry__date__lte=as_of,
-            ).aggregate(dr=Sum("debit"), cr=Sum("credit"))
-            dr = items["dr"] or Decimal("0")
-            cr = items["cr"] or Decimal("0")
-            if acc.account_type in ("asset", "expense", "bank"):
-                return dr - cr
-            return cr - dr
+            return FinancialReportingService.get_account_balance_including_opening(
+                acc, as_of_date=as_of_date
+            )
 
         asset_list = [(a, balance(a)) for a in list(assets) + list(bank)]
         liability_list = [(a, balance(a)) for a in liabilities]
@@ -326,7 +380,13 @@ class BalanceSheetView(CompanyMixin, View):
 
         total_assets = sum(b for _, b in asset_list)
         total_liabilities = sum(b for _, b in liability_list)
-        total_equity = sum(b for _, b in equity_list)
+        equity_accounts_total = sum(b for _, b in equity_list)
+        retained_earnings = FinancialReportingService.get_profit_and_loss(
+            company, end_date=as_of_date
+        )["net_profit"]
+        total_equity = equity_accounts_total + retained_earnings
+        total_liabilities_equity = total_liabilities + total_equity
+        difference = total_assets - total_liabilities_equity
 
         return render(
             request,
@@ -339,16 +399,19 @@ class BalanceSheetView(CompanyMixin, View):
                 "total_assets": total_assets,
                 "total_liabilities": total_liabilities,
                 "total_equity": total_equity,
-                "total_liabilities_equity": total_liabilities + total_equity,
-                "is_balanced": abs(total_assets - (total_liabilities + total_equity))
-                < Decimal("0.01"),
+                "equity_accounts_total": equity_accounts_total,
+                "retained_earnings": retained_earnings,
+                "total_liabilities_equity": total_liabilities_equity,
+                "difference": difference,
+                "is_balanced": abs(difference) < Decimal("0.01"),
             },
         )
 
 
-class ProfitAndLossView(CompanyMixin, View):
+class ProfitAndLossView(CompanyMixin, ReportDateValidationMixin, View):
     required_permission = "accounting.read"
     template_name = "accounting/reports/profit_and_loss.html"
+    report_start_default = "year"
 
     def get(self, request):
         company = self.company()
@@ -380,7 +443,6 @@ class ProfitAndLossView(CompanyMixin, View):
             accs = Account.objects.filter(
                 company=company,
                 account_type=account_type,
-                is_active=True,
                 is_deleted=False,
             ).order_by("code")
             result = []
@@ -422,16 +484,18 @@ class ProfitAndLossView(CompanyMixin, View):
         )
 
 
-class TrialBalanceView(CompanyMixin, View):
+class TrialBalanceView(CompanyMixin, ReportDateValidationMixin, View):
     required_permission = "accounting.read"
     template_name = "accounting/reports/trial_balance.html"
 
     def get(self, request):
         company = self.company()
         as_of = request.GET.get("as_of", timezone.localdate().isoformat())
+        as_of_date = date.fromisoformat(as_of)
         accounts = Account.objects.filter(
-            company=company, is_active=True, is_deleted=False
+            company=company, is_deleted=False
         ).order_by("code")
+        from .services import FinancialReportingService
 
         rows = []
         total_dr = Decimal("0")
@@ -445,6 +509,13 @@ class TrialBalanceView(CompanyMixin, View):
             ).aggregate(dr=Sum("debit"), cr=Sum("credit"))
             dr = items["dr"] or Decimal("0")
             cr = items["cr"] or Decimal("0")
+            opening_balance = FinancialReportingService.get_opening_balance_as_of(
+                acc, as_of_date
+            )
+            if acc.account_type in ("asset", "expense", "cogs", "bank"):
+                dr += opening_balance
+            else:
+                cr += opening_balance
             if dr != 0 or cr != 0:
                 rows.append({"account": acc, "debit": dr, "credit": cr})
                 total_dr += dr
@@ -840,7 +911,6 @@ class BudgetDetailView(CompanyMixin, DetailView):
 
 
 from django.urls import reverse_lazy  # noqa: E402
-from django.utils import timezone  # noqa: E402
 from django.views.generic import CreateView  # noqa: E402
 
 
@@ -877,7 +947,7 @@ class BudgetCreateView(CompanyMixin, CreateView):
 # ════════════════════════ ENTERPRISE FINANCIAL REPORTS ═══════════════════════
 
 
-class GeneralLedgerView(CompanyMixin, TemplateView):
+class GeneralLedgerView(CompanyMixin, ReportDateValidationMixin, TemplateView):
     required_permission = "accounting.read"
     template_name = "accounting/reports/general_ledger.html"
 
@@ -930,7 +1000,7 @@ class GeneralLedgerView(CompanyMixin, TemplateView):
         return ctx
 
 
-class ARAgingReportView(CompanyMixin, TemplateView):
+class ARAgingReportView(CompanyMixin, ReportDateValidationMixin, TemplateView):
     required_permission = "accounting.read"
     template_name = "accounting/reports/ar_aging.html"
 
@@ -982,7 +1052,7 @@ class ARAgingReportView(CompanyMixin, TemplateView):
         return ctx
 
 
-class APAgingReportView(CompanyMixin, TemplateView):
+class APAgingReportView(CompanyMixin, ReportDateValidationMixin, TemplateView):
     required_permission = "accounting.read"
     template_name = "accounting/reports/ap_aging.html"
 
@@ -992,57 +1062,59 @@ class APAgingReportView(CompanyMixin, TemplateView):
         as_of = self.request.GET.get("as_of", timezone.localdate().isoformat())
         as_of_date = date.fromisoformat(as_of)
 
-        # Wait, AP aging is usually tracked via Bills, not Purchase Orders.
-        # But we added `apps.purchase.views.BillListView` earlier, let's assume `Bill` model exists in `purchase.models` or `accounting.models`.
-        # Actually in Phase 2/3, we had "Bills" as an alias to PurchaseOrder or a separate model? Let's check where Bill comes from.
-        # It's likely PurchaseOrder has `amount_due` and `status` or we just track it via Accounts Payable journal items.
+        from apps.purchase.models import Bill, Payment
 
-        # A reliable way: group by Vendor on JournalItems for Accounts Payable!
-        ap_accounts = Account.objects.filter(
-            company=company, account_subtype="accounts_payable"
+        bills = Bill.objects.filter(
+            company=company,
+            bill_date__lte=as_of_date,
+            status__in=(
+                Bill.Status.OPEN,
+                Bill.Status.PARTIAL,
+                Bill.Status.PAID,
+                Bill.Status.OVERDUE,
+            ),
+        ).select_related("vendor")
+        payments_by_bill = dict(
+            Payment.objects.filter(
+                company=company,
+                bill__in=bills,
+                status=Payment.Status.COMPLETED,
+                payment_date__lte=as_of_date,
+            )
+            .values("bill_id")
+            .annotate(total_paid=Sum("amount"))
+            .values_list("bill_id", "total_paid")
         )
-
-        items = JournalItem.objects.filter(
-            account__in=ap_accounts,
-            journal_entry__status="posted",
-            journal_entry__date__lte=as_of_date,
-            reconciled=False,  # Assuming unreconciled items are open AP
-        ).select_related("journal_entry")
-
         aging_data = {}
-        # Simple AP tracking by journal items (partner_id)
-        from apps.purchase.models import Vendor
-
-        vendors = {str(v.pk): v for v in Vendor.objects.filter(company=company)}
-
-        for item in items:
-            vid = item.partner_id
-            if not vid:
-                continue
-            vendor = vendors.get(vid)
-            if not vendor:
-                continue
-
+        for bill in bills:
+            vendor = bill.vendor
             if vendor not in aging_data:
                 aging_data[vendor] = {
-                    "current": 0,
-                    "30": 0,
-                    "60": 0,
-                    "90": 0,
-                    "total": 0,
+                    "current": Decimal("0"),
+                    "30": Decimal("0"),
+                    "60": Decimal("0"),
+                    "61_90": Decimal("0"),
+                    "90": Decimal("0"),
+                    "total": Decimal("0"),
                 }
 
-            days_past = (as_of_date - item.journal_entry.date).days
-            amount = item.credit - item.debit  # AP is credit normal
-            if amount <= 0:
+            amount = max(
+                bill.total - payments_by_bill.get(bill.pk, Decimal("0")),
+                Decimal("0"),
+            )
+            if amount == 0:
                 continue
 
-            if days_past <= 30:
+            due_date = bill.due_date or bill.bill_date
+            days_past_due = (as_of_date - due_date).days
+            if days_past_due <= 0:
                 aging_data[vendor]["current"] += amount
-            elif days_past <= 60:
+            elif days_past_due <= 30:
                 aging_data[vendor]["30"] += amount
-            elif days_past <= 90:
+            elif days_past_due <= 60:
                 aging_data[vendor]["60"] += amount
+            elif days_past_due <= 90:
+                aging_data[vendor]["61_90"] += amount
             else:
                 aging_data[vendor]["90"] += amount
 

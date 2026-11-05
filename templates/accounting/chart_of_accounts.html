@@ -474,6 +474,19 @@
                 <input type="number" name="opening_balance" class="form-control" placeholder="0.00" step="0.01">
               </div>
             </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Opening Balance Date</label>
+              <input type="date" name="opening_balance_date" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Offset Equity Account</label>
+              <select name="opening_offset_account" class="form-select">
+                <option value="">Select for a nonzero opening balance</option>
+                {% for offset_account in opening_offset_accounts %}
+                <option value="{{ offset_account.pk }}">{{ offset_account.code }} — {{ offset_account.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Description</label>
               <input type="text" name="description" class="form-control" placeholder="Optional description…">

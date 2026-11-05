@@ -40,12 +40,250 @@ def get_open_fiscal_year(company, posting_date, fiscal_year_id=None):
             )
         return fiscal_year
 
-    return matching_years.filter(status=FiscalYear.Status.OPEN).order_by(
+    fiscal_year = matching_years.filter(status=FiscalYear.Status.OPEN).order_by(
         "-start_date"
     ).first()
+    if fiscal_year is None and fiscal_years.exists():
+        raise ValueError("No open fiscal year covers the journal entry date.")
+    return fiscal_year
+
+
+class AccountingPostingService:
+    """Validate and atomically post a journal entry to the general ledger."""
+
+    @staticmethod
+    @transaction.atomic
+    def reverse(entry, *, user=None, reversal_date=None, reason=""):
+        from .models import AuditLog, JournalItem
+
+        reason = str(reason or "").strip()
+        if not reason:
+            raise ValueError("A reason is required to reverse a posted journal entry.")
+        if len(reason) > 2000:
+            raise ValueError("Reversal reason must be 2000 characters or fewer.")
+
+        original = (
+            JournalEntry.objects.select_for_update()
+            .select_related("company", "journal", "currency")
+            .get(pk=entry.pk)
+        )
+        if original.status != JournalEntry.Status.POSTED:
+            raise ValueError("Only posted journal entries can be reversed.")
+        if original.is_deleted:
+            raise ValueError("A deleted journal entry cannot be reversed.")
+
+        existing = (
+            JournalEntry.objects.select_for_update()
+            .filter(
+                company=original.company,
+                reversal_of=original,
+                is_reversal=True,
+            )
+            .first()
+        )
+        if existing:
+            if existing.status == JournalEntry.Status.POSTED:
+                return existing
+            raise ValueError("A reversal already exists but is not posted.")
+
+        reversal_date = reversal_date or timezone.localdate()
+        reversal = JournalEntry.objects.create(
+            company=original.company,
+            journal=original.journal,
+            date=reversal_date,
+            reference=f"REV: {original.number}",
+            status=JournalEntry.Status.DRAFT,
+            currency=original.currency,
+            exchange_rate=original.exchange_rate,
+            total_debit=original.total_credit,
+            total_credit=original.total_debit,
+            is_reversal=True,
+            reversal_of=original,
+            source_type="journal_reversal",
+            source_id=str(original.pk),
+            notes=f"Reversal of {original.number}: {reason}",
+        )
+
+        for item in original.items.select_related("account", "cost_center", "tax"):
+            JournalItem.objects.create(
+                journal_entry=reversal,
+                account=item.account,
+                description=f"Reversal: {item.description}"[:500],
+                debit=item.credit,
+                credit=item.debit,
+                currency=item.currency,
+                amount_currency=item.amount_currency,
+                partner_type=item.partner_type,
+                partner_id=item.partner_id,
+                tax=item.tax,
+                cost_center=item.cost_center,
+            )
+
+        reversal.post(user=user)
+        AuditLog.objects.create(
+            company=original.company,
+            journal_entry=original,
+            action=AuditLog.Action.REVERSED,
+            user=user,
+            notes=reason,
+        )
+        return reversal
+
+    @staticmethod
+    @transaction.atomic
+    def post(entry, user=None):
+        from django.utils import timezone
+
+        from .models import AuditLog, JournalItem
+
+        locked_entry = (
+            JournalEntry.objects.select_for_update()
+            .select_related("company", "journal")
+            .get(pk=entry.pk)
+        )
+        if locked_entry.status == JournalEntry.Status.POSTED:
+            return locked_entry
+        if locked_entry.status != JournalEntry.Status.DRAFT:
+            raise ValueError("Only draft journal entries can be posted.")
+        if locked_entry.is_deleted:
+            raise ValueError("A deleted journal entry cannot be posted.")
+        if (
+            locked_entry.journal.company_id != locked_entry.company_id
+            or not locked_entry.journal.is_active
+        ):
+            raise ValueError("Journal must be active and belong to the entry company.")
+        if (
+            locked_entry.company.accounting_lock_date
+            and locked_entry.date <= locked_entry.company.accounting_lock_date
+        ):
+            raise ValueError(
+                f"Cannot post entry before lock date: "
+                f"{locked_entry.company.accounting_lock_date}"
+            )
+
+        locked_entry.fiscal_year = get_open_fiscal_year(
+            locked_entry.company,
+            locked_entry.date,
+            locked_entry.fiscal_year_id,
+        )
+
+        items = list(
+            JournalItem.objects.select_for_update()
+            .filter(journal_entry=locked_entry)
+            .select_related("account", "cost_center")
+            .order_by("account_id", "pk")
+        )
+        if len(items) < 2:
+            raise ValueError("A journal entry must contain at least two lines.")
+
+        account_ids = sorted({item.account_id for item in items})
+        accounts = {
+            account.pk: account
+            for account in Account.objects.select_for_update().filter(
+                pk__in=account_ids
+            )
+        }
+        if len(accounts) != len(account_ids):
+            raise ValueError("Every journal account must exist.")
+
+        debit_total = Decimal("0")
+        credit_total = Decimal("0")
+        for item in items:
+            account = accounts[item.account_id]
+            if account.company_id != locked_entry.company_id:
+                raise ValueError("Journal accounts must belong to the entry company.")
+            if not account.is_active or not account.allow_journal_entries:
+                raise ValueError("Journal accounts must be active and allow entries.")
+            if account.is_deleted:
+                raise ValueError("Deleted accounts cannot be posted to.")
+            if (item.debit < 0 or item.credit < 0) or (
+                (item.debit > 0) == (item.credit > 0)
+            ):
+                raise ValueError(
+                    "Each journal line must have one positive debit or credit."
+                )
+            if item.cost_center_id and (
+                item.cost_center.company_id != locked_entry.company_id
+                or not item.cost_center.is_active
+                or item.cost_center.is_deleted
+            ):
+                raise ValueError(
+                    "Cost centers must be active and belong to the entry company."
+                )
+            debit_total += item.debit
+            credit_total += item.credit
+
+        if debit_total <= 0 or debit_total != credit_total:
+            raise ValueError(
+                f"Journal entry {locked_entry.number} is not balanced "
+                "with positive debit and credit totals."
+            )
+
+        locked_entry.total_debit = debit_total
+        locked_entry.total_credit = credit_total
+        locked_entry.status = JournalEntry.Status.POSTED
+        locked_entry.posted_at = timezone.now()
+        if user:
+            locked_entry.posted_by = user
+        locked_entry._posting_authorized = True
+        try:
+            locked_entry.save(
+                update_fields=[
+                    "status",
+                    "posted_at",
+                    "posted_by",
+                    "fiscal_year",
+                    "total_debit",
+                    "total_credit",
+                ]
+            )
+        finally:
+            del locked_entry._posting_authorized
+
+        for item in items:
+            account = accounts[item.account_id]
+            if account.account_type in ("asset", "expense", "cogs", "bank"):
+                account.current_balance += item.debit - item.credit
+            else:
+                account.current_balance += item.credit - item.debit
+            account.save(update_fields=["current_balance"])
+
+        AuditLog.objects.create(
+            company=locked_entry.company,
+            journal_entry=locked_entry,
+            action=AuditLog.Action.POSTED,
+            user=user,
+        )
+        entry.status = locked_entry.status
+        entry.posted_at = locked_entry.posted_at
+        entry.posted_by = locked_entry.posted_by
+        entry.fiscal_year = locked_entry.fiscal_year
+        entry.total_debit = debit_total
+        entry.total_credit = credit_total
+        return locked_entry
 
 
 class AutoJournalService:
+    @staticmethod
+    def _lock_source_and_get_existing(source, company, reference):
+        from django.db.models import Model
+
+        if isinstance(source, Model) and source.pk:
+            source = source.__class__.objects.select_for_update().get(pk=source.pk)
+            if source.company_id != company.pk:
+                raise ValueError("Source transaction belongs to another company.")
+
+        existing = (
+            JournalEntry.objects.select_for_update()
+            .filter(company=company, reference=reference)
+            .first()
+        )
+        if existing and existing.status != JournalEntry.Status.POSTED:
+            raise ValueError(
+                f"Journal entry {reference} already exists and is not posted."
+            )
+        return source, existing
+
     @staticmethod
     def get_or_create_journal(company, journal_type):
         name_map = {
@@ -165,6 +403,13 @@ class AutoJournalService:
     @transaction.atomic
     def post_sales_invoice(invoice):
         company = invoice.company
+        reference = f"INV: {invoice.number}"
+        invoice, existing = AutoJournalService._lock_source_and_get_existing(
+            invoice, company, reference
+        )
+        if existing:
+            return existing
+
         ar_account = AutoJournalService.get_or_create_ar(company)
 
         revenue_account = None
@@ -194,11 +439,13 @@ class AutoJournalService:
             company=company,
             journal=journal,
             date=invoice.invoice_date or timezone.now().date(),
-            reference=f"INV: {invoice.number}",
+            reference=reference,
             status=JournalEntry.Status.DRAFT,
             currency=invoice.currency,
             total_debit=invoice_total,
             total_credit=invoice_total,
+            source_type="sales_invoice",
+            source_id=str(invoice.pk) if getattr(invoice, "pk", None) else "",
         )
 
 
@@ -261,6 +508,13 @@ class AutoJournalService:
         from decimal import Decimal
 
         company = credit_note.company
+        reference = f"CN: {credit_note.number}"
+        credit_note, existing = AutoJournalService._lock_source_and_get_existing(
+            credit_note, company, reference
+        )
+        if existing:
+            return existing
+
         ar_account = AutoJournalService.get_or_create_ar(company)
 
         return_account, _ = Account.objects.get_or_create(
@@ -283,11 +537,13 @@ class AutoJournalService:
             company=company,
             journal=journal,
             date=credit_note.date or timezone.now().date(),
-            reference=f"CN: {credit_note.number}",
+            reference=reference,
             status=JournalEntry.Status.DRAFT,
             currency=currency,
             total_debit=total_amount,
             total_credit=total_amount,
+            source_type="credit_note",
+            source_id=str(credit_note.pk) if getattr(credit_note, "pk", None) else "",
         )
 
         # Debit Sales Returns & Allowances
@@ -499,6 +755,13 @@ class AutoJournalService:
     @transaction.atomic
     def post_sales_payment(payment):
         company = payment.company
+        reference = f"PAY: {payment.number}"
+        payment, existing = AutoJournalService._lock_source_and_get_existing(
+            payment, company, reference
+        )
+        if existing:
+            return existing
+
         ar_account = AutoJournalService.get_or_create_ar(company)
         bank_account = AutoJournalService.get_or_create_bank(company)
 
@@ -508,11 +771,13 @@ class AutoJournalService:
             company=company,
             journal=journal,
             date=payment.payment_date,
-            reference=f"PAY: {payment.number}",
+            reference=reference,
             status=JournalEntry.Status.DRAFT,
             currency=payment.currency,
             total_debit=payment.amount,
             total_credit=payment.amount,
+            source_type="sales_payment",
+            source_id=str(payment.pk) if getattr(payment, "pk", None) else "",
         )
 
 
@@ -544,6 +809,13 @@ class AutoJournalService:
     @transaction.atomic
     def post_purchase_bill(bill):
         company = bill.company
+        reference = f"BILL: {bill.number}"
+        bill, existing = AutoJournalService._lock_source_and_get_existing(
+            bill, company, reference
+        )
+        if existing:
+            return existing
+
         ap_account = AutoJournalService.get_or_create_ap(company)
 
         expense_account = None
@@ -592,7 +864,7 @@ class AutoJournalService:
             company=company,
             journal=journal,
             date=bill.bill_date or timezone.now().date(),
-            reference=f"BILL: {bill.number}",
+            reference=reference,
             status=JournalEntry.Status.DRAFT,
             currency=bill.currency,
             total_debit=bill.total,
@@ -662,6 +934,13 @@ class AutoJournalService:
     @transaction.atomic
     def post_purchase_payment(payment):
         company = payment.company
+        reference = f"VPAY: {payment.number}"
+        payment, existing = AutoJournalService._lock_source_and_get_existing(
+            payment, company, reference
+        )
+        if existing:
+            return existing
+
         ap_account = AutoJournalService.get_or_create_ap(company)
         bank_account = AutoJournalService.get_or_create_bank(company)
 
@@ -671,11 +950,13 @@ class AutoJournalService:
             company=company,
             journal=journal,
             date=payment.payment_date,
-            reference=f"VPAY: {payment.number}",
+            reference=reference,
             status=JournalEntry.Status.DRAFT,
             currency=payment.currency,
             total_debit=payment.amount,
             total_credit=payment.amount,
+            source_type="purchase_payment",
+            source_id=str(payment.pk) if getattr(payment, "pk", None) else "",
         )
 
 
@@ -706,10 +987,34 @@ class AutoJournalService:
 
 class FinancialReportingService:
     @staticmethod
+    def get_opening_balance_as_of(account, as_of_date=None):
+        if (
+            account.opening_balance_date
+            and as_of_date
+            and account.opening_balance_date > as_of_date
+        ):
+            return Decimal("0")
+        if JournalEntry.objects.filter(
+            company_id=account.company_id,
+            status=JournalEntry.Status.POSTED,
+            source_type="account_opening_balance",
+            source_id=str(account.pk),
+        ).exists():
+            return Decimal("0")
+        return account.opening_balance
+
+    @staticmethod
+    def get_account_balance_including_opening(account, as_of_date=None):
+        balance = account.get_balance(to_date=as_of_date)
+        return balance + FinancialReportingService.get_opening_balance_as_of(
+            account, as_of_date
+        )
+
+    @staticmethod
     def get_trial_balance(company, as_of_date=None):
         from django.db.models import Sum
 
-        accounts = Account.objects.filter(company=company, is_active=True)
+        accounts = Account.objects.filter(company=company)
         tb = []
         total_debit = 0
         total_credit = 0
@@ -722,6 +1027,13 @@ class FinancialReportingService:
             res = qs.aggregate(dr=Sum("debit"), cr=Sum("credit"))
             dr = res["dr"] or 0
             cr = res["cr"] or 0
+            opening_balance = FinancialReportingService.get_opening_balance_as_of(
+                account, as_of_date
+            )
+            if account.account_type in ("asset", "expense", "cogs", "bank"):
+                dr += opening_balance
+            else:
+                cr += opening_balance
 
             if dr > 0 or cr > 0:
                 tb.append(
@@ -746,10 +1058,10 @@ class FinancialReportingService:
     @staticmethod
     def get_profit_and_loss(company, start_date=None, end_date=None):
         revenue_accounts = Account.objects.filter(
-            company=company, account_type="revenue", is_active=True
+            company=company, account_type="revenue"
         )
         expense_accounts = Account.objects.filter(
-            company=company, account_type__in=["expense", "cogs"], is_active=True
+            company=company, account_type__in=["expense", "cogs"]
         )
 
         revenues = []
@@ -785,8 +1097,10 @@ class FinancialReportingService:
         equities = []
         total_equity = 0
 
-        for acc in Account.objects.filter(company=company, is_active=True):
-            bal = acc.get_balance(to_date=as_of_date)
+        for acc in Account.objects.filter(company=company):
+            bal = FinancialReportingService.get_account_balance_including_opening(
+                acc, as_of_date=as_of_date
+            )
             if bal == 0:
                 continue
 
@@ -804,6 +1118,7 @@ class FinancialReportingService:
         # Calculate Retained Earnings (Net Profit)
         pl = FinancialReportingService.get_profit_and_loss(company, end_date=as_of_date)
         retained_earnings = pl["net_profit"]
+        total_equity += retained_earnings
 
         return {
             "assets": assets,
@@ -812,10 +1127,9 @@ class FinancialReportingService:
             "total_assets": total_assets,
             "total_liabilities": total_liabilities,
             "total_equity": total_equity,
+            "equity_accounts_total": total_equity - retained_earnings,
             "retained_earnings": retained_earnings,
-            "total_liabilities_and_equity": total_liabilities
-            + total_equity
-            + retained_earnings,
+            "total_liabilities_and_equity": total_liabilities + total_equity,
         }
 
 
@@ -859,13 +1173,49 @@ class AccountService(BaseService):
 
             if not Currency.objects.filter(pk=currency_id, is_active=True).exists():
                 raise ValueError("Choose a valid active currency.")
-        opening_balance = self._decimal(data.get("opening_balance", "0"), "Opening balance")
+        opening_balance = self._decimal(
+            data.get("opening_balance") or "0", "Opening balance"
+        )
         opening_date = data.get("opening_balance_date") or None
         if opening_date:
             try:
-                date.fromisoformat(str(opening_date))
+                opening_date_string = str(opening_date)
+                opening_date = date.fromisoformat(opening_date_string)
             except ValueError:
                 raise ValueError("Opening balance date must be a valid date.") from None
+            if opening_date.isoformat() != opening_date_string:
+                raise ValueError("Opening balance date must use YYYY-MM-DD format.")
+        opening_offset_id = data.get("opening_offset_account") or None
+        opening_offset = None
+        if opening_balance:
+            if account_type not in (
+                Account.AccountType.ASSET,
+                Account.AccountType.BANK,
+                Account.AccountType.LIABILITY,
+                Account.AccountType.EQUITY,
+            ):
+                raise ValueError(
+                    "Opening balances are only supported for balance-sheet accounts."
+                )
+            if not opening_date:
+                raise ValueError("Opening balance date is required for a nonzero balance.")
+            if not opening_offset_id:
+                raise ValueError(
+                    "Choose an equity account to offset the opening balance."
+                )
+            opening_offset = Account.objects.filter(
+                pk=opening_offset_id,
+                company=self.company,
+                account_type=Account.AccountType.EQUITY,
+                is_active=True,
+                is_deleted=False,
+                allow_journal_entries=True,
+            ).first()
+            if not opening_offset:
+                raise ValueError(
+                    "Opening balance offset must be an active, journal-enabled equity "
+                    "account in the active company."
+                )
 
         acc = Account(
             company=self.company,
@@ -880,9 +1230,52 @@ class AccountService(BaseService):
             opening_balance=opening_balance,
             opening_balance_date=opening_date,
         )
-        acc.current_balance = acc.opening_balance
         acc.save()
+        if opening_balance:
+            self._post_opening_balance(acc, opening_offset, opening_balance, opening_date)
         return acc
+
+    def _post_opening_balance(self, account, offset_account, amount, opening_date):
+        journal = AutoJournalService.get_or_create_journal(
+            self.company, Journal.JournalType.GENERAL
+        )
+        reference = f"OPENING: {account.code}"
+        if JournalEntry.objects.filter(
+            company=self.company,
+            source_type="account_opening_balance",
+            source_id=str(account.pk),
+        ).exists():
+            raise ValueError("An opening-balance journal already exists for this account.")
+
+        entry = JournalEntry.objects.create(
+            company=self.company,
+            journal=journal,
+            date=opening_date,
+            reference=reference,
+            total_debit=amount,
+            total_credit=amount,
+            source_type="account_opening_balance",
+            source_id=str(account.pk),
+            notes=f"Opening balance for account {account.code}.",
+        )
+        debit_normal = account.account_type in (
+            Account.AccountType.ASSET,
+            Account.AccountType.BANK,
+        )
+        opening_description = f"Opening balance for {account.code} - {account.name}"
+        JournalItem.objects.create(
+            journal_entry=entry,
+            account=account if debit_normal else offset_account,
+            description=opening_description[:500],
+            debit=amount,
+        )
+        JournalItem.objects.create(
+            journal_entry=entry,
+            account=offset_account if debit_normal else account,
+            description=opening_description[:500],
+            credit=amount,
+        )
+        entry.post(user=self.user)
 
 
 class JournalEntryService(BaseService):
