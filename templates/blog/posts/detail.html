@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ post.title }}{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:posts' %}">Blog</a></li>
+<li class="breadcrumb-item active">{{ post.number }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h2 class="fw-700 mb-1">{{ post.title }}</h2>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge {% if post.status == 'published' %}bg-success{% elif post.status == 'pending_approval' %}bg-warning text-dark{% elif post.status == 'rejected' %}bg-danger{% elif post.status == 'draft' %}bg-secondary{% elif post.status == 'scheduled' %}bg-info{% elif post.status == 'approved' %}bg-primary{% else %}bg-light text-dark{% endif %}">
+          {{ post.get_status_display }}
+        </span>
+        <span class="badge {% if post.website_sync_status == 'synced' %}bg-success{% elif post.website_sync_status == 'failed' %}bg-danger{% else %}bg-light text-dark{% endif %}">
+          <i class="fas fa-globe me-1"></i>{{ post.get_website_sync_status_display }}
+        </span>
+        {% if post.number %}<span class="text-muted small">{{ post.number }}</span>{% endif %}
+        {% if post.website_url %}
+        <a href="{{ post.website_url }}" target="_blank" class="btn btn-xs btn-outline-success">
+          <i class="fas fa-external-link-alt me-1"></i>View Live
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'blog:post_edit' post.pk %}" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-pencil-alt me-1"></i>Edit
+      </a>
+      {% if post.status == 'draft' or post.status == 'rejected' %}
+      <form method="post" action="{% url 'blog:post_submit' post.pk %}" class="d-inline">{% csrf_token %}
+        <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-paper-plane me-1"></i>Submit for Approval</button>
+      </form>
+      {% endif %}
+      {% if post.status == 'approved' %}
+      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#publishModal">
+        <i class="fas fa-globe me-1"></i>Publish Now
+      </button>
+      <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+        <i class="fas fa-calendar me-1"></i>Schedule
+      </button>
+      {% endif %}
+      {% if post.status == 'published' %}
+      <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#socialModal">
+        <i class="fas fa-share-alt me-1"></i>Share on Social
+      </button>
+      <form method="post" action="{% url 'blog:post_unpublish' post.pk %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-outline-danger btn-sm" onclick="return confirm('Unpublish this post from the website?')">
+          <i class="fas fa-eye-slash me-1"></i>Unpublish
+        </button>
+      </form>
+      {% endif %}
+      <form method="post" action="{% url 'blog:post_duplicate' post.pk %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-outline-secondary btn-sm"><i class="fas fa-copy me-1"></i>Duplicate</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main content -->
+    <div class="col-lg-8">
+
+      <!-- Post meta -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-3 text-center">
+            <div class="col-6 col-md-3"><div class="text-muted small">Author</div><div class="fw-500">{{ post.author.full_name|default:"—" }}</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted small">Category</div><div class="fw-500">{{ post.category.name|default:"—" }}</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted small">Created</div><div class="fw-500">{{ post.created_at|date:"M d, Y" }}</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted small">Published</div><div class="fw-500">{{ post.published_at|date:"M d, Y"|default:"—" }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content preview -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600">Content Preview</div>
+        <div class="card-body blog-content-preview" style="max-height:500px;overflow-y:auto;">
+          {% if post.content %}{{ post.content|safe }}{% else %}<em class="text-muted">No content yet.</em>{% endif %}
+        </div>
+      </div>
+
+      <!-- Approval History -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-history me-2"></i>Approval History</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light"><tr><th>Action</th><th>By</th><th>Comment</th><th>When</th></tr></thead>
+              <tbody>
+                {% for appr in approvals %}
+                <tr>
+                  <td><span class="badge {% if appr.decision == 'approved' %}bg-success{% elif appr.decision == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">{{ appr.get_decision_display }}</span></td>
+                  <td>{{ appr.decided_by.full_name|default:"System" }}</td>
+                  <td class="text-muted small">{{ appr.comment|truncatechars:80|default:"—" }}</td>
+                  <td class="text-muted small">{{ appr.decided_at|date:"M d, Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted text-center py-3">No approval actions yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Publishing logs -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-list me-2"></i>Publishing Log</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light"><tr><th>Operation</th><th>Result</th><th>Platform</th><th>Duration</th><th>When</th></tr></thead>
+              <tbody>
+                {% for log in publishing_logs %}
+                <tr>
+                  <td class="small">{{ log.get_operation_display }}</td>
+                  <td><span class="badge {% if log.result == 'success' %}bg-success{% else %}bg-danger{% endif %}">{{ log.get_result_display }}</span></td>
+                  <td class="small">{{ log.platform|default:"—" }}</td>
+                  <td class="small text-muted">{{ log.duration_ms }}ms</td>
+                  <td class="small text-muted">{{ log.triggered_at|date:"M d H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted text-center py-3">No publishing activity yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="col-lg-4">
+
+      <!-- Website sync status -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-globe me-2"></i>Website</div>
+        <div class="card-body">
+          {% if website_publication %}
+            <div class="mb-2">
+              <span class="fw-500">Status:</span>
+              <span class="badge {% if website_publication.sync_status == 'published' %}bg-success{% elif website_publication.sync_status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+                {{ website_publication.get_sync_status_display }}
+              </span>
+            </div>
+            {% if website_publication.public_url %}
+            <a href="{{ website_publication.public_url }}" target="_blank" class="btn btn-sm btn-outline-success w-100 mb-2">
+              <i class="fas fa-external-link-alt me-1"></i>View Live Post
+            </a>
+            {% endif %}
+            {% if website_publication.error_detail %}
+            <div class="alert alert-danger py-2 small mt-2">{{ website_publication.error_detail }}</div>
+            {% endif %}
+          {% else %}
+            <p class="text-muted small">Not yet published to website.</p>
+          {% endif %}
+          {% if website_integration and post.status == 'approved' %}
+          <form method="post" action="{% url 'blog:post_publish' post.pk %}">{% csrf_token %}
+            <button class="btn btn-success btn-sm w-100 mt-2">
+              <i class="fas fa-rocket me-1"></i>Publish to Website
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Social media publications -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-share-alt me-2"></i>Social Media</div>
+        <div class="card-body p-0">
+          {% for spub in social_publications %}
+          <div class="p-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-500 small">{{ spub.account.get_platform_display }}</span>
+              <span class="badge {% if spub.status == 'published' %}bg-success{% elif spub.status == 'failed' %}bg-danger{% elif spub.status == 'requires_reauth' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                {{ spub.get_status_display }}
+              </span>
+            </div>
+            {% if spub.external_post_url %}
+            <a href="{{ spub.external_post_url }}" target="_blank" class="btn btn-xs btn-outline-success mt-1">
+              <i class="fas fa-external-link-alt"></i> View Post
+            </a>
+            {% endif %}
+            {% if spub.status == 'published' %}
+            <div class="mt-1 text-muted small">
+              <i class="fas fa-heart"></i> {{ spub.likes_count }}
+              <i class="fas fa-comment ms-2"></i> {{ spub.comments_count }}
+              <i class="fas fa-share ms-2"></i> {{ spub.shares_count }}
+            </div>
+            {% endif %}
+            {% if spub.error_detail %}
+            <div class="text-danger small mt-1">{{ spub.error_detail|truncatechars:100 }}</div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="p-3 text-muted small text-center">Not shared on social media yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-search me-2"></i>SEO</div>
+        <div class="card-body">
+          <div class="mb-2"><div class="text-muted small">SEO Title</div><div class="fw-500 small">{{ post.effective_seo_title|truncatechars:70 }}</div></div>
+          <div class="mb-2"><div class="text-muted small">Meta Description</div><div class="small">{{ post.meta_description|truncatechars:160|default:"—" }}</div></div>
+          <div class="mb-0"><div class="text-muted small">Slug</div><div class="font-monospace small text-break">{{ post.slug }}</div></div>
+        </div>
+      </div>
+
+      <!-- Revisions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-code-branch me-2"></i>Revisions ({{ post.revision_count }})</div>
+        <div class="card-body p-0">
+          {% for rev in revisions %}
+          <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+            <span class="small fw-500">v{{ rev.version }}</span>
+            <span class="small text-muted">{{ rev.created_at|date:"M d H:i" }}</span>
+          </div>
+          {% empty %}
+          <div class="p-3 text-muted small text-center">No revisions saved yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Enquiries from this post -->
+      {% if enquiries %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600"><i class="fas fa-envelope me-2"></i>Enquiries from this Post</div>
+        <div class="card-body p-0">
+          {% for enq in enquiries %}
+          <div class="p-2 border-bottom">
+            <div class="small fw-500">{{ enq.contact_name }}</div>
+            <div class="small text-muted">{{ enq.contact_email }}</div>
+            <span class="badge {% if enq.status == 'lead_created' %}bg-success{% else %}bg-secondary{% endif %} mt-1">{{ enq.get_status_display }}</span>
+          </div>
+          {% endfor %}
+          <div class="p-2"><a href="{% url 'blog:enquiries' %}" class="small">View all enquiries →</a></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Approve / Reject (for managers) -->
+      {% if post.status == 'pending_approval' %}
+      <div class="card border-danger border mb-4">
+        <div class="card-header bg-white fw-600 text-danger"><i class="fas fa-gavel me-2"></i>Review This Post</div>
+        <div class="card-body">
+          <form method="post" action="{% url 'blog:post_approve' post.pk %}" class="mb-3">
+            {% csrf_token %}
+            <textarea name="comment" class="form-control mb-2" rows="2" placeholder="Approval note (optional)"></textarea>
+            <button class="btn btn-success w-100"><i class="fas fa-check me-1"></i>Approve</button>
+          </form>
+          <form method="post" action="{% url 'blog:post_reject' post.pk %}">
+            {% csrf_token %}
+            <textarea name="comment" class="form-control mb-2" rows="2" placeholder="Rejection reason (required)" required></textarea>
+            <button class="btn btn-danger w-100"><i class="fas fa-times me-1"></i>Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<!-- Publish Now Modal -->
+<div class="modal fade" id="publishModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Publish to Website</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p>This will immediately publish <strong>{{ post.title }}</strong> to the company website via the configured integration.</p>
+        <p>Are you sure?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{% url 'blog:post_publish' post.pk %}">{% csrf_token %}
+          <button class="btn btn-success"><i class="fas fa-rocket me-1"></i>Publish Now</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Schedule Publishing</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" action="{% url 'blog:post_schedule' post.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-500">Publish Date & Time</label>
+            <input type="datetime-local" name="publish_at" class="form-control" required>
+            <div class="text-muted small mt-1">Time is in UTC. Company timezone: {{ request.user.primary_company.timezone|default:"UTC" }}</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-500">Also share on social media</label>
+            {% for acc in schedule_form.social_account_ids %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="social_account_ids"
+                     value="{{ acc.data.value }}" id="sched_acc_{{ forloop.counter }}">
+              <label class="form-check-label" for="sched_acc_{{ forloop.counter }}">{{ acc.choice_label }}</label>
+            </div>
+            {% empty %}
+            <div class="text-muted small">No connected social accounts.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary"><i class="fas fa-calendar me-1"></i>Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Social Share Modal -->
+<div class="modal fade" id="socialModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title"><i class="fas fa-share-alt me-2"></i>Share on Social Media</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" action="{% url 'blog:post_social_publish' post.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-500">Select Platforms</label>
+            {% for acc in social_form.account_ids %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="account_ids"
+                     value="{{ acc.data.value }}" id="social_{{ forloop.counter }}">
+              <label class="form-check-label" for="social_{{ forloop.counter }}">{{ acc.choice_label }}</label>
+            </div>
+            {% empty %}
+            <div class="alert alert-warning py-2 small">
+              No connected social accounts.
+              <a href="{% url 'blog:social_accounts' %}">Connect one now.</a>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-500">Caption <small class="text-muted">(leave blank to auto-generate)</small></label>
+            <textarea name="caption" class="form-control" rows="3" placeholder="Enter caption or leave blank for auto-generated text…"></textarea>
+          </div>
+          <div class="mb-0">
+            <label class="form-label fw-500">Hashtags</label>
+            <input type="text" name="hashtags" class="form-control" placeholder="#Blog #SvapasWorld">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary"><i class="fas fa-share-alt me-1"></i>Share Now</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

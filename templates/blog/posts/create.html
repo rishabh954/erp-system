@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create Blog Post{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<style>
+  .ql-container { min-height: 350px; font-size: 1rem; }
+  .ql-toolbar { border-radius: 4px 4px 0 0; }
+  .ql-container { border-radius: 0 0 4px 4px; }
+  .seo-meter { height: 6px; border-radius: 3px; transition: width .3s; }
+  .char-count { font-size: 0.75rem; }
+  .char-count.over { color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:posts' %}">Blog</a></li>
+<li class="breadcrumb-item active">Create Post</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-plus-circle text-primary me-2"></i>Create Blog Post</h2>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="blogPostForm">
+    {% csrf_token %}
+
+    <div class="row g-4">
+      <!-- Main content column -->
+      <div class="col-lg-8">
+
+        <!-- Core content -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Post Content</div>
+          <div class="card-body">
+
+            <div class="mb-3">
+              <label class="form-label fw-500">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="id_title" class="form-control form-control-lg"
+                     value="{{ form.title.value|default:'' }}" placeholder="Enter a compelling blog title…" required>
+              {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">Subtitle</label>
+              <input type="text" name="subtitle" class="form-control"
+                     value="{{ form.subtitle.value|default:'' }}" placeholder="Optional subtitle or tagline">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">Content <span class="text-danger">*</span></label>
+              <!-- Quill rich-text editor -->
+              <div id="quill-editor" style="min-height:350px;"></div>
+              <!-- Hidden field containing sanitised HTML -->
+              <textarea name="content_raw" id="id_content_raw" class="d-none"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">Excerpt
+                <small class="text-muted">(max 500 chars — shown in post listings)</small>
+              </label>
+              <textarea name="excerpt" class="form-control" rows="3" maxlength="500"
+                        id="id_excerpt">{{ form.excerpt.value|default:'' }}</textarea>
+              <div class="char-count text-muted mt-1" id="excerptCount">0 / 500</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SEO -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600"><i class="fas fa-search me-2 text-primary"></i>SEO Settings</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">SEO Title <small class="text-muted">(max 70 chars)</small></label>
+              <input type="text" name="seo_title" id="id_seo_title" class="form-control" maxlength="70"
+                     value="{{ form.seo_title.value|default:'' }}"
+                     placeholder="Overrides main title in search results">
+              <div class="d-flex justify-content-between mt-1">
+                <div class="progress flex-grow-1 me-3" style="height:6px;margin-top:6px;">
+                  <div class="progress-bar bg-success seo-meter" id="seoTitleBar" style="width:0%"></div>
+                </div>
+                <span class="char-count text-muted" id="seoTitleCount">0 / 70</span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Meta Description <small class="text-muted">(max 160 chars)</small></label>
+              <textarea name="meta_description" id="id_meta_description" class="form-control" rows="2" maxlength="160"
+                        placeholder="Appears in Google search snippets…">{{ form.meta_description.value|default:'' }}</textarea>
+              <div class="d-flex justify-content-between mt-1">
+                <div class="progress flex-grow-1 me-3" style="height:6px;margin-top:6px;">
+                  <div class="progress-bar bg-success seo-meter" id="metaDescBar" style="width:0%"></div>
+                </div>
+                <span class="char-count text-muted" id="metaDescCount">0 / 160</span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Meta Keywords</label>
+              <input type="text" name="meta_keywords" class="form-control"
+                     value="{{ form.meta_keywords.value|default:'' }}"
+                     placeholder="comma, separated, keywords">
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">Canonical URL</label>
+              <input type="url" name="canonical_url" class="form-control"
+                     value="{{ form.canonical_url.value|default:'' }}"
+                     placeholder="https://svapasworld.com/blog/post-slug/">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar column -->
+      <div class="col-lg-4">
+
+        <!-- Status actions -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Publish</div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <button type="submit" name="_action" value="save_draft" class="btn btn-outline-secondary">
+                <i class="fas fa-save me-1"></i>Save as Draft
+              </button>
+              <button type="submit" name="_action" value="save_draft" class="btn btn-primary">
+                <i class="fas fa-check me-1"></i>Save Post
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Featured image -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Featured Image</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">Featured Image</label>
+              <input type="file" name="featured_image" class="form-control" accept="image/*"
+                     id="id_featured_image">
+              <div class="text-muted small mt-1">Max 5 MB. JPEG, PNG, WebP.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Alt Text</label>
+              <input type="text" name="featured_image_alt" class="form-control"
+                     placeholder="Describe the image for accessibility">
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">OG / Social Image
+                <small class="text-muted">(1200×630 px)</small>
+              </label>
+              <input type="file" name="og_image" class="form-control" accept="image/*">
+            </div>
+          </div>
+        </div>
+
+        <!-- Category & Tags -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Category & Tags</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">Category</label>
+              {{ form.category }}
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">Tags</label>
+              <div class="border rounded p-2" style="max-height:150px;overflow-y:auto;">
+                {% for tag in form.tags %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="{{ form.tags.html_name }}"
+                         value="{{ tag.data.value }}" id="tag_{{ tag.data.value }}"
+                         {% if tag.data.selected %}checked{% endif %}>
+                  <label class="form-check-label" for="tag_{{ tag.data.value }}">{{ tag.choice_label }}</label>
+                </div>
+                {% empty %}
+                <span class="text-muted small">No tags yet. <a href="{% url 'blog:tag_create' %}">Add one.</a></span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Options -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Options</div>
+          <div class="card-body">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" name="enable_enquiry_form"
+                     id="id_enable_enquiry_form" {% if form.enable_enquiry_form.value %}checked{% endif %}>
+              <label class="form-check-label" for="id_enable_enquiry_form">Show Enquiry Form</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" name="is_featured"
+                     id="id_is_featured" {% if form.is_featured.value %}checked{% endif %}>
+              <label class="form-check-label" for="id_is_featured">Featured Post</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="allow_comments"
+                     id="id_allow_comments" {% if form.allow_comments.value %}checked{% endif %}>
+              <label class="form-check-label" for="id_allow_comments">Allow Comments</label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+// Quill rich-text editor
+const quill = new Quill('#quill-editor', {
+  theme: 'snow',
+  modules: {
+    toolbar: [
+      [{ 'header': [1,2,3,4,false] }],
+      ['bold','italic','underline','strike'],
+      [{ 'color':[] },{ 'background':[] }],
+      [{ 'list':'ordered' },{ 'list':'bullet' }],
+      ['blockquote','code-block'],
+      ['link','image'],
+      ['clean']
+    ]
+  }
+});
+
+// Sync Quill content to hidden textarea before submit
+document.getElementById('blogPostForm').addEventListener('submit', function() {
+  document.getElementById('id_content_raw').value = quill.root.innerHTML;
+});
+
+// Populate Quill from existing value (edit mode)
+const existingContent = document.getElementById('id_content_raw').value;
+if (existingContent) { quill.root.innerHTML = existingContent; }
+
+// Auto-fill SEO title from main title
+document.getElementById('id_title').addEventListener('input', function() {
+  const seoField = document.getElementById('id_seo_title');
+  if (!seoField.value) seoField.value = this.value.substring(0,70);
+  updateSeoMeter('id_seo_title', 'seoTitleBar', 'seoTitleCount', 70);
+});
+
+// SEO character meters
+function updateSeoMeter(inputId, barId, countId, max) {
+  const val = document.getElementById(inputId).value;
+  const len = val.length;
+  const pct = Math.min((len/max)*100, 100);
+  const bar = document.getElementById(barId);
+  bar.style.width = pct + '%';
+  bar.className = 'progress-bar seo-meter ' + (len > max ? 'bg-danger' : len > max*0.8 ? 'bg-warning' : 'bg-success');
+  const count = document.getElementById(countId);
+  count.textContent = len + ' / ' + max;
+  count.className = 'char-count ' + (len > max ? 'over text-danger' : 'text-muted');
+}
+
+document.getElementById('id_seo_title').addEventListener('input', () => updateSeoMeter('id_seo_title','seoTitleBar','seoTitleCount',70));
+document.getElementById('id_meta_description').addEventListener('input', () => updateSeoMeter('id_meta_description','metaDescBar','metaDescCount',160));
+
+// Excerpt counter
+document.getElementById('id_excerpt').addEventListener('input', function() {
+  document.getElementById('excerptCount').textContent = this.value.length + ' / 500';
+});
+</script>
+{% endblock %}

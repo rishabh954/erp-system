@@ -1,0 +1,178 @@
+{% extends "blog/posts/create.html" %}
+{% block title %}Edit: {{ post.title }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:posts' %}">Blog</a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:post_detail' post.pk %}">{{ post.number }}</a></li>
+<li class="breadcrumb-item active">Edit</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-pencil-alt text-primary me-2"></i>Edit Post</h2>
+    <a href="{% url 'blog:post_detail' post.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="blogPostForm">
+    {% csrf_token %}
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Post Content</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="id_title" class="form-control form-control-lg"
+                     value="{{ form.title.value|default:post.title }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Subtitle</label>
+              <input type="text" name="subtitle" class="form-control"
+                     value="{{ form.subtitle.value|default:post.subtitle }}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Content <span class="text-danger">*</span></label>
+              <div id="quill-editor"></div>
+              <textarea name="content_raw" id="id_content_raw" class="d-none">{{ post.content_raw }}</textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Excerpt</label>
+              <textarea name="excerpt" class="form-control" rows="3" maxlength="500" id="id_excerpt">{{ form.excerpt.value|default:post.excerpt }}</textarea>
+              <div class="char-count text-muted mt-1" id="excerptCount">{{ post.excerpt|length }} / 500</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600"><i class="fas fa-search me-2 text-primary"></i>SEO Settings</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">SEO Title <small class="text-muted">(max 70 chars)</small></label>
+              <input type="text" name="seo_title" id="id_seo_title" class="form-control" maxlength="70"
+                     value="{{ form.seo_title.value|default:post.seo_title }}">
+              <div class="d-flex justify-content-between mt-1">
+                <div class="progress flex-grow-1 me-3" style="height:6px;margin-top:6px;">
+                  <div class="progress-bar bg-success seo-meter" id="seoTitleBar" style="width:0%"></div>
+                </div>
+                <span class="char-count text-muted" id="seoTitleCount">{{ post.seo_title|length }} / 70</span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Meta Description <small class="text-muted">(max 160 chars)</small></label>
+              <textarea name="meta_description" id="id_meta_description" class="form-control" rows="2" maxlength="160">{{ form.meta_description.value|default:post.meta_description }}</textarea>
+              <div class="d-flex justify-content-between mt-1">
+                <div class="progress flex-grow-1 me-3" style="height:6px;margin-top:6px;">
+                  <div class="progress-bar bg-success seo-meter" id="metaDescBar" style="width:0%"></div>
+                </div>
+                <span class="char-count text-muted" id="metaDescCount">{{ post.meta_description|length }} / 160</span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">Meta Keywords</label>
+              <input type="text" name="meta_keywords" class="form-control"
+                     value="{{ form.meta_keywords.value|default:post.meta_keywords }}">
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">Canonical URL</label>
+              <input type="url" name="canonical_url" class="form-control"
+                     value="{{ form.canonical_url.value|default:post.canonical_url }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Save</div>
+          <div class="card-body">
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Featured Image</div>
+          <div class="card-body">
+            {% if post.featured_image %}
+            <img src="{{ post.featured_image.url }}" class="img-fluid rounded mb-2" alt="{{ post.featured_image_alt }}">
+            {% endif %}
+            <input type="file" name="featured_image" class="form-control" accept="image/*">
+            <input type="text" name="featured_image_alt" class="form-control mt-2"
+                   value="{{ post.featured_image_alt }}" placeholder="Alt text">
+            <div class="mt-2">
+              <label class="form-label fw-500 small">OG / Social Image</label>
+              {% if post.og_image %}<img src="{{ post.og_image.url }}" class="img-fluid rounded mb-2" style="max-height:60px;">{% endif %}
+              <input type="file" name="og_image" class="form-control" accept="image/*">
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Category & Tags</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">Category</label>
+              {{ form.category }}
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">Tags</label>
+              <div class="border rounded p-2" style="max-height:150px;overflow-y:auto;">
+                {% for tag in form.tags %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="{{ form.tags.html_name }}"
+                         value="{{ tag.data.value }}" id="tag_e_{{ tag.data.value }}"
+                         {% if tag.data.selected %}checked{% endif %}>
+                  <label class="form-check-label" for="tag_e_{{ tag.data.value }}">{{ tag.choice_label }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white fw-600">Options</div>
+          <div class="card-body">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" name="enable_enquiry_form"
+                     {% if post.enable_enquiry_form %}checked{% endif %}>
+              <label class="form-check-label">Show Enquiry Form</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" name="is_featured"
+                     {% if post.is_featured %}checked{% endif %}>
+              <label class="form-check-label">Featured Post</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="allow_comments"
+                     {% if post.allow_comments %}checked{% endif %}>
+              <label class="form-check-label">Allow Comments</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-danger border mb-4">
+          <div class="card-body">
+            <form method="post" action="{% url 'blog:post_archive' post.pk %}" class="mb-2">{% csrf_token %}
+              <button class="btn btn-outline-warning btn-sm w-100" onclick="return confirm('Archive this post?')">
+                <i class="fas fa-archive me-1"></i>Archive Post
+              </button>
+            </form>
+            <form method="post" action="{% url 'blog:post_delete' post.pk %}">{% csrf_token %}
+              <button class="btn btn-outline-danger btn-sm w-100"
+                      onclick="return confirm('Permanently delete this post? It cannot be restored if published.')">
+                <i class="fas fa-trash me-1"></i>Delete Post
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

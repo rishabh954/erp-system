@@ -269,6 +269,32 @@
       </li>
       {% endif %}
 
+      {% if request.user.role == 'super_admin' or request.user.role == 'company_admin' or request.user.role == 'sales_manager' %}
+      <li class="nav-section-title">Marketing</li>
+      <li class="nav-item nav-has-children {% block nav_blog %}{% endblock %}">
+        <a href="#" class="nav-link nav-parent">
+          <i class="fas fa-blog nav-icon"></i>
+          <span class="nav-label">Blog & CMS</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+        <ul class="nav-children">
+          <li><a href="{% url 'blog:dashboard' %}" class="nav-link nav-child"><i class="fas fa-tachometer-alt"></i> Blog Dashboard</a></li>
+          <li><a href="{% url 'blog:posts' %}" class="nav-link nav-child"><i class="fas fa-file-alt"></i> All Posts</a></li>
+          <li><a href="{% url 'blog:post_create' %}" class="nav-link nav-child"><i class="fas fa-plus-circle"></i> Create Post</a></li>
+          <li><a href="{% url 'blog:categories' %}" class="nav-link nav-child"><i class="fas fa-folder"></i> Categories</a></li>
+          <li><a href="{% url 'blog:tags' %}" class="nav-link nav-child"><i class="fas fa-tags"></i> Tags</a></li>
+          <li><a href="{% url 'blog:approval_queue' %}" class="nav-link nav-child"><i class="fas fa-clipboard-check"></i> Approval Queue</a></li>
+          <li><a href="{% url 'blog:calendar' %}" class="nav-link nav-child"><i class="fas fa-calendar-alt"></i> Publishing Calendar</a></li>
+          <li><a href="{% url 'blog:website_integration' %}" class="nav-link nav-child"><i class="fas fa-globe"></i> Website Integration</a></li>
+          <li><a href="{% url 'blog:social_accounts' %}" class="nav-link nav-child"><i class="fas fa-share-alt"></i> Social Accounts</a></li>
+          <li><a href="{% url 'blog:social_queue' %}" class="nav-link nav-child"><i class="fas fa-stream"></i> Social Queue</a></li>
+          <li><a href="{% url 'blog:publishing_history' %}" class="nav-link nav-child"><i class="fas fa-history"></i> Publishing History</a></li>
+          <li><a href="{% url 'blog:enquiries' %}" class="nav-link nav-child"><i class="fas fa-envelope-open-text"></i> Blog Enquiries</a></li>
+          <li><a href="{% url 'blog:analytics' %}" class="nav-link nav-child"><i class="fas fa-chart-bar"></i> Blog Analytics</a></li>
+        </ul>
+      </li>
+      {% endif %}
+
       {% if request.user.role == 'super_admin' or request.user.role == 'company_admin' %}
       <li class="nav-section-title">Insights</li>
 

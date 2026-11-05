@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Approval Queue{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:dashboard' %}">Blog</a></li>
+<li class="breadcrumb-item active">Approval Queue</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-clipboard-check text-warning me-2"></i>Approval Queue
+      <span class="badge bg-warning text-dark ms-2">{{ page_obj.paginator.count }}</span>
+    </h2>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      {% for post in posts %}
+      <div class="p-4 border-bottom">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div class="flex-grow-1">
+            <h5 class="mb-1">
+              <a href="{% url 'blog:post_detail' post.pk %}" class="text-dark fw-600">{{ post.title }}</a>
+            </h5>
+            <div class="text-muted small mb-2">
+              <i class="fas fa-user me-1"></i>{{ post.author.full_name|default:"Unknown" }} &nbsp;·&nbsp;
+              <i class="fas fa-clock me-1"></i>Submitted {{ post.updated_at|timesince }} ago
+              {% if post.category %}&nbsp;·&nbsp;<i class="fas fa-folder me-1"></i>{{ post.category.name }}{% endif %}
+            </div>
+            {% if post.excerpt %}<p class="text-muted small mb-0">{{ post.excerpt|truncatechars:200 }}</p>{% endif %}
+          </div>
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{% url 'blog:post_detail' post.pk %}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-eye me-1"></i>Review
+            </a>
+            <form method="post" action="{% url 'blog:post_approve' post.pk %}">{% csrf_token %}
+              <input type="hidden" name="comment" value="Approved from queue.">
+              <button class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i>Approve</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center py-5 text-muted">
+        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+        <h5>All clear — no posts waiting for approval.</h5>
+      </div>
+      {% endfor %}
+    </div>
+    {% if is_paginated %}
+    <div class="card-footer bg-white">{% include "partials/pagination.html" %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

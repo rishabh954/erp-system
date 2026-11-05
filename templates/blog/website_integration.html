@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Website Integration{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:dashboard' %}">Blog</a></li>
+<li class="breadcrumb-item active">Website Integration</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-globe text-primary me-2"></i>Website Integration</h2>
+    {% if integration %}
+    <form method="post" action="{% url 'blog:website_health_check' integration.pk %}">{% csrf_token %}
+      <button class="btn btn-outline-info btn-sm"><i class="fas fa-heartbeat me-1"></i>Test Connection</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-600">
+          {% if integration %}Update Integration{% else %}Configure Integration{% endif %}
+        </div>
+        <div class="card-body">
+          {% if integration %}
+          <div class="alert alert-{% if integration.status == 'connected' %}success{% elif integration.status == 'error' %}danger{% else %}secondary{% endif %} py-2 mb-3">
+            <i class="fas fa-{% if integration.status == 'connected' %}check-circle{% elif integration.status == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+            Status: <strong>{{ integration.get_status_display }}</strong>
+            {% if integration.last_health_check %}
+              &nbsp;·&nbsp; Last checked: {{ integration.last_health_check|timesince }} ago
+            {% endif %}
+            {% if integration.error_message %}
+              <div class="mt-1 small text-danger">{{ integration.error_message }}</div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+              <label class="form-label fw-500">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="text-muted small mt-1">{{ field.help_text }}</div>{% endif %}
+              {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-1"></i>Save Configuration
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600">How It Works</div>
+        <div class="card-body small text-muted">
+          <ol class="ps-3">
+            <li class="mb-2">Employee creates and submits blog post for approval.</li>
+            <li class="mb-2">Manager approves the post.</li>
+            <li class="mb-2">Authorised user clicks <strong>Publish</strong>.</li>
+            <li class="mb-2">ERP sends post data to your website via the configured API endpoint.</li>
+            <li class="mb-2">Website confirms publication and returns the public URL.</li>
+            <li class="mb-2">ERP stores the URL and marks the post as <strong>Published</strong>.</li>
+          </ol>
+          <p class="mb-0"><strong>Idempotency:</strong> Each publish request includes a unique key so retries never create duplicate articles.</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-600">Recent Publications</div>
+        <div class="card-body p-0">
+          {% for pub in publications %}
+          <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-500 small">
+                {% if pub.post %}<a href="{% url 'blog:post_detail' pub.post.pk %}">{{ pub.post.title|truncatechars:40 }}</a>{% else %}—{% endif %}
+              </div>
+              <div class="text-muted small">{{ pub.published_at|date:"M d, Y H:i"|default:"—" }}</div>
+            </div>
+            <span class="badge {% if pub.sync_status == 'published' %}bg-success{% elif pub.sync_status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+              {{ pub.get_sync_status_display }}
+            </span>
+          </div>
+          {% empty %}
+          <div class="p-3 text-muted small text-center">No publications yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

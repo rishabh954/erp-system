@@ -129,6 +129,7 @@ LOCAL_APPS = [
     'apps.analytics',
     'apps.pos',
     'apps.ai',
+    'apps.blog',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -445,6 +446,27 @@ CELERY_BEAT_SCHEDULE = {
     'send-trial-expiry-reminders': {
         'task': 'apps.company.tasks.send_trial_expiry_reminders',
         'schedule': crontab(hour=8, minute=30),
+    },
+    # Blog & Content Management
+    'blog-publish-scheduled-posts': {
+        'task': 'apps.blog.tasks.publish_scheduled_posts',
+        'schedule': crontab(minute='*/5'),
+    },
+    'blog-retry-failed-website-pubs': {
+        'task': 'apps.blog.tasks.retry_failed_website_pubs',
+        'schedule': crontab(minute='*/10'),
+    },
+    'blog-retry-failed-social-pubs': {
+        'task': 'apps.blog.tasks.retry_failed_social_pubs',
+        'schedule': crontab(minute='*/10'),
+    },
+    'blog-check-integration-health': {
+        'task': 'apps.blog.tasks.check_integration_health',
+        'schedule': crontab(minute='*/30'),
+    },
+    'blog-sync-social-metrics': {
+        'task': 'apps.blog.tasks.sync_social_metrics_task',
+        'schedule': crontab(hour=3, minute=0),
     },
     # Projects
     'send-task-deadline-reminders': {

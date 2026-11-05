@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Add Tag{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="mb-4"><h2 class="fw-700">Add Tag</h2></div>
+  <div class="card border-0 shadow-sm" style="max-width:400px;">
+    <div class="card-body">
+      <form method="post">{% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label fw-500">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save</button>
+        <a href="{% url 'blog:tags' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Blog Dashboard{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item active">Blog Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-blog text-primary me-2"></i>Blog Dashboard</h2>
+    <a href="{% url 'blog:post_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>New Post
+    </a>
+  </div>
+
+  <!-- Status cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-primary-subtle p-3 me-3"><i class="fas fa-file-alt text-primary fa-lg"></i></div>
+            <div>
+              <div class="fs-3 fw-700">{{ total_posts }}</div>
+              <div class="text-muted small">Total Posts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-success-subtle p-3 me-3"><i class="fas fa-globe text-success fa-lg"></i></div>
+            <div>
+              <div class="fs-3 fw-700">{{ published_count }}</div>
+              <div class="text-muted small">Published</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-warning-subtle p-3 me-3"><i class="fas fa-clock text-warning fa-lg"></i></div>
+            <div>
+              <div class="fs-3 fw-700">{{ pending_count }}</div>
+              <div class="text-muted small">Pending Approval</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-danger-subtle p-3 me-3"><i class="fas fa-exclamation-triangle text-danger fa-lg"></i></div>
+            <div>
+              <div class="fs-3 fw-700">{{ failed_sync_count }}</div>
+              <div class="text-muted small">Sync Failed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Second row: Leads, Social, Integration status -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-600">CRM Leads from Blog</span>
+            <a href="{% url 'blog:enquiries' %}" class="btn btn-sm btn-outline-primary">View All</a>
+          </div>
+          <div class="fs-2 fw-700 text-primary">{{ leads_generated }}</div>
+          <div class="text-muted small">of {{ total_enquiries }} enquiries converted</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-600">Social Accounts</span>
+            <a href="{% url 'blog:social_accounts' %}" class="btn btn-sm btn-outline-primary">Manage</a>
+          </div>
+          <div class="fs-2 fw-700 text-success">{{ connected_social_accounts }}</div>
+          <div class="text-muted small">connected account(s)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-600">Website Integration</span>
+            <a href="{% url 'blog:website_integration' %}" class="btn btn-sm btn-outline-primary">Configure</a>
+          </div>
+          {% if website_integration %}
+            <span class="badge {% if website_integration.status == 'connected' %}bg-success{% elif website_integration.status == 'error' %}bg-danger{% else %}bg-secondary{% endif %} fs-6">
+              {{ website_integration.get_status_display }}
+            </span>
+          {% else %}
+            <span class="badge bg-secondary">Not Configured</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Recent posts -->
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <span class="fw-600">Recent Posts</span>
+          <a href="{% url 'blog:posts' %}" class="btn btn-sm btn-outline-primary">All Posts</a>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Post</th><th>Status</th><th>Author</th><th>Created</th><th></th></tr>
+              </thead>
+              <tbody>
+                {% for post in recent_posts %}
+                <tr>
+                  <td><a href="{% url 'blog:post_detail' post.pk %}" class="fw-500">{{ post.title|truncatechars:50 }}</a></td>
+                  <td>
+                    <span class="badge {% if post.status == 'published' %}bg-success{% elif post.status == 'pending_approval' %}bg-warning text-dark{% elif post.status == 'rejected' %}bg-danger{% elif post.status == 'draft' %}bg-secondary{% else %}bg-info{% endif %}">
+                      {{ post.get_status_display }}
+                    </span>
+                  </td>
+                  <td>{{ post.author.full_name|default:"—" }}</td>
+                  <td class="text-muted small">{{ post.created_at|date:"M d, Y" }}</td>
+                  <td><a href="{% url 'blog:post_detail' post.pk %}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No posts yet. <a href="{% url 'blog:post_create' %}">Create the first one.</a></td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending approvals -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <span class="fw-600">Pending Approval</span>
+          <a href="{% url 'blog:approval_queue' %}" class="btn btn-sm btn-outline-warning">Queue</a>
+        </div>
+        <div class="card-body p-0">
+          {% for post in pending_approvals %}
+          <div class="p-3 border-bottom">
+            <div class="fw-500">{{ post.title|truncatechars:40 }}</div>
+            <div class="text-muted small">by {{ post.author.full_name|default:"Unknown" }} · {{ post.created_at|timesince }} ago</div>
+            <div class="mt-2">
+              <a href="{% url 'blog:post_detail' post.pk %}" class="btn btn-xs btn-outline-primary me-1">Review</a>
+            </div>
+          </div>
+          {% empty %}
+          <div class="p-4 text-center text-muted small">No posts pending approval.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

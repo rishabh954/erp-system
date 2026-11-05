@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Publishing Calendar{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:dashboard' %}">Blog</a></li>
+<li class="breadcrumb-item active">Publishing Calendar</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-calendar-alt text-primary me-2"></i>Publishing Calendar</h2>
+    <a href="{% url 'blog:post_create' %}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>New Post
+    </a>
+  </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div id="blogCalendar"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const calendarEl = document.getElementById('blogCalendar');
+  const posts = {{ calendar_posts|safe }};
+
+  const events = posts.map(p => ({
+    id: p.id,
+    title: p.title,
+    start: p.date,
+    color: p.status === 'published' ? '#198754' : p.status === 'scheduled' ? '#0dcaf0' : '#6c757d',
+    url: '/blog/posts/' + p.id + '/',
+  }));
+
+  new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listWeek'
+    },
+    events: events,
+    eventClick: function(info) {
+      info.jsEvent.preventDefault();
+      window.location.href = info.event.url;
+    },
+    height: 600,
+  }).render();
+});
+</script>
+{% endblock %}

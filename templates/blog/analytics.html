@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Blog Analytics{% endblock %}
+{% block nav_blog %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}"><i class="fas fa-home"></i></a></li>
+<li class="breadcrumb-item"><a href="{% url 'blog:dashboard' %}">Blog</a></li>
+<li class="breadcrumb-item active">Analytics</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="mb-4">
+    <h2 class="fw-700 mb-0"><i class="fas fa-chart-bar text-primary me-2"></i>Blog Analytics</h2>
+    <div class="text-muted small mt-1">Engagement metrics are sourced from platform APIs where available. Website visitor counts require a separate analytics integration (e.g. Google Analytics).</div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-primary">{{ total_posts }}</div>
+          <div class="text-muted small">Total Posts</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-success">{{ published_posts }}</div>
+          <div class="text-muted small">Published</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-info">{{ scheduled_posts }}</div>
+          <div class="text-muted small">Scheduled</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-danger">{{ failed_pubs }}</div>
+          <div class="text-muted small">Sync Failed</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-warning">{{ total_enquiries }}</div>
+          <div class="text-muted small">Enquiries</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-700 text-success">{{ leads_generated }}</div>
+          <div class="text-muted small">Leads Generated</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Top posts by enquiry -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-600">Top Posts by Enquiries</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light"><tr><th>Post</th><th>Enquiries</th><th>Leads</th></tr></thead>
+              <tbody>
+                {% for post in top_posts %}
+                <tr>
+                  <td><a href="{% url 'blog:post_detail' post.pk %}" class="small fw-500">{{ post.title|truncatechars:45 }}</a></td>
+                  <td>{{ post.enq_count }}</td>
+                  <td>{{ post.enquiries.filter.lead_created.count|default:post.enq_count }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted text-center py-3">No enquiry data yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Social platform breakdown -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-600">Social Media Publishing</div>
+        <div class="card-body">
+          {% if social_stats %}
+          <canvas id="socialChart" height="200"></canvas>
+          <div class="table-responsive mt-3">
+            <table class="table table-sm mb-0">
+              <thead class="table-light"><tr><th>Platform</th><th>Posts</th><th>Likes</th><th>Comments</th><th>Shares</th></tr></thead>
+              <tbody>
+                {% for platform, stats in social_stats.items %}
+                <tr>
+                  <td class="small fw-500">{{ platform }}</td>
+                  <td class="small">{{ stats.count }}</td>
+                  <td class="small">{{ stats.likes }}</td>
+                  <td class="small">{{ stats.comments }}</td>
+                  <td class="small">{{ stats.shares }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small mt-2">* Metrics fetched from platform APIs. Not all platforms provide engagement data via API.</div>
+          {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-share-alt fa-2x mb-2"></i>
+            <p>No social publishing data yet.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversion funnel -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-600">Lead Conversion</div>
+        <div class="card-body">
+          <div class="d-flex justify-content-around text-center mb-3">
+            <div>
+              <div class="fs-3 fw-700 text-primary">{{ total_enquiries }}</div>
+              <div class="text-muted small">Enquiries</div>
+            </div>
+            <div class="text-muted align-self-center fs-3">→</div>
+            <div>
+              <div class="fs-3 fw-700 text-success">{{ leads_generated }}</div>
+              <div class="text-muted small">Leads</div>
+            </div>
+            <div class="text-muted align-self-center fs-3">→</div>
+            <div>
+              <div class="fs-3 fw-700 text-warning">{{ conversion_rate }}%</div>
+              <div class="text-muted small">Conversion</div>
+            </div>
+          </div>
+          <div class="progress" style="height:20px;">
+            <div class="progress-bar bg-success" style="width:{{ conversion_rate }}%">{{ conversion_rate }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Publishing success rate -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-600">Publishing Success Rate</div>
+        <div class="card-body">
+          <div class="d-flex justify-content-around text-center mb-3">
+            <div>
+              <div class="fs-3 fw-700 text-success">{{ total_social_published }}</div>
+              <div class="text-muted small">Social Published</div>
+            </div>
+            <div>
+              <div class="fs-3 fw-700 text-danger">{{ failed_social }}</div>
+              <div class="text-muted small">Failed</div>
+            </div>
+            <div>
+              <div class="fs-3 fw-700 text-primary">{{ publish_success_rate }}%</div>
+              <div class="text-muted small">Success Rate</div>
+            </div>
+          </div>
+          <div class="progress" style="height:20px;">
+            <div class="progress-bar bg-primary" style="width:{{ publish_success_rate }}%">{{ publish_success_rate }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if social_stats %}
+<script>
+const ctx = document.getElementById('socialChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: [{% for p in social_stats.keys %}'{{ p }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+    datasets: [{
+      label: 'Posts Published',
+      data: [{% for s in social_stats.values %}{{ s.count }}{% if not forloop.last %},{% endif %}{% endfor %}],
+      backgroundColor: ['#0d6efd','#dc3545','#0077b5','#1da1f2'],
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } } }
+});
+</script>
+{% endif %}
+{% endblock %}

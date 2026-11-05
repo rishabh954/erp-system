@@ -37,6 +37,7 @@ urlpatterns = [
         path('notifications/', include('apps.notifications.api.urls', namespace='api_notifications')),  # noqa: E501
         path('workflow/', include('apps.workflow.api.urls', namespace='api_workflow')),
         path('dashboard/', include('apps.dashboard.api.urls', namespace='api_dashboard')),  # noqa: E501
+        path('blog/', include('apps.blog.api.urls', namespace='api_blog')),
         path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     ])),
 ]
@@ -71,6 +72,7 @@ urlpatterns += [
     path('analytics/', include('apps.analytics.urls', namespace='analytics')),
     path('pos/', include('apps.pos.urls', namespace='pos')),
     path('ai/', include('apps.ai.urls', namespace='ai')),
+    path('blog/', include('apps.blog.urls', namespace='blog')),
 ]
 
 # Redirect root to dashboard

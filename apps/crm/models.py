@@ -86,6 +86,7 @@ class Lead(CompanyScoped, ContactMixin, NotesMixin, SequenceMixin):
         EMAIL = "email", _("Email Campaign")
         COLD_CALL = "cold_call", _("Cold Call")
         EVENT = "event", _("Event")
+        BLOG = "blog", _("Blog")
         OTHER = "other", _("Other")
 
     name = models.CharField(max_length=255)

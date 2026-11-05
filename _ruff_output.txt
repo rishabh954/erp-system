@@ -1,0 +1,536 @@
+﻿F401 [*] `apps.blog.models.BlogRevision` imported but unused
+  --> apps\blog\api\views.py:15:42
+   |
+14 | from apps.blog.models import (
+15 |     BlogCategory, BlogEnquiry, BlogPost, BlogRevision, BlogTag,
+   |                                          ^^^^^^^^^^^^
+16 |     PublishingLog, SocialMediaAccount, SocialMediaPublication,
+17 |     WebsiteIntegration, WebsitePublication,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.WebsitePublication` imported but unused
+  --> apps\blog\api\views.py:17:25
+   |
+15 |     BlogCategory, BlogEnquiry, BlogPost, BlogRevision, BlogTag,
+16 |     PublishingLog, SocialMediaAccount, SocialMediaPublication,
+17 |     WebsiteIntegration, WebsitePublication,
+   |                         ^^^^^^^^^^^^^^^^^^
+18 | )
+19 | from apps.blog.api.serializers import (
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.api.serializers.WebsitePublicationSerializer` imported but unused
+  --> apps\blog\api\views.py:24:5
+   |
+22 |     PublishingLogSerializer, SocialMediaAccountSerializer,
+23 |     SocialMediaPublicationSerializer, WebsiteIntegrationSerializer,
+24 |     WebsitePublicationSerializer,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 | )
+   |
+help: Remove unused import: `apps.blog.api.serializers.WebsitePublicationSerializer`
+
+F401 [*] `apps.blog.services.BlogService` imported but unused
+  --> apps\blog\api\views.py:97:40
+   |
+96 |     def perform_create(self, serializer):
+97 |         from apps.blog.services import BlogService
+   |                                        ^^^^^^^^^^^
+98 |         company = get_active_company(self.request)
+99 |         self.request.company = company
+   |
+help: Remove unused import: `apps.blog.services.BlogService`
+
+F841 Local variable `post` is assigned to but never used
+   --> apps\blog\api\views.py:100:9
+    |
+ 98 |         company = get_active_company(self.request)
+ 99 |         self.request.company = company
+100 |         post = serializer.save(
+    |         ^^^^
+101 |             company=company,
+102 |             author=self.request.user,
+    |
+help: Remove assignment to unused variable `post`
+
+F401 [*] `django.core.validators.FileExtensionValidator` imported but unused
+ --> apps\blog\forms.py:7:36
+  |
+6 | from django import forms
+7 | from django.core.validators import FileExtensionValidator
+  |                                    ^^^^^^^^^^^^^^^^^^^^^^
+8 | from django.utils import timezone
+  |
+help: Remove unused import: `django.core.validators.FileExtensionValidator`
+
+F401 [*] `apps.blog.models.BlogApproval` imported but unused
+  --> apps\blog\forms.py:11:5
+   |
+10 | from apps.blog.models import (
+11 |     BlogApproval,
+   |     ^^^^^^^^^^^^
+12 |     BlogCategory,
+13 |     BlogEnquiry,
+   |
+help: Remove unused import: `apps.blog.models.BlogApproval`
+
+F401 [*] `core.models.SoftDeleteModel` imported but unused
+  --> apps\blog\models.py:20:52
+   |
+19 | from core.fields import EncryptedCharField
+20 | from core.models import CompanyScoped, NotesMixin, SoftDeleteModel, TimeStampedModel
+   |                                                    ^^^^^^^^^^^^^^^
+21 |
+22 | # ---------------------------------------------------------------------------
+   |
+help: Remove unused import: `core.models.SoftDeleteModel`
+
+F401 [*] `apps.blog.models.BlogRevision` imported but unused
+  --> apps\blog\services.py:25:5
+   |
+23 |     BlogEnquiry,
+24 |     BlogPost,
+25 |     BlogRevision,
+   |     ^^^^^^^^^^^^
+26 |     PublishingLog,
+27 |     SocialMediaAccount,
+   |
+help: Remove unused import: `apps.blog.models.BlogRevision`
+
+F541 [*] f-string without any placeholders
+   --> apps\blog\services.py:275:32
+    |
+273 |                     message=message,
+274 |                     notification_type="info",
+275 |                     action_url=f"/blog/approval-queue/",
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^
+276 |                     company=self.company,
+277 |                 )
+    |
+help: Remove extraneous `f` prefix
+
+F401 [*] `apps.blog.models.BlogApproval` imported but unused
+  --> apps\blog\signals.py:10:30
+   |
+ 8 | from django.dispatch import receiver
+ 9 |
+10 | from apps.blog.models import BlogApproval, BlogEnquiry, BlogPost, BlogRevision
+   |                              ^^^^^^^^^^^^
+11 |
+12 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import: `apps.blog.models.BlogApproval`
+
+F401 [*] `abc.abstractmethod` imported but unused
+  --> apps\blog\social_adapters.py:19:22
+   |
+18 | import logging
+19 | from abc import ABC, abstractmethod
+   |                      ^^^^^^^^^^^^^^
+20 |
+21 | import requests
+   |
+help: Remove unused import: `abc.abstractmethod`
+
+F401 [*] `apps.blog.models.SocialMediaPublication` imported but unused
+   --> apps\blog\tasks.py:314:34
+    |
+312 | def _sync_metrics_for_pub(pub):
+313 |     """Fetch metrics from Facebook/Instagram Graph API for a single publication."""
+314 |     from apps.blog.models import SocialMediaPublication
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^
+315 |
+316 |     account = pub.account
+    |
+help: Remove unused import: `apps.blog.models.SocialMediaPublication`
+
+F401 [*] `apps.blog.models.BlogApproval` imported but unused
+  --> apps\blog\tests\test_models.py:11:5
+   |
+10 | from apps.blog.models import (
+11 |     BlogApproval,
+   |     ^^^^^^^^^^^^
+12 |     BlogCategory,
+13 |     BlogEnquiry,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.BlogEnquiry` imported but unused
+  --> apps\blog\tests\test_models.py:13:5
+   |
+11 |     BlogApproval,
+12 |     BlogCategory,
+13 |     BlogEnquiry,
+   |     ^^^^^^^^^^^
+14 |     BlogPost,
+15 |     BlogRevision,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.BlogRevision` imported but unused
+  --> apps\blog\tests\test_models.py:15:5
+   |
+13 |     BlogEnquiry,
+14 |     BlogPost,
+15 |     BlogRevision,
+   |     ^^^^^^^^^^^^
+16 |     BlogTag,
+17 |     PublishingLog,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.BlogTag` imported but unused
+  --> apps\blog\tests\test_models.py:16:5
+   |
+14 |     BlogPost,
+15 |     BlogRevision,
+16 |     BlogTag,
+   |     ^^^^^^^
+17 |     PublishingLog,
+18 |     SocialMediaAccount,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.PublishingLog` imported but unused
+  --> apps\blog\tests\test_models.py:17:5
+   |
+15 |     BlogRevision,
+16 |     BlogTag,
+17 |     PublishingLog,
+   |     ^^^^^^^^^^^^^
+18 |     SocialMediaAccount,
+19 |     SocialMediaPublication,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.SocialMediaPublication` imported but unused
+  --> apps\blog\tests\test_models.py:19:5
+   |
+17 |     PublishingLog,
+18 |     SocialMediaAccount,
+19 |     SocialMediaPublication,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+20 |     WebsiteIntegration,
+21 |     WebsitePublication,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.WebsiteIntegration` imported but unused
+  --> apps\blog\tests\test_models.py:20:5
+   |
+18 |     SocialMediaAccount,
+19 |     SocialMediaPublication,
+20 |     WebsiteIntegration,
+   |     ^^^^^^^^^^^^^^^^^^
+21 |     WebsitePublication,
+22 |     sanitize_blog_html,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.models.WebsitePublication` imported but unused
+  --> apps\blog\tests\test_models.py:21:5
+   |
+19 |     SocialMediaPublication,
+20 |     WebsiteIntegration,
+21 |     WebsitePublication,
+   |     ^^^^^^^^^^^^^^^^^^
+22 |     sanitize_blog_html,
+23 | )
+   |
+help: Remove unused import
+
+F401 [*] `uuid` imported but unused
+ --> apps\blog\tests\test_services.py:7:8
+  |
+5 | """
+6 |
+7 | import uuid
+  |        ^^^^
+8 | from unittest.mock import MagicMock, patch
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `django.core.exceptions.PermissionDenied` imported but unused
+  --> apps\blog\tests\test_services.py:11:36
+   |
+10 | import pytest
+11 | from django.core.exceptions import PermissionDenied
+   |                                    ^^^^^^^^^^^^^^^^
+12 | from django.test import TestCase
+13 | from django.utils import timezone
+   |
+help: Remove unused import: `django.core.exceptions.PermissionDenied`
+
+F401 [*] `apps.blog.models.SocialMediaPublication` imported but unused
+  --> apps\blog\tests\test_tasks.py:12:40
+   |
+10 | from django.utils import timezone
+11 |
+12 | from apps.blog.models import BlogPost, SocialMediaPublication, WebsiteIntegration, WebsitePublication
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^
+13 | from apps.blog.tasks import (
+14 |     check_integration_health,
+   |
+help: Remove unused import: `apps.blog.models.SocialMediaPublication`
+
+F401 [*] `apps.blog.tasks.publish_post_to_social_task` imported but unused
+  --> apps\blog\tests\test_tasks.py:16:5
+   |
+14 |     check_integration_health,
+15 |     process_blog_enquiry_task,
+16 |     publish_post_to_social_task,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |     publish_post_to_website_task,
+18 |     publish_scheduled_posts,
+   |
+help: Remove unused import
+
+F401 [*] `apps.blog.tasks.publish_post_to_website_task` imported but unused
+  --> apps\blog\tests\test_tasks.py:17:5
+   |
+15 |     process_blog_enquiry_task,
+16 |     publish_post_to_social_task,
+17 |     publish_post_to_website_task,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |     publish_scheduled_posts,
+19 |     retry_failed_website_pubs,
+   |
+help: Remove unused import
+
+F841 Local variable `results` is assigned to but never used
+   --> apps\blog\tests\test_tasks.py:179:9
+    |
+177 |     def test_healthy_integration_marked_connected(self, mock_get):
+178 |         mock_get.return_value = MagicMock(ok=True)
+179 |         results = check_integration_health()
+    |         ^^^^^^^
+180 |         self.integration.refresh_from_db()
+181 |         self.assertEqual(self.integration.status, "connected")
+    |
+help: Remove assignment to unused variable `results`
+
+F401 [*] `apps.blog.models.BlogApproval` imported but unused
+  --> apps\blog\tests\test_views.py:10:30
+   |
+ 8 | from django.urls import reverse
+ 9 |
+10 | from apps.blog.models import BlogApproval, BlogPost
+   |                              ^^^^^^^^^^^^
+   |
+help: Remove unused import: `apps.blog.models.BlogApproval`
+
+F841 Local variable `resp` is assigned to but never used
+  --> apps\blog\tests\test_views.py:75:9
+   |
+73 |     def test_post_create_post_creates_draft(self):
+74 |         self._login(self.author)
+75 |         resp = self.client.post(reverse("blog:post_create"), {
+   |         ^^^^
+76 |             "title": "New Post from View",
+77 |             "content_raw": "<p>Content here</p>",
+   |
+help: Remove assignment to unused variable `resp`
+
+F841 Local variable `resp` is assigned to but never used
+  --> apps\blog\tests\test_views.py:91:9
+   |
+89 |         self._login(self.author)
+90 |         post = self._make_post("draft")
+91 |         resp = self.client.post(reverse("blog:post_submit", kwargs={"pk": post.pk}))
+   |         ^^^^
+92 |         post.refresh_from_db()
+93 |         self.assertEqual(post.status, "pending_approval")
+   |
+help: Remove assignment to unused variable `resp`
+
+F841 Local variable `resp` is assigned to but never used
+   --> apps\blog\tests\test_views.py:98:9
+    |
+ 96 |         self._login(self.manager)
+ 97 |         post = self._make_post("pending_approval")
+ 98 |         resp = self.client.post(
+    |         ^^^^
+ 99 |             reverse("blog:post_approve", kwargs={"pk": post.pk}),
+100 |             {"comment": "LGTM"}
+    |
+help: Remove assignment to unused variable `resp`
+
+F841 Local variable `resp` is assigned to but never used
+   --> apps\blog\tests\test_views.py:108:9
+    |
+106 |         self._login(self.manager)
+107 |         post = self._make_post("pending_approval")
+108 |         resp = self.client.post(
+    |         ^^^^
+109 |             reverse("blog:post_reject", kwargs={"pk": post.pk}),
+110 |             {"comment": "Needs more details"}
+    |
+help: Remove assignment to unused variable `resp`
+
+F841 Local variable `resp` is assigned to but never used
+   --> apps\blog\tests\test_views.py:162:9
+    |
+161 |     def test_valid_enquiry_returns_200(self):
+162 |         resp = self.client.post(self.url, {
+    |         ^^^^
+163 |             "contact_name": "John Smith",
+164 |             "contact_email": "john@test.com",
+    |
+help: Remove assignment to unused variable `resp`
+
+F401 [*] `django.db.transaction` imported but unused
+  --> apps\blog\views.py:10:23
+   |
+ 9 | from django.contrib import messages
+10 | from django.db import transaction
+   |                       ^^^^^^^^^^^
+11 | from django.db.models import Count, Q, Sum
+12 | from django.http import JsonResponse
+   |
+help: Remove unused import: `django.db.transaction`
+
+F401 [*] `django.db.models.Sum` imported but unused
+  --> apps\blog\views.py:11:40
+   |
+ 9 | from django.contrib import messages
+10 | from django.db import transaction
+11 | from django.db.models import Count, Q, Sum
+   |                                        ^^^
+12 | from django.http import JsonResponse
+13 | from django.shortcuts import get_object_or_404, redirect, render
+   |
+help: Remove unused import: `django.db.models.Sum`
+
+F401 [*] `django.utils.timezone` imported but unused
+  --> apps\blog\views.py:14:26
+   |
+12 | from django.http import JsonResponse
+13 | from django.shortcuts import get_object_or_404, redirect, render
+14 | from django.utils import timezone
+   |                          ^^^^^^^^
+15 | from django.views.generic import (
+16 |     CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView, View,
+   |
+help: Remove unused import: `django.utils.timezone`
+
+F401 [*] `django.views.generic.CreateView` imported but unused
+  --> apps\blog\views.py:16:5
+   |
+14 | from django.utils import timezone
+15 | from django.views.generic import (
+16 |     CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView, View,
+   |     ^^^^^^^^^^
+17 | )
+   |
+help: Remove unused import
+
+F401 [*] `django.views.generic.DeleteView` imported but unused
+  --> apps\blog\views.py:16:17
+   |
+14 | from django.utils import timezone
+15 | from django.views.generic import (
+16 |     CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView, View,
+   |                 ^^^^^^^^^^
+17 | )
+   |
+help: Remove unused import
+
+F401 [*] `django.views.generic.UpdateView` imported but unused
+  --> apps\blog\views.py:16:65
+   |
+14 | from django.utils import timezone
+15 | from django.views.generic import (
+16 |     CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView, View,
+   |                                                                 ^^^^^^^^^^
+17 | )
+   |
+help: Remove unused import
+
+F401 [*] `.forms.SocialMediaAccountForm` imported but unused
+  --> apps\blog\views.py:24:5
+   |
+22 |     BlogApprovalForm, BlogCategoryForm, BlogEnquiryForm,
+23 |     BlogPostForm, BlogScheduleForm, BlogTagForm,
+24 |     SocialMediaAccountForm, SocialMediaPublishForm, WebsiteIntegrationForm,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+25 | )
+26 | from .models import (
+   |
+help: Remove unused import: `.forms.SocialMediaAccountForm`
+
+F401 [*] `.models.BlogApproval` imported but unused
+  --> apps\blog\views.py:27:5
+   |
+25 | )
+26 | from .models import (
+27 |     BlogApproval, BlogCategory, BlogEnquiry, BlogPost, BlogRevision,
+   |     ^^^^^^^^^^^^
+28 |     BlogTag, PublishingLog, PublishingSchedule, SocialMediaAccount,
+29 |     SocialMediaPublication, WebsiteIntegration, WebsitePublication,
+   |
+help: Remove unused import
+
+F401 [*] `.models.BlogRevision` imported but unused
+  --> apps\blog\views.py:27:56
+   |
+25 | )
+26 | from .models import (
+27 |     BlogApproval, BlogCategory, BlogEnquiry, BlogPost, BlogRevision,
+   |                                                        ^^^^^^^^^^^^
+28 |     BlogTag, PublishingLog, PublishingSchedule, SocialMediaAccount,
+29 |     SocialMediaPublication, WebsiteIntegration, WebsitePublication,
+   |
+help: Remove unused import
+
+F401 [*] `.models.PublishingSchedule` imported but unused
+  --> apps\blog\views.py:28:29
+   |
+26 | from .models import (
+27 |     BlogApproval, BlogCategory, BlogEnquiry, BlogPost, BlogRevision,
+28 |     BlogTag, PublishingLog, PublishingSchedule, SocialMediaAccount,
+   |                             ^^^^^^^^^^^^^^^^^^
+29 |     SocialMediaPublication, WebsiteIntegration, WebsitePublication,
+30 | )
+   |
+help: Remove unused import
+
+F401 [*] `.services.BlogEnquiryService` imported but unused
+  --> apps\blog\views.py:31:23
+   |
+29 |     SocialMediaPublication, WebsiteIntegration, WebsitePublication,
+30 | )
+31 | from .services import BlogEnquiryService, BlogService, SocialMediaService, WebsiteIntegrationService
+   |                       ^^^^^^^^^^^^^^^^^^
+32 |
+33 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 [*] `.services.SocialMediaService` imported but unused
+  --> apps\blog\views.py:31:56
+   |
+29 |     SocialMediaPublication, WebsiteIntegration, WebsitePublication,
+30 | )
+31 | from .services import BlogEnquiryService, BlogService, SocialMediaService, WebsiteIntegrationService
+   |                                                        ^^^^^^^^^^^^^^^^^^
+32 |
+33 | logger = logging.getLogger(__name__)
+   |
+help: Remove unused import
+
+F401 [*] `apps.company.models.Company` imported but unused
+   --> apps\blog\views.py:690:41
+    |
+688 |     def post(self, request, post_pk):
+689 |         from apps.blog.models import BlogEnquiry, BlogPost
+690 |         from apps.company.models import Company
+    |                                         ^^^^^^^
+691 |
+692 |         # Identify the company from the post
+    |
+help: Remove unused import: `apps.company.models.Company`
+
+Found 46 errors.
+[*] 39 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).
