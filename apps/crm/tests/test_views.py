@@ -123,3 +123,162 @@ def test_lead_crud(client, user, company):
     res = client.get(list_url)
     assert res.status_code == 200
     assert lead in res.context["object_list"]
+
+
+def test_lead_conversion_reuses_same_company_customer_by_email(
+    client, user, company
+):
+    client.force_login(user)
+    session = client.session
+    session["active_company_id"] = str(company.pk)
+    session.save()
+
+    customer = Customer.objects.create(
+        company=company,
+        name="Existing Customer",
+        email="buyer@example.com",
+    )
+    lead = Lead.objects.create(
+        company=company,
+        name="Buyer Lead",
+        email="Buyer@Example.com",
+    )
+
+    response = client.post(reverse("crm:lead_convert", kwargs={"pk": lead.pk}))
+
+    lead.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == reverse("crm:customer_detail", kwargs={"pk": customer.pk})
+    assert lead.customer_id == customer.pk
+    assert lead.converted_to_customer is True
+    assert Customer.objects.filter(company=company, email__iexact="buyer@example.com").count() == 1
+
+
+def test_lead_won_status_requires_approval_permission():
+    from django.test import RequestFactory
+
+    from apps.crm.views import LeadUpdateStatusView
+
+    request = RequestFactory().post("/crm/leads/test/status/", {"status": Lead.Status.WON})
+
+    assert LeadUpdateStatusView().get_required_permission(request) == "crm.approve"
+
+
+def test_api_lead_conversion_requires_approval_permission():
+    from apps.crm.api.views import LeadViewSet
+
+    view = LeadViewSet()
+    view.action = "convert_to_customer"
+
+    assert view.get_required_permission() == "crm.approve"
+
+
+def test_api_lead_conversion_reuses_existing_customer(user, company):
+    from rest_framework.test import APIClient
+
+    customer = Customer.objects.create(
+        company=company,
+        name="Existing API Customer",
+        email="api-buyer@example.com",
+    )
+    lead = Lead.objects.create(
+        company=company,
+        name="API Buyer Lead",
+        email="API-Buyer@Example.com",
+    )
+    api_client = APIClient()
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(
+        f"/api/v1/crm/leads/{lead.pk}/convert_to_customer/",
+        {},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+
+    lead.refresh_from_db()
+    assert response.status_code == 200
+    assert response.data["customer_id"] == customer.pk
+    assert response.data["customer_reused"] is True
+    assert lead.customer_id == customer.pk
+
+
+def test_api_won_status_creates_customer_through_conversion_service(user, company):
+    from rest_framework.test import APIClient
+
+    lead = Lead.objects.create(
+        company=company,
+        name="Won API Lead",
+        email="won-api@example.com",
+    )
+    api_client = APIClient()
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(
+        f"/api/v1/crm/leads/{lead.pk}/update_status/",
+        {"status": Lead.Status.WON},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+
+    lead.refresh_from_db()
+    assert response.status_code == 200
+    assert lead.status == Lead.Status.WON
+    assert lead.converted_to_customer is True
+    assert lead.customer is not None
+    assert lead.customer.email == "won-api@example.com"
+
+
+def test_api_lead_conversion_does_not_accept_create_permission(
+    company, db
+):
+    from rest_framework.test import APIClient
+
+    from apps.authentication.models import ModulePermission, User, UserCompany
+
+    employee = User.objects.create_user(
+        "crm-create-only@example.com",
+        "password",
+        role=User.Role.EMPLOYEE,
+        primary_company=company,
+    )
+    UserCompany.objects.create(
+        user=employee,
+        company=company,
+        role=User.Role.EMPLOYEE,
+        is_active=True,
+    )
+    ModulePermission.objects.update_or_create(
+        role=User.Role.EMPLOYEE,
+        module="crm",
+        defaults={
+            "can_read": True,
+            "can_create": True,
+            "can_update": True,
+            "can_approve": False,
+        },
+    )
+    lead = Lead.objects.create(company=company, name="Approval Required Lead")
+    api_client = APIClient()
+    api_client.force_authenticate(user=employee)
+
+    response = api_client.post(
+        f"/api/v1/crm/leads/{lead.pk}/convert_to_customer/",
+        {},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+
+    assert response.status_code == 403
+    assert not Customer.objects.filter(company=company).exists()
+
+    won_response = api_client.post(
+        f"/api/v1/crm/leads/{lead.pk}/update_status/",
+        {"status": Lead.Status.WON},
+        format="json",
+        HTTP_X_ACTIVE_COMPANY=str(company.pk),
+    )
+    assert won_response.status_code == 403
+    lead.refresh_from_db()
+    assert lead.status == Lead.Status.NEW
+    assert not Customer.objects.filter(company=company).exists()

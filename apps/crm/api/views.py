@@ -38,6 +38,12 @@ class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     required_permission = "crm.read"
 
     def get_required_permission(self, request=None):
+        if getattr(self, "action", None) == "convert_to_customer":
+            return "crm.approve"
+        if getattr(self, "action", None) == "update_status":
+            if request and request.data.get("status") == Lead.Status.WON:
+                return "crm.approve"
+            return "crm.update"
         if request:
             if request.method == "POST":
                 return "crm.create"
@@ -65,33 +71,16 @@ class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def convert_to_customer(self, request, pk=None):
         lead = self.get_object()
-        if lead.converted_to_customer:
-            return Response(
-                {"error": "Lead already converted to customer"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        from apps.crm.services import convert_lead_to_customer
 
-        # Create customer
-        customer = Customer.objects.create(
-            company=lead.company,
-            name=lead.company_name or lead.name,
-            email=lead.email,
-            phone=lead.phone,
-            mobile=lead.mobile,
-            address_line1=lead.address_line1,
-            city=lead.city,
-            state=lead.state,
-            country=lead.country,
-            zip_code=lead.zip_code,
-            sales_rep=lead.assigned_to,
+        lead, customer, created = convert_lead_to_customer(lead)
+        return Response(
+            {
+                "status": "converted",
+                "customer_id": customer.pk,
+                "customer_reused": not created,
+            }
         )
-
-        lead.status = Lead.Status.WON
-        lead.converted_to_customer = True
-        lead.customer = customer
-        lead.save(update_fields=["status", "converted_to_customer", "customer"])
-
-        return Response({"status": "converted", "customer_id": customer.pk})
 
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
@@ -102,6 +91,14 @@ class LeadViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         ]:
             return Response(
                 {"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_status == Lead.Status.WON:
+            from apps.crm.services import convert_lead_to_customer
+
+            lead, customer, _ = convert_lead_to_customer(lead)
+            return Response(
+                {"status": "status_updated", "customer_id": customer.pk}
             )
 
         lead.status = new_status

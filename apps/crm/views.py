@@ -261,6 +261,20 @@ class LeadUpdateStatusView(CompanyMixin, View):
     required_permission = "crm.update"
     """AJAX: update lead pipeline status."""
 
+    def get_required_permission(self, request=None):
+        if request:
+            new_status = request.POST.get("status")
+            if not new_status and request.content_type == "application/json":
+                import json
+
+                try:
+                    new_status = json.loads(request.body).get("status")
+                except (json.JSONDecodeError, AttributeError):
+                    new_status = None
+            if new_status == Lead.Status.WON:
+                return "crm.approve"
+        return self.required_permission
+
     def post(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk, company=self.company(), is_deleted=False)
 
@@ -276,28 +290,14 @@ class LeadUpdateStatusView(CompanyMixin, View):
                 logging.getLogger(__name__).warning("Failed to parse status: %s", e)
 
         if new_status in dict(Lead.Status.choices):
-            with transaction.atomic():
-                lead.status = new_status
-                if new_status == "won":
-                    lead.converted_to_customer = True
-                    if not lead.customer:
-                        cust = Customer(
-                            company=lead.company,
-                            name=lead.company_name if lead.company_name else lead.name,
-                            email=lead.email,
-                            phone=lead.phone,
-                        )
-                        cust.customer_code = BaseService.generate_sequence_number(
-                            "CUST",
-                            Customer,
-                            lead.company.pk,
-                            field_name="customer_code",
-                        )
-                        cust.save()
-                        lead.customer = cust
-                lead.save(
-                    update_fields=["status", "converted_to_customer", "customer"]
-                )
+            if new_status == Lead.Status.WON:
+                from .services import convert_lead_to_customer
+
+                lead, _, _ = convert_lead_to_customer(lead)
+            else:
+                with transaction.atomic():
+                    lead.status = new_status
+                    lead.save(update_fields=["status"])
             return JsonResponse(
                 {"ok": True, "status": new_status, "label": lead.get_status_display()}
             )
@@ -421,24 +421,16 @@ class LeadConvertView(CompanyMixin, View):
             messages.info(request, "Lead already converted to customer.")
             return redirect("crm:customer_detail", pk=lead.customer.pk)
 
-        with transaction.atomic():
-            customer = Customer(
-                company=lead.company,
-                name=lead.company_name or lead.name,
-                email=lead.email,
-                phone=lead.phone,
-            )
-            customer.customer_code = BaseService.generate_sequence_number(
-                "CUST", Customer, lead.company_id, field_name="customer_code"
-            )
-            customer.save()
+        from .services import convert_lead_to_customer
 
-            lead.customer = customer
-            lead.status = Lead.Status.WON
-            lead.converted_to_customer = True
-            lead.save(update_fields=["customer", "status", "converted_to_customer"])
-
-        messages.success(request, f"Lead converted to customer: {customer.name}")
+        lead, customer, created = convert_lead_to_customer(lead)
+        if created:
+            messages.success(request, f"Lead converted to customer: {customer.name}")
+        else:
+            messages.success(
+                request,
+                f"Lead linked to existing customer: {customer.name}",
+            )
         return redirect("crm:customer_detail", pk=customer.pk)
 
 
